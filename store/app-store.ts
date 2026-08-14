@@ -1,0 +1,394 @@
+/**
+ * 全局状态：zustand + AsyncStorage 持久化。
+ * - squareChats：广场搭话记录（3 天过期，免费层商业承重墙）
+ * - bonds：羁绊，个体层独立状态机（亲密度 / 记忆 / 开门排程）
+ * - posts：动态流（广场公开帖 + 领养后物化帖）
+ */
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+
+import { bondedPostsFor, CHARACTERS, scriptFor, SQUARE_POSTS } from '@/content/characters';
+import { uid } from '@/lib/format';
+import { arrivalTimeLabel, nextEightPM } from '@/lib/notifications';
+import type {
+  Bond,
+  Character,
+  ChatMessage,
+  EngineId,
+  LovePref,
+  Post,
+  SquareChat,
+} from '@/lib/types';
+
+/** 搭话记录过期时长：3 天（免费层天花板是商业决策，不是产品缺陷） */
+export const SQUARE_CHAT_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+
+interface AppState {
+  onboarded: boolean;
+  lovePref?: LovePref;
+  firstOpenAt: number;
+  squareChats: Record<string, SquareChat>;
+  bonds: Bond[];
+  customCharacters: Character[];
+  posts: Post[];
+  engine: EngineId;
+  anthropicKey: string;
+
+  completeOnboarding: (pref: LovePref) => void;
+  ensureSeedPosts: () => void;
+  /** 打开广场搭话：过期则清空重来（他忘记你了）。返回是否刚过期。 */
+  ensureSquareChat: (characterId: string) => boolean;
+  appendSquare: (
+    characterId: string,
+    msgs: ChatMessage[],
+    opts?: { userTurn?: boolean; offered?: boolean }
+  ) => void;
+  createBond: (input: {
+    characterId: string;
+    name: string;
+    nickname: string;
+    birthday?: string;
+  }) => string;
+  setBondNotif: (bondId: string, notifId?: string) => void;
+  appendBond: (
+    bondId: string,
+    msgs: ChatMessage[],
+    opts?: { affinityDelta?: number; unreadDelta?: number }
+  ) => void;
+  markBondRead: (bondId: string) => void;
+  /** 到点开门：把「他来了」投递进会话，并排下一天的门。返回投递过的 bondId。 */
+  deliverDueArrivals: () => string[];
+  toggleLike: (postId: string) => void;
+  addMyComment: (postId: string, text: string) => void;
+  addHisReply: (postId: string) => void;
+  addCustomCharacter: (c: Character) => void;
+  setEngine: (e: EngineId) => void;
+  setAnthropicKey: (k: string) => void;
+  /** 测试工具：把第一个羁绊的开门时间改到 n 分钟后 */
+  devSetArrivalSoon: (minutes: number) => string | null;
+  resetAll: () => void;
+}
+
+const initialData = {
+  onboarded: false,
+  lovePref: undefined as LovePref | undefined,
+  firstOpenAt: Date.now(),
+  squareChats: {} as Record<string, SquareChat>,
+  bonds: [] as Bond[],
+  customCharacters: [] as Character[],
+  posts: [] as Post[],
+  engine: 'mock' as EngineId,
+  anthropicKey: '',
+};
+
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
+      ...initialData,
+
+      completeOnboarding: (pref) => set({ onboarded: true, lovePref: pref }),
+
+      ensureSeedPosts: () => {
+        const { posts } = get();
+        const now = Date.now();
+        const missing = SQUARE_POSTS.filter(
+          (s) => !posts.some((p) => p.id === `sq-${s.characterId}`)
+        );
+        if (missing.length === 0) return;
+        const seeded: Post[] = missing.map((s) => ({
+          id: `sq-${s.characterId}`,
+          characterId: s.characterId,
+          text: s.text,
+          at: now - s.hoursAgo * 3600000,
+          likes: s.likes,
+          liked: false,
+          comments: [],
+        }));
+        set({ posts: [...posts, ...seeded] });
+      },
+
+      ensureSquareChat: (characterId) => {
+        const { squareChats } = get();
+        const now = Date.now();
+        const existing = squareChats[characterId];
+        if (existing && now - existing.lastActiveAt > SQUARE_CHAT_TTL_MS) {
+          set({
+            squareChats: {
+              ...squareChats,
+              [characterId]: {
+                characterId,
+                messages: [],
+                startedAt: now,
+                lastActiveAt: now,
+                adoptionOffered: false,
+                userTurns: 0,
+              },
+            },
+          });
+          return true;
+        }
+        if (!existing) {
+          set({
+            squareChats: {
+              ...squareChats,
+              [characterId]: {
+                characterId,
+                messages: [],
+                startedAt: now,
+                lastActiveAt: now,
+                adoptionOffered: false,
+                userTurns: 0,
+              },
+            },
+          });
+        }
+        return false;
+      },
+
+      appendSquare: (characterId, msgs, opts) => {
+        const { squareChats } = get();
+        const chat = squareChats[characterId];
+        if (!chat) return;
+        set({
+          squareChats: {
+            ...squareChats,
+            [characterId]: {
+              ...chat,
+              messages: [...chat.messages, ...msgs],
+              lastActiveAt: Date.now(),
+              userTurns: chat.userTurns + (opts?.userTurn ? 1 : 0),
+              adoptionOffered: chat.adoptionOffered || !!opts?.offered,
+            },
+          },
+        });
+      },
+
+      createBond: ({ characterId, name, nickname, birthday }) => {
+        const state = get();
+        const character =
+          CHARACTERS.find((c) => c.id === characterId) ??
+          state.customCharacters.find((c) => c.id === characterId);
+        if (!character) return '';
+        const script = scriptFor(character);
+        const now = Date.now();
+        const arrival = nextEightPM(new Date(now));
+        const timeLabel = arrivalTimeLabel(arrival.getTime(), new Date(now));
+
+        // 迁移仪式：搭话记录随关系升级并入羁绊（记忆从这里开始归他所有）
+        const squareMsgs = state.squareChats[characterId]?.messages ?? [];
+        const farewell: ChatMessage[] = script.farewell.map((f, i) => ({
+          id: uid('m'),
+          from: 'him',
+          kind: f.kind ?? 'text',
+          text: f.text.replace('{time}', timeLabel),
+          at: now + i,
+        }));
+        const ceremony: ChatMessage = {
+          id: uid('m'),
+          from: 'system',
+          kind: 'system',
+          text: `你们交换了联系方式 · 他开始叫你「${nickname}」`,
+          at: now - 1,
+        };
+
+        const bond: Bond = {
+          id: uid('b'),
+          characterId,
+          name,
+          nickname,
+          birthday,
+          createdAt: now,
+          affinity: 10 + squareMsgs.length,
+          messages: [...squareMsgs, ceremony, ...farewell],
+          arrivalAt: arrival.getTime(),
+          unread: 0,
+        };
+
+        // 领养后帖物化进动态流
+        const bondedSeeds = bondedPostsFor(character);
+        const bondedPosts: Post[] = bondedSeeds.map((p) => ({
+          id: uid('p'),
+          characterId,
+          bondId: bond.id,
+          text: p.text,
+          at: now - p.hoursAgo * 3600000,
+          likes: p.likes,
+          liked: false,
+          comments: [],
+        }));
+
+        const remaining = { ...state.squareChats };
+        delete remaining[characterId];
+
+        set({
+          bonds: [...state.bonds, bond],
+          squareChats: remaining,
+          posts: [...state.posts, ...bondedPosts],
+        });
+        return bond.id;
+      },
+
+      setBondNotif: (bondId, notifId) =>
+        set({
+          bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, notifId } : b)),
+        }),
+
+      appendBond: (bondId, msgs, opts) =>
+        set({
+          bonds: get().bonds.map((b) =>
+            b.id === bondId
+              ? {
+                  ...b,
+                  messages: [...b.messages, ...msgs],
+                  affinity: b.affinity + (opts?.affinityDelta ?? 0),
+                  unread: b.unread + (opts?.unreadDelta ?? 0),
+                }
+              : b
+          ),
+        }),
+
+      markBondRead: (bondId) =>
+        set({
+          bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, unread: 0 } : b)),
+        }),
+
+      deliverDueArrivals: () => {
+        const now = Date.now();
+        const delivered: string[] = [];
+        const bonds = get().bonds.map((b) => {
+          if (!b.arrivalAt || b.arrivalAt > now) return b;
+          const character =
+            CHARACTERS.find((c) => c.id === b.characterId) ??
+            get().customCharacters.find((c) => c.id === b.characterId);
+          if (!character) return b;
+          const script = scriptFor(character);
+          const msgs: ChatMessage[] = script.arrival.map((a, i) => ({
+            id: uid('m'),
+            from: 'him',
+            kind: a.kind ?? 'text',
+            text: a.text,
+            at: b.arrivalAt! + i,
+          }));
+          delivered.push(b.id);
+          return {
+            ...b,
+            messages: [...b.messages, ...msgs],
+            affinity: b.affinity + 3,
+            unread: b.unread + msgs.length,
+            arrivalAt: nextEightPM(new Date(now)).getTime(),
+            notifId: undefined,
+          };
+        });
+        if (delivered.length) set({ bonds });
+        return delivered;
+      },
+
+      toggleLike: (postId) =>
+        set({
+          posts: get().posts.map((p) =>
+            p.id === postId
+              ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) }
+              : p
+          ),
+        }),
+
+      addMyComment: (postId, text) =>
+        set({
+          posts: get().posts.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  comments: [
+                    ...p.comments,
+                    { id: uid('c'), from: 'me' as const, text, at: Date.now() },
+                  ],
+                }
+              : p
+          ),
+        }),
+
+      addHisReply: (postId) => {
+        const post = get().posts.find((p) => p.id === postId);
+        if (!post) return;
+        const character =
+          CHARACTERS.find((c) => c.id === post.characterId) ??
+          get().customCharacters.find((c) => c.id === post.characterId);
+        if (!character) return;
+        const reply = scriptFor(character).commentReply;
+        if (post.comments.some((c) => c.from === 'him')) return;
+        set({
+          posts: get().posts.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  comments: [
+                    ...p.comments,
+                    { id: uid('c'), from: 'him' as const, text: reply, at: Date.now() },
+                  ],
+                }
+              : p
+          ),
+        });
+      },
+
+      addCustomCharacter: (c) => set({ customCharacters: [...get().customCharacters, c] }),
+
+      setEngine: (e) => set({ engine: e }),
+      setAnthropicKey: (k) => set({ anthropicKey: k }),
+
+      devSetArrivalSoon: (minutes) => {
+        const bond = get().bonds[0];
+        if (!bond) return null;
+        const at = Date.now() + minutes * 60000;
+        set({
+          bonds: get().bonds.map((b) =>
+            b.id === bond.id ? { ...b, arrivalAt: at, notifId: undefined } : b
+          ),
+        });
+        return bond.id;
+      },
+
+      resetAll: () => set({ ...initialData, firstOpenAt: Date.now() }),
+    }),
+    {
+      name: 'everylove-store',
+      version: 2,
+      storage: createJSONStorage(() => AsyncStorage),
+      // v2：种子角色改版（陆隽行下架、人外上新），清掉指向已删除角色的数据
+      migrate: (persisted: unknown, version) => {
+        const state = persisted as Partial<AppState> | undefined;
+        if (!state || version >= 2) return state;
+        const seedIds = new Set(CHARACTERS.map((c) => c.id));
+        const customIds = new Set((state.customCharacters ?? []).map((c) => c.id));
+        const valid = (id: string) => seedIds.has(id) || customIds.has(id);
+        state.bonds = (state.bonds ?? []).filter((b) => valid(b.characterId));
+        state.squareChats = Object.fromEntries(
+          Object.entries(state.squareChats ?? {}).filter(([id]) => valid(id))
+        );
+        state.posts = (state.posts ?? []).filter((p) => valid(p.characterId));
+        return state;
+      },
+    }
+  )
+);
+
+export function findCharacter(id: string): Character | undefined {
+  return (
+    CHARACTERS.find((c) => c.id === id) ??
+    useAppStore.getState().customCharacters.find((c) => c.id === id)
+  );
+}
+
+export function findBond(bondId: string): Bond | undefined {
+  return useAppStore.getState().bonds.find((b) => b.id === bondId);
+}
+
+/** 亲密度阶段标签 */
+export function affinityStage(affinity: number): string {
+  if (affinity < 20) return '刚认识';
+  if (affinity < 60) return '有点在意';
+  if (affinity < 120) return '放在心上';
+  return '唯一例外';
+}

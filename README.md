@@ -1,56 +1,43 @@
-# Welcome to your Expo app 👋
+# 全自动恋爱（代号 everylove）· 试装
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> 自己捏人的乙女游戏：进来捏一个人，他全自动和你恋爱，不用你主动。
+> 产品文档见 `CLAUDE.md`，决策日志见 `docs/DECISIONS.md`，待拍板见 `docs/OPEN_QUESTIONS.md`。
 
-## Get started
+## 跑起来（iPhone + Expo Go）
 
-1. Install dependencies
+1. 手机装 **Expo Go**（App Store，需支持 SDK 54 的版本）。
+2. 电脑和手机连同一个 Wi-Fi。
+3. 项目目录下：
 
    ```bash
    npm install
-   ```
-
-2. Start the app
-
-   ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+4. 用 iPhone 相机扫终端里的二维码，在 Expo Go 中打开。
+   局域网不通时改用 `npx expo start --tunnel`。
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 试装怎么玩（首十分钟闭环）
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+1. 首启回答「你想被谁爱？」→ 落广场。
+2. 点任意角色卡即聊，他先开口；你发到第 4 句，他会开口要你的联系方式。
+3. 走完缔结仪式（起名 → 迁移动画 → 「他晚上八点来找你，要听得见吗？」）。
+4. 他先走。晚上八点整，本地通知准时响——他说到做到。
+   等不到晚上：「我的 → 开发者 → 让他 3 分钟后来开门」。
 
-## Get a fresh project
+## 开发者选项（我的 tab）
 
-When you're ready, run:
+- 对话引擎：默认脚本引擎（离线可跑）；可切 Claude API 并粘贴自己的 key（仅存本机，试装专用）。
+- 重置全部数据：清空所有羁绊与聊天，回到首启。
 
-```bash
-npm run reset-project
-```
+## 工程速览
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+| 位置 | 内容 |
+| --- | --- |
+| `app/` | expo-router 路由：五 tab、广场试聊、领养仪式、羁绊会话、onboarding |
+| `content/characters.ts` | 种子角色 + 全部台词脚本（产品灵魂所在） |
+| `lib/engine.ts` | ChatEngine 抽象（暗面路由/尺度/无 PUA 在入口锁死） |
+| `lib/arrivals.ts` `lib/notifications.ts` | 八点开门：投递 + 本地定时通知 |
+| `store/app-store.ts` | zustand + AsyncStorage：搭话记录（3 天过期）、羁绊、动态 |
 
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+SDK 锁定 Expo 54，只做 iOS。新增设计决策必须当次写入 `docs/DECISIONS.md`（见 CLAUDE.md 工作规则）。
