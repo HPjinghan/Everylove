@@ -41,7 +41,7 @@ export default function BondScreen() {
   if (!character) return <Redirect href="/(tabs)/messages" />;
 
   const onSend = async (text: string) => {
-    const { appendBond, engine, anthropicKey } = useAppStore.getState();
+    const { appendBond, engine, anthropicKey, qianfanKey } = useAppStore.getState();
     appendBond(
       bond.id,
       [{ id: uid('m'), from: 'me', kind: 'text', text, at: Date.now() }],
@@ -63,7 +63,7 @@ export default function BondScreen() {
         userText: text,
       },
       engine,
-      anthropicKey
+      { anthropic: anthropicKey, qianfan: qianfanKey }
     );
     await wait(700 + Math.min(1200, text.length * 40));
     setTyping(false);

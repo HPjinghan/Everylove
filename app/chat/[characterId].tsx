@@ -75,7 +75,7 @@ export default function SquareChatScreen() {
   }
 
   const onSend = async (text: string) => {
-    const { appendSquare, engine, anthropicKey } = useAppStore.getState();
+    const { appendSquare, engine, anthropicKey, qianfanKey } = useAppStore.getState();
     appendSquare(character.id, [{ id: uid('m'), from: 'me', kind: 'text', text, at: Date.now() }], {
       userTurn: true,
     });
@@ -90,7 +90,7 @@ export default function SquareChatScreen() {
         userText: text,
       },
       engine,
-      anthropicKey
+      { anthropic: anthropicKey, qianfan: qianfanKey }
     );
     await wait(700 + Math.min(1200, text.length * 40));
     setTyping(false);

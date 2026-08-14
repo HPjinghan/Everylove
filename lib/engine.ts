@@ -10,6 +10,27 @@ import type { EngineContext, EngineId, EngineReply } from '@/lib/types';
 
 const ANTHROPIC_MODEL = 'claude-sonnet-5';
 
+/**
+ * 工程配置：来自 .env.local（不进 git，见 .env.example）。
+ * Metro 在打包时内联 EXPO_PUBLIC_ 变量，改动 .env.local 后需重启 npx expo start。仅试装用（D-010）。
+ */
+export const ENV_ANTHROPIC_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
+export const ENV_QIANFAN_KEY = process.env.EXPO_PUBLIC_QIANFAN_API_KEY ?? '';
+/** 千帆平台上挂着多家模型，具体用哪个由配置决定，默认 DeepSeek */
+export const QIANFAN_MODEL = process.env.EXPO_PUBLIC_QIANFAN_MODEL || 'deepseek-v4';
+
+export interface EngineKeys {
+  anthropic?: string;
+  qianfan?: string;
+}
+
+/** key 解析：开发者面板手填的优先，其次读工程配置 */
+export function resolveKey(engine: EngineId, keys: EngineKeys): string {
+  if (engine === 'anthropic') return keys.anthropic || ENV_ANTHROPIC_KEY;
+  if (engine === 'qianfan') return keys.qianfan || ENV_QIANFAN_KEY;
+  return '';
+}
+
 function pick<T>(arr: T[], salt = 0): T {
   return arr[Math.floor(Math.random() * 977 + salt) % arr.length];
 }
@@ -105,20 +126,58 @@ async function anthropicReply(ctx: EngineContext, apiKey: string): Promise<Engin
   return { texts: [text] };
 }
 
+/** 百度千帆 v2（OpenAI 兼容格式），模型由 QIANFAN_MODEL 决定 */
+async function qianfanReply(ctx: EngineContext, apiKey: string): Promise<EngineReply> {
+  const history = ctx.history
+    .filter((m) => m.from !== 'system')
+    .slice(-20)
+    .map((m) => ({
+      role: m.from === 'me' ? ('user' as const) : ('assistant' as const),
+      content: m.text,
+    }));
+
+  const res = await fetch('https://qianfan.baidubce.com/v2/chat/completions', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: QIANFAN_MODEL,
+      max_tokens: 300,
+      messages: [
+        { role: 'system', content: buildSystemPrompt(ctx) },
+        ...history,
+        { role: 'user', content: ctx.userText },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Qianfan API ${res.status}`);
+  }
+  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const text = data.choices?.[0]?.message?.content?.trim();
+  if (!text) throw new Error('empty reply');
+  return { texts: [text] };
+}
+
 /**
- * 统一入口：暗面路由 → 所选引擎；Anthropic 失败时回落 Mock，保证「他一定会回」。
+ * 统一入口：暗面路由 → 所选引擎；API 引擎失败或没 key 时回落 Mock，保证「他一定会回」。
  */
 export async function generateReply(
   ctx: EngineContext,
   engine: EngineId,
-  apiKey: string
+  keys: EngineKeys
 ): Promise<EngineReply> {
   const dark = darkSideCheck(ctx.userText);
   if (dark) return dark;
 
-  if (engine === 'anthropic' && apiKey) {
+  const key = resolveKey(engine, keys);
+  if (key) {
     try {
-      return await anthropicReply(ctx, apiKey);
+      if (engine === 'anthropic') return await anthropicReply(ctx, key);
+      if (engine === 'qianfan') return await qianfanReply(ctx, key);
     } catch {
       return mockReply(ctx);
     }

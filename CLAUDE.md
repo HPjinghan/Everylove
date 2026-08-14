@@ -117,7 +117,7 @@
 * 客户端：Expo **SDK 54**（锁定，勿升级）+ React Native + TypeScript，expo-router 文件路由；**只做 iOS**，试装跑 Expo Go（`npx expo start` 后手机扫码）。
 * 状态：zustand + AsyncStorage 持久化（`store/app-store.ts`）；无后端，全部本地。
 * 八点开门：`expo-notifications` **本地定时通知**（Expo Go 不支持远程推送）；投递与排程统一走 `lib/arrivals.ts`。
-* 对话：`lib/engine.ts` 的 ChatEngine 抽象——MockEngine（原型脚本，默认）/ AnthropicEngine（测试者自带 key，仅存本机；正式版必须换服务端代理）。暗面路由、尺度、无 PUA 规则在引擎入口执行，任何引擎不可绕过。
+* 对话：`lib/engine.ts` 的 ChatEngine 抽象——mock（原型脚本）/ anthropic（Claude）/ qianfan（百度千帆 v2 OpenAI 兼容接口，模型默认 deepseek-v4 可配）。API key 走工程配置 `.env.local`（不进 git，模板见 `.env.example`），开发者面板手填可覆盖；有 key 时默认引擎自动选真模型，无 key 或调用失败回落 mock（2026-08-14，D-010）。正式版必须换服务端代理。暗面路由、尺度、无 PUA 规则在引擎入口执行，任何引擎不可绕过。
 * 内容：种子角色与全部台词脚本在 `content/characters.ts`；界面强制浅色，配色 `constants/theme.ts` 的 `Romance`。
 * 测试工具：「我的 → 开发者」可切引擎、填 key、让他 3 分钟后开门、重置数据。
 

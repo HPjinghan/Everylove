@@ -67,3 +67,14 @@
 - **理由**：Harper 明示「2男2女1龙族1狐狸」；龙族接管「强势直给」一极故裁霸总；chips 与 onboarding 第一问（你想被谁爱）同构。
 - **推翻**：部分推翻 D-006（人外占位卡策略、种子只有三男）。人外的**正式官方原型树**（追法曲线蒸馏）仍属 OPEN_QUESTIONS #2。
 - **影响文件**：`content/characters.ts`、`lib/types.ts`、`lib/engine.ts`、`lib/arrivals.ts`、`store/app-store.ts`、`app/(tabs)/index.tsx`、`app/(tabs)/create.tsx`、各界面文案。
+
+## D-010 · 2026-08-14 · API key 走工程配置 .env.local；引擎扩为多供应商（Claude + 百度千帆）
+
+- **决策**：
+  1. API key 从「开发者面板手填」改为**工程配置**：`.env.local`（`.gitignore` 已忽略，不进 git）里放 `EXPO_PUBLIC_ANTHROPIC_API_KEY` / `EXPO_PUBLIC_QIANFAN_API_KEY`，Expo/Metro 原生加载；仓库提交 `.env.example` 作模板。开发者面板输入框保留，手填可覆盖工程配置。
+  2. `ChatEngine` 扩为三引擎：`mock` / `anthropic` / `qianfan`。千帆走 v2 OpenAI 兼容接口（`qianfan.baidubce.com/v2/chat/completions`，Bearer key），模型 ID 由 `EXPO_PUBLIC_QIANFAN_MODEL` 配置，默认 `deepseek-v4`——千帆平台多模型，换模型改配置不改代码。
+  3. 默认引擎按配置自动选：有 Claude key → anthropic，否则有千帆 key → qianfan，都没有 → mock。任何引擎无 key 或调用失败一律回落 mock（「他一定会回」）。
+- **理由**：Harper 要求 key 作为工程内配置且不进 git，并要求支持千帆上的 DeepSeek。系统层规则（暗面路由、尺度、无 PUA）在 `generateReply` 入口执行，与供应商无关，多引擎不破坏行为树锁定。
+- **风险注记**：`EXPO_PUBLIC_` 变量会内联进客户端 bundle——仅试装可接受，正式版必须服务端代理（与 D-004 一致）；千帆模型 ID 以其模型广场为准，若 `deepseek-v4` 名称不符改 `.env.local` 即可。
+- **推翻**：部分推翻 D-004（key 的存放方式：手填仅存本机 → 工程配置优先、手填为覆盖项；引擎抽象与「正式版服务端代理」不变）。
+- **影响文件**：`.env.example`、`.env.local`（不入库）、`lib/engine.ts`、`lib/types.ts`、`store/app-store.ts`、`app/(tabs)/me.tsx`、`app/chat/[characterId].tsx`、`app/bond/[bondId].tsx`、`CLAUDE.md` §13。

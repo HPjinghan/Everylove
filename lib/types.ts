@@ -95,7 +95,7 @@ export interface Post {
   comments: PostComment[];
 }
 
-export type EngineId = 'mock' | 'anthropic';
+export type EngineId = 'mock' | 'anthropic' | 'qianfan';
 
 export interface EngineContext {
   character: Character;

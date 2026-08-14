@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Romance } from '@/constants/theme';
 import { deliverAndSyncArrivals } from '@/lib/arrivals';
+import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY, QIANFAN_MODEL } from '@/lib/engine';
 import { cancelScheduled } from '@/lib/notifications';
 import { useAppStore } from '@/store/app-store';
 
@@ -50,6 +51,7 @@ export default function MeScreen() {
   const customs = useAppStore((s) => s.customCharacters);
   const engine = useAppStore((s) => s.engine);
   const anthropicKey = useAppStore((s) => s.anthropicKey);
+  const qianfanKey = useAppStore((s) => s.qianfanKey);
 
   const testArrival = async () => {
     const bond = bonds[0];
@@ -104,20 +106,22 @@ export default function MeScreen() {
 
       <Section title="开发者（试装）">
         <View style={styles.engineRow}>
-          <Pressable
-            style={[styles.engineBtn, engine === 'mock' && styles.engineBtnActive]}
-            onPress={() => useAppStore.getState().setEngine('mock')}>
-            <Text style={[styles.engineText, engine === 'mock' && styles.engineTextActive]}>
-              脚本引擎
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.engineBtn, engine === 'anthropic' && styles.engineBtnActive]}
-            onPress={() => useAppStore.getState().setEngine('anthropic')}>
-            <Text style={[styles.engineText, engine === 'anthropic' && styles.engineTextActive]}>
-              Claude API
-            </Text>
-          </Pressable>
+          {(
+            [
+              ['mock', '脚本引擎'],
+              ['anthropic', 'Claude'],
+              ['qianfan', `千帆·${QIANFAN_MODEL}`],
+            ] as const
+          ).map(([id, label]) => (
+            <Pressable
+              key={id}
+              style={[styles.engineBtn, engine === id && styles.engineBtnActive]}
+              onPress={() => useAppStore.getState().setEngine(id)}>
+              <Text style={[styles.engineText, engine === id && styles.engineTextActive]}>
+                {label}
+              </Text>
+            </Pressable>
+          ))}
         </View>
         {engine === 'anthropic' && (
           <>
@@ -125,13 +129,38 @@ export default function MeScreen() {
               style={styles.keyInput}
               value={anthropicKey}
               onChangeText={(t) => useAppStore.getState().setAnthropicKey(t.trim())}
-              placeholder="sk-ant-…（仅存本机，正式版走服务端）"
+              placeholder={
+                ENV_ANTHROPIC_KEY
+                  ? '已读取工程配置 .env.local，此处填写可覆盖'
+                  : 'sk-ant-…（推荐填在 .env.local，仅存本机）'
+              }
               placeholderTextColor={Romance.faint}
               autoCapitalize="none"
               autoCorrect={false}
               secureTextEntry
             />
-            <Text style={styles.footHint}>没填 key 或调用失败时，自动回落脚本引擎。</Text>
+            <Text style={styles.footHint}>没有 key 或调用失败时，自动回落脚本引擎。</Text>
+          </>
+        )}
+        {engine === 'qianfan' && (
+          <>
+            <TextInput
+              style={styles.keyInput}
+              value={qianfanKey}
+              onChangeText={(t) => useAppStore.getState().setQianfanKey(t.trim())}
+              placeholder={
+                ENV_QIANFAN_KEY
+                  ? '已读取工程配置 .env.local，此处填写可覆盖'
+                  : '千帆 API Key（推荐填在 .env.local，仅存本机）'
+              }
+              placeholderTextColor={Romance.faint}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+            />
+            <Text style={styles.footHint}>
+              模型 {QIANFAN_MODEL}，可在 .env.local 用 EXPO_PUBLIC_QIANFAN_MODEL 换；失败回落脚本引擎。
+            </Text>
           </>
         )}
         <Row label="让 TA 3 分钟后来开门（测试）" onPress={testArrival} />

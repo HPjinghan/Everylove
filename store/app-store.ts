@@ -10,6 +10,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { bondedPostsFor, CHARACTERS, scriptFor, SQUARE_POSTS } from '@/content/characters';
+import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { arrivalTimeLabel, nextEightPM } from '@/lib/notifications';
 import type {
@@ -35,6 +36,7 @@ interface AppState {
   posts: Post[];
   engine: EngineId;
   anthropicKey: string;
+  qianfanKey: string;
 
   completeOnboarding: (pref: LovePref) => void;
   ensureSeedPosts: () => void;
@@ -66,6 +68,7 @@ interface AppState {
   addCustomCharacter: (c: Character) => void;
   setEngine: (e: EngineId) => void;
   setAnthropicKey: (k: string) => void;
+  setQianfanKey: (k: string) => void;
   /** 测试工具：把第一个羁绊的开门时间改到 n 分钟后 */
   devSetArrivalSoon: (minutes: number) => string | null;
   resetAll: () => void;
@@ -79,8 +82,10 @@ const initialData = {
   bonds: [] as Bond[],
   customCharacters: [] as Character[],
   posts: [] as Post[],
-  engine: 'mock' as EngineId,
+  // 工程配置里有 key 时默认走真模型（D-010）：Claude 优先，其次千帆；都没配则脚本引擎
+  engine: (ENV_ANTHROPIC_KEY ? 'anthropic' : ENV_QIANFAN_KEY ? 'qianfan' : 'mock') as EngineId,
   anthropicKey: '',
+  qianfanKey: '',
 };
 
 export const useAppStore = create<AppState>()(
@@ -337,6 +342,7 @@ export const useAppStore = create<AppState>()(
 
       setEngine: (e) => set({ engine: e }),
       setAnthropicKey: (k) => set({ anthropicKey: k }),
+      setQianfanKey: (k) => set({ qianfanKey: k }),
 
       devSetArrivalSoon: (minutes) => {
         const bond = get().bonds[0];
