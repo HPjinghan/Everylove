@@ -99,3 +99,13 @@
 - **理由**：Harper 要求视觉升级（「纯聊天抓不住我」）；相册/显影本就是产品四维度之一，试装先用生成图验证「他送你一格漫画」的情绪价值，正式版卡面级美术另议（见 CLAUDE.md §6 相册）。触发节奏与按件付费的关系待 Harper 拍板（暂记 OPEN_QUESTIONS）。
 - **推翻**：无。
 - **影响文件**：`lib/imagegen.ts`（新）、`lib/types.ts`（image 消息）、`components/chat-thread.tsx`、`app/bond/[bondId].tsx`、`app/(tabs)/me.tsx`、`.env.example`、`package.json`（expo-file-system）。
+
+## D-014 · 2026-08-15 · 图像生成改走千帆同一把 key；初见改「甩图」模式（四轮四格）
+
+- **决策**：
+  1. **供应商改百度千帆**（Harper 明示，推翻 D-013 的阿里云百炼路线）：Qwen 文生图走千帆 v2 `POST /v2/images/generations`（同步接口，OpenAI 兼容，实测通过），与聊天**共用一把千帆 key**，模型默认 `qwen-image`（`EXPO_PUBLIC_QIANFAN_IMAGE_MODEL` 可换）。返回的 BOS 图片地址是 http，下载时强制升 https（iOS ATS）。
+  2. **初见即甩图**（Harper 明示）：广场试聊有千帆 key 时他**不说文字**，用户每发一轮，他直接回一格漫画——四轮构成固定叙事节拍：初遇 → 回应 → 走近 → 心动，每格都要在画面里回应用户刚说的话。第 4 轮后领养触发照旧走台词（商业节拍必须开口）。打字指示器在画图时显示「TA 在画点什么…」。
+  3. **回落链**：暗面路由仍前置且优先于甩图（系统层不可绕过）；无 key 或生成失败回落文字引擎（D-011 的初见文字规范降为回落层）。
+- **理由**：一把 key 打通聊天与图像，试装配置成本最低；「纯聊天抓不住人」，初见的视觉冲击直接放到首十分钟的最前面验证。
+- **推翻**：推翻 D-013 的供应商与 key 配置（DashScope → 千帆）；部分推翻 D-011（初见文字规范从主路径降为回落路径）。羁绊漫画显影机制（触发/剧情语法/红线 prompt）不变。
+- **影响文件**：`lib/imagegen.ts`（重写）、`app/chat/[characterId].tsx`、`components/chat-thread.tsx`（typingLabel）、`app/(tabs)/me.tsx`、`.env.example`。

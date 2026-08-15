@@ -14,7 +14,8 @@ import { ChatThread } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { scriptFor } from '@/content/characters';
 import { Romance } from '@/constants/theme';
-import { ADOPTION_OFFER_AFTER_TURNS, generateReply } from '@/lib/engine';
+import { ADOPTION_OFFER_AFTER_TURNS, darkSideCheck, generateReply } from '@/lib/engine';
+import { deliverSquarePanel, imageKeyReady } from '@/lib/imagegen';
 import { uid } from '@/lib/format';
 import type { ChatMessage } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -81,22 +82,46 @@ export default function SquareChatScreen() {
     });
 
     const current = useAppStore.getState().squareChats[character.id];
-    setTyping(true);
-    const reply = await generateReply(
-      {
-        character,
-        mode: 'square',
-        history: current?.messages ?? [],
-        userText: text,
-      },
-      engine,
-      { anthropic: anthropicKey, qianfan: qianfanKey }
-    );
-    await wait(700 + Math.min(1200, text.length * 40));
-    setTyping(false);
-    for (const [i, t] of reply.texts.entries()) {
-      if (i > 0) await wait(500);
-      useAppStore.getState().appendSquare(character.id, [himMsg(t)]);
+
+    // 系统层前置：暗面路由绕过一切模式（包括甩图），任何引擎不可绕过
+    const dark = darkSideCheck(text);
+    let darkSide = false;
+    if (dark) {
+      darkSide = true;
+      setTyping(true);
+      await wait(900);
+      setTyping(false);
+      for (const t of dark.texts) {
+        useAppStore.getState().appendSquare(character.id, [himMsg(t)]);
+      }
+    } else {
+      // 初见甩图：有千帆 key 时他不说话，每轮直接回一格漫画（D-014）
+      let delivered = false;
+      if (imageKeyReady()) {
+        setTyping(true);
+        delivered = await deliverSquarePanel(character.id, text, current?.userTurns ?? 1);
+        setTyping(false);
+      }
+      if (!delivered) {
+        setTyping(true);
+        const reply = await generateReply(
+          {
+            character,
+            mode: 'square',
+            history: current?.messages ?? [],
+            userText: text,
+          },
+          engine,
+          { anthropic: anthropicKey, qianfan: qianfanKey }
+        );
+        await wait(700 + Math.min(1200, text.length * 40));
+        setTyping(false);
+        for (const [i, t] of reply.texts.entries()) {
+          if (i > 0) await wait(500);
+          useAppStore.getState().appendSquare(character.id, [himMsg(t)]);
+        }
+        darkSide = !!reply.darkSide;
+      }
     }
 
     // 领养触发：他开口要联系方式（只在非暗面回合）
@@ -104,7 +129,7 @@ export default function SquareChatScreen() {
     if (
       after &&
       !after.adoptionOffered &&
-      !reply.darkSide &&
+      !darkSide &&
       after.userTurns >= ADOPTION_OFFER_AFTER_TURNS
     ) {
       const script = scriptFor(character);
@@ -142,6 +167,7 @@ export default function SquareChatScreen() {
         color={character.color}
         name={character.name}
         typing={typing}
+        typingLabel={imageKeyReady() ? 'TA 在画点什么…' : undefined}
         onSend={onSend}
         banner={
           <View style={styles.banner}>

@@ -90,6 +90,7 @@ export function ChatThread({
   color,
   name,
   typing,
+  typingLabel = '正在输入…',
   onSend,
   banner,
   cta,
@@ -100,6 +101,7 @@ export function ChatThread({
   color: string;
   name: string;
   typing?: boolean;
+  typingLabel?: string;
   onSend: (text: string) => void;
   banner?: ReactNode;
   cta?: ReactNode;
@@ -133,7 +135,7 @@ export function ChatThread({
             <View style={[styles.msgRow, styles.msgRowHim]}>
               <CharAvatar name={name} color={color} size={32} style={styles.msgAvatar} />
               <View style={[styles.bubble, { backgroundColor: Romance.bubbleHim }]}>
-                <Text style={styles.typingText}>正在输入…</Text>
+                <Text style={styles.typingText}>{typingLabel}</Text>
               </View>
             </View>
           ) : null

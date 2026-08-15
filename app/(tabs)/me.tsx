@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Romance } from '@/constants/theme';
 import { deliverAndSyncArrivals } from '@/lib/arrivals';
 import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY, QIANFAN_MODEL } from '@/lib/engine';
-import { deliverComic, ENV_QWEN_KEY } from '@/lib/imagegen';
+import { deliverComic, imageKeyReady } from '@/lib/imagegen';
 import { cancelScheduled } from '@/lib/notifications';
 import { useAppStore } from '@/store/app-store';
 
@@ -72,11 +72,8 @@ export default function MeScreen() {
       Alert.alert('还没有羁绊', '先去广场领养一个 TA，再来测试漫画。');
       return;
     }
-    if (!ENV_QWEN_KEY) {
-      Alert.alert(
-        '未配置图像 key',
-        '在 .env.local 填 EXPO_PUBLIC_DASHSCOPE_API_KEY（阿里云百炼创建），然后重启 npx expo start。'
-      );
+    if (!imageKeyReady()) {
+      Alert.alert('未配置千帆 key', '图像与聊天共用千帆 key：在 .env.local 或上方输入框填好即可。');
       return;
     }
     deliverComic(bond.id);
@@ -183,7 +180,7 @@ export default function MeScreen() {
         )}
         <Row label="让 TA 3 分钟后来开门（测试）" onPress={testArrival} />
         <Row
-          label={`让 TA 送一张漫画（测试）${ENV_QWEN_KEY ? '' : ' · 未配 key'}`}
+          label={`让 TA 送一张漫画（测试）${imageKeyReady() ? '' : ' · 未配 key'}`}
           onPress={testComic}
         />
         <Row label="重置全部数据" onPress={reset} />
