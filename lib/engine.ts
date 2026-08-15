@@ -178,9 +178,12 @@ export async function generateReply(
     try {
       if (engine === 'anthropic') return await anthropicReply(ctx, key);
       if (engine === 'qianfan') return await qianfanReply(ctx, key);
-    } catch {
+    } catch (e) {
+      console.warn(`[engine] ${engine} 调用失败，回落脚本引擎：`, e);
       return mockReply(ctx);
     }
+  } else if (engine !== 'mock') {
+    console.warn(`[engine] ${engine} 没有 key（填 .env.local 后需重启 expo start），走脚本引擎`);
   }
   return mockReply(ctx);
 }
