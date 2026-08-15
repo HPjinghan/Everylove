@@ -61,6 +61,7 @@ interface AppState {
     opts?: { affinityDelta?: number; unreadDelta?: number }
   ) => void;
   markBondRead: (bondId: string) => void;
+  markAwayNotified: (bondId: string) => void;
   /** 到点开门：把「他来了」投递进会话，并排下一天的门。返回投递过的 bondId。 */
   deliverDueArrivals: () => string[];
   toggleLike: (postId: string) => void;
@@ -210,6 +211,8 @@ export const useAppStore = create<AppState>()(
           messages: [...squareMsgs, ceremony, ...farewell],
           arrivalAt: arrival.getTime(),
           unread: 0,
+          // 他先走：开门之前是离席态，不回消息（D-012）
+          away: true,
         };
 
         // 领养后帖物化进动态流
@@ -260,6 +263,11 @@ export const useAppStore = create<AppState>()(
           bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, unread: 0 } : b)),
         }),
 
+      markAwayNotified: (bondId) =>
+        set({
+          bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, awayNotified: true } : b)),
+        }),
+
       deliverDueArrivals: () => {
         const now = Date.now();
         const delivered: string[] = [];
@@ -285,6 +293,8 @@ export const useAppStore = create<AppState>()(
             unread: b.unread + msgs.length,
             arrivalAt: nextEightPM(new Date(now)).getTime(),
             notifId: undefined,
+            away: false,
+            awayNotified: false,
           };
         });
         if (delivered.length) set({ bonds });

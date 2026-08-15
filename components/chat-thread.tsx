@@ -3,6 +3,7 @@
  * 倒置列表；语音气泡为占位形态（点开看文字），供应商未定见 OPEN_QUESTIONS #6。
  */
 
+import { Image } from 'expo-image';
 import { useState, type ReactNode } from 'react';
 import {
   FlatList,
@@ -71,6 +72,11 @@ function Bubble({
         ]}>
         {msg.kind === 'voice' ? (
           <VoiceBubble text={msg.text} color={color} />
+        ) : msg.kind === 'image' && msg.imageUri ? (
+          <View>
+            <Image source={{ uri: msg.imageUri }} style={styles.comicImage} contentFit="cover" />
+            {msg.text ? <Text style={styles.comicCaption}>{msg.text}</Text> : null}
+          </View>
         ) : (
           <Text style={[styles.bubbleText, mine && { color: '#FFFFFF' }]}>{msg.text}</Text>
         )}
@@ -189,6 +195,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     overflow: 'hidden',
   },
+  comicImage: { width: 220, height: 220, borderRadius: 12, backgroundColor: Romance.line },
+  comicCaption: { fontSize: 13, color: Romance.sub, marginTop: 8, lineHeight: 19 },
   voiceRow: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: 2 },
   voiceBar: { width: 3, borderRadius: 2, opacity: 0.75 },
   voiceDuration: { fontSize: 13, marginLeft: 6, fontWeight: '500' },

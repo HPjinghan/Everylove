@@ -78,3 +78,24 @@
 - **风险注记**：`EXPO_PUBLIC_` 变量会内联进客户端 bundle——仅试装可接受，正式版必须服务端代理（与 D-004 一致）；千帆模型 ID 以其模型广场为准，若 `deepseek-v4` 名称不符改 `.env.local` 即可。
 - **推翻**：部分推翻 D-004（key 的存放方式：手填仅存本机 → 工程配置优先、手填为覆盖项；引擎抽象与「正式版服务端代理」不变）。
 - **影响文件**：`.env.example`、`.env.local`（不入库）、`lib/engine.ts`、`lib/types.ts`、`store/app-store.ts`、`app/(tabs)/me.tsx`、`app/chat/[characterId].tsx`、`app/bond/[bondId].tsx`、`CLAUDE.md` §13。
+
+## D-011 · 2026-08-15 · 初见 prompt 规范：写实的陌生人分寸
+
+- **决策**：广场初识模式的系统 prompt 从一句话扩为规范条目：刚搭上话的陌生人视角；他有自己正在过的生活、聊天是顺带；不自来熟（无昵称/不撩/不过度热情）、不查户口（一次最多一个问题且要从对方话里长出来）、1-2 句口语、有一点兴趣但不推进关系。同时把角色 `intro` 注入 prompt 作语气参考。
+- **理由**：Harper 反馈初见对话「尴尬、不像刚见面」——原一句话约束不足以让模型拿捏陌生感与兴趣感的平衡。免费层「故意不完整」的商业承重墙也依赖这种克制。
+- **推翻**：无（细化 D-004 引擎系统 prompt）。
+- **影响文件**：`lib/engine.ts`（`buildSystemPrompt`）。
+
+## D-012 · 2026-08-15 · 离席状态：他说走了就是真的走了
+
+- **决策**：`Bond` 增加 `away` 状态。缔结仪式他先走时 `away=true`：此期间用户发消息**他不回复**（消息正常上屏、亲密度照加），首条消息旁出现一次性系统提示「他去忙了，晚八点会来找你」；开门投递时 `away=false`，恢复正常应答。试装范围内离席只发生在「缔结 → 首次开门」一段；日常作息化的离席（每天定时走/回）留给正式版。
+- **理由**：Harper 发现「他说走了还秒回」——这直接拆穿「会离开的才是人」的人设，也稀释八点开门的 aha（他若一直在，准时到来就不稀缺）。「他先走」是首十分钟的设计节拍，必须真的走。
+- **推翻**：无（补全 D-003 垂直切片的缺口）。
+- **影响文件**：`lib/types.ts`、`store/app-store.ts`（`createBond`/`deliverDueArrivals`/`markAwayNotified`）、`app/bond/[bondId].tsx`。
+
+## D-013 · 2026-08-15 · 漫画显影接 Qwen 文生图（阿里云百炼 DashScope）
+
+- **决策**：显影（漫画）用 Qwen 文生图实现（Harper 指定 QWEN）：`lib/imagegen.ts` 走 DashScope 异步任务接口（提交→轮询→下载到本机，因其 URL 24 小时过期），模型默认 `qwen-image` 可配（`EXPO_PUBLIC_QWEN_IMAGE_MODEL`），key 走 `.env.local`（`EXPO_PUBLIC_DASHSCOPE_API_KEY`）。送达遵循剧情语法：他先说一句「给你画了点东西」，出图后以图片气泡进会话流。**触发**：亲密度每跨过 20 的整数级自动送一格；开发者面板有即时测试入口。**Prompt 内置红线**：画面只有他一人（用户 POV 不入镜）、暧昧合规、不模仿真人长相。失败/没 key 时静默放弃不打断聊天。
+- **理由**：Harper 要求视觉升级（「纯聊天抓不住我」）；相册/显影本就是产品四维度之一，试装先用生成图验证「他送你一格漫画」的情绪价值，正式版卡面级美术另议（见 CLAUDE.md §6 相册）。触发节奏与按件付费的关系待 Harper 拍板（暂记 OPEN_QUESTIONS）。
+- **推翻**：无。
+- **影响文件**：`lib/imagegen.ts`（新）、`lib/types.ts`（image 消息）、`components/chat-thread.tsx`、`app/bond/[bondId].tsx`、`app/(tabs)/me.tsx`、`.env.example`、`package.json`（expo-file-system）。

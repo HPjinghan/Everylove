@@ -14,6 +14,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ARCHETYPE_LABEL } from '@/content/characters';
 import { Romance } from '@/constants/theme';
 import { generateReply } from '@/lib/engine';
+import { deliverComic } from '@/lib/imagegen';
 import { daysTogether, uid } from '@/lib/format';
 import { arrivalTimeLabel } from '@/lib/notifications';
 import { affinityStage, findCharacter, useAppStore } from '@/store/app-store';
@@ -41,12 +42,34 @@ export default function BondScreen() {
   if (!character) return <Redirect href="/(tabs)/messages" />;
 
   const onSend = async (text: string) => {
-    const { appendBond, engine, anthropicKey, qianfanKey } = useAppStore.getState();
+    const { appendBond, markAwayNotified, engine, anthropicKey, qianfanKey } =
+      useAppStore.getState();
     appendBond(
       bond.id,
       [{ id: uid('m'), from: 'me', kind: 'text', text, at: Date.now() }],
       { affinityDelta: 1 }
     );
+
+    // 他先走了就是真的走了：离席期不回复，只提示一次（D-012，会离开的才是人）
+    if (bond.away) {
+      if (!bond.awayNotified) {
+        markAwayNotified(bond.id);
+        const timeLabel = bond.arrivalAt
+          ? arrivalTimeLabel(bond.arrivalAt, new Date())
+          : '晚点';
+        useAppStore.getState().appendBond(bond.id, [
+          {
+            id: uid('m'),
+            from: 'system',
+            kind: 'system',
+            text: `${bond.name}去忙了，${timeLabel}会来找你`,
+            at: Date.now(),
+          },
+        ]);
+      }
+      return;
+    }
+
     setTyping(true);
     const current = useAppStore.getState().bonds.find((b) => b.id === bond.id);
     const reply = await generateReply(
@@ -72,6 +95,11 @@ export default function BondScreen() {
       useAppStore
         .getState()
         .appendBond(bond.id, [{ id: uid('m'), from: 'him', kind: 'text', text: t, at: Date.now() }]);
+    }
+
+    // 亲密度每跨过一个 20 的整数级，他送来一格漫画（显影以剧情语法送达，D-013）
+    if (Math.floor((bond.affinity + 1) / 20) > Math.floor(bond.affinity / 20)) {
+      deliverComic(bond.id);
     }
   };
 

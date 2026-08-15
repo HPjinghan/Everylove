@@ -32,7 +32,7 @@ export interface Character {
 }
 
 export type MessageFrom = 'him' | 'me' | 'system';
-export type MessageKind = 'text' | 'voice' | 'system';
+export type MessageKind = 'text' | 'voice' | 'system' | 'image';
 
 export interface ChatMessage {
   id: string;
@@ -40,6 +40,8 @@ export interface ChatMessage {
   kind: MessageKind;
   text: string;
   at: number;
+  /** kind === 'image' 时的本地图片 URI（漫画显影，已下载到本机） */
+  imageUri?: string;
 }
 
 /** 广场搭话记录：不入消息 tab，会过期（免费层商业承重墙） */
@@ -73,6 +75,10 @@ export interface Bond {
   notifId?: string;
   /** 未读计数（开门投递累积，进入会话清零） */
   unread: number;
+  /** 他先走后的离席态：true 时不回消息，首次开门投递后清除（会离开的才是人） */
+  away?: boolean;
+  /** 离席期用户发消息后，是否已提示过「他去忙了」（只提示一次） */
+  awayNotified?: boolean;
 }
 
 export interface PostComment {
