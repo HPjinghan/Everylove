@@ -6,6 +6,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -379,6 +380,13 @@ export const useAppStore = create<AppState>()(
     }
   )
 );
+
+/** AsyncStorage 水合完成后才为 true；水合前渲染要拿持久化状态做判断的组件应先返回 null */
+export function useHydrated() {
+  const [hydrated, setHydrated] = useState(useAppStore.persist.hasHydrated());
+  useEffect(() => useAppStore.persist.onFinishHydration(() => setHydrated(true)), []);
+  return hydrated;
+}
 
 export function findCharacter(id: string): Character | undefined {
   return (

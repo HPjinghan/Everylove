@@ -3,14 +3,14 @@ import * as Notifications from 'expo-notifications';
 import { Stack, useRootNavigationState, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import 'react-native-reanimated';
 
 import { Romance } from '@/constants/theme';
 import { deliverAndSyncArrivals } from '@/lib/arrivals';
 import '@/lib/notifications';
-import { useAppStore } from '@/store/app-store';
+import { useAppStore, useHydrated } from '@/store/app-store';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -31,29 +31,18 @@ const theme = {
 
 export default function RootLayout() {
   const router = useRouter();
-  const [hydrated, setHydrated] = useState(useAppStore.persist.hasHydrated());
-  // 首帧时导航树还没挂载，此时 replace 会崩；等 key 出现才可跳转
+  const hydrated = useHydrated();
+  // 首帧时导航树还没挂载，命令式跳转会崩；等 key 出现才可跳转
   const navReady = Boolean(useRootNavigationState()?.key);
 
+  // 启动：种子帖、开门投递。落格与 onboarding 门禁是声明式的（app/(tabs)/_layout.tsx），
+  // 根布局不做任何命令式跳转——首帧跳转会崩在 assertIsReady。
   useEffect(() => {
-    const unsub = useAppStore.persist.onFinishHydration(() => setHydrated(true));
-    return unsub;
-  }, []);
-
-  // 启动：种子帖、开门投递、落格判定（新用户落广场，有领养默认落消息）
-  useEffect(() => {
-    if (!hydrated || !navReady) return;
-    const state = useAppStore.getState();
-    state.ensureSeedPosts();
+    if (!hydrated) return;
+    useAppStore.getState().ensureSeedPosts();
     deliverAndSyncArrivals();
-    if (!state.onboarded) {
-      router.replace('/onboarding');
-    } else if (state.bonds.length > 0) {
-      router.replace('/(tabs)/messages');
-    }
     SplashScreen.hideAsync();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, navReady]);
+  }, [hydrated]);
 
   // 回前台补投开门
   useEffect(() => {

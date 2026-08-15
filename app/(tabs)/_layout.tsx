@@ -1,16 +1,26 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Romance } from '@/constants/theme';
-import { useAppStore } from '@/store/app-store';
+import { useAppStore, useHydrated } from '@/store/app-store';
 
 export default function TabLayout() {
+  const hydrated = useHydrated();
+  const onboarded = useAppStore((s) => s.onboarded);
+  const hasBonds = useAppStore((s) => s.bonds.length > 0);
   const unread = useAppStore((s) => s.bonds.reduce((n, b) => n + b.unread, 0));
+
+  // 声明式门禁：水合前不渲染（Splash 还盖着），未 onboard 重定向。
+  // 不在根布局做命令式跳转——首帧 router.replace 会崩在 assertIsReady。
+  if (!hydrated) return null;
+  if (!onboarded) return <Redirect href="/onboarding" />;
 
   return (
     <Tabs
+      // 只在挂载时读一次：新用户落广场，有领养默认落消息
+      initialRouteName={hasBonds ? 'messages' : 'index'}
       screenOptions={{
         tabBarActiveTintColor: Romance.accent,
         tabBarInactiveTintColor: Romance.faint,
