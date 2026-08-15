@@ -16,8 +16,8 @@ const ANTHROPIC_MODEL = 'claude-sonnet-5';
  */
 export const ENV_ANTHROPIC_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
 export const ENV_QIANFAN_KEY = process.env.EXPO_PUBLIC_QIANFAN_API_KEY ?? '';
-/** 千帆平台上挂着多家模型，具体用哪个由配置决定，默认 DeepSeek */
-export const QIANFAN_MODEL = process.env.EXPO_PUBLIC_QIANFAN_MODEL || 'deepseek-v4';
+/** 千帆平台上挂着多家模型，具体用哪个由配置决定，默认 DeepSeek V4（千帆模型 ID：deepseek-v4-pro） */
+export const QIANFAN_MODEL = process.env.EXPO_PUBLIC_QIANFAN_MODEL || 'deepseek-v4-pro';
 
 export interface EngineKeys {
   anthropic?: string;
