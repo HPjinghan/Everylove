@@ -1,6 +1,6 @@
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRootNavigationState, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -32,6 +32,8 @@ const theme = {
 export default function RootLayout() {
   const router = useRouter();
   const [hydrated, setHydrated] = useState(useAppStore.persist.hasHydrated());
+  // 首帧时导航树还没挂载，此时 replace 会崩；等 key 出现才可跳转
+  const navReady = Boolean(useRootNavigationState()?.key);
 
   useEffect(() => {
     const unsub = useAppStore.persist.onFinishHydration(() => setHydrated(true));
@@ -40,7 +42,7 @@ export default function RootLayout() {
 
   // 启动：种子帖、开门投递、落格判定（新用户落广场，有领养默认落消息）
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !navReady) return;
     const state = useAppStore.getState();
     state.ensureSeedPosts();
     deliverAndSyncArrivals();
@@ -51,7 +53,7 @@ export default function RootLayout() {
     }
     SplashScreen.hideAsync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated]);
+  }, [hydrated, navReady]);
 
   // 回前台补投开门
   useEffect(() => {
@@ -61,8 +63,9 @@ export default function RootLayout() {
     return () => sub.remove();
   }, []);
 
-  // 点开「他来了」的通知 → 直达他的会话
+  // 点开「他来了」的通知 → 直达他的会话（同样等导航就绪，冷启动场景）
   useEffect(() => {
+    if (!navReady) return;
     const open = async (bondId?: string) => {
       if (!bondId) return;
       await deliverAndSyncArrivals();
@@ -76,7 +79,7 @@ export default function RootLayout() {
     });
     return () => sub.remove();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [navReady]);
 
   return (
     <ThemeProvider value={theme}>
