@@ -144,7 +144,8 @@ async function qianfanReply(ctx: EngineContext, apiKey: string): Promise<EngineR
     },
     body: JSON.stringify({
       model: QIANFAN_MODEL,
-      max_tokens: 300,
+      // deepseek-v4-pro 是推理模型，思考 token 也算在 max_tokens 里；给足余量防止正文被截空
+      max_tokens: 1000,
       messages: [
         { role: 'system', content: buildSystemPrompt(ctx) },
         ...history,
