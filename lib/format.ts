@@ -29,6 +29,14 @@ export function voiceDuration(text: string): string {
   return `0:${sec.toString().padStart(2, '0')}`;
 }
 
+/** 亲密度阶段（个体层状态机的可读名；prompt 与界面共用） */
+export function affinityStage(affinity: number): string {
+  if (affinity < 20) return '刚认识';
+  if (affinity < 60) return '有点在意';
+  if (affinity < 120) return '放在心上';
+  return '唯一例外';
+}
+
 export function daysTogether(createdAt: number, now = Date.now()): number {
   return Math.max(1, Math.floor((now - createdAt) / 86400000) + 1);
 }

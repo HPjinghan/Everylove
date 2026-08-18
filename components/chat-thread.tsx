@@ -47,10 +47,12 @@ function Bubble({
   msg,
   color,
   name,
+  characterId,
 }: {
   msg: ChatMessage;
   color: string;
   name: string;
+  characterId?: string;
 }) {
   if (msg.from === 'system') {
     return (
@@ -62,7 +64,9 @@ function Bubble({
   const mine = msg.from === 'me';
   return (
     <View style={[styles.msgRow, mine ? styles.msgRowMe : styles.msgRowHim]}>
-      {!mine && <CharAvatar name={name} color={color} size={32} style={styles.msgAvatar} />}
+      {!mine && (
+        <CharAvatar name={name} color={color} size={32} style={styles.msgAvatar} characterId={characterId} />
+      )}
       <View
         style={[
           styles.bubble,
@@ -96,6 +100,7 @@ export function ChatThread({
   cta,
   inputDisabled,
   placeholder = '说点什么…',
+  characterId,
 }: {
   messages: ChatMessage[];
   color: string;
@@ -107,6 +112,8 @@ export function ChatThread({
   cta?: ReactNode;
   inputDisabled?: boolean;
   placeholder?: string;
+  /** 有立绘时头像显示立绘（D-019） */
+  characterId?: string;
 }) {
   const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState('');
@@ -127,13 +134,21 @@ export function ChatThread({
         inverted
         data={data}
         keyExtractor={(m) => m.id}
-        renderItem={({ item }) => <Bubble msg={item} color={color} name={name} />}
+        renderItem={({ item }) => (
+          <Bubble msg={item} color={color} name={name} characterId={characterId} />
+        )}
         contentContainerStyle={styles.listContent}
         ListFooterComponent={banner ? <View style={styles.bannerWrap}>{banner}</View> : null}
         ListHeaderComponent={
           typing ? (
             <View style={[styles.msgRow, styles.msgRowHim]}>
-              <CharAvatar name={name} color={color} size={32} style={styles.msgAvatar} />
+              <CharAvatar
+                name={name}
+                color={color}
+                size={32}
+                style={styles.msgAvatar}
+                characterId={characterId}
+              />
               <View style={[styles.bubble, { backgroundColor: Romance.bubbleHim }]}>
                 <Text style={styles.typingText}>{typingLabel}</Text>
               </View>

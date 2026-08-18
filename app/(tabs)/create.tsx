@@ -4,9 +4,11 @@
  * 工坊（捏树）不在试装范围。
  */
 
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -23,7 +25,8 @@ import { CharAvatar } from '@/components/char-avatar';
 import { ARCHETYPE_LABEL, BLOCKED_NAME_PATTERN } from '@/content/characters';
 import { Romance } from '@/constants/theme';
 import { uid } from '@/lib/format';
-import type { ArchetypeId } from '@/lib/types';
+import { ensurePortrait, generatePortraitFor, imageKeyReady } from '@/lib/imagegen';
+import type { ArchetypeId, Character } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
 const PALETTES = [
@@ -50,6 +53,52 @@ export default function CreateScreen() {
   const [palette, setPalette] = useState(0);
   const [name, setName] = useState('');
   const [hook, setHook] = useState('');
+  /** 立绘（D-019）：捏＋时生成一次，之后所有生图以它为参考图 */
+  const [portraitUri, setPortraitUri] = useState<string | undefined>();
+  const [generating, setGenerating] = useState(false);
+
+  /** 表单里的 TA（还没入库）：预览与立绘生成共用 */
+  const draftCharacter = (id = 'draft'): Character | null => {
+    if (!archetype || !name.trim()) return null;
+    return {
+      id,
+      name: name.trim(),
+      archetype,
+      loveTag,
+      styleLabel: ARCHETYPE_LABEL[archetype],
+      identity: look.trim() ? look.trim().slice(0, 18) : '你亲手捏出来的 TA',
+      look: look.trim() || undefined,
+      pronoun: loveTag === 'female' ? '她' : '他',
+      hook: hook.trim() || DEFAULT_HOOK[archetype],
+      intro: '……你捏出来的 TA，正在看你。',
+      tags: ['自创', ARCHETYPE_LABEL[archetype]],
+      adoptedCount: 0,
+      ...PALETTES[palette],
+      custom: true,
+    };
+  };
+
+  const genPortrait = async () => {
+    const draft = draftCharacter();
+    if (!draft) return;
+    if (!imageKeyReady()) {
+      Alert.alert('未配置千帆 key', '立绘与聊天共用千帆 key：在 .env.local 或「我的 → 开发者」里填好即可。');
+      return;
+    }
+    if (BLOCKED_NAME_PATTERN.test(`${name} ${look} ${hook}`)) {
+      Alert.alert('这个 TA 不能被捏出来', '不能捏真人明星或已有 IP 的角色。');
+      return;
+    }
+    setGenerating(true);
+    try {
+      setPortraitUri(await generatePortraitFor(draft));
+    } catch (e) {
+      console.warn('[create] 立绘生成失败：', e);
+      Alert.alert('立绘没画出来', '网络或生图服务出了点问题，可以再试一次，或先跳过（醒来后会在后台补画）。');
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const submit = () => {
     if (!archetype || !name.trim()) return;
@@ -61,23 +110,18 @@ export default function CreateScreen() {
       );
       return;
     }
-    useAppStore.getState().addCustomCharacter({
-      id: uid('c'),
-      name: name.trim(),
-      archetype,
-      loveTag,
-      identity: look.trim() ? look.trim().slice(0, 18) : '你亲手捏出来的 TA',
-      hook: hook.trim() || DEFAULT_HOOK[archetype],
-      intro: '……你捏出来的 TA，正在看你。',
-      tags: ['自创', ARCHETYPE_LABEL[archetype]],
-      adoptedCount: 0,
-      ...PALETTES[palette],
-      custom: true,
-    });
+    const id = uid('c');
+    const character = draftCharacter(id);
+    if (!character) return;
+    useAppStore.getState().addCustomCharacter(character);
+    // 立绘入库：已生成的直接存；没生成但有 key 就后台补画（不阻塞「醒来」）
+    if (portraitUri) useAppStore.getState().setPortrait(id, portraitUri);
+    else if (imageKeyReady()) void ensurePortrait(id);
     setArchetype(null);
     setLook('');
     setName('');
     setHook('');
+    setPortraitUri(undefined);
     Alert.alert('他醒过来了', '去广场看看他。', [
       { text: '去广场', onPress: () => router.push('/(tabs)') },
     ]);
@@ -167,13 +211,39 @@ export default function CreateScreen() {
 
         {name.trim() && archetype ? (
           <View style={styles.previewCard}>
-            <CharAvatar name={name.trim()} color={PALETTES[palette].color} size={44} />
+            <CharAvatar name={name.trim()} color={PALETTES[palette].color} size={44} uri={portraitUri} />
             <View style={styles.previewText}>
               <Text style={styles.previewName}>{name.trim()}</Text>
               <Text style={styles.previewHook}>「{hook.trim() || DEFAULT_HOOK[archetype]}」</Text>
             </View>
           </View>
         ) : null}
+
+        <Text style={styles.step}>④ TA 的立绘（可选，约 1 分钟）</Text>
+        <Text style={styles.stepHint}>
+          按 ② 的描述画一张半身像。之后 TA 发来的每一格漫画都会以它为参考，长相与穿着保持一致。
+        </Text>
+        {portraitUri ? (
+          <Image source={{ uri: portraitUri }} style={styles.portrait} contentFit="cover" />
+        ) : null}
+        <Pressable
+          style={[
+            styles.secondaryBtn,
+            (!archetype || !name.trim() || generating) && styles.btnDisabled,
+          ]}
+          disabled={!archetype || !name.trim() || generating}
+          onPress={genPortrait}>
+          {generating ? (
+            <View style={styles.btnRow}>
+              <ActivityIndicator color={Romance.accent} />
+              <Text style={styles.secondaryBtnText}>正在画 TA……</Text>
+            </View>
+          ) : (
+            <Text style={styles.secondaryBtnText}>
+              {portraitUri ? '不像？重画一张' : imageKeyReady() ? '生成 TA 的立绘' : '生成 TA 的立绘（未配千帆 key）'}
+            </Text>
+          )}
+        </Pressable>
 
         <Pressable
           style={[styles.primaryBtn, (!archetype || !name.trim()) && styles.btnDisabled]}
@@ -250,5 +320,18 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.4 },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  secondaryBtn: {
+    marginTop: 10,
+    borderRadius: 16,
+    paddingVertical: 13,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: Romance.accent,
+  },
+  secondaryBtnText: { color: Romance.accent, fontSize: 15, fontWeight: '600' },
+  btnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stepHint: { fontSize: 12, color: Romance.sub, marginTop: -6, marginBottom: 10, lineHeight: 18 },
+  portrait: { width: 180, height: 180, borderRadius: 18, alignSelf: 'center', marginBottom: 4 },
   footnote: { fontSize: 11, color: Romance.faint, textAlign: 'center', marginTop: 12 },
 });

@@ -15,6 +15,7 @@ import { ARCHETYPE_LABEL } from '@/content/characters';
 import { Romance } from '@/constants/theme';
 import { generateReply } from '@/lib/engine';
 import { deliverComic } from '@/lib/imagegen';
+import { updateBondMemory } from '@/lib/memory';
 import { daysTogether, uid } from '@/lib/format';
 import { arrivalTimeLabel } from '@/lib/notifications';
 import { affinityStage, findCharacter, useAppStore } from '@/store/app-store';
@@ -81,6 +82,8 @@ export default function BondScreen() {
           nickname: bond.nickname,
           affinity: bond.affinity,
           birthday: bond.birthday,
+          createdAt: bond.createdAt,
+          memory: current?.memory,
         },
         history: current?.messages ?? [],
         userText: text,
@@ -101,6 +104,9 @@ export default function BondScreen() {
     if (Math.floor((bond.affinity + 1) / 20) > Math.floor(bond.affinity / 20)) {
       deliverComic(bond.id);
     }
+
+    // 记忆库后台更新：每隔几轮提取长期事实 + 滚动摘要，失败静默（D-016）
+    void updateBondMemory(bond.id);
   };
 
   const arrivalPending = bond.arrivalAt && bond.arrivalAt > Date.now();
@@ -112,7 +118,7 @@ export default function BondScreen() {
           <IconSymbol name="chevron.left" size={22} color={Romance.ink} />
         </Pressable>
         <Pressable style={styles.headerMain} onPress={() => setProfileOpen(true)}>
-          <CharAvatar name={bond.name} color={character.color} size={36} />
+          <CharAvatar name={bond.name} color={character.color} size={36} characterId={character.id} />
           <View style={styles.headerText}>
             <Text style={styles.headerName}>{bond.name}</Text>
             <Text style={styles.headerSub}>
@@ -127,6 +133,7 @@ export default function BondScreen() {
         messages={bond.messages}
         color={character.color}
         name={bond.name}
+        characterId={character.id}
         typing={typing}
         onSend={onSend}
         placeholder={`和${bond.name}说点什么…`}
@@ -150,7 +157,7 @@ export default function BondScreen() {
           <Pressable style={styles.profileClose} onPress={() => setProfileOpen(false)}>
             <IconSymbol name="xmark" size={18} color={Romance.sub} />
           </Pressable>
-          <CharAvatar name={bond.name} color={character.color} size={84} />
+          <CharAvatar name={bond.name} color={character.color} size={84} characterId={character.id} />
           <Text style={styles.profileName}>{bond.name}</Text>
           <Text style={styles.profileIdentity}>
             {character.identity} · {character.styleLabel ?? ARCHETYPE_LABEL[character.archetype]}

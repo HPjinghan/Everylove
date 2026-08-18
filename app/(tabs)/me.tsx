@@ -9,9 +9,11 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Romance } from '@/constants/theme';
+import { CHARACTERS } from '@/content/characters';
 import { deliverAndSyncArrivals } from '@/lib/arrivals';
 import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY, QIANFAN_MODEL } from '@/lib/engine';
-import { deliverComic, imageKeyReady } from '@/lib/imagegen';
+import { deliverComic, ensurePortrait, imageKeyReady } from '@/lib/imagegen';
+import { updateBondMemory } from '@/lib/memory';
 import { cancelScheduled } from '@/lib/notifications';
 import { useAppStore } from '@/store/app-store';
 
@@ -78,6 +80,67 @@ export default function MeScreen() {
     }
     deliverComic(bond.id);
     Alert.alert('他动笔了', '生成大约需要半分钟到一分钟，去他的会话里等着。');
+  };
+
+  /** 立绘（D-019）：为种子角色逐个生成（默认不自动，见 OPEN_QUESTIONS #14），或重画首个羁绊角色 */
+  const genSeedPortraits = () => {
+    if (!imageKeyReady()) {
+      Alert.alert('未配置千帆 key', '立绘与聊天共用千帆 key。');
+      return;
+    }
+    const missing = CHARACTERS.filter((c) => !useAppStore.getState().portraits[c.id]);
+    if (!missing.length) {
+      Alert.alert('都有了', '6 位种子角色都已有立绘。要重画请用下面「重画」。');
+      return;
+    }
+    Alert.alert('后台生成中', `${missing.length} 位角色，逐个约 1 分钟。生成完广场卡片和会话头像会换成立绘。`);
+    void (async () => {
+      for (const c of missing) await ensurePortrait(c.id);
+    })();
+  };
+
+  const redrawBondPortrait = () => {
+    const bond = bonds[0];
+    if (!bond) {
+      Alert.alert('还没有羁绊', '先去广场领养一个 TA。');
+      return;
+    }
+    if (!imageKeyReady()) {
+      Alert.alert('未配置千帆 key', '立绘与聊天共用千帆 key。');
+      return;
+    }
+    Alert.alert('重画中', `约 1 分钟，${bond.name}之后的漫画都会以新立绘为参考。`);
+    void ensurePortrait(bond.characterId, true);
+  };
+
+  const showMemory = () => {
+    const bond = useAppStore.getState().bonds[0];
+    if (!bond) {
+      Alert.alert('还没有羁绊', '先去广场领养一个 TA，聊几轮再来看他记住了什么。');
+      return;
+    }
+    const m = bond.memory;
+    const facts = m?.facts.length
+      ? m.facts.map((f) => `· ${f}`).join('\n')
+      : '（还没有提取到长期记忆）';
+    const summary = m?.summary ? `\n\n更早的相处摘要：\n${m.summary}` : '';
+    Alert.alert(`${bond.name}记得的事`, `${facts}${summary}`, [
+      { text: '关闭', style: 'cancel' },
+      {
+        text: '现在提取一次',
+        onPress: async () => {
+          if (useAppStore.getState().engine === 'mock') {
+            Alert.alert('脚本引擎没有记忆', '切到 Claude 或千帆并配好 key 后再试。');
+            return;
+          }
+          const ok = await updateBondMemory(bond.id, true);
+          Alert.alert(
+            ok ? '已更新' : '没有可提取的新内容或提取失败',
+            ok ? '再点一次「查看」看结果。' : '看 Metro 终端的 [memory] 日志。'
+          );
+        },
+      },
+    ]);
   };
 
   const reset = () => {
@@ -183,6 +246,9 @@ export default function MeScreen() {
           label={`让 TA 送一张漫画（测试）${imageKeyReady() ? '' : ' · 未配 key'}`}
           onPress={testComic}
         />
+        <Row label="查看 TA 记住了什么（记忆库）" onPress={showMemory} />
+        <Row label="为 6 位种子角色生成立绘（测试，后台逐个）" onPress={genSeedPortraits} />
+        <Row label="重画首个羁绊角色的立绘（测试）" onPress={redrawBondPortrait} />
         <Row label="重置全部数据" onPress={reset} />
       </Section>
 

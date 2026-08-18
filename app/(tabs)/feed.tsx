@@ -41,7 +41,7 @@ function PostCard({ post }: { post: Post }) {
   return (
     <View style={styles.card}>
       <View style={styles.head}>
-        <CharAvatar name={displayName} color={character.color} size={38} />
+        <CharAvatar name={displayName} color={character.color} size={38} characterId={character.id} />
         <View style={styles.headText}>
           <Text style={styles.name}>{displayName}</Text>
           <Text style={styles.meta}>

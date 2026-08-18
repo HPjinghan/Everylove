@@ -19,6 +19,10 @@ export interface Character {
   intro: string;
   /** 身份一句话 */
   identity: string;
+  /** 外貌一句话（发型发色 / 眼睛 / 身形 / 常穿 / 气质），生图用；没有时回落 identity + styleLabel（D-018） */
+  look?: string;
+  /** 台词与生图 prompt 里指代 TA 用的人称；不填按 loveTag 推（male→他 / female→她 / 其他→TA） */
+  pronoun?: '他' | '她';
   tags: string[];
   adoptedCount: number;
   /** 主色（头像底、气泡强调） */
@@ -42,6 +46,11 @@ export interface ChatMessage {
   at: number;
   /** kind === 'image' 时的本地图片 URI（漫画显影，已下载到本机） */
   imageUri?: string;
+  /**
+   * 他在这条消息里「说」的话但不上屏（初见甩图：台词画在气泡里、不发文字）。
+   * 只供对话引擎的上下文与记忆提取使用，保证他记得自己说过什么（D-016）。
+   */
+  spoken?: string;
 }
 
 /** 广场搭话记录：不入消息 tab，会过期（免费层商业承重墙） */
@@ -54,6 +63,22 @@ export interface SquareChat {
   adoptionOffered: boolean;
   /** 用户在本条记录里发过的消息数（领养触发器用） */
   userTurns: number;
+}
+
+/**
+ * 羁绊记忆库（个体层「记忆」，只在付费的羁绊层存在，广场层没有——商业承重墙）。
+ * mem0 式两层：facts = 关于她/关于你们的长期事实条目；summary = 滑出上下文窗口的更早相处的滚动摘要（D-016）。
+ */
+export interface BondMemory {
+  /** 长期事实（她的名字/喜好/生活/重要事件、你们之间的约定与共同经历），每条一句话 */
+  facts: string[];
+  /** 已滑出对话窗口的更早相处的滚动摘要 */
+  summary: string;
+  /** messages 里已被折进 summary 的条数（前缀长度） */
+  summarizedUpTo: number;
+  /** messages 里已做过事实提取的条数（前缀长度） */
+  factsUpTo: number;
+  updatedAt: number;
 }
 
 /** 羁绊：领养后的独立关系实例（个体层状态机） */
@@ -79,6 +104,8 @@ export interface Bond {
   away?: boolean;
   /** 离席期用户发消息后，是否已提示过「他去忙了」（只提示一次） */
   awayNotified?: boolean;
+  /** 记忆库：他记得关于她的事 + 更早相处的摘要（D-016） */
+  memory?: BondMemory;
 }
 
 export interface PostComment {
@@ -106,8 +133,8 @@ export type EngineId = 'mock' | 'anthropic' | 'qianfan';
 export interface EngineContext {
   character: Character;
   mode: 'square' | 'bonded';
-  /** bonded 模式下的关系信息 */
-  bond?: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'birthday'>;
+  /** bonded 模式下的关系信息（含记忆库、缔结时间，注入系统 prompt） */
+  bond?: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'birthday' | 'memory' | 'createdAt'>;
   history: ChatMessage[];
   userText: string;
 }

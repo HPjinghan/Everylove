@@ -152,7 +152,7 @@ export default function SquareChatScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <IconSymbol name="chevron.left" size={22} color={Romance.ink} />
         </Pressable>
-        <CharAvatar name={character.name} color={character.color} size={36} />
+        <CharAvatar name={character.name} color={character.color} size={36} characterId={character.id} />
         <View style={styles.headerText}>
           <Text style={styles.headerName}>{character.name}</Text>
           <Text style={styles.headerSub}>{character.identity}</Text>
@@ -166,6 +166,7 @@ export default function SquareChatScreen() {
         messages={chat?.messages ?? []}
         color={character.color}
         name={character.name}
+        characterId={character.id}
         typing={typing}
         typingLabel={imageKeyReady() ? 'TA 在画点什么…' : undefined}
         onSend={onSend}

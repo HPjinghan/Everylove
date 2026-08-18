@@ -66,7 +66,7 @@ export default function MessagesScreen() {
                 onPress={() =>
                   router.push({ pathname: '/bond/[bondId]', params: { bondId: item.id } })
                 }>
-                <CharAvatar name={item.name} color={c?.color ?? Romance.accent} size={50} />
+                <CharAvatar name={item.name} color={c?.color ?? Romance.accent} size={50} characterId={item.characterId} />
                 <View style={styles.rowBody}>
                   <View style={styles.rowTop}>
                     <Text style={styles.rowName}>{item.name}</Text>

@@ -117,3 +117,56 @@
 - **验证**：已用真实 prompt 实测出图——单人入画、转头看镜头、气泡台词逐字正确、她不出镜。
 - **推翻**：修正 D-014 的 prompt 构图部分；供应商、触发、回落链不变。
 - **影响文件**：`lib/imagegen.ts`（`COMIC_POV`/`SQUARE_BEATS`/两条 prompt 流水线）。
+
+## D-016 · 2026-08-17 · 对话上下文修复（20 轮完整窗口）+ 羁绊记忆库（mem0 式本地实现）
+
+- **背景**：Harper 反馈「和角色的对话上下文有问题，他不带上下文」。排查到三处根因：
+  1. 初见甩图模式（D-014/015）他的台词只画进图里，入库消息 `text: ''`——模型每轮看到的历史里自己说过的话全是空的，等于失忆；空的 assistant 消息还会让 Anthropic 接口 400、静默回落脚本引擎。
+  2. 调用方传入的 `history` 已含本轮用户消息，引擎又追加一次，末尾用户消息重复。
+  3. 他先开口的会话历史首条是 assistant，Anthropic 要求首条必须 user。
+  且此前完全没有跨窗口记忆：20 条以外的对话对他不存在。
+- **决策**：
+  1. **上下文窗口统一为「最近 20 轮完整对话」**（`HISTORY_ROUNDS = 20`，一轮 = 她说一次 + 他的回应，最多 40 条），所有引擎共用 `buildTurns()`：系统提示条与空消息不进上下文；同角色连续消息合并；首条若为他则补一句舞台提示「（她点开了和你的对话）」；本轮用户消息去重。
+  2. **`ChatMessage.spoken`**：他「说了但不上屏」的话（甩图台词）存进 `spoken`，供上下文与记忆使用；甩图消息由此进入历史，漫画场景推断（`dialogDigest`）同样读 `spoken`。
+  3. **羁绊记忆库 `Bond.memory`（`lib/memory.ts`）**：mem0 式「提取 → 存储 → 注入」，全本地、走当前引擎与 key、无新依赖。两层：`facts`（关于她/关于你们的长期事实，≤30 条，每 3 个用户轮次后台由模型提取并与旧条目合并去重）+ `summary`（滑出 20 轮窗口的更早对话的滚动摘要，≤150 字）。注入到 bonded 模式系统 prompt（「你记得关于她、关于你们的这些事」「你们更早之前的相处（摘要）」）。提取失败/无 key/mock 引擎一律静默跳过，绝不影响聊天。
+  4. **只在羁绊层有记忆**：广场层「几天后过期、他忘记你」是商业承重墙（CLAUDE.md §2），广场对话只享受 20 轮窗口、不做长期记忆——免费层不得偷偷变好（红线 7）。
+  5. 开发者面板增加「查看 TA 记住了什么（记忆库）」，可查看 facts/summary 并强制提取一次。
+- **为什么不直接接开源记忆服务**：mem0 / Letta 等的 JS OSS 版依赖 Node 原生模块（sqlite）与向量库/嵌入服务，Expo Go 内跑不了；托管版需要额外注册 key。试装期用同一把千帆/Claude key 做 LLM 提取即可（实测 DeepSeek 返回合法 JSON，约 12s，后台执行）。**正式版服务端代理落地后（OPEN_QUESTIONS #9），记忆层整体切到自托管 mem0**（开源、Apache-2.0）——`updateBondMemory` / `bond.memory` 的接口形状按 mem0 的 add/search 语义设计，替换不动 UI 与引擎。
+- **验证**：`tsc --noEmit` 与 eslint 通过；`buildTurns` 边界用例（他先开口 / 甩图 spoken / 末尾重复 / 超 20 轮 / 空历史）本地跑过；记忆提取用真实千帆 key 冒烟测试通过。
+- **推翻**：无（修正 D-010 引擎的历史组装方式；D-014 甩图「不发文字」不变，只是台词入库）。
+- **影响文件**：`lib/engine.ts`（`buildTurns`/`HISTORY_ROUNDS`/`messageContextText`/`completeText`/系统 prompt 记忆注入）、`lib/memory.ts`（新）、`lib/types.ts`（`ChatMessage.spoken`、`BondMemory`、`Bond.memory`、`EngineContext.bond.memory`）、`lib/imagegen.ts`（甩图存 `spoken`、`dialogDigest`）、`store/app-store.ts`（`setBondMemory`）、`app/bond/[bondId].tsx`（注入记忆、回合后后台提取）、`app/(tabs)/me.tsx`（开发者面板）、`CLAUDE.md` §13。
+
+## D-017 · 2026-08-17 · 全部 prompt 集中到 `content/prompts.ts`
+
+- **决策**：把散落在 `lib/engine.ts`（对话系统 prompt）、`lib/imagegen.ts`（画风 / POV / 镜头 / 两条完整生图 prompt / 送图台词）、`lib/memory.ts`（记忆提取指令与输入拼装）里的全部 prompt 文本与拼装函数抽到 **`content/prompts.ts`** 一个文件，分 §1 对话 / §2 生图 / §3 记忆 / §4 通用四节；引擎、生图、记忆模块只 import，不再自带文本。角色人设 `persona/pursuit` 与台词库仍在 `content/characters.ts`；模型 ID / max_tokens / 图片尺寸等参数留在各 lib（不是 prompt）。文件头列了目录与「不在这里的东西」，并标注红线段落勿删。
+- **理由**：Harper 要查看和修改 prompt，需要一个入口；prompt 是产品内容而非工程逻辑，与 `characters.ts` 同放 `content/`。抽取后拼装输出与抽取前逐字一致（本地目检）。
+- **推翻**：无（纯重构，D-011/013/014/015/016 的 prompt 内容不变）。
+- **影响文件**：`content/prompts.ts`（新）、`lib/engine.ts`、`lib/imagegen.ts`、`lib/memory.ts`、`CLAUDE.md` §13。
+
+## D-018 · 2026-08-17 · 初识 / 亲密两套独立 prompt + 全部 prompt 优化 + 角色外貌与人称
+
+- **决策**（Harper 明示：两模式分开、全部 prompt 优化；「标准」亲密强度；加时间感；外貌由 Claude 起草）：
+  1. **两套独立对话 prompt**：`content/prompts.ts` 的 `buildSquareSystemPrompt()` 与 `buildBondedSystemPrompt()` 各自完整、互不引用；只共用红线 `CHAT_HARD_RULES` 与输出格式 `CHAT_OUTPUT_FORMAT`。`buildChatSystemPrompt()` 退为分发器，引擎调用点不变。
+  2. **初识 prompt**：加入「你的声音」（opening + 2 条 square 台词当口吻样本）、「此刻的情境」（她点开了你、这是她的第 N 句、你在过自己的日子）、随轮次递进的分寸（`squareTurnGuide`：1-2 句客气 / 3-4 句自然 / 之后放松）、正向措辞的分寸规则（接住具体内容、最多一个问句、保持距离、可以不知道、忘掉助理习惯）、1-2 句。
+  3. **亲密 prompt**：关系状态（称呼、在一起第 N 天、亲密度阶段）、「你的声音」（bonded 3 句 + arrival 1 句）、**时间感**（`timeOfDayLine`：周几 + 时段 + 时刻；深夜/白天规则）、生日、**记忆按前缀分组注入**（关于她 / 你们约好的 / 你答应过的 / 重要节点 + 更早相处摘要，"一次最多用一件、不复述、不炫耀"）、「怎么爱她」四条、**按阶段的分寸段落**（`BONDED_STAGE_NOTES`）、1-3 句、**可用空行分成最多 2 条气泡**。
+  4. **红线与输出格式**改正向措辞，内容不变（尺度、行为健康、不评价真人、12356、简体中文；只输出台词、无前缀/markdown/emoji、动作描写至多一处）。
+  5. **生图 prompt**重排为文生图友好的顺序：主体外貌 → 场景（最近 4 条对话推断）→ POV 构图 → 本幅镜头 → 气泡台词 → 画风 → 质量词 → 红线。三条实测教训写进注释：a) 提「四格/第三格」会画成多格条漫 → 改「这一幅的镜头」+ 质量词「整幅画面就是一个完整的单幅画格」；b) 描述观者是「女生」会把她画出来 → 构图只说「镜头就是观者的眼睛、画面中唯一人物是主角」；c) 名字重复出现、身份里的年龄数字会被画成招牌文字 → 名字只在主体行出现一次、之后一律「主角」，对话摘录也标「主角」，`roleOnly()` 剥掉身份里的年龄。
+  6. **角色新增 `look`（外貌一句话）与 `pronoun`（他/她）**：6 位种子角色由 Claude 起草外貌（Harper 可改）；自创角色把捏＋表单的外观文本存进 `look`、按性别气质设 `pronoun`。对话 prompt 中「她」固定指用户、角色用第二人称「你」，消除此前通篇写「他」而角色可为女性的问题。
+  7. **记忆提取 prompt**：facts 加四类前缀 `[她] [约定] [答应] [节点]`、第三人称、相对时间换算成绝对日期（prompt 给「今天是 YYYY-MM-DD 周X」）、好/坏例子各若干、约定与答应排最前；`buildMemoryExtractPrompt` 增加 `today`。
+  8. 配套：`affinityStage()` 迁到 `lib/format.ts`（store 保留 re-export）；`EngineContext.bond` 增加 `createdAt`；引擎回复经 `splitBubbles()`（亲密最多 2 条、初识 1 条，顺手去掉名字前缀与包裹引号）。
+- **验证**：tsc/eslint 通过；本地打印男/女角色的两套 prompt、甩图 prompt、记忆 prompt 目检；千帆 DeepSeek 真跑 4 次（初识第 1/4 句分寸差异明显；亲密回复拆成两条气泡且自然带出火锅约定与不放香菜；提取返回带前缀 facts，周五→2026-08-21、下周三→2026-08-26 正确）；qwen-image 真出图 3 次迭代到位（单幅、外貌符合 look、气泡台词一字不差、无观者、无文字泄漏）。
+- **推翻**：修正 D-011（初识规范扩写并独立）、D-015 的 prompt 措辞（构图语义不变）；D-016 的记忆注入格式升级为分组。其余不变。
+- **影响文件**：`content/prompts.ts`（重写）、`content/characters.ts`（look/pronoun）、`lib/types.ts`、`lib/format.ts`、`lib/engine.ts`（`splitBubbles`）、`store/app-store.ts`、`app/bond/[bondId].tsx`、`app/(tabs)/create.tsx`、`CLAUDE.md` §13。
+
+## D-019 · 2026-08-17 · 角色立绘 + 参考图生图：捏＋时生成立绘，之后所有生图以立绘为参考（人物一致）
+
+- **决策**（Harper 明示：创建角色流程要生图，且这张图要带入后续生图）：
+  1. **立绘**：捏＋页新增第 ④ 步「TA 的立绘（可选，约 1 分钟）」——按 ② 的外貌描述用 qwen-image 生成半身像（`buildPortraitPrompt`：主体外貌 → 身份气质 → 立绘构图「半身、正面微侧、直视镜头、纯浅色背景、无文字」→ 画风 → 质量词 → 红线），可预览、可重画；「让 TA 醒来」时入库；没生成但有 key 则醒来后后台补画（不阻塞流程）。立绘存本机 `documentDirectory/portraits/`，`store.portraits[characterId]` 持久化。
+  2. **参考图生图**：有立绘的角色，初见甩图与羁绊漫画改走千帆 `POST /v2/images/edits`（`qwen-image-edit`，`image` 传 base64 data URI，实测可用），prompt 用参考图模式主体行（`comicReferenceSubjectLine`：「主角就是参考图里的人物，发型/发色/五官/体型/穿着与参考图完全一致；场景、姿势、镜头、表情按描述重新构图」），其余段落不变；编辑失败或无立绘回落文生图（只靠 `look`）。实测：立绘 → 家居场景甩图，人物一致、气泡台词正确。
+  3. **头像**：`CharAvatar` 增加 `characterId`/`uri`，有立绘就显示立绘（广场卡片、会话头像、羁绊主页、领养仪式、消息列表、动态、捏＋预览均已接）；没有仍是首字圆底。
+  4. **种子角色默认不自动生成立绘**（`SEED_PORTRAITS_AUTO = false`）：「试装无立绘、美术预算集中给相册」是既有产品口径，是否用生成立绘替代属产品决定 → OPEN_QUESTIONS #14。开发者面板提供「为 6 位种子角色生成立绘（测试）」与「重画首个羁绊角色的立绘」供 Harper 试效果。
+  5. 模型可配：`EXPO_PUBLIC_QIANFAN_IMAGE_EDIT_MODEL`（默认 `qwen-image-edit`），与聊天/文生图共用一把千帆 key。
+- **理由**：仅靠外貌文字每格人物仍会漂移；千帆已提供图像编辑接口且接受 base64 参考图，无需后端即可让「同一个 TA」贯穿所有画面——这是「你的他 + 你的故事史」资产感的基础。
+- **验证**：tsc/eslint 通过；真跑立绘生成（63s）+ 参考图甩图（42s），人物一致；此前 D-018 的 edits 探测亦通过。
+- **推翻**：无（扩展 D-014/D-015/D-018 的生图链路；文生图路径保留为回落）。
+- **影响文件**：`content/prompts.ts`（`buildPortraitPrompt`/`comicReferenceSubjectLine`/参考图选项）、`lib/imagegen.ts`（`editImage`/`ensurePortrait`/`generatePortraitFor`/`renderPanel`）、`store/app-store.ts`（`portraits`/`setPortrait`）、`components/char-avatar.tsx`、`components/chat-thread.tsx`、`app/(tabs)/create.tsx`、`app/(tabs)/index.tsx`、`app/(tabs)/messages.tsx`、`app/(tabs)/feed.tsx`、`app/(tabs)/me.tsx`、`app/chat/[characterId].tsx`、`app/bond/[bondId].tsx`、`app/adopt/[characterId].tsx`、`.env.example`、`CLAUDE.md` §13。

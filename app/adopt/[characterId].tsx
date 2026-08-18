@@ -75,7 +75,7 @@ export default function AdoptScreen() {
         keyboardShouldPersistTaps="handled">
         {step === 'slot' && (
           <View style={styles.center}>
-            <CharAvatar name={character.name} color={character.color} size={84} />
+            <CharAvatar name={character.name} color={character.color} size={84} characterId={character.id} />
             <Text style={styles.h1}>和{character.name}交换联系方式</Text>
             {slotFree ? (
               <>
@@ -172,6 +172,7 @@ export default function AdoptScreen() {
             hisName={hisName.trim() || character.name}
             nickname={finalNickname || '你'}
             color={character.color}
+            characterId={character.id}
             onDone={() => setStep('push')}
           />
         )}
@@ -199,11 +200,13 @@ function Ceremony({
   hisName,
   nickname,
   color,
+  characterId,
   onDone,
 }: {
   hisName: string;
   nickname: string;
   color: string;
+  characterId?: string;
   onDone: () => void;
 }) {
   const lines = [
@@ -234,7 +237,7 @@ function Ceremony({
 
   return (
     <View style={styles.center}>
-      <CharAvatar name={hisName} color={color} size={84} />
+      <CharAvatar name={hisName} color={color} size={84} characterId={characterId} />
       <View style={styles.ceremonyLines}>
         {lines.map((l, i) => (
           <Animated.Text key={i} style={[styles.ceremonyLine, { opacity: fades[i] }]}>

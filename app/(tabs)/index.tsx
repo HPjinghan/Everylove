@@ -43,7 +43,7 @@ function CharacterCard({
         <View style={styles.teaserBadge}>
           <Text style={styles.teaserBadgeText}>即将降临</Text>
         </View>
-        <CharAvatar name={c.name} color={c.color} size={56} style={styles.cardAvatar} />
+        <CharAvatar name={c.name} color={c.color} size={56} style={styles.cardAvatar} characterId={c.id} />
         <Text style={[styles.cardName, { color: '#fff' }]}>{c.name}</Text>
         <Text style={[styles.cardIdentity, { color: '#B8AECB' }]}>{c.identity}</Text>
         <Text style={[styles.cardHook, { color: '#D8CFE8' }]}>「{c.hook}」</Text>
@@ -52,7 +52,7 @@ function CharacterCard({
   }
   return (
     <Pressable onPress={onPress} style={[styles.card, { backgroundColor: c.colorSoft }]}>
-      <CharAvatar name={c.name} color={c.color} size={56} style={styles.cardAvatar} />
+      <CharAvatar name={c.name} color={c.color} size={56} style={styles.cardAvatar} characterId={c.id} />
       <Text style={styles.cardName}>{c.name}</Text>
       <Text style={styles.cardIdentity}>{c.identity}</Text>
       <Text style={styles.cardHook}>「{c.hook}」</Text>
@@ -94,7 +94,7 @@ function SquarePostCard({
   return (
     <Pressable onPress={onPress} style={[styles.card, { backgroundColor: '#FFFFFF' }]}>
       <View style={styles.postHead}>
-        <CharAvatar name={c.name} color={c.color} size={30} />
+        <CharAvatar name={c.name} color={c.color} size={30} characterId={c.id} />
         <View style={styles.postHeadText}>
           <Text style={styles.postName}>{c.name}</Text>
           <Text style={styles.postMeta}>广场动态 · {timeAgo(p.at)}</Text>

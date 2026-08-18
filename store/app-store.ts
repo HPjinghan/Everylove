@@ -16,6 +16,7 @@ import { uid } from '@/lib/format';
 import { arrivalTimeLabel, nextEightPM } from '@/lib/notifications';
 import type {
   Bond,
+  BondMemory,
   Character,
   ChatMessage,
   EngineId,
@@ -35,6 +36,8 @@ interface AppState {
   bonds: Bond[];
   customCharacters: Character[];
   posts: Post[];
+  /** 角色立绘（本机文件 URI），按角色 id；作为后续所有生图的参考图（D-019） */
+  portraits: Record<string, string>;
   engine: EngineId;
   anthropicKey: string;
   qianfanKey: string;
@@ -62,12 +65,15 @@ interface AppState {
   ) => void;
   markBondRead: (bondId: string) => void;
   markAwayNotified: (bondId: string) => void;
+  /** 写入羁绊记忆库（由 lib/memory.ts 后台提取后调用，D-016） */
+  setBondMemory: (bondId: string, memory: BondMemory) => void;
   /** 到点开门：把「他来了」投递进会话，并排下一天的门。返回投递过的 bondId。 */
   deliverDueArrivals: () => string[];
   toggleLike: (postId: string) => void;
   addMyComment: (postId: string, text: string) => void;
   addHisReply: (postId: string) => void;
   addCustomCharacter: (c: Character) => void;
+  setPortrait: (characterId: string, uri: string) => void;
   setEngine: (e: EngineId) => void;
   setAnthropicKey: (k: string) => void;
   setQianfanKey: (k: string) => void;
@@ -84,6 +90,7 @@ const initialData = {
   bonds: [] as Bond[],
   customCharacters: [] as Character[],
   posts: [] as Post[],
+  portraits: {} as Record<string, string>,
   // 工程配置里有 key 时默认走真模型（D-010）：Claude 优先，其次千帆；都没配则脚本引擎
   engine: (ENV_ANTHROPIC_KEY ? 'anthropic' : ENV_QIANFAN_KEY ? 'qianfan' : 'mock') as EngineId,
   anthropicKey: '',
@@ -268,6 +275,11 @@ export const useAppStore = create<AppState>()(
           bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, awayNotified: true } : b)),
         }),
 
+      setBondMemory: (bondId, memory) =>
+        set({
+          bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, memory } : b)),
+        }),
+
       deliverDueArrivals: () => {
         const now = Date.now();
         const delivered: string[] = [];
@@ -350,6 +362,8 @@ export const useAppStore = create<AppState>()(
       },
 
       addCustomCharacter: (c) => set({ customCharacters: [...get().customCharacters, c] }),
+      setPortrait: (characterId, uri) =>
+        set({ portraits: { ...get().portraits, [characterId]: uri } }),
 
       setEngine: (e) => set({ engine: e }),
       setAnthropicKey: (k) => set({ anthropicKey: k }),
@@ -410,9 +424,5 @@ export function findBond(bondId: string): Bond | undefined {
 }
 
 /** 亲密度阶段标签 */
-export function affinityStage(affinity: number): string {
-  if (affinity < 20) return '刚认识';
-  if (affinity < 60) return '有点在意';
-  if (affinity < 120) return '放在心上';
-  return '唯一例外';
-}
+// 亲密度阶段名已移到 lib/format.ts（prompts.ts 也要用，避免循环引用）；这里保留导出兼容旧 import
+export { affinityStage } from '@/lib/format';

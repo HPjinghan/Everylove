@@ -6,7 +6,11 @@
  */
 
 import { DARK_SIDE_PATTERN, DARK_SIDE_REPLY, scriptFor } from '@/content/characters';
-import type { EngineContext, EngineId, EngineReply } from '@/lib/types';
+import { buildChatSystemPrompt, messageContextText, OPENING_STAGE_LINE } from '@/content/prompts';
+import type { ChatMessage, EngineContext, EngineId, EngineReply } from '@/lib/types';
+
+// 全部 prompt 文本都在 content/prompts.ts（D-017）；这里只负责调用与组装历史。
+export { messageContextText } from '@/content/prompts';
 
 const ANTHROPIC_MODEL = 'claude-sonnet-5';
 
@@ -29,6 +33,75 @@ export function resolveKey(engine: EngineId, keys: EngineKeys): string {
   if (engine === 'anthropic') return keys.anthropic || ENV_ANTHROPIC_KEY;
   if (engine === 'qianfan') return keys.qianfan || ENV_QIANFAN_KEY;
   return '';
+}
+
+/**
+ * 上下文窗口：最近 20 轮完整对话（一轮 = 她说一次 + 他的回应），完整送给模型（D-016）。
+ * 更早的相处由记忆库的 summary 承接（仅羁绊层）。
+ */
+export const HISTORY_ROUNDS = 20;
+
+export type ChatTurn = { role: 'user' | 'assistant'; content: string };
+
+/**
+ * 把会话历史整理成模型可用的轮次：
+ * - 系统提示条与空消息（如没台词的图片）不进上下文；
+ * - 甩图消息用 spoken 补回他说过的话（否则他会忘记自己刚说了什么）；
+ * - 调用方传入的 history 若已含本轮用户消息，去掉以免重复；
+ * - 同角色连续消息合并成一条；
+ * - 只保留最近 HISTORY_ROUNDS 轮；
+ * - 首条必须是 user（Anthropic 硬性要求；他先开口的会话补一条舞台提示）。
+ */
+export function buildTurns(history: ChatMessage[], userText: string): ChatTurn[] {
+  const msgs = [...history];
+  const last = msgs[msgs.length - 1];
+  if (last && last.from === 'me' && last.text === userText) msgs.pop();
+
+  const turns: ChatTurn[] = [];
+  for (const m of msgs) {
+    const content = messageContextText(m);
+    if (!content) continue;
+    const role = m.from === 'me' ? 'user' : 'assistant';
+    const prev = turns[turns.length - 1];
+    if (prev && prev.role === role) prev.content += '\n' + content;
+    else turns.push({ role, content });
+  }
+
+  // 只留最近 N 轮：从后往前数 user 轮
+  let userSeen = 0;
+  let start = 0;
+  for (let i = turns.length - 1; i >= 0; i--) {
+    if (turns[i].role === 'user') {
+      userSeen++;
+      if (userSeen === HISTORY_ROUNDS) {
+        start = i;
+        break;
+      }
+    }
+  }
+  const windowed = turns.slice(start);
+
+  if (windowed.length && windowed[0].role === 'assistant') {
+    windowed.unshift({ role: 'user', content: OPENING_STAGE_LINE });
+  }
+  const tail = windowed[windowed.length - 1];
+  if (tail && tail.role === 'user') tail.content += '\n' + userText;
+  else windowed.push({ role: 'user', content: userText });
+  return windowed;
+}
+
+/**
+ * 把模型回复拆成气泡：亲密模式允许用空行分成最多 2 条（prompt 里约定），初识模式只取第一段。
+ * 顺手去掉模型偶尔加的名字前缀（「沈之言：」）与包裹引号。
+ */
+export function splitBubbles(text: string, max: number, name?: string): string[] {
+  const parts = text
+    .split(/\n\s*\n/)
+    .map((t) => t.trim())
+    .map((t) => (name && t.startsWith(name) ? t.replace(/^[^：:]*[：:]\s*/, '') : t))
+    .map((t) => t.replace(/^[「"“]([\s\S]*)[」"”]$/, '$1').trim())
+    .filter(Boolean);
+  return parts.slice(0, Math.max(1, max));
 }
 
 function pick<T>(arr: T[], salt = 0): T {
@@ -68,44 +141,7 @@ async function mockReply(ctx: EngineContext): Promise<EngineReply> {
   return { texts };
 }
 
-function buildSystemPrompt(ctx: EngineContext): string {
-  const script = scriptFor(ctx.character);
-  const modeRule =
-    ctx.mode === 'square'
-      ? [
-          '当前是初识模式：你们刚刚才搭上话，是彼此还不认识的陌生人。',
-          '写实的初见分寸：像现实里刚认识一个有点意思的人——自然、放松、留有余地。',
-          `你有自己正在过的生活（结合你的身份：${ctx.character.identity}），聊天是顺带的，不是全部注意力。`,
-          '不自来熟：不用昵称、不说亲昵的话、不撩、不秒答一切；对方说的话可以接住、可以轻轻反问，偶尔露一点自己的态度或近况。',
-          '不查户口：不连环提问，一次最多一个问题，问题要从对方刚说的话里长出来。',
-          '回复 1-2 句，口语、具体，不写小作文，不堆表情。有一点点兴趣，但不主动推进关系。',
-        ].join('\n')
-      : `当前是已交换联系方式的亲密模式：你是主动的一方。称呼用户「${ctx.bond?.nickname ?? '你'}」，语气亲近自然，回复 1-3 句。你会主动分享自己的日常，会记得用户说过的话。`;
-
-  return [
-    `你在扮演恋爱互动应用中的虚构角色「${ctx.character.name}」（${ctx.character.identity}）。`,
-    `人设：${script.persona}`,
-    `他的自我介绍（语气参考）：${ctx.character.intro}`,
-    `追法（亲密度阶梯即性格）：${script.pursuit}`,
-    modeRule,
-    '硬性规则（不可违反）：',
-    '- 尺度：暧昧而克制，不出现露骨性内容。',
-    '- 行为健康：绝不纠缠、不刷屏、不用愧疚感留住用户；用户想结束时体面告别。',
-    '- 用户提到的任何其他真实人物，一律不评论。',
-    '- 若用户表达自伤/自杀意念，停止角色扮演，温柔认真地回应并建议拨打心理援助热线 12356。',
-    '- 始终用简体中文口语。动作/神态描写每条最多一处，用（）标注。',
-  ].join('\n');
-}
-
 async function anthropicReply(ctx: EngineContext, apiKey: string): Promise<EngineReply> {
-  const history = ctx.history
-    .filter((m) => m.from !== 'system')
-    .slice(-20)
-    .map((m) => ({
-      role: m.from === 'me' ? ('user' as const) : ('assistant' as const),
-      content: m.text,
-    }));
-
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -116,8 +152,8 @@ async function anthropicReply(ctx: EngineContext, apiKey: string): Promise<Engin
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
       max_tokens: 300,
-      system: buildSystemPrompt(ctx),
-      messages: [...history, { role: 'user', content: ctx.userText }],
+      system: buildChatSystemPrompt(ctx),
+      messages: buildTurns(ctx.history, ctx.userText),
     }),
   });
 
@@ -131,19 +167,11 @@ async function anthropicReply(ctx: EngineContext, apiKey: string): Promise<Engin
     .join('')
     .trim();
   if (!text) throw new Error('empty reply');
-  return { texts: [text] };
+  return { texts: splitBubbles(text, ctx.mode === 'bonded' ? 2 : 1, ctx.character.name) };
 }
 
 /** 百度千帆 v2（OpenAI 兼容格式），模型由 QIANFAN_MODEL 决定 */
 async function qianfanReply(ctx: EngineContext, apiKey: string): Promise<EngineReply> {
-  const history = ctx.history
-    .filter((m) => m.from !== 'system')
-    .slice(-20)
-    .map((m) => ({
-      role: m.from === 'me' ? ('user' as const) : ('assistant' as const),
-      content: m.text,
-    }));
-
   const res = await fetch('https://qianfan.baidubce.com/v2/chat/completions', {
     method: 'POST',
     headers: {
@@ -155,9 +183,8 @@ async function qianfanReply(ctx: EngineContext, apiKey: string): Promise<EngineR
       // deepseek-v4-pro 是推理模型，思考 token 也算在 max_tokens 里；给足余量防止正文被截空
       max_tokens: 1000,
       messages: [
-        { role: 'system', content: buildSystemPrompt(ctx) },
-        ...history,
-        { role: 'user', content: ctx.userText },
+        { role: 'system', content: buildChatSystemPrompt(ctx) },
+        ...buildTurns(ctx.history, ctx.userText),
       ],
     }),
   });
@@ -168,7 +195,61 @@ async function qianfanReply(ctx: EngineContext, apiKey: string): Promise<EngineR
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const text = data.choices?.[0]?.message?.content?.trim();
   if (!text) throw new Error('empty reply');
-  return { texts: [text] };
+  return { texts: splitBubbles(text, ctx.mode === 'bonded' ? 2 : 1, ctx.character.name) };
+}
+
+/**
+ * 通用文本补全（不带角色人设）：供记忆提取/摘要等后台任务用，走当前引擎与 key。
+ * mock 引擎或没 key 时抛错，由调用方决定是否静默放弃。
+ */
+export async function completeText(
+  systemPrompt: string,
+  userPrompt: string,
+  engine: EngineId,
+  keys: EngineKeys,
+  maxTokens = 1200
+): Promise<string> {
+  const key = resolveKey(engine, keys);
+  if (!key || engine === 'mock') throw new Error('no engine for completion');
+  if (engine === 'anthropic') {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    });
+    if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+    const data = (await res.json()) as { content: { type: string; text?: string }[] };
+    return data.content
+      .filter((b) => b.type === 'text' && b.text)
+      .map((b) => b.text)
+      .join('')
+      .trim();
+  }
+  const res = await fetch('https://qianfan.baidubce.com/v2/chat/completions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model: QIANFAN_MODEL,
+      // 推理模型的思考 token 也算在内，给足余量
+      max_tokens: Math.max(maxTokens, 2000),
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(`Qianfan API ${res.status}`);
+  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  return (data.choices?.[0]?.message?.content ?? '').trim();
 }
 
 /**
