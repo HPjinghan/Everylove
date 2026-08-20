@@ -6,8 +6,9 @@ import * as Notifications from 'expo-notifications';
 import { type ReactNode } from 'react';
 import { useRouter } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppScreen } from '@/components/app-screen';
+import { WALLPAPERS } from '@/constants/apps';
 import { Romance } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { deliverAndSyncArrivals } from '@/lib/arrivals';
@@ -48,13 +49,13 @@ function Row({
 }
 
 export default function MeScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const bonds = useAppStore((s) => s.bonds);
   const customs = useAppStore((s) => s.customCharacters);
   const engine = useAppStore((s) => s.engine);
   const anthropicKey = useAppStore((s) => s.anthropicKey);
   const qianfanKey = useAppStore((s) => s.qianfanKey);
+  const wallpaper = useAppStore((s) => s.wallpaper);
 
   const testArrival = async () => {
     const bond = bonds[0];
@@ -159,15 +160,35 @@ export default function MeScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}>
-      <Text style={styles.title}>我的</Text>
+    <AppScreen title="设置">
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Section title="主题">
+        <View style={styles.wallRow}>
+          {WALLPAPERS.map((w) => (
+            <Pressable key={w.id} onPress={() => useAppStore.getState().setWallpaper(w.id)}>
+              <View
+                style={[
+                  styles.wallSwatch,
+                  { backgroundColor: w.colors[0] },
+                  wallpaper === w.id && styles.wallSwatchActive,
+                ]}>
+                <View style={[styles.wallSwatchInner, { backgroundColor: w.colors[1] }]} />
+              </View>
+              <Text style={[styles.wallLabel, wallpaper === w.id && { color: Romance.accent }]}>
+                {w.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={styles.footHint}>壁纸即刻生效。锁屏换 TA 的照片、来电铃声：正式版开放。</Text>
+      </Section>
 
-      <Section title="羁绊与订阅">
+      <Section title="订阅计划">
         <Row label="羁绊槽位" value={`${bonds.length}/1 · 首个免费`} />
+        <Row label="订阅「TA 在」" value="完整日常 + 语音 + 留言 · 敬请期待" dim />
+        <Row label="Morning call" value="TA 叫你起床 · 敬请期待" dim />
+        <Row label="错过回溯" value="错过的来电与聊天回听 · 敬请期待" dim />
         <Row label="加槽" value="正式版开放" dim />
-        <Row label="订阅「他在」" value="敬请期待" dim />
       </Section>
 
       <Section title="素材开关">
@@ -253,7 +274,8 @@ export default function MeScreen() {
       </Section>
 
       <Text style={styles.about}>全自动恋爱（代号） · 试装 0.1.0{'\n'}零劳动被爱 · 他说到做到</Text>
-    </ScrollView>
+      </ScrollView>
+    </AppScreen>
   );
 }
 
@@ -263,7 +285,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '700', color: Romance.ink, marginBottom: 6 },
   section: { marginTop: 18 },
   sectionTitle: { fontSize: 13, fontWeight: '600', color: Romance.sub, marginBottom: 8 },
-  sectionBody: { backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 4 },
+  sectionBody: { backgroundColor: '#FFFFFF', borderRadius: 22, paddingHorizontal: 4 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -276,10 +298,22 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 14, color: Romance.ink },
   rowValue: { fontSize: 13, color: Romance.sub },
   footHint: { fontSize: 11, color: Romance.faint, padding: 12 },
+  wallRow: { flexDirection: 'row', gap: 14, padding: 12, flexWrap: 'wrap' },
+  wallSwatch: {
+    width: 52,
+    height: 88,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  wallSwatchActive: { borderColor: Romance.accent },
+  wallSwatchInner: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%' },
+  wallLabel: { fontSize: 11, color: Romance.sub, textAlign: 'center', marginTop: 4 },
   engineRow: { flexDirection: 'row', gap: 8, padding: 12 },
   engineBtn: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingVertical: 10,
     alignItems: 'center',
     backgroundColor: Romance.bg,
@@ -290,7 +324,7 @@ const styles = StyleSheet.create({
   keyInput: {
     marginHorizontal: 12,
     backgroundColor: Romance.bg,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 13,

@@ -70,7 +70,7 @@ export default function SquareChatScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!character) return <Redirect href="/(tabs)" />;
+  if (!character) return <Redirect href="/apps/dating" />;
   if (bond) {
     return <Redirect href={{ pathname: '/bond/[bondId]', params: { bondId: bond.id } }} />;
   }
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 14,
     marginBottom: 8,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 12,
     shadowColor: '#3B2126',
     shadowOpacity: 0.08,
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   ctaSub: { fontSize: 11, color: Romance.sub, marginTop: 2 },
   ctaBtn: {
     backgroundColor: Romance.accent,
-    borderRadius: 14,
+    borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 9,
   },

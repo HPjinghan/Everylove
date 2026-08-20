@@ -4,8 +4,8 @@
 
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { Romance } from '@/constants/theme';
 import { clockTime, timeAgo } from '@/lib/format';
@@ -35,20 +35,18 @@ function arrivalPill(b: Bond): string | null {
 }
 
 export default function MessagesScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const bonds = useAppStore((s) => s.bonds);
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-      <Text style={styles.title}>消息</Text>
+    <AppScreen title="Message">
       {bonds.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyHeart}>♡</Text>
           <Text style={styles.emptyText}>
             广场里聊得来的人，{'\n'}交换联系方式后就会住进这里。
           </Text>
-          <Pressable style={styles.emptyBtn} onPress={() => router.push('/(tabs)')}>
+          <Pressable style={styles.emptyBtn} onPress={() => router.push('/apps/dating')}>
             <Text style={styles.emptyBtnText}>去广场逛逛</Text>
           </Pressable>
         </View>
@@ -93,7 +91,7 @@ export default function MessagesScreen() {
           }}
         />
       )}
-    </View>
+    </AppScreen>
   );
 }
 
@@ -114,7 +112,7 @@ const styles = StyleSheet.create({
     backgroundColor: Romance.accent,
     paddingHorizontal: 24,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 24,
   },
   emptyBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   list: { paddingHorizontal: 14 },
@@ -123,7 +121,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 22,
     padding: 12,
     marginBottom: 8,
   },

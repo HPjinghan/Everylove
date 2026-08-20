@@ -42,7 +42,7 @@ export default function AdoptScreen() {
   const [customNickname, setCustomNickname] = useState('');
   const [birthday, setBirthday] = useState('');
 
-  if (!character) return <Redirect href="/(tabs)" />;
+  if (!character) return <Redirect href="/" />;
 
   const script = scriptFor(character);
   const slotFree = bonds.length === 0;
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   h2: { fontSize: 15, fontWeight: '600', color: Romance.ink, marginTop: 22, marginBottom: 8 },
   slotCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 24,
     padding: 18,
     marginTop: 18,
     alignItems: 'center',
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   presetRow: { flexDirection: 'row', gap: 8 },
   preset: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 9,
   },
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   presetTextActive: { color: '#fff', fontWeight: '600' },
   primaryBtn: {
     backgroundColor: Romance.accent,
-    borderRadius: 22,
+    borderRadius: 26,
     paddingHorizontal: 40,
     paddingVertical: 13,
     marginTop: 28,
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   secondaryBtn: {
     backgroundColor: Romance.line,
-    borderRadius: 22,
+    borderRadius: 26,
     paddingHorizontal: 32,
     paddingVertical: 13,
     marginTop: 28,

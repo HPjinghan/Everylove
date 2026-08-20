@@ -6,8 +6,8 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { CHARACTERS } from '@/content/characters';
@@ -111,7 +111,6 @@ function SquarePostCard({
 }
 
 export default function SquareScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [chip, setChip] = useState<ChipKey>('all');
   const customs = useAppStore((s) => s.customCharacters);
@@ -192,9 +191,8 @@ export default function SquareScreen() {
     );
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-      <Text style={styles.title}>广场</Text>
-      <Text style={styles.subtitle}>这里人人都接你的话</Text>
+    <AppScreen title="缘分">
+      <Text style={styles.subtitle}>这里人人都接你的话 · 匹配几天不聊会过期</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -222,7 +220,7 @@ export default function SquareScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </AppScreen>
   );
 }
 
@@ -235,7 +233,7 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 7,
-    borderRadius: 16,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
   },
   chipActive: { backgroundColor: Romance.accent },
@@ -245,7 +243,7 @@ const styles = StyleSheet.create({
   columns: { flexDirection: 'row', gap: 10 },
   column: { flex: 1, gap: 10 },
   card: {
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 14,
   },
   cardAvatar: { marginBottom: 10 },
@@ -271,7 +269,7 @@ const styles = StyleSheet.create({
     backgroundColor: Romance.accent,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 14,
+    borderRadius: 18,
   },
   chatPillText: { fontSize: 12, color: '#FFFFFF', fontWeight: '600' },
   teaserBadge: {

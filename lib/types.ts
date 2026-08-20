@@ -128,6 +128,18 @@ export interface Post {
   comments: PostComment[];
 }
 
+/** 日历用户层日程（D-020/D-021；关系层与世界层运行时推导，不入库） */
+export interface CalendarEvent {
+  id: string;
+  /** YYYY-MM-DD */
+  date: string;
+  title: string;
+  /** 心跳三段式投递标记（lib/heartbeat.ts） */
+  caredBefore?: boolean;
+  caredDay?: boolean;
+  caredAfter?: boolean;
+}
+
 export type EngineId = 'mock' | 'anthropic' | 'qianfan';
 
 export interface EngineContext {

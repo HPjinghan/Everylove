@@ -25,7 +25,7 @@ export default function OnboardingScreen() {
 
   const choose = (pref: LovePref) => {
     completeOnboarding(pref);
-    router.replace('/(tabs)');
+    router.replace('/');
   };
 
   return (
@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
   options: { marginTop: 40, gap: 12 },
   option: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 24,
     paddingHorizontal: 20,
     paddingVertical: 18,
     flexDirection: 'row',

@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   msgAvatar: { marginRight: 8 },
   bubble: {
     maxWidth: '74%',
-    borderRadius: 18,
+    borderRadius: 22,
     paddingHorizontal: 14,
     paddingVertical: 10,
     shadowColor: '#3B2126',
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     overflow: 'hidden',
   },
-  comicImage: { width: 220, height: 220, borderRadius: 12, backgroundColor: Romance.line },
+  comicImage: { width: 220, height: 220, borderRadius: 16, backgroundColor: Romance.line },
   comicCaption: { fontSize: 13, color: Romance.sub, marginTop: 8, lineHeight: 19 },
   voiceRow: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: 2 },
   voiceBar: { width: 3, borderRadius: 2, opacity: 0.75 },
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 24,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     fontSize: 16,

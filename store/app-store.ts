@@ -17,6 +17,7 @@ import { arrivalTimeLabel, nextEightPM } from '@/lib/notifications';
 import type {
   Bond,
   BondMemory,
+  CalendarEvent,
   Character,
   ChatMessage,
   EngineId,
@@ -38,6 +39,11 @@ interface AppState {
   posts: Post[];
   /** 角色立绘（本机文件 URI），按角色 id；作为后续所有生图的参考图（D-019） */
   portraits: Record<string, string>;
+  /** 手机壳桌面（D-020/D-021）：图标顺序（长按拖动后持久化）与壁纸 id */
+  desktopOrder: string[];
+  wallpaper: string;
+  /** 日历用户层日程（D-020） */
+  userEvents: CalendarEvent[];
   engine: EngineId;
   anthropicKey: string;
   qianfanKey: string;
@@ -74,6 +80,12 @@ interface AppState {
   addHisReply: (postId: string) => void;
   addCustomCharacter: (c: Character) => void;
   setPortrait: (characterId: string, uri: string) => void;
+  setDesktopOrder: (order: string[]) => void;
+  setWallpaper: (id: string) => void;
+  addUserEvent: (e: CalendarEvent) => void;
+  removeUserEvent: (id: string) => void;
+  /** 心跳三段式：标记某段已投递（lib/heartbeat.ts） */
+  markEventStage: (id: string, stage: 'caredBefore' | 'caredDay' | 'caredAfter') => void;
   setEngine: (e: EngineId) => void;
   setAnthropicKey: (k: string) => void;
   setQianfanKey: (k: string) => void;
@@ -91,6 +103,9 @@ const initialData = {
   customCharacters: [] as Character[],
   posts: [] as Post[],
   portraits: {} as Record<string, string>,
+  desktopOrder: [] as string[],
+  wallpaper: 'dawn',
+  userEvents: [] as CalendarEvent[],
   // 工程配置里有 key 时默认走真模型（D-010）：Claude 优先，其次千帆；都没配则脚本引擎
   engine: (ENV_ANTHROPIC_KEY ? 'anthropic' : ENV_QIANFAN_KEY ? 'qianfan' : 'mock') as EngineId,
   anthropicKey: '',
@@ -364,6 +379,18 @@ export const useAppStore = create<AppState>()(
       addCustomCharacter: (c) => set({ customCharacters: [...get().customCharacters, c] }),
       setPortrait: (characterId, uri) =>
         set({ portraits: { ...get().portraits, [characterId]: uri } }),
+
+      setDesktopOrder: (order) => set({ desktopOrder: order }),
+      setWallpaper: (id) => set({ wallpaper: id }),
+      addUserEvent: (e) =>
+        set({
+          userEvents: [...get().userEvents, e].sort((a, b) => a.date.localeCompare(b.date)),
+        }),
+      removeUserEvent: (id) => set({ userEvents: get().userEvents.filter((e) => e.id !== id) }),
+      markEventStage: (id, stage) =>
+        set({
+          userEvents: get().userEvents.map((e) => (e.id === id ? { ...e, [stage]: true } : e)),
+        }),
 
       setEngine: (e) => set({ engine: e }),
       setAnthropicKey: (k) => set({ anthropicKey: k }),

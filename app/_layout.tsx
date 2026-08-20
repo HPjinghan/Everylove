@@ -9,13 +9,14 @@ import 'react-native-reanimated';
 
 import { Romance } from '@/constants/theme';
 import { deliverAndSyncArrivals } from '@/lib/arrivals';
+import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import '@/lib/notifications';
 import { useAppStore, useHydrated } from '@/store/app-store';
 
 SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  anchor: 'index',
 };
 
 const theme = {
@@ -35,19 +36,23 @@ export default function RootLayout() {
   // 首帧时导航树还没挂载，命令式跳转会崩；等 key 出现才可跳转
   const navReady = Boolean(useRootNavigationState()?.key);
 
-  // 启动：种子帖、开门投递。落格与 onboarding 门禁是声明式的（app/(tabs)/_layout.tsx），
+  // 启动：种子帖、开门投递、心跳补投。onboarding 门禁是声明式的（app/index.tsx 桌面），
   // 根布局不做任何命令式跳转——首帧跳转会崩在 assertIsReady。
   useEffect(() => {
     if (!hydrated) return;
     useAppStore.getState().ensureSeedPosts();
     deliverAndSyncArrivals();
+    deliverDueHeartbeats();
     SplashScreen.hideAsync();
   }, [hydrated]);
 
-  // 回前台补投开门
+  // 回前台补投开门与心跳
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') deliverAndSyncArrivals();
+      if (s === 'active') {
+        deliverAndSyncArrivals();
+        deliverDueHeartbeats();
+      }
     });
     return () => sub.remove();
   }, []);
@@ -73,7 +78,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={theme}>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Romance.bg } }}>
-        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="chat/[characterId]" />
         <Stack.Screen name="adopt/[characterId]" options={{ presentation: 'fullScreenModal' }} />

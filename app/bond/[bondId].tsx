@@ -38,9 +38,9 @@ export default function BondScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bondId, messageCount]);
 
-  if (!bond) return <Redirect href="/(tabs)/messages" />;
+  if (!bond) return <Redirect href="/apps/messages" />;
   const character = findCharacter(bond.characterId);
-  if (!character) return <Redirect href="/(tabs)/messages" />;
+  if (!character) return <Redirect href="/apps/messages" />;
 
   const onSend = async (text: string) => {
     const { appendBond, markAwayNotified, engine, anthropicKey, qianfanKey } =
@@ -188,7 +188,7 @@ export default function BondScreen() {
             {bond.birthday && (
               <View style={styles.profileRow}>
                 <Text style={styles.profileRowLabel}>你的生日</Text>
-                <Text style={styles.profileRowValue}>{bond.birthday}（他记下了）</Text>
+                <Text style={styles.profileRowValue}>{bond.birthday}</Text>
               </View>
             )}
             <View style={styles.profileRow}>
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   profileStats: { flexDirection: 'row', gap: 14, marginTop: 24 },
   stat: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     paddingHorizontal: 22,
     paddingVertical: 14,
     alignItems: 'center',
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 13,
   },

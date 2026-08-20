@@ -19,8 +19,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { ARCHETYPE_LABEL, BLOCKED_NAME_PATTERN } from '@/content/characters';
 import { Romance } from '@/constants/theme';
@@ -45,7 +45,6 @@ const DEFAULT_HOOK: Record<Exclude<ArchetypeId, 'nonhuman'>, string> = {
 };
 
 export default function CreateScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [archetype, setArchetype] = useState<Exclude<ArchetypeId, 'nonhuman'> | null>(null);
   const [loveTag, setLoveTag] = useState<'male' | 'female'>('male');
@@ -123,20 +122,20 @@ export default function CreateScreen() {
     setHook('');
     setPortraitUri(undefined);
     Alert.alert('他醒过来了', '去广场看看他。', [
-      { text: '去广场', onPress: () => router.push('/(tabs)') },
+      { text: '去缘分看看', onPress: () => router.push('/apps/dating') },
     ]);
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}
-        keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>捏＋</Text>
-        <Text style={styles.subtitle}>三分钟，捏一个只属于你的 TA</Text>
+    <AppScreen title="捏＋">
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          style={styles.screen}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled">
+          <Text style={styles.subtitle}>三分钟，捏一个只属于你的 TA</Text>
 
         <Text style={styles.step}>① TA 怎么爱你（原型与性别）</Text>
         <View style={styles.archRow}>
@@ -252,8 +251,9 @@ export default function CreateScreen() {
           <Text style={styles.primaryBtnText}>让 TA 醒来</Text>
         </Pressable>
         <Text style={styles.footnote}>不能捏真人与 IP 角色 · 发布即默认同意创作规范</Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </AppScreen>
   );
 }
 
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   archRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   archCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   genderRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
   genderChip: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 20,
     paddingHorizontal: 18,
     paddingVertical: 8,
   },
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   genderTextActive: { color: '#fff', fontWeight: '600' },
   input: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 14,
     marginTop: 18,
   },
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
   previewHook: { fontSize: 12, color: Romance.sub, marginTop: 3, lineHeight: 18 },
   primaryBtn: {
     backgroundColor: Romance.accent,
-    borderRadius: 22,
+    borderRadius: 26,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 24,
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   secondaryBtn: {
     marginTop: 10,
-    borderRadius: 16,
+    borderRadius: 20,
     paddingVertical: 13,
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -332,6 +332,6 @@ const styles = StyleSheet.create({
   secondaryBtnText: { color: Romance.accent, fontSize: 15, fontWeight: '600' },
   btnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   stepHint: { fontSize: 12, color: Romance.sub, marginTop: -6, marginBottom: 10, lineHeight: 18 },
-  portrait: { width: 180, height: 180, borderRadius: 18, alignSelf: 'center', marginBottom: 4 },
+  portrait: { width: 180, height: 180, borderRadius: 26, alignSelf: 'center', marginBottom: 4 },
   footnote: { fontSize: 11, color: Romance.faint, textAlign: 'center', marginTop: 12 },
 });

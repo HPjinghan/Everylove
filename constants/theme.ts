@@ -29,19 +29,19 @@ export const Colors = {
 
 /** 全自动恋爱 · 试装配色（强制浅色模式，见 DECISIONS D-007） */
 export const Romance = {
-  bg: '#FFF6F4',
+  bg: '#FFF0F4',
   card: '#FFFFFF',
-  ink: '#2B2126',
-  sub: '#8A7A80',
-  faint: '#B5A7AC',
-  accent: '#E8637C',
-  accentSoft: '#FDECEF',
-  line: '#F2E4E7',
-  gold: '#C9A96A',
-  night: '#2E2438',
+  ink: '#4A2B36',
+  sub: '#A97F8D',
+  faint: '#D0AEBB',
+  accent: '#F5749B',
+  accentSoft: '#FFE1EA',
+  line: '#F9DBE4',
+  gold: '#E0B98A',
+  night: '#3A2A3E',
   bubbleHim: '#FFFFFF',
-  bubbleMe: '#E8637C',
-  danger: '#D64B4B',
+  bubbleMe: '#F5749B',
+  danger: '#E0607A',
 };
 
 export const Fonts = Platform.select({

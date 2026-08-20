@@ -12,8 +12,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Romance } from '@/constants/theme';
@@ -103,13 +103,11 @@ function PostCard({ post }: { post: Post }) {
 }
 
 export default function FeedScreen() {
-  const insets = useSafeAreaInsets();
   const posts = useAppStore((s) => s.posts);
   const sorted = [...posts].sort((a, b) => b.at - a.at);
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-      <Text style={styles.title}>动态</Text>
+    <AppScreen title="朋友圈">
       <Text style={styles.subtitle}>偷看 TA 们的生活，TA 们不会介意</Text>
       <FlatList
         data={sorted}
@@ -122,7 +120,7 @@ export default function FeedScreen() {
           </View>
         }
       />
-    </View>
+    </AppScreen>
   );
 }
 
@@ -137,7 +135,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   list: { paddingHorizontal: 14, paddingBottom: 24 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 18, padding: 14, marginBottom: 10 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 22, padding: 14, marginBottom: 10 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headText: { flex: 1 },
   name: { fontSize: 15, fontWeight: '600', color: Romance.ink },
@@ -160,7 +158,7 @@ const styles = StyleSheet.create({
   commentInput: {
     flex: 1,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 22,
     backgroundColor: Romance.bg,
     paddingHorizontal: 14,
     fontSize: 14,
