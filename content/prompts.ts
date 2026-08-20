@@ -7,7 +7,7 @@
  *   §4 通用：人称 / 时间感 / 消息进模型的文字 / 对话记录排版（放最前面，其他节都用）
  *   §1 对话：两套**独立**的角色扮演系统 prompt —— 初识模式（广场）与亲密模式（领养后）互不引用，
  *            只共用红线 CHAT_HARD_RULES 与输出格式 CHAT_OUTPUT_FORMAT
- *   §2 生图：外貌主体 → 场景 → 构图 → 气泡 → 画风；立绘（捏＋时生成一次）；参考图模式（有立绘时走图像编辑）；初见四格镜头；羁绊漫画
+ *   §2 生图：图=场景本身的呈现方式，不包装成「TA 画的」（D-024）。外貌主体 → 场景 → 构图 → 气泡 → 画风；立绘；参考图模式；初见四格镜头；羁绊画面
  *   §3 记忆：记忆提取的系统指令 + 每次提取喂给模型的内容
  *
  * 不在这里的：
@@ -29,7 +29,7 @@ import type { Bond, BondMemory, Character, ChatMessage, EngineContext } from '@/
 
 /**
  * 一条消息进入模型上下文时用的文字：
- * 文字气泡用 text；甩图/漫画用画里说的话 spoken；系统提示条与空消息返回 ''（不进上下文）。
+ * 文字气泡用 text；画面消息用画里说的话 spoken；系统提示条与空消息返回 ''（不进上下文）。
  */
 export function messageContextText(m: ChatMessage): string {
   if (m.from === 'system') return '';
@@ -260,7 +260,7 @@ export function buildChatSystemPrompt(ctx: EngineContext): string {
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/* §2 生图：初见甩图 / 羁绊漫画显影（Qwen 文生图）                                */
+/* §2 生图：初见画面 / 羁绊画面（图=场景本身，D-024；Qwen 文生图）                                */
 /* ────────────────────────────────────────────────────────────────────────── */
 
 /**
@@ -368,7 +368,7 @@ export const SQUARE_BEATS = [
   '这一幅的镜头：面部近景，心动瞬间；认真地直视镜头，空气安静了一拍。',
 ];
 
-/** 初见甩图：完整 prompt */
+/** 初见画面：完整 prompt */
 export function buildSquarePanelPrompt(
   character: Character,
   turn: number,
@@ -390,7 +390,7 @@ export function buildSquarePanelPrompt(
   ].join('\n');
 }
 
-/** 羁绊漫画显影：完整 prompt（同构图，台词 TA 在会话里已经说了，画面不带气泡） */
+/** 羁绊画面：完整 prompt（同构图，此刻一个安静的瞬间，画面不带气泡） */
 export function buildBondComicPrompt(
   character: Character,
   bond: Bond,
@@ -408,9 +408,6 @@ export function buildBondComicPrompt(
   ].join('\n');
 }
 
-/** 送漫画时 TA 说的两句话（剧情语法送达，D-013） */
-export const COMIC_INTRO_LINE = (nickname: string) => `${nickname}，给你画了点东西。等我一下。`;
-export const COMIC_CAPTION = '——刚才聊着聊着，脑子里就有了这个画面。';
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* §3 记忆：羁绊记忆库的提取（D-016 / D-018）                                     */

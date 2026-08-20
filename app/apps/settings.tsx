@@ -72,7 +72,7 @@ export default function MeScreen() {
   const testComic = () => {
     const bond = bonds[0];
     if (!bond) {
-      Alert.alert('还没有羁绊', '先去广场领养一个 TA，再来测试漫画。');
+      Alert.alert('还没有羁绊', '先去「缘分」领养一个 TA，再来测试画面。');
       return;
     }
     if (!imageKeyReady()) {
@@ -80,7 +80,7 @@ export default function MeScreen() {
       return;
     }
     deliverComic(bond.id);
-    Alert.alert('他动笔了', '生成大约需要半分钟到一分钟，去他的会话里等着。');
+    Alert.alert('生成中', '约半分钟到一分钟，画面会直接出现在会话里。');
   };
 
   /** 立绘（D-019）：为种子角色逐个生成（默认不自动，见 OPEN_QUESTIONS #14），或重画首个羁绊角色 */
@@ -110,7 +110,7 @@ export default function MeScreen() {
       Alert.alert('未配置千帆 key', '立绘与聊天共用千帆 key。');
       return;
     }
-    Alert.alert('重画中', `约 1 分钟，${bond.name}之后的漫画都会以新立绘为参考。`);
+    Alert.alert('重画中', `约 1 分钟，${bond.name}之后的画面都会以新立绘为参考。`);
     void ensurePortrait(bond.characterId, true);
   };
 
@@ -264,7 +264,7 @@ export default function MeScreen() {
         )}
         <Row label="让 TA 3 分钟后来开门（测试）" onPress={testArrival} />
         <Row
-          label={`让 TA 送一张漫画（测试）${imageKeyReady() ? '' : ' · 未配 key'}`}
+          label={`生成一个你们的画面（测试）${imageKeyReady() ? '' : ' · 未配 key'}`}
           onPress={testComic}
         />
         <Row label="查看 TA 记住了什么（记忆库）" onPress={showMemory} />

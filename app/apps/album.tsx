@@ -1,6 +1,6 @@
 /**
- * 相册（D-020）：显影收藏时间轴，从「他的主页」升格为手机级模块。
- * 试装：汇集所有羁绊会话里的漫画显影（image 消息），按日分组网格展示；点开全屏看。
+ * 相册（D-020/D-024）：你们的画面时间轴——图不是「TA 画的」，图就是你们相处的瞬间本身。
+ * 试装：汇集所有羁绊会话里的画面（image 消息），按日分组网格展示；点开全屏看。
  */
 
 import { Image } from 'expo-image';
@@ -82,7 +82,7 @@ export default function AlbumScreen() {
           <View style={styles.empty}>
             <Text style={styles.emptyHeart}>🖼️</Text>
             <Text style={styles.emptyText}>
-              TA 送来的每一格漫画都会存在这里。{'\n'}聊得越久，相册越厚。
+              你们的每一个瞬间都会存在这里。{'\n'}聊得越久，相册越厚。
             </Text>
           </View>
         }

@@ -95,7 +95,7 @@ export default function SquareChatScreen() {
         useAppStore.getState().appendSquare(character.id, [himMsg(t)]);
       }
     } else {
-      // 初见甩图：有千帆 key 时他不说话，每轮直接回一格漫画（D-014）
+      // 初见画面：有千帆 key 时这一轮以画面呈现（图=场景本身，D-024）
       let delivered = false;
       if (imageKeyReady()) {
         setTyping(true);
@@ -168,7 +168,6 @@ export default function SquareChatScreen() {
         name={character.name}
         characterId={character.id}
         typing={typing}
-        typingLabel={imageKeyReady() ? 'TA 在画点什么…' : undefined}
         onSend={onSend}
         banner={
           <View style={styles.banner}>

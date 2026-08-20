@@ -220,7 +220,7 @@ export default function CreateScreen() {
 
         <Text style={styles.step}>④ TA 的立绘（可选，约 1 分钟）</Text>
         <Text style={styles.stepHint}>
-          按 ② 的描述画一张半身像。之后 TA 发来的每一格漫画都会以它为参考，长相与穿着保持一致。
+          按 ② 的描述画一张半身像。之后你们相处的每一格画面都会以它为参考，长相与穿着保持一致。
         </Text>
         {portraitUri ? (
           <Image source={{ uri: portraitUri }} style={styles.portrait} contentFit="cover" />
@@ -235,7 +235,7 @@ export default function CreateScreen() {
           {generating ? (
             <View style={styles.btnRow}>
               <ActivityIndicator color={Romance.accent} />
-              <Text style={styles.secondaryBtnText}>正在画 TA……</Text>
+              <Text style={styles.secondaryBtnText}>正在生成立绘……</Text>
             </View>
           ) : (
             <Text style={styles.secondaryBtnText}>

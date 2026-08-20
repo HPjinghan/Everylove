@@ -2,8 +2,8 @@
  * 图像生成：Qwen 文生图 / 图像编辑，走百度千帆 v2 同步接口（与聊天共用一把千帆 key，D-014）。
  * 三个用途：
  * 1. 立绘——捏＋时生成一次（或开发者面板为种子角色生成），存本机，作为后续所有生图的参考图（D-019）；
- * 2. 初见甩图——广场试聊 TA 不说话，每轮回一格漫画，四轮构成初遇叙事；
- * 3. 羁绊漫画显影——亲密度里程碑时 TA 送来一格（剧情语法送达）。
+ * 2. 初见画面——广场试聊每轮以一格画面呈现你们此刻的相处（图=场景本身，D-024），四轮构成初遇叙事；
+ * 3. 羁绊画面——亲密度里程碑时，你们此刻的一个瞬间以画面出现在会话流里。
  * 有立绘时，2/3 走「图像编辑」接口（qwen-image-edit，参考图 = 立绘），人物在不同画面间保持一致；
  * 没有立绘（或编辑失败）回落文生图（qwen-image，只靠外貌文字 look）。
  * 红线约束写死在 prompt：用户 POV 不入镜、暧昧合规、不做真人。
@@ -16,8 +16,6 @@ import {
   buildBondComicPrompt,
   buildPortraitPrompt,
   buildSquarePanelPrompt,
-  COMIC_CAPTION,
-  COMIC_INTRO_LINE,
 } from '@/content/prompts';
 import { generateReply, resolveKey } from '@/lib/engine';
 import { uid } from '@/lib/format';
@@ -161,11 +159,11 @@ async function renderPanel(
   return generateImage(promptWithoutRef);
 }
 
-/* ────────────────────────────── 初见甩图 ────────────────────────────── */
+/* ────────────────────────────── 初见画面 ────────────────────────────── */
 
 /**
- * 初见甩图：广场试聊的一轮回复——TA 不发文字，直接一格漫画（D-014/D-015）：
- * 先用对话引擎生成 TA 这句话，再把「你们的相处 + TA 转头对你说这句话」画进格子里。
+ * 初见画面：广场试聊的一轮回复以画面呈现（D-014/D-015/D-024）——图=你们此刻的场景，不是「TA 画的」：
+ * 先用对话引擎生成 TA 这句话，再把「你们的相处 + TA 转头对你说这句话」画进这一格。
  * 成功返回 true；失败返回 false（调用方回落文字引擎）。
  */
 export async function deliverSquarePanel(
@@ -195,35 +193,26 @@ export async function deliverSquarePanel(
     ]);
     return true;
   } catch (e) {
-    console.warn('[imagegen] 初见甩图失败，回落文字：', e);
+    console.warn('[imagegen] 初见画面失败，回落文字：', e);
     return false;
   }
 }
 
-/* ────────────────────────────── 羁绊漫画显影 ────────────────────────────── */
+/* ────────────────────────────── 羁绊画面 ────────────────────────────── */
 
 /**
- * 「给你讲个故事吧」：TA 先说一句，再把生成好的漫画送进会话流。
+ * 羁绊画面：不包装成「TA 画的/送的」（D-024）——图就是你们此刻的场景本身，
+ * 直接出现在会话流里，不带引子、不带配文。
  * 没配 key 或生成失败时静默放弃（warn），不打断聊天。
  */
 export async function deliverComic(bondId: string): Promise<boolean> {
   if (!imageKeyReady()) {
-    console.warn('[imagegen] 没有千帆 key，跳过漫画显影');
+    console.warn('[imagegen] 没有千帆 key，跳过羁绊画面');
     return false;
   }
   const bond = useAppStore.getState().bonds.find((b) => b.id === bondId);
   const character = bond && findCharacter(bond.characterId);
   if (!bond || !character) return false;
-
-  useAppStore.getState().appendBond(bondId, [
-    {
-      id: uid('m'),
-      from: 'him',
-      kind: 'text',
-      text: COMIC_INTRO_LINE(bond.nickname),
-      at: Date.now(),
-    },
-  ]);
 
   try {
     const imageUri = await renderPanel(
@@ -233,21 +222,12 @@ export async function deliverComic(bondId: string): Promise<boolean> {
     );
     useAppStore.getState().appendBond(
       bondId,
-      [
-        {
-          id: uid('m'),
-          from: 'him',
-          kind: 'image',
-          text: COMIC_CAPTION,
-          imageUri,
-          at: Date.now(),
-        },
-      ],
+      [{ id: uid('m'), from: 'him', kind: 'image', text: '', imageUri, at: Date.now() }],
       { affinityDelta: 2, unreadDelta: 1 }
     );
     return true;
   } catch (e) {
-    console.warn('[imagegen] 漫画生成失败：', e);
+    console.warn('[imagegen] 羁绊画面生成失败：', e);
     return false;
   }
 }

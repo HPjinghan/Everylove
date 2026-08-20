@@ -100,7 +100,7 @@ export default function BondScreen() {
         .appendBond(bond.id, [{ id: uid('m'), from: 'him', kind: 'text', text: t, at: Date.now() }]);
     }
 
-    // 亲密度每跨过一个 20 的整数级，他送来一格漫画（显影以剧情语法送达，D-013）
+    // 亲密度每跨过一个 20 的整数级，出现一格你们此刻的画面（图=场景本身，D-024）
     if (Math.floor((bond.affinity + 1) / 20) > Math.floor(bond.affinity / 20)) {
       deliverComic(bond.id);
     }
@@ -197,7 +197,7 @@ export default function BondScreen() {
             </View>
             <View style={styles.profileRow}>
               <Text style={styles.profileRowLabel}>相册</Text>
-              <Text style={styles.profileRowValueDim}>显影中 · 敬请期待</Text>
+              <Text style={styles.profileRowValueDim}>正在慢慢变厚</Text>
             </View>
           </View>
         </View>
