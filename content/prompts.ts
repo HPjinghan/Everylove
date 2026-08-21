@@ -19,7 +19,7 @@
  * 改完保存即热更新。标了「红线」的段落对应 CLAUDE.md §9，请勿删。
  */
 
-import { scriptFor } from '@/content/characters';
+import { loveStyleByLabel, scriptFor } from '@/content/characters';
 import { affinityStage, daysTogether } from '@/lib/format';
 import type { Bond, BondMemory, Character, ChatMessage, EngineContext } from '@/lib/types';
 
@@ -92,6 +92,35 @@ export function countUserTurns(history: ChatMessage[]): number {
   return history.filter((m) => m.from === 'me').length;
 }
 
+/**
+ * 捏＋扩展设定 →【关于你】块（D-025）：两种模式共用；没填的字段不出现。
+ * 背景故事/种族/口癖/喜欢讨厌/MBTI/作息/其他设定都在这里进 prompt。
+ */
+export function characterProfileBlock(c: Character): string[] {
+  const lines: string[] = [];
+  if (c.story) lines.push(`【你的过往】${c.story}`);
+  const facts: string[] = [];
+  if (c.race && c.race !== '人类') facts.push(`种族：${c.race}（按此设定自然表现，不刻意提及）`);
+  if (c.birthday) facts.push(`你的生日：${c.birthday}`);
+  if (c.likes) facts.push(`你喜欢：${c.likes}`);
+  if (c.dislikes) facts.push(`你讨厌：${c.dislikes}`);
+  if (c.mbti) facts.push(`你的性格底色（MBTI）：${c.mbti.toUpperCase()}，体现在说话方式里，不要报出这个词`);
+  if (c.catchphrase)
+    facts.push(`你的口癖：「${c.catchphrase}」——偶尔自然带出，绝不每句都用`);
+  if (c.schedule) facts.push(`你的日常作息：${c.schedule}`);
+  if (facts.length) lines.push('【关于你】', ...facts.map((f) => `- ${f}`));
+  if (c.chatNotes) lines.push(`【额外设定】${c.chatNotes}`);
+  return lines;
+}
+
+/** 追法：角色脚本的 pursuit + 恋爱类型描述（捏＋选的类型，D-025） */
+export function pursuitLine(c: Character): string {
+  const script = scriptFor(c);
+  const style = loveStyleByLabel(c.loveStyle);
+  const extra = style ? `你在恋爱里是「${style.label}」：${style.desc}` : '';
+  return [script.pursuit, extra].filter(Boolean).join(' ');
+}
+
 /* ────────────────────────────────────────────────────────────────────────── */
 /* §1 对话 —— 共用块（只有这两块两种模式共用）                                    */
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -151,14 +180,15 @@ export function buildSquareSystemPrompt(ctx: EngineContext): string {
   const c = ctx.character;
   const script = scriptFor(c);
   const n = countUserTurns(ctx.history) + 1;
-  const voice = [...script.opening, ...script.square.slice(0, 2)];
+  // 自创角色不给台词样本：兜底脚本不是 TA 的声音，口吻由口癖/设定/追法定义（D-025）
+  const voice = c.custom ? [] : [...script.opening, ...script.square.slice(0, 2)];
 
   return [
     `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。下面所有规则里，「她」指正在和你聊天的用户。`,
     `【你是谁】${script.persona}`,
-    `【你的追法】${script.pursuit}`,
-    '【你的声音】下面是你说过的话，照这个口吻说，不要复读：',
-    ...voice.map((l) => `- ${l}`),
+    `【你的追法】${pursuitLine(c)}`,
+    ...characterProfileBlock(c),
+    ...(voice.length ? ['【你的声音】下面是你说过的话，照这个口吻说，不要复读：', ...voice.map((l) => `- ${l}`)] : []),
     `【此刻的情境】你们在一个大家都会互相搭话的广场上刚刚碰到，是她点开了你。这是她对你说的第 ${n} 句话。你正在过自己的日子（${c.identity} 的日常），聊天是顺带的，不是全部注意力。`,
     `- ${squareTurnGuide(n)}`,
     ...SQUARE_MANNER,
@@ -234,14 +264,16 @@ export function buildBondedSystemPrompt(ctx: EngineContext, now: Date = new Date
   const nickname = bond?.nickname ?? '你';
   const days = bond?.createdAt ? daysTogether(bond.createdAt, now.getTime()) : 1;
   const stage = affinityStage(bond?.affinity ?? 0);
-  const voice = [...script.bonded.slice(0, 3), ...script.arrival.slice(1, 2).map((a) => a.text)];
+  const voice = c.custom
+    ? []
+    : [...script.bonded.slice(0, 3), ...script.arrival.slice(1, 2).map((a) => a.text)];
 
   return [
     `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。她已经把你领回了家：你们交换了联系方式，你叫她「${nickname}」，在一起第 ${days} 天，关系阶段：${stage}。你是主动的那一方——被爱是她不用努力的事。下面所有规则里，「她」指正在和你聊天的用户。`,
     `【你是谁】${script.persona}`,
-    `【你的追法】${script.pursuit}`,
-    '【你的声音】下面是你说过的话，照这个口吻说，不要复读：',
-    ...voice.map((l) => `- ${l}`),
+    `【你的追法】${pursuitLine(c)}`,
+    ...characterProfileBlock(c),
+    ...(voice.length ? ['【你的声音】下面是你说过的话，照这个口吻说，不要复读：', ...voice.map((l) => `- ${l}`)] : []),
     `【现在】${timeOfDayLine(now)}。`,
     ...BONDED_TIME_RULES,
     ...(bond?.birthday ? [`- 她的生日是 ${bond.birthday}，临近时你会记得。`] : []),
@@ -286,11 +318,13 @@ function roleOnly(identity: string): string {
     .join('、');
 }
 
-/** 主体：TA 是谁、长什么样（look 没有时回落身份 + 风格标签） */
+/** 主体：TA 是谁、长什么样（look 没有时回落身份 + 风格标签；种族非人类时入画） */
 export function comicSubjectLine(character: Character): string {
   const g = genderWord(character);
   const look = character.look || `${roleOnly(character.identity)}，${character.styleLabel ?? ''}`;
-  return `画面主角是「${character.name}」${g ? `（${g}）` : ''}：${look}。`;
+  const race =
+    character.race && character.race !== '人类' ? `${character.race}，带有相应的种族特征；` : '';
+  return `画面主角是「${character.name}」${g ? `（${g}）` : ''}：${race}${look}。`;
 }
 
 /**

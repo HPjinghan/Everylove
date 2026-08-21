@@ -61,6 +61,10 @@ export default function CalendarScreen() {
         const [mm, dd] = bond.birthday.split('-').map(Number);
         push(dateKey(new Date(ym.y, mm - 1, dd)), '你的生日', 'relation');
       }
+      if (character?.birthday) {
+        const [mm, dd] = character.birthday.split('-').map(Number);
+        if (mm && dd) push(dateKey(new Date(ym.y, mm - 1, dd)), `${bond.name}的生日`, 'relation');
+      }
       // TA 自己也稀疏长几条日程（按角色台词风格取样，只做展示）
       if (character) {
         const script = scriptFor(character);

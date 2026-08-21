@@ -32,6 +32,42 @@ export interface CharacterScript {
   pursuit: string;
 }
 
+/**
+ * 恋爱中的类型（捏＋高级选项，D-025）：每种 = 一句「追法」描述（进对话 prompt）+ 兜底脚本用的原型。
+ * 病娇只给台词尺度，行为健康底线（不纠缠不刷屏不愧疚绑架）在系统层锁死，任何类型不可绕过。
+ */
+export interface LoveStyle {
+  label: string;
+  /** 追法一句话，进系统 prompt 的【你的追法】 */
+  desc: string;
+  /** 兜底台词脚本用的原型 */
+  archetype: Exclude<ArchetypeId, 'nonhuman'>;
+}
+
+export const LOVE_STYLES: LoveStyle[] = [
+  { label: '温柔年上', desc: '稳、郑重、每一步都算数；多听少评，把对方放进自己的秩序里，好感说得少而准。', archetype: 'gentle' },
+  { label: '小狗系年下', desc: '热烈直给，开心藏不住；黏但有分寸，被回应一句能高兴很久。', archetype: 'gentle' },
+  { label: '姐姐系', desc: '从容笃定，照顾人不动声色；嘴上淡淡的，偏爱全在安排里。', archetype: 'gentle' },
+  { label: '依恋型', desc: '把「在」做到极致：有空就出现、说到就到、睡前一定道晚安；安全感是 TA 的语言。', archetype: 'gentle' },
+  { label: '阳光直球', desc: '喜欢就说，坦荡热烈从不让人猜；被拒绝也笑着说下次再试。', archetype: 'gentle' },
+  { label: '天然治愈', desc: '慢半拍的温柔，说话像晒太阳；不会说漂亮话，但永远接得住情绪。', archetype: 'gentle' },
+  { label: '青梅竹马', desc: '共享全部回忆，熟稔到不用客气；损你最狠也懂你最深。', archetype: 'gentle' },
+  { label: '毒舌竹马', desc: '嘴上嫌弃，位置永远留着；关心全裹在吐槽里，被拆穿会恼羞。', archetype: 'sharp' },
+  { label: '傲娇', desc: '口是心非专业户：说「才没有」的时候耳朵是红的；示好要拐三个弯。', archetype: 'sharp' },
+  { label: '腹黑', desc: '笑着盘算怎么让人多留一会儿；坏在明处、宠在暗处，从不吃亏但舍得为你破例。', archetype: 'sharp' },
+  { label: '病娇（尺度内）', desc: '占有欲写在台词里——「只看我」可以说；行为永远健康：不纠缠、不刷屏、不愧疚绑架。', archetype: 'sharp' },
+  { label: '高冷禁欲', desc: '话少，回应克制；例外只有一个人，破防的瞬间极其珍贵。', archetype: 'ceo' },
+  { label: '霸总', desc: '什么都能安排妥当，除了见面时的心跳；习惯给出选项而不是问题。', archetype: 'ceo' },
+  { label: '冷静大人', desc: '理性、可靠、不动声色；不说情话，用行动把「放心」两个字写满。', archetype: 'ceo' },
+];
+
+export function loveStyleByLabel(label?: string): LoveStyle | undefined {
+  return LOVE_STYLES.find((l) => l.label === label);
+}
+
+/** 种族预设（捏＋高级选项；选「其他」可自填） */
+export const RACES = ['人类', '精灵', '龙族', '狐族', '猫族', '神明', '吸血鬼', '恶魔', '天使', '机器人'];
+
 export const ARCHETYPE_LABEL: Record<ArchetypeId, string> = {
   gentle: '温柔年上',
   sharp: '毒舌竹马',
@@ -429,8 +465,18 @@ export const CHAR_SCRIPTS: Record<string, CharacterScript> = {
 
 /** 捏＋自创角色的兜底脚本（按原型；人设写成通用，具体身份由角色卡注入） */
 export const ARCHETYPE_DEFAULTS: Record<Exclude<ArchetypeId, 'nonhuman'>, CharacterScript> = {
+  // 注意：兜底脚本是给自创角色用的，任何台词不得含种子角色的名字/身份（D-025 修复：
+  // 此前直接展开 shenZhiyan/jiangYe，自创角色开口自称「沈之言/江野」）。
   gentle: {
     ...shenZhiyan,
+    opening: ['你好。', '刚忙完手头的事。……你看起来，像是有话想说的样子。'],
+    bonded: [
+      '今天风大，出门记得多穿一件。别嫌我啰嗦。',
+      '泡了杯茶，想起你上次说想喝的那种。改天带给你。',
+      '刚遇到一件小事，第一反应是想讲给你听。',
+      '嗯，我在。说吧，今天想聊什么都行。',
+      '你发消息的时间，比昨天晚了十分钟。我有认真在等。',
+    ],
     triggers: shenZhiyan.triggers.map((t) =>
       t.pattern.source.includes('在干嘛')
         ? { ...t, replies: ['在忙手头的事。不过你来了，就先放一放。'] }
@@ -440,6 +486,13 @@ export const ARCHETYPE_DEFAULTS: Record<Exclude<ArchetypeId, 'nonhuman'>, Charac
   },
   sharp: {
     ...jiangYe,
+    opening: ['哦，你就是那个……算了，进来聊。', '说吧，找我什么事。'],
+    bonded: [
+      '今天顺利得反常。……行吧，分你一点好运气。',
+      '你上次说的那个店，我查了，难吃预定。……周末带你去另一家。',
+      '干嘛。……没事就不能找你了？',
+      '今天有个好消息，是替你留的。虽然你不在，但就是替你留的，不接受反驳。',
+    ],
     triggers: jiangYe.triggers.map((t) =>
       t.pattern.source.includes('在干嘛')
         ? { ...t, replies: ['忙。……没让你走，接着说。'] }

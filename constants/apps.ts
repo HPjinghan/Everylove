@@ -1,5 +1,7 @@
+import type { MingCuteName } from '@/components/mingcute';
+
 /**
- * 手机壳桌面的 App 注册表（D-020/D-021）。
+ * 手机壳桌面的 App 注册表（D-020/D-021/D-026：MingCute 图标 + 糖果双色）。
  * 纪律：模块必须有内容供给才上架，无供给不摆图标——
  * 闹钟（morning call）需要 TTS 供给（OPEN_QUESTIONS #6），试装不上架；音乐 v1.5。
  * 捏＋暂以桌面图标承载（最终入口形态待拍板，OPEN_QUESTIONS #16）。
@@ -8,24 +10,26 @@
 export interface DesktopApp {
   id: string;
   label: string;
-  /** 图标字形（试装用 emoji，正式版换图标资源） */
-  glyph: string;
-  /** 图标底色 */
-  tint: string;
+  /** MingCute 图标名（components/mingcute.tsx，D-026） */
+  icon: MingCuteName;
+  /** 图标瓷砖底色（浅糖色） */
+  bg: string;
+  /** 图标本体色（同色系深一档，tone-on-tone） */
+  fg: string;
   route: string;
   /** 显示未读角标（目前只有 Message） */
   badge?: 'unread';
 }
 
 export const DESKTOP_APPS: DesktopApp[] = [
-  { id: 'messages', label: 'Message', glyph: '💌', tint: '#A8E6C3', route: '/apps/messages', badge: 'unread' },
-  { id: 'moments', label: '朋友圈', glyph: '🌸', tint: '#B5C9F7', route: '/apps/moments' },
-  { id: 'dating', label: '缘分', glyph: '💘', tint: '#FFB3C6', route: '/apps/dating' },
-  { id: 'contacts', label: '通讯录', glyph: '🧸', tint: '#FFD8A8', route: '/apps/contacts' },
-  { id: 'album', label: '相册', glyph: '📷', tint: '#DCC5F0', route: '/apps/album' },
-  { id: 'calendar', label: '日历', glyph: '📅', tint: '#FFA8B8', route: '/apps/calendar' },
-  { id: 'create', label: '捏＋', glyph: '🍡', tint: '#AEE5DE', route: '/apps/create' },
-  { id: 'settings', label: '设置', glyph: '⚙️', tint: '#D3DCE8', route: '/apps/settings' },
+  { id: 'messages', label: 'Message', icon: 'chat', bg: '#D9F5E1', fg: '#4BBF87', route: '/apps/messages', badge: 'unread' },
+  { id: 'moments', label: '朋友圈', icon: 'flower', bg: '#E4ECFF', fg: '#7B96F2', route: '/apps/moments' },
+  { id: 'dating', label: '缘分', icon: 'heart', bg: '#FFDBE6', fg: '#F5749B', route: '/apps/dating' },
+  { id: 'contacts', label: '通讯录', icon: 'contacts', bg: '#FFEDD6', fg: '#F2A65A', route: '/apps/contacts' },
+  { id: 'album', label: '相册', icon: 'album', bg: '#F0E4FB', fg: '#B287E0', route: '/apps/album' },
+  { id: 'calendar', label: '日历', icon: 'calendar', bg: '#FFE0E0', fg: '#EF8080', route: '/apps/calendar' },
+  { id: 'create', label: '捏＋', icon: 'magicHat', bg: '#DFF5F2', fg: '#56C4B4', route: '/apps/create' },
+  { id: 'settings', label: '设置', icon: 'settings', bg: '#E8ECF2', fg: '#93A3B8', route: '/apps/settings' },
 ];
 
 export const DEFAULT_DESKTOP_ORDER = DESKTOP_APPS.map((a) => a.id);

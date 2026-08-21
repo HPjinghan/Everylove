@@ -1,6 +1,6 @@
 /**
- * 广场：双列瀑布流，角色卡 + 角色公开动态混排。即点即聊。
- * 搭话记录不入消息 tab、会过期——免费层的天花板是商业决策。
+ * 缘分（交友 App）：双列瀑布流，只有人物卡（D-027：不再混排动态帖）。即点即聊。
+ * 搭话记录不入 Message、会过期——免费层的天花板是商业决策。
  */
 
 import { useRouter } from 'expo-router';
@@ -12,8 +12,8 @@ import { CharAvatar } from '@/components/char-avatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { CHARACTERS } from '@/content/characters';
 import { Romance } from '@/constants/theme';
-import { adoptedCountLabel, timeAgo } from '@/lib/format';
-import type { Character, Post } from '@/lib/types';
+import { adoptedCountLabel } from '@/lib/format';
+import type { Character } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
 const CHIPS = [
@@ -25,8 +25,6 @@ const CHIPS = [
 ] as const;
 
 type ChipKey = (typeof CHIPS)[number]['key'];
-
-type SquareItem = { type: 'char'; c: Character } | { type: 'post'; p: Post };
 
 function CharacterCard({
   c,
@@ -82,34 +80,6 @@ function CharacterCard({
   );
 }
 
-function SquarePostCard({
-  p,
-  c,
-  onPress,
-}: {
-  p: Post;
-  c: Character;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable onPress={onPress} style={[styles.card, { backgroundColor: '#FFFFFF' }]}>
-      <View style={styles.postHead}>
-        <CharAvatar name={c.name} color={c.color} size={30} characterId={c.id} />
-        <View style={styles.postHeadText}>
-          <Text style={styles.postName}>{c.name}</Text>
-          <Text style={styles.postMeta}>广场动态 · {timeAgo(p.at)}</Text>
-        </View>
-      </View>
-      <Text style={styles.postBody}>{p.text}</Text>
-      <View style={styles.postFooter}>
-        <IconSymbol name="heart" size={13} color={Romance.faint} />
-        <Text style={styles.postLikes}>{p.likes}</Text>
-        <Text style={styles.postGo}>去搭话 ›</Text>
-      </View>
-    </Pressable>
-  );
-}
-
 export default function SquareScreen() {
   const router = useRouter();
   const [chip, setChip] = useState<ChipKey>('all');
@@ -117,8 +87,6 @@ export default function SquareScreen() {
   const bonds = useAppStore((s) => s.bonds);
   const squareChats = useAppStore((s) => s.squareChats);
   const lovePref = useAppStore((s) => s.lovePref);
-  const allPosts = useAppStore((s) => s.posts);
-  const squarePosts = useMemo(() => allPosts.filter((p) => !p.bondId), [allPosts]);
 
   const items = useMemo(() => {
     const all = [...customs, ...CHARACTERS];
@@ -134,19 +102,8 @@ export default function SquareScreen() {
         (a, b) => Number(b.loveTag === lovePref) - Number(a.loveTag === lovePref)
       );
     }
-    const charIds = new Set(chars.map((c) => c.id));
-    const posts = squarePosts.filter((p) => charIds.has(p.characterId));
-    const mixed: SquareItem[] = [];
-    let pi = 0;
-    chars.forEach((c, i) => {
-      mixed.push({ type: 'char', c });
-      if ((i + 1) % 2 === 0 && pi < posts.length) {
-        mixed.push({ type: 'post', p: posts[pi++] });
-      }
-    });
-    while (pi < posts.length) mixed.push({ type: 'post', p: posts[pi++] });
-    return mixed;
-  }, [chip, customs, squarePosts, lovePref]);
+    return chars;
+  }, [chip, customs, lovePref]);
 
   const colA = items.filter((_, i) => i % 2 === 0);
   const colB = items.filter((_, i) => i % 2 === 1);
@@ -171,24 +128,9 @@ export default function SquareScreen() {
         ? ('chatted' as const)
         : ('new' as const);
 
-  const renderItem = (item: SquareItem, key: string) =>
-    item.type === 'char' ? (
-      <CharacterCard
-        key={key}
-        c={item.c}
-        status={statusOf(item.c)}
-        onPress={() => openCharacter(item.c)}
-      />
-    ) : (
-      <SquarePostCard
-        key={key}
-        p={item.p}
-        c={[...customs, ...CHARACTERS].find((c) => c.id === item.p.characterId)!}
-        onPress={() =>
-          openCharacter([...customs, ...CHARACTERS].find((c) => c.id === item.p.characterId)!)
-        }
-      />
-    );
+  const renderItem = (c: Character, key: string) => (
+    <CharacterCard key={key} c={c} status={statusOf(c)} onPress={() => openCharacter(c)} />
+  );
 
   return (
     <AppScreen title="缘分">
@@ -283,12 +225,6 @@ const styles = StyleSheet.create({
   teaserBadgeText: { fontSize: 10, color: '#D8CFE8' },
   postHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   postHeadText: { flex: 1 },
-  postName: { fontSize: 13, fontWeight: '600', color: Romance.ink },
-  postMeta: { fontSize: 10, color: Romance.faint },
-  postBody: { fontSize: 13, color: Romance.ink, lineHeight: 19, marginTop: 8 },
-  postFooter: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 },
-  postLikes: { fontSize: 11, color: Romance.faint, flex: 1 },
-  postGo: { fontSize: 11, color: Romance.accent, fontWeight: '600' },
   empty: { alignItems: 'center', paddingVertical: 60 },
   emptyText: { fontSize: 13, color: Romance.sub },
 });

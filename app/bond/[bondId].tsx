@@ -1,5 +1,5 @@
 /**
- * 羁绊会话：领回家之后的家。
+ * 羁绊会话：加好友之后的家。
  * 他主动、有作息；到点开门的消息在这里投递。会话顶部进「他的主页」。
  */
 
@@ -134,6 +134,7 @@ export default function BondScreen() {
         color={character.color}
         name={bond.name}
         characterId={character.id}
+        variant="line"
         typing={typing}
         onSend={onSend}
         placeholder={`和${bond.name}说点什么…`}

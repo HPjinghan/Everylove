@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { MingCute } from '@/components/mingcute';
 import { appById, DEFAULT_DESKTOP_ORDER, wallpaperById, type DesktopApp } from '@/constants/apps';
 import { Fonts, Romance } from '@/constants/theme';
 import { useAppStore, useHydrated } from '@/store/app-store';
@@ -55,8 +56,8 @@ function DesktopIcon({
   const rotate = wiggle.interpolate({ inputRange: [0, 1], outputRange: ['-2.2deg', '2.2deg'] });
   return (
     <Animated.View style={[styles.icon, editMode && { transform: [{ rotate }] }]}>
-      <View style={[styles.iconTile, { backgroundColor: app.tint }]}>
-        <Text style={styles.iconGlyph}>{app.glyph}</Text>
+      <View style={[styles.iconTile, { backgroundColor: app.bg }]}>
+        <MingCute name={app.icon} size={32} color={app.fg} />
         {unread > 0 ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text>
@@ -167,7 +168,9 @@ export default function Desktop() {
             onPress={() =>
               router.push({ pathname: '/bond/[bondId]', params: { bondId: topUnread.id } })
             }>
-            <Text style={styles.notifIcon}>💬</Text>
+            <View style={styles.notifIconWrap}>
+              <MingCute name="chat" size={20} color="#4BBF87" />
+            </View>
             <View style={styles.notifBody}>
               <Text style={styles.notifTitle}>{topUnread.name}</Text>
               <Text style={styles.notifText} numberOfLines={1}>
@@ -238,7 +241,14 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
   },
-  notifIcon: { fontSize: 22 },
+  notifIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 14,
+    backgroundColor: '#D9F5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   notifBody: { flex: 1 },
   notifTitle: { fontSize: 13, fontWeight: '700', color: Romance.ink },
   notifText: { fontSize: 12, color: Romance.sub, marginTop: 1 },
@@ -267,7 +277,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
-  iconGlyph: { fontSize: 32 },
   iconLabel: {
     fontSize: 12,
     color: Romance.ink,

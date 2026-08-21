@@ -231,3 +231,43 @@
   4. 生图 prompt 内容本就描述场景（D-015 构图不变），不受影响；改的是产品叙事层。
 - **推翻**：推翻 D-013「剧情语法送达（『给你讲个故事吧』→ 漫画在会话流里展开）」的送达包装；CLAUDE.md §6「一切显影由『他』以剧情语法送达」相应推翻（生成图部分）。「显影/漫画」术语在代码与文档中改称「画面」。
 - **影响文件**：`lib/imagegen.ts`、`content/prompts.ts`、`app/chat/[characterId].tsx`、`app/bond/[bondId].tsx`、`app/apps/album.tsx`、`app/apps/create.tsx`、`app/apps/settings.tsx`、`CLAUDE.md` §6/§13。
+
+## D-025 · 2026-08-21 · 捏＋大改版：基础五项 + 收起的高级选项（Harper 拍板）
+
+- **决策**：捏＋表单重构为两层——
+  - **基础**：名字、性别（男 / 女 / 非二元）、长相描述、背景故事、立绘生成（+ 主色）。原「原型选择」从基础区移除，由高级选项的恋爱类型承接（未选时兜底 gentle）。
+  - **高级选项（默认收起）**：种族（10 预设 + 自定义）、TA 的生日（进日历关系层与 prompt）、口癖、喜欢、讨厌、**确定关系的节奏**（聊几句后 TA 开口要联系方式：心动很快 2 / 标准 4 / 慢热 7，per-character `offerAfterTurns`）、**恋爱中的类型**（14 种，见下）、MBTI（16 选）、其他聊天设定（自由文本）、日常作息（自由文本，进亲密 prompt 时间感，用于生成 TA 的时间线）。
+- **恋爱类型库**（`content/characters.ts` LOVE_STYLES，每种 = 追法一句话 + 兜底脚本原型）：温柔年上、小狗系年下、姐姐系、依恋型、阳光直球、天然治愈、青梅竹马、毒舌竹马、傲娇、腹黑、病娇（尺度内——占有欲只进台词，行为健康底线系统层锁死）、高冷禁欲、霸总、冷静大人。
+- **prompt 接入**（`content/prompts.ts`）：新增 `characterProfileBlock()`（过往/种族/生日/喜欢/讨厌/MBTI/口癖/作息/额外设定 →【关于你】块，两模式共用）与 `pursuitLine()`（脚本追法 + 恋爱类型描述）；生图主体行带种族特征。非二元：`loveTag: 'nonbinary'`（只出现在推荐/自创流）、人称 TA、生图不标性别词。
+- **顺手修复**：兜底脚本（ARCHETYPE_DEFAULTS）此前直接展开沈之言/江野的台词——**自创角色开口会自称「沈之言/江野」**；已把 gentle/sharp 的 opening/bonded 全部去名字化、去身份化。自创角色的系统 prompt 不再附台词样本（那不是 TA 的声音），口吻由口癖/设定/追法定义。
+- **验证**：tsc / eslint / expo export 通过；满配自创角色（图书馆精·傲娇·INTJ·凌晨作息）三种 prompt 本地目检，【关于你】块、追法叠加、种族入画均正确。
+- **推翻**：捏＋的「原型 → 外观 → 称呼」三步结构（D-009 配套快捏形态）；其余不变。
+- **影响文件**：`app/apps/create.tsx`（重写）、`lib/types.ts`（Character 扩展 + loveTag/pronoun 扩枚举）、`content/characters.ts`（LOVE_STYLES/RACES/兜底去名字化）、`content/prompts.ts`（characterProfileBlock/pursuitLine/种族入画/自创无台词样本）、`app/chat/[characterId].tsx`（per-character 领养轮数）、`app/apps/calendar.tsx`（TA 的生日）、`CLAUDE.md`、`README.md`。
+
+## D-026 · 2026-08-21 · 桌面图标换 MingCute 图标库 + 糖果双色（Harper 指定图标库）
+
+- **决策**：桌面 App 图标从 emoji 换成 **MingCute**（https://github.com/mingcute-design/mingcute-icons，Apache-2.0）filled 风格：
+  - 实现：`components/mingcute.tsx` 只内嵌用到的图标 path 数据（24×24，react-native-svg 渲染，Expo Go 可用），不引第三方图标包；按需增删。
+  - 选用：Message=chat_3、朋友圈=flower_2、缘分=heart、通讯录=contacts_2、相册=photo_album、日历=calendar_2、捏＋=magic_hat、设置=settings_3（另备 sparkles_2/love）。
+  - 配色「可爱点」：每个图标 **tone-on-tone 糖果双色**——浅糖色瓷砖底 + 同色系深一档的图标本体（薄荷/长春花蓝/粉/蜜桃/丁香紫/珊瑚/湖水绿/雾灰蓝），奶油白描边与粉阴影保留（D-023）；未读横幅的 💬 同步换成 chat 图标。
+- **依赖**：新增 react-native-svg（Expo SDK 内置支持）。
+- **推翻**：D-023 的「emoji 换更软的一套」（emoji 方案整体退役）。
+- **影响文件**：`components/mingcute.tsx`（新）、`constants/apps.ts`（glyph/tint → icon/bg/fg）、`app/index.tsx`、`package.json`、`README.md`。
+
+## D-027 · 2026-08-21 · 模块边界收紧 + Message 模拟 LINE 样式（Harper 拍板）
+
+- **决策**：
+  1. **通讯录只有缔结契约的人**：移除「还没领回家的」区块——认识新的人是「缘分」的事，通讯录是家里的名单。
+  2. **缘分只有人物卡**：瀑布流不再混排角色公开动态帖（原 D-006 三种卡混排中的动态卡下线；名场面晒卡本就未实装）。
+  3. **朋友圈只有缔结契约的 TA 们的帖子**：未领养角色的公开帖不再出现（「关注」维度试装未实装，随之收窄为领养即关注）。
+  4. **Message 模拟 LINE 样式**：
+     - 聊天列表：白底通栏行 + 细分割线、54px 圆头像、右侧时间与**绿色未读角标**（LINE 绿 #06C755）、[照片] 预览。
+     - 羁绊会话（`ChatThread` 新增 `variant='line'`）：蓝灰聊天背景（#8CABD9）、收信白气泡、**发信浅绿气泡（#9CE769）深色文字**、气泡旁小字**时间与「已读」**（TA 回过话即视为已读——拟真回执）、系统消息深色半透明胶囊、白色输入栏 + 绿色发送键。缘分试聊保持原粉色样式（免费层与羁绊层的视觉分层）。
+- **推翻**：部分推翻 D-006/D-009 的广场三种卡混排（动态卡下线）；D-020「朋友圈=领养与关注角色的帖子流」的「关注」半边（试装收窄为仅领养）。
+- **影响文件**：`app/apps/contacts.tsx`、`app/apps/dating.tsx`、`app/apps/moments.tsx`、`app/apps/messages.tsx`、`components/chat-thread.tsx`（variant）、`app/bond/[bondId].tsx`。
+
+## D-028 · 2026-08-21 · 文案术语：「领回家」→「加好友」（Harper 拍板）
+
+- **决策**：界面与代码注释中的「领回家」统一改为「加好友」语系（通讯录空态「再和 TA 加好友」、朋友圈空态「和 TA 加好友，这里就会热闹起来」等）。与手机壳世界观一致：缔结契约在产品语言里呈现为交换联系方式、加上好友。
+- **不改**：DECISIONS 历史条目与 CLAUDE.md「已推翻」存档区按工作规则不改写；「领养」作为机制词（领养流/被领养数/领养快照制）暂保留，是否整体更名待 Harper 拍板（若要，触及 §3/§5/§8 多处口径）。
+- **影响文件**：`app/apps/contacts.tsx`、`app/apps/messages.tsx`、`app/apps/moments.tsx`、`app/bond/[bondId].tsx`。

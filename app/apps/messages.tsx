@@ -1,5 +1,6 @@
 /**
- * 消息：通讯录形态，全部是领回家的（广场搭话不入此 tab）。
+ * Message：模拟 LINE 的聊天列表（D-027）——白底通栏行、细分割线、右侧时间 + 绿色未读角标。
+ * 全部是加了好友的（缘分搭话不入这里）。
  */
 
 import { useRouter } from 'expo-router';
@@ -16,6 +17,7 @@ function preview(b: Bond): string {
   const last = b.messages[b.messages.length - 1];
   if (!last) return '……';
   if (last.kind === 'voice') return '▶ 语音消息';
+  if (last.kind === 'image') return '[照片]';
   if (last.kind === 'system') return last.text;
   return (last.from === 'me' ? '你：' : '') + last.text;
 }
@@ -54,7 +56,8 @@ export default function MessagesScreen() {
         <FlatList
           data={bonds}
           keyExtractor={(b) => b.id}
-          contentContainerStyle={styles.list}
+          style={styles.listBg}
+          ItemSeparatorComponent={() => <View style={styles.sep} />}
           renderItem={({ item }) => {
             const c = findCharacter(item.characterId);
             const pill = arrivalPill(item);
@@ -64,25 +67,21 @@ export default function MessagesScreen() {
                 onPress={() =>
                   router.push({ pathname: '/bond/[bondId]', params: { bondId: item.id } })
                 }>
-                <CharAvatar name={item.name} color={c?.color ?? Romance.accent} size={50} characterId={item.characterId} />
+                <CharAvatar name={item.name} color={c?.color ?? Romance.accent} size={54} characterId={item.characterId} />
                 <View style={styles.rowBody}>
-                  <View style={styles.rowTop}>
-                    <Text style={styles.rowName}>{item.name}</Text>
-                    <Text style={styles.rowTime}>{timeLabel(item)}</Text>
-                  </View>
-                  <View style={styles.rowBottom}>
-                    <Text style={styles.rowPreview} numberOfLines={1}>
-                      {preview(item)}
-                    </Text>
-                    {item.unread > 0 && (
-                      <View style={styles.unreadDot}>
-                        <Text style={styles.unreadText}>{item.unread}</Text>
-                      </View>
-                    )}
-                  </View>
-                  {pill && (
-                    <View style={styles.arrivalPill}>
-                      <Text style={styles.arrivalPillText}>{pill}</Text>
+                  <Text style={styles.rowName} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.rowPreview} numberOfLines={1}>
+                    {preview(item)}
+                  </Text>
+                  {pill && <Text style={styles.arrivalHint}>{pill}</Text>}
+                </View>
+                <View style={styles.rowRight}>
+                  <Text style={styles.rowTime}>{timeLabel(item)}</Text>
+                  {item.unread > 0 && (
+                    <View style={styles.unreadDot}>
+                      <Text style={styles.unreadText}>{item.unread > 99 ? '99+' : item.unread}</Text>
                     </View>
                   )}
                 </View>
@@ -96,59 +95,42 @@ export default function MessagesScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Romance.bg },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: Romance.ink,
-    paddingHorizontal: 18,
-    marginBottom: 8,
-  },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80 },
   emptyHeart: { fontSize: 48, color: Romance.accent, marginBottom: 12 },
   emptyText: { fontSize: 14, color: Romance.sub, textAlign: 'center', lineHeight: 22 },
   emptyBtn: {
     marginTop: 20,
-    backgroundColor: Romance.accent,
+    backgroundColor: '#06C755',
     paddingHorizontal: 24,
     paddingVertical: 10,
     borderRadius: 24,
   },
   emptyBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  list: { paddingHorizontal: 14 },
+  // LINE 式列表：白底通栏、细分割线
+  listBg: { backgroundColor: '#FFFFFF' },
+  sep: { height: StyleSheet.hairlineWidth, backgroundColor: '#ECEEF1', marginLeft: 82 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    padding: 12,
-    marginBottom: 8,
   },
   rowBody: { flex: 1 },
-  rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowName: { fontSize: 16, fontWeight: '600', color: Romance.ink },
-  rowTime: { fontSize: 11, color: Romance.faint },
-  rowBottom: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
-  rowPreview: { flex: 1, fontSize: 13, color: Romance.sub },
+  rowName: { fontSize: 16, fontWeight: '600', color: '#111111' },
+  rowPreview: { fontSize: 13, color: '#8E97A3', marginTop: 3 },
+  arrivalHint: { fontSize: 11, color: '#06C755', marginTop: 3, fontWeight: '500' },
+  rowRight: { alignItems: 'flex-end', gap: 5 },
+  rowTime: { fontSize: 11, color: '#B3BAC4' },
   unreadDot: {
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: Romance.accent,
+    minWidth: 19,
+    height: 19,
+    borderRadius: 10,
+    backgroundColor: '#06C755',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 5,
-    marginLeft: 8,
   },
-  unreadText: { fontSize: 11, color: '#fff', fontWeight: '600' },
-  arrivalPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: Romance.accentSoft,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginTop: 6,
-  },
-  arrivalPillText: { fontSize: 10, color: Romance.accent, fontWeight: '600' },
+  unreadText: { fontSize: 11, color: '#fff', fontWeight: '700' },
 });

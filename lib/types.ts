@@ -9,8 +9,10 @@ export interface Character {
   name: string;
   /** 追法家族（行为树原型层，捏＋兜底脚本用） */
   archetype: ArchetypeId;
-  /** 性向分类（onboarding 第一问 / 广场 chips 用） */
-  loveTag: 'male' | 'female' | 'nonhuman';
+  /** 性向分类（onboarding 第一问 / 广场 chips 用）；nonbinary 只出现在推荐/自创流里 */
+  loveTag: 'male' | 'female' | 'nonhuman' | 'nonbinary';
+  /** 性别（捏＋基础项，D-025）：male / female / nonbinary */
+  gender?: 'male' | 'female' | 'nonbinary';
   /** 卡片与主页上的风格标签（如「温柔御姐」「上古龙族」） */
   styleLabel?: string;
   /** 卡片上的一句话情境钩子 */
@@ -22,7 +24,30 @@ export interface Character {
   /** 外貌一句话（发型发色 / 眼睛 / 身形 / 常穿 / 气质），生图用；没有时回落 identity + styleLabel（D-018） */
   look?: string;
   /** 台词与生图 prompt 里指代 TA 用的人称；不填按 loveTag 推（male→他 / female→她 / 其他→TA） */
-  pronoun?: '他' | '她';
+  pronoun?: '他' | '她' | 'TA';
+  /* ── 捏＋扩展设定（D-025，全部可选；进对话/生图 prompt） ── */
+  /** 背景故事 */
+  story?: string;
+  /** 种族（人类/龙族/狐族/精灵…） */
+  race?: string;
+  /** TA 的生日 MM-DD（进日历关系层与亲密 prompt） */
+  birthday?: string;
+  /** 口癖 */
+  catchphrase?: string;
+  /** 喜欢的东西 */
+  likes?: string;
+  /** 讨厌的东西 */
+  dislikes?: string;
+  /** 恋爱中的类型（content/characters.ts 的 LOVE_STYLES label） */
+  loveStyle?: string;
+  /** MBTI（如 INFJ） */
+  mbti?: string;
+  /** 其他关于聊天的设定（自由文本，直接进 prompt） */
+  chatNotes?: string;
+  /** 日常作息（自由文本；进亲密 prompt 的时间感，用于生成 TA 的时间线） */
+  schedule?: string;
+  /** 聊几句后 TA 会想确定关系（默认 4，见 lib/engine ADOPTION_OFFER_AFTER_TURNS） */
+  offerAfterTurns?: number;
   tags: string[];
   adoptedCount: number;
   /** 主色（头像底、气泡强调） */

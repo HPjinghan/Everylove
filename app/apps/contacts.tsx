@@ -1,6 +1,6 @@
 /**
- * 通讯录（D-020）：领养列表 + 周边角色。
- * 试装：领养 = bonds（点进会话）；周边 = 未领养的种子/自创角色（点进试聊）。
+ * 通讯录（D-020/D-027）：只有缔结契约（领养）的人。
+ * 认识新的人去「缘分」；这里是家里的通讯录。
  */
 
 import { useRouter } from 'expo-router';
@@ -17,29 +17,15 @@ export default function ContactsScreen() {
   const bonds = useAppStore((s) => s.bonds);
   const customs = useAppStore((s) => s.customCharacters);
 
-  const bondedIds = new Set(bonds.map((b) => b.characterId));
-  const others = [...customs, ...CHARACTERS].filter((c) => !bondedIds.has(c.id) && !c.teaser);
-
   const sections = [
     {
-      title: `领回家的（${bonds.length}）`,
+      title: `缔结契约的（${bonds.length}）`,
       data: bonds.map((b) => ({
         key: b.id,
         characterId: b.characterId,
         name: b.name,
         sub: `♥ ${b.affinity}`,
         onPress: () => router.push({ pathname: '/bond/[bondId]', params: { bondId: b.id } }),
-      })),
-    },
-    {
-      title: `还没领回家的（${others.length}）`,
-      data: others.map((c) => ({
-        key: c.id,
-        characterId: c.id,
-        name: c.name,
-        sub: c.identity,
-        onPress: () =>
-          router.push({ pathname: '/chat/[characterId]', params: { characterId: c.id } }),
       })),
     },
   ].filter((s) => s.data.length > 0);
@@ -73,7 +59,7 @@ export default function ContactsScreen() {
           </Pressable>
         )}
         ListEmptyComponent={
-          <Text style={styles.empty}>还没有联系人。去「缘分」里认识一个吧。</Text>
+          <Text style={styles.empty}>还没有缔结契约的人。{'\n'}去「缘分」认识、聊到心动，再和 TA 加好友。</Text>
         }
       />
     </AppScreen>

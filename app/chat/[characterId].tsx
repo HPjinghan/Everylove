@@ -130,7 +130,7 @@ export default function SquareChatScreen() {
       after &&
       !after.adoptionOffered &&
       !darkSide &&
-      after.userTurns >= ADOPTION_OFFER_AFTER_TURNS
+      after.userTurns >= (character.offerAfterTurns ?? ADOPTION_OFFER_AFTER_TURNS)
     ) {
       const script = scriptFor(character);
       await wait(1100);

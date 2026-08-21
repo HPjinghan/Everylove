@@ -1,6 +1,6 @@
 /**
- * 动态：领养的和广场角色们的帖子流。「偷看」的家。
- * 领养后他会回你的评论；广场角色的帖子只能看和赞（免费层）。
+ * 朋友圈：只有缔结契约（领养）的 TA 们的帖子流（D-027）。「偷看」的家。
+ * TA 会回你的评论。想看更多人？先去「缘分」和 TA 加好友。
  */
 
 import { useState } from 'react';
@@ -45,7 +45,7 @@ function PostCard({ post }: { post: Post }) {
         <View style={styles.headText}>
           <Text style={styles.name}>{displayName}</Text>
           <Text style={styles.meta}>
-            {post.bondId ? '只有你能看到' : '广场动态'} · {timeAgo(post.at)}
+            {post.bondId ? '只有你能看到' : '加好友前的动态'} · {timeAgo(post.at)}
           </Text>
         </View>
       </View>
@@ -68,7 +68,7 @@ function PostCard({ post }: { post: Post }) {
           onPress={() => canComment && setCommentOpen((v) => !v)}>
           <IconSymbol name="bubble.right" size={16} color={Romance.faint} />
           <Text style={styles.actionText}>
-            {canComment ? post.comments.length || '评论' : '领养后 TA 会回你'}
+            {canComment ? post.comments.length || '评论' : '加好友前的动态，只能看看'}
           </Text>
         </Pressable>
       </View>
@@ -104,7 +104,12 @@ function PostCard({ post }: { post: Post }) {
 
 export default function FeedScreen() {
   const posts = useAppStore((s) => s.posts);
-  const sorted = [...posts].sort((a, b) => b.at - a.at);
+  const bonds = useAppStore((s) => s.bonds);
+  // 只看缔结契约的 TA（D-027）：领养后帖 + 这些角色的公开帖
+  const bondedCharIds = new Set(bonds.map((b) => b.characterId));
+  const sorted = posts
+    .filter((p) => bondedCharIds.has(p.characterId))
+    .sort((a, b) => b.at - a.at);
 
   return (
     <AppScreen title="朋友圈">
@@ -116,7 +121,9 @@ export default function FeedScreen() {
         renderItem={({ item }) => <PostCard post={item} />}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>还没有动态。先去广场认识一下他们。</Text>
+            <Text style={styles.emptyText}>
+              朋友圈还是空的。{'\n'}和 TA 加好友，这里就会热闹起来。
+            </Text>
           </View>
         }
       />

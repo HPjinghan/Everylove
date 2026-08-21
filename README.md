@@ -39,7 +39,7 @@
 
 ## 捏＋（自创角色）
 
-原型与性别 → 外貌文字 → 名字与钩子 → 立绘（可选，约 1 分钟，按外貌文字生成半身像）。有立绘的角色，之后每一格漫画都以立绘为参考图生成，长相与穿着保持一致。
+基础：名字 → 性别（男/女/非二元）→ 长相 → 背景故事 → 立绘（可选，约 1 分钟）。高级选项（收起）：种族、生日、口癖、喜欢/讨厌、确定关系的节奏、恋爱类型（14 种）、MBTI、聊天设定、日常作息——全部进对话与生图 prompt。有立绘的角色，之后每一格画面都以立绘为参考图生成，长相与穿着保持一致。
 
 ## 工程速览
 
@@ -57,3 +57,5 @@
 | `store/app-store.ts` | zustand + AsyncStorage：搭话记录（3 天过期）、羁绊、动态 |
 
 SDK 锁定 Expo 54，只做 iOS。新增设计决策必须当次写入 `docs/DECISIONS.md`（见 CLAUDE.md 工作规则）。
+
+图标：[MingCute](https://github.com/mingcute-design/mingcute-icons)（Apache-2.0，`components/mingcute.tsx` 内嵌所用 path）。
