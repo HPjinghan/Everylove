@@ -9,16 +9,16 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharAvatar } from '@/components/char-avatar';
-import { ChatThread } from '@/components/chat-thread';
+import { ChatThread, type ReplyRef } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ARCHETYPE_LABEL } from '@/content/characters';
-import { Romance } from '@/constants/theme';
+import { Romance, themed } from '@/constants/theme';
 import { generateReply } from '@/lib/engine';
-import { deliverComic } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
 import { daysTogether, uid } from '@/lib/format';
 import { arrivalTimeLabel } from '@/lib/notifications';
-import { affinityStage, findCharacter, useAppStore } from '@/store/app-store';
+import { levelInfo, XP_PER_MESSAGE } from '@/lib/bond';
+import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -42,13 +42,13 @@ export default function BondScreen() {
   const character = findCharacter(bond.characterId);
   if (!character) return <Redirect href="/apps/messages" />;
 
-  const onSend = async (text: string) => {
+  const onSend = async (text: string, replyTo?: ReplyRef) => {
     const { appendBond, markAwayNotified, engine, anthropicKey, qianfanKey } =
       useAppStore.getState();
     appendBond(
       bond.id,
-      [{ id: uid('m'), from: 'me', kind: 'text', text, at: Date.now() }],
-      { affinityDelta: 1 }
+      [{ id: uid('m'), from: 'me', kind: 'text', text, at: Date.now(), replyTo }],
+      { affinityDelta: XP_PER_MESSAGE }
     );
 
     // 他先走了就是真的走了：离席期不回复，只提示一次（D-012，会离开的才是人）
@@ -85,6 +85,7 @@ export default function BondScreen() {
           createdAt: bond.createdAt,
           memory: current?.memory,
         },
+        me: meForCharacter(character.id),
         history: current?.messages ?? [],
         userText: text,
       },
@@ -100,12 +101,8 @@ export default function BondScreen() {
         .appendBond(bond.id, [{ id: uid('m'), from: 'him', kind: 'text', text: t, at: Date.now() }]);
     }
 
-    // 亲密度每跨过一个 20 的整数级，出现一格你们此刻的画面（图=场景本身，D-024）
-    if (Math.floor((bond.affinity + 1) / 20) > Math.floor(bond.affinity / 20)) {
-      deliverComic(bond.id);
-    }
-
     // 记忆库后台更新：每隔几轮提取长期事实 + 滚动摘要，失败静默（D-016）
+    // （升级出画面已下线：聊天回归纯文本，D-037；升级系统提示仍在 store.appendBond）
     void updateBondMemory(bond.id);
   };
 
@@ -122,7 +119,7 @@ export default function BondScreen() {
           <View style={styles.headerText}>
             <Text style={styles.headerName}>{bond.name}</Text>
             <Text style={styles.headerSub}>
-              ♥ {bond.affinity} · {affinityStage(bond.affinity)}
+              羁绊 LV{levelInfo(bond.affinity).level} · {levelInfo(bond.affinity).name}
             </Text>
           </View>
           <IconSymbol name="chevron.right" size={14} color={Romance.faint} />
@@ -137,6 +134,22 @@ export default function BondScreen() {
         variant="line"
         typing={typing}
         onSend={onSend}
+        onSendImage={(uri) =>
+          useAppStore
+            .getState()
+            .appendBond(bond.id, [
+              { id: uid('m'), from: 'me', kind: 'image', text: '', imageUri: uri, at: Date.now() },
+            ])
+        }
+        onSendVoice={(uri, durationMs) =>
+          useAppStore
+            .getState()
+            .appendBond(bond.id, [
+              { id: uid('m'), from: 'me', kind: 'voice', text: '', audioUri: uri, durationMs, at: Date.now() },
+            ])
+        }
+        onRecall={(m) => useAppStore.getState().recallMessage({ bondId: bond.id }, m.id)}
+        onDelete={(m) => useAppStore.getState().deleteMessage({ bondId: bond.id }, m.id)}
         placeholder={`和${bond.name}说点什么…`}
         banner={
           arrivalPending ? (
@@ -166,8 +179,18 @@ export default function BondScreen() {
 
           <View style={styles.profileStats}>
             <View style={styles.stat}>
-              <Text style={styles.statNum}>{bond.affinity}</Text>
-              <Text style={styles.statLabel}>亲密度 · {affinityStage(bond.affinity)}</Text>
+              <Text style={styles.statNum}>LV{levelInfo(bond.affinity).level}</Text>
+              <Text style={styles.statLabel}>{levelInfo(bond.affinity).name}</Text>
+              <View style={styles.lvBarTrack}>
+                <View
+                  style={[styles.lvBarFill, { width: `${levelInfo(bond.affinity).ratio * 100}%` }]}
+                />
+              </View>
+              <Text style={styles.lvBarText}>
+                {levelInfo(bond.affinity).max
+                  ? 'MAX'
+                  : `${levelInfo(bond.affinity).gained}/${levelInfo(bond.affinity).need}`}
+              </Text>
             </View>
             <View style={styles.stat}>
               <Text style={styles.statNum}>{daysTogether(bond.createdAt)}</Text>
@@ -207,54 +230,66 @@ export default function BondScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Romance.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Romance.line,
-  },
-  headerMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerText: { flex: 1 },
-  headerName: { fontSize: 16, fontWeight: '600', color: Romance.ink },
-  headerSub: { fontSize: 11, color: Romance.accent },
-  banner: {
-    alignSelf: 'center',
-    backgroundColor: Romance.accentSoft,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  bannerText: { fontSize: 11, color: Romance.accent },
-  profile: { flex: 1, backgroundColor: Romance.bg, alignItems: 'center', paddingTop: 40 },
-  profileClose: { position: 'absolute', top: 16, right: 16, padding: 8 },
-  profileName: { fontSize: 24, fontWeight: '700', color: Romance.ink, marginTop: 14 },
-  profileIdentity: { fontSize: 13, color: Romance.sub, marginTop: 4 },
-  profileStats: { flexDirection: 'row', gap: 14, marginTop: 24 },
-  stat: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingHorizontal: 22,
-    paddingVertical: 14,
-    alignItems: 'center',
-    minWidth: 130,
-  },
-  statNum: { fontSize: 24, fontWeight: '700', color: Romance.accent },
-  statLabel: { fontSize: 11, color: Romance.sub, marginTop: 4 },
-  profileRows: { alignSelf: 'stretch', paddingHorizontal: 24, marginTop: 24, gap: 10 },
-  profileRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-  },
-  profileRowLabel: { fontSize: 13, color: Romance.sub },
-  profileRowValue: { fontSize: 13, color: Romance.ink, fontWeight: '500' },
-  profileRowValueDim: { fontSize: 13, color: Romance.faint },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: Romance.bg },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: Romance.line,
+    },
+    headerMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+    headerText: { flex: 1 },
+    headerName: { fontSize: 16, fontWeight: '600', color: Romance.ink },
+    headerSub: { fontSize: 11, color: Romance.accent },
+    banner: {
+      alignSelf: 'center',
+      backgroundColor: Romance.accentSoft,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    bannerText: { fontSize: 11, color: Romance.accent },
+    profile: { flex: 1, backgroundColor: Romance.bg, alignItems: 'center', paddingTop: 40 },
+    profileClose: { position: 'absolute', top: 16, right: 16, padding: 8 },
+    profileName: { fontSize: 24, fontWeight: '700', color: Romance.ink, marginTop: 14 },
+    profileIdentity: { fontSize: 13, color: Romance.sub, marginTop: 4 },
+    profileStats: { flexDirection: 'row', gap: 14, marginTop: 24 },
+    stat: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 20,
+      paddingHorizontal: 22,
+      paddingVertical: 14,
+      alignItems: 'center',
+      minWidth: 130,
+    },
+    statNum: { fontSize: 24, fontWeight: '700', color: Romance.accent },
+    lvBarTrack: {
+      width: 96,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: Romance.accentSoft,
+      marginTop: 8,
+      overflow: 'hidden',
+    },
+    lvBarFill: { height: '100%', borderRadius: 3, backgroundColor: Romance.accent },
+    lvBarText: { fontSize: 10, color: Romance.faint, marginTop: 4 },
+    statLabel: { fontSize: 11, color: Romance.sub, marginTop: 4 },
+    profileRows: { alignSelf: 'stretch', paddingHorizontal: 24, marginTop: 24, gap: 10 },
+    profileRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      backgroundColor: '#FFFFFF',
+      borderRadius: 18,
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+    },
+    profileRowLabel: { fontSize: 13, color: Romance.sub },
+    profileRowValue: { fontSize: 13, color: Romance.ink, fontWeight: '500' },
+    profileRowValueDim: { fontSize: 13, color: Romance.faint },
+  })
+);

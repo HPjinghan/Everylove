@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react';
 import { Dimensions, Modal, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
-import { Romance } from '@/constants/theme';
+import { Romance, themed } from '@/constants/theme';
 import { useAppStore } from '@/store/app-store';
 
 const COLS = 3;
@@ -106,21 +106,23 @@ export default function AlbumScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  list: { padding: 14, paddingBottom: 40 },
-  day: { fontSize: 13, fontWeight: '600', color: Romance.ink, marginTop: 12, marginBottom: 8 },
-  gridRow: { flexDirection: 'row', gap: GAP, marginBottom: GAP },
-  empty: { alignItems: 'center', marginTop: 90 },
-  emptyHeart: { fontSize: 40 },
-  emptyText: { textAlign: 'center', color: Romance.sub, fontSize: 13, lineHeight: 20, marginTop: 12 },
-  viewer: {
-    flex: 1,
-    backgroundColor: 'rgba(20,12,14,0.94)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 18,
-  },
-  viewerImg: { width: '100%', height: '70%' },
-  viewerMeta: { color: '#fff', fontSize: 13, marginTop: 14, opacity: 0.8 },
-  viewerCaption: { color: '#fff', fontSize: 13, marginTop: 6, textAlign: 'center', opacity: 0.9 },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    list: { padding: 14, paddingBottom: 40 },
+    day: { fontSize: 13, fontWeight: '600', color: Romance.ink, marginTop: 12, marginBottom: 8 },
+    gridRow: { flexDirection: 'row', gap: GAP, marginBottom: GAP },
+    empty: { alignItems: 'center', marginTop: 90 },
+    emptyHeart: { fontSize: 40 },
+    emptyText: { textAlign: 'center', color: Romance.sub, fontSize: 13, lineHeight: 20, marginTop: 12 },
+    viewer: {
+      flex: 1,
+      backgroundColor: 'rgba(20,12,14,0.94)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 18,
+    },
+    viewerImg: { width: '100%', height: '70%' },
+    viewerMeta: { color: '#fff', fontSize: 13, marginTop: 14, opacity: 0.8 },
+    viewerCaption: { color: '#fff', fontSize: 13, marginTop: 6, textAlign: 'center', opacity: 0.9 },
+  })
+);

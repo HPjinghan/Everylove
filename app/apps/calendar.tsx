@@ -22,7 +22,7 @@ import {
 import { AppScreen } from '@/components/app-screen';
 import { dateKey, holidayFor, parseDateKey } from '@/content/calendar';
 import { scriptFor } from '@/content/characters';
-import { Romance } from '@/constants/theme';
+import { Romance, themed } from '@/constants/theme';
 import { uid } from '@/lib/format';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -254,45 +254,47 @@ const LAYER_LABEL: Record<DayMark['layer'], string> = {
   him: 'TA 的',
 };
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  content: { padding: 14, paddingBottom: 40 },
-  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 26, marginBottom: 8 },
-  monthArrow: { fontSize: 26, color: Romance.accent, paddingHorizontal: 8 },
-  monthTitle: { fontSize: 17, fontWeight: '700', color: Romance.ink },
-  weekRow: { flexDirection: 'row' },
-  weekCell: { width: '14.28%', textAlign: 'center', fontSize: 12, color: Romance.sub, paddingVertical: 6 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  // 7 × (100/7)% 浮点合计会略超 100%，第 7 格被挤到下一行 → 周日列全空；用略小的固定值
-  dayCell: { width: '14.28%', alignItems: 'center', paddingVertical: 5 },
-  dayNum: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  dayToday: { backgroundColor: Romance.accentSoft },
-  daySelected: { backgroundColor: Romance.accent },
-  dayText: { fontSize: 14, color: Romance.ink },
-  dotRow: { flexDirection: 'row', gap: 3, height: 6, marginTop: 2 },
-  dot: { width: 5, height: 5, borderRadius: 3 },
-  detail: { backgroundColor: '#FFFFFF', borderRadius: 22, padding: 14, marginTop: 12 },
-  detailTitle: { fontSize: 14, fontWeight: '700', color: Romance.ink, marginBottom: 8 },
-  detailEmpty: { fontSize: 13, color: Romance.faint, marginBottom: 4 },
-  markRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 7 },
-  markText: { flex: 1, fontSize: 14, color: Romance.ink },
-  markLayer: { fontSize: 11, color: Romance.faint },
-  addRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  addInput: {
-    flex: 1,
-    backgroundColor: Romance.bg,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    fontSize: 14,
-    color: Romance.ink,
-  },
-  addBtn: {
-    backgroundColor: Romance.accent,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-  },
-  addBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  hint: { fontSize: 11, color: Romance.faint, marginTop: 10, lineHeight: 17 },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    content: { padding: 14, paddingBottom: 40 },
+    monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 26, marginBottom: 8 },
+    monthArrow: { fontSize: 26, color: Romance.accent, paddingHorizontal: 8 },
+    monthTitle: { fontSize: 17, fontWeight: '700', color: Romance.ink },
+    weekRow: { flexDirection: 'row' },
+    weekCell: { width: '14.28%', textAlign: 'center', fontSize: 12, color: Romance.sub, paddingVertical: 6 },
+    grid: { flexDirection: 'row', flexWrap: 'wrap' },
+    // 7 × (100/7)% 浮点合计会略超 100%，第 7 格被挤到下一行 → 周日列全空；用略小的固定值
+    dayCell: { width: '14.28%', alignItems: 'center', paddingVertical: 5 },
+    dayNum: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+    dayToday: { backgroundColor: Romance.accentSoft },
+    daySelected: { backgroundColor: Romance.accent },
+    dayText: { fontSize: 14, color: Romance.ink },
+    dotRow: { flexDirection: 'row', gap: 3, height: 6, marginTop: 2 },
+    dot: { width: 5, height: 5, borderRadius: 3 },
+    detail: { backgroundColor: '#FFFFFF', borderRadius: 22, padding: 14, marginTop: 12 },
+    detailTitle: { fontSize: 14, fontWeight: '700', color: Romance.ink, marginBottom: 8 },
+    detailEmpty: { fontSize: 13, color: Romance.faint, marginBottom: 4 },
+    markRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 7 },
+    markText: { flex: 1, fontSize: 14, color: Romance.ink },
+    markLayer: { fontSize: 11, color: Romance.faint },
+    addRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+    addInput: {
+      flex: 1,
+      backgroundColor: Romance.bg,
+      borderRadius: 16,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      fontSize: 14,
+      color: Romance.ink,
+    },
+    addBtn: {
+      backgroundColor: Romance.accent,
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      justifyContent: 'center',
+    },
+    addBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+    hint: { fontSize: 11, color: Romance.faint, marginTop: 10, lineHeight: 17 },
+  })
+);

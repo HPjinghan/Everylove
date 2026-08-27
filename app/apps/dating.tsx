@@ -1,230 +1,398 @@
 /**
- * 缘分（交友 App）：双列瀑布流，只有人物卡（D-027：不再混排动态帖）。即点即聊。
- * 搭话记录不入 Message、会过期——免费层的天花板是商业决策。
+ * 交友（D-040/D-041，原「广场」交友 App 更名）：Tinder 式滑卡。
+ * 左滑 = 略过（不是拉黑，冷却后回流牌堆）；右滑 = 心动——**TA 一定会同意**，
+ * 右滑即配对成功（无条件接纳你的世界，你的心动不会落空）。
+ * 牌堆顺序走推荐算法 lib/recommend.ts（口味/热度/新面孔/自创/每日轮换/略过冷却），
+ * 之后其他用户上传的角色进同一个池子、同一套打分（UGC 供给接口，D-041）。
+ * 配对后进入试聊（squareChats）：不入 Message、3 天不聊过期——免费层的天花板是商业决策。
+ * 「广场」这个名字让给了外出模块的陌生人地点（content/places.ts 的 plaza）。
  */
 
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Animated,
+  Dimensions,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { MingCute } from '@/components/mingcute';
 import { CHARACTERS } from '@/content/characters';
-import { Romance } from '@/constants/theme';
-import { adoptedCountLabel } from '@/lib/format';
+import { Romance, themed } from '@/constants/theme';
+import { heatLabel } from '@/lib/format';
+import { hasFreshSupply, rankDeck } from '@/lib/recommend';
 import type { Character } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
-const CHIPS = [
-  { key: 'all', label: '推荐' },
-  { key: 'male', label: '男生' },
-  { key: 'female', label: '女生' },
-  { key: 'nonhuman', label: '非人类' },
-  { key: 'custom', label: '自创' },
-] as const;
+const { width: SCREEN_W } = Dimensions.get('window');
+const CARD_W = SCREEN_W - 48;
 
-type ChipKey = (typeof CHIPS)[number]['key'];
-
-function CharacterCard({
-  c,
-  status,
-  onPress,
-}: {
-  c: Character;
-  status: 'adopted' | 'chatted' | 'new';
-  onPress: () => void;
-}) {
-  if (c.teaser) {
-    return (
-      <Pressable onPress={onPress} style={[styles.card, { backgroundColor: Romance.night }]}>
-        <View style={styles.teaserBadge}>
-          <Text style={styles.teaserBadgeText}>即将降临</Text>
-        </View>
-        <CharAvatar name={c.name} color={c.color} size={56} style={styles.cardAvatar} characterId={c.id} />
-        <Text style={[styles.cardName, { color: '#fff' }]}>{c.name}</Text>
-        <Text style={[styles.cardIdentity, { color: '#B8AECB' }]}>{c.identity}</Text>
-        <Text style={[styles.cardHook, { color: '#D8CFE8' }]}>「{c.hook}」</Text>
-      </Pressable>
-    );
-  }
+/** 卡面：立绘铺满（无立绘用角色色渐变 + 大首字），底部渐变叠名字/身份/钩子/热度 */
+function DeckCard({ c }: { c: Character }) {
+  const portrait = useAppStore((s) => s.portraits[c.id]);
   return (
-    <Pressable onPress={onPress} style={[styles.card, { backgroundColor: c.colorSoft }]}>
-      <CharAvatar name={c.name} color={c.color} size={56} style={styles.cardAvatar} characterId={c.id} />
-      <Text style={styles.cardName}>{c.name}</Text>
-      <Text style={styles.cardIdentity}>{c.identity}</Text>
-      <Text style={styles.cardHook}>「{c.hook}」</Text>
-      <View style={styles.tagRow}>
-        {c.tags.slice(0, 3).map((t) => (
-          <View key={t} style={styles.tag}>
-            <Text style={styles.tagText}>{t}</Text>
+    <View style={styles.cardImage}>
+      {portrait ? (
+        <Image source={{ uri: portrait }} style={styles.cardImageFill} contentFit="cover" />
+      ) : (
+        <LinearGradient colors={[c.colorSoft, c.color]} style={styles.cardImageFill}>
+          <View style={styles.placeholderCenter}>
+            <Text style={styles.placeholderLetter}>{c.name.slice(0, 1)}</Text>
           </View>
-        ))}
-      </View>
-      <View style={styles.cardFooter}>
-        <Text style={styles.adoptCount}>
-          {c.custom ? '你的创作' : adoptedCountLabel(c.adoptedCount)}
+        </LinearGradient>
+      )}
+      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={styles.cardOverlay}>
+        <Text style={styles.cardName}>{c.name}</Text>
+        <Text style={styles.cardIdentity} numberOfLines={1}>
+          {c.identity}
         </Text>
-        <View
-          style={[
-            styles.chatPill,
-            status === 'adopted' && { backgroundColor: Romance.gold },
-            status !== 'new' && status !== 'adopted' && { backgroundColor: c.color },
-          ]}>
-          <Text style={styles.chatPillText}>
-            {status === 'adopted' ? '去找他' : status === 'chatted' ? '继续聊' : '搭话'}
-          </Text>
+        <Text style={styles.cardHook} numberOfLines={1}>
+          {c.hook}
+        </Text>
+        <View style={styles.heatRow}>
+          <MingCute name="fire" size={13} color="#FF9A5C" />
+          <Text style={styles.heatText}>{heatLabel(c.adoptedCount)}</Text>
+          {c.custom ? <Text style={styles.mineTag}>你的创作</Text> : null}
         </View>
-      </View>
-    </Pressable>
+      </LinearGradient>
+    </View>
   );
 }
 
-export default function SquareScreen() {
+export default function DatingScreen() {
   const router = useRouter();
-  const [chip, setChip] = useState<ChipKey>('all');
   const customs = useAppStore((s) => s.customCharacters);
   const bonds = useAppStore((s) => s.bonds);
   const squareChats = useAppStore((s) => s.squareChats);
   const lovePref = useAppStore((s) => s.lovePref);
+  const datingPasses = useAppStore((s) => s.datingPasses);
 
-  const items = useMemo(() => {
-    const all = [...customs, ...CHARACTERS];
-    let chars =
-      chip === 'all'
-        ? all
-        : chip === 'custom'
-          ? customs
-          : all.filter((c) => c.loveTag === chip);
-    // 推荐流按 onboarding 口味置顶（火力女频先行，架构全性向）
-    if (chip === 'all' && lovePref && lovePref !== 'any') {
-      chars = [...chars].sort(
-        (a, b) => Number(b.loveTag === lovePref) - Number(a.loveTag === lovePref)
-      );
-    }
-    return chars;
-  }, [chip, customs, lovePref]);
+  const [swipedIds, setSwipedIds] = useState<string[]>([]);
+  const [match, setMatch] = useState<Character | null>(null);
+  const pan = useRef(new Animated.ValueXY()).current;
 
-  const colA = items.filter((_, i) => i % 2 === 0);
-  const colB = items.filter((_, i) => i % 2 === 1);
+  const bondedIds = useMemo(() => new Set(bonds.map((b) => b.characterId)), [bonds]);
 
-  const openCharacter = (c: Character) => {
-    const bond = bonds.find((b) => b.characterId === c.id);
-    if (bond) {
-      router.push({ pathname: '/bond/[bondId]', params: { bondId: bond.id } });
-      return;
+  // 牌堆：没加好友、没配对的（预告卡不进牌堆——右滑必成，配了要能聊）。
+  // 顺序走推荐算法（D-041）：口味 / 热度 / 新面孔 / 自创 / 每日轮换 / 略过冷却。
+  // 冷却只在供给充足时生效（D-042）：全池都被略过时忽略冷却直接回流，不用等 3 天。
+  const { deck, poolCount } = useMemo(() => {
+    const pool = [...customs, ...CHARACTERS].filter(
+      (c) => !c.teaser && !bondedIds.has(c.id) && !squareChats[c.id]
+    );
+    const available = pool.filter((c) => !swipedIds.includes(c.id));
+    const ample = hasFreshSupply(pool, datingPasses);
+    return {
+      deck: rankDeck(available, {
+        lovePref,
+        passes: ample ? datingPasses : {},
+        knownIds: new Set([...Object.keys(squareChats), ...bondedIds]),
+      }),
+      poolCount: pool.length,
+    };
+  }, [customs, bondedIds, squareChats, swipedIds, lovePref, datingPasses]);
+
+  // 全划完自动回流（D-042）：本次全滑过但池子还有人 → 重开一轮，不出空牌堆
+  useEffect(() => {
+    if (deck.length === 0 && poolCount > 0) setSwipedIds([]);
+  }, [deck.length, poolCount]);
+
+  const top = deck[0];
+  const next = deck[1];
+
+  // 配对列表：配过对、还没加好友的（3 天不聊会过期）
+  const matches = useMemo(
+    () =>
+      Object.values(squareChats)
+        .filter((chat) => !bondedIds.has(chat.characterId))
+        .sort((a, b) => b.lastActiveAt - a.lastActiveAt)
+        .map((chat) => [...customs, ...CHARACTERS].find((c) => c.id === chat.characterId))
+        .filter((c): c is Character => Boolean(c)),
+    [squareChats, bondedIds, customs]
+  );
+
+  const completeSwipe = (c: Character, liked: boolean) => {
+    pan.setValue({ x: 0, y: 0 });
+    setSwipedIds((prev) => [...prev, c.id]);
+    if (liked) {
+      // 右滑心动：TA 一定会同意——当场配对，等她去打招呼
+      useAppStore.getState().ensureSquareChat(c.id);
+      setMatch(c);
+    } else {
+      // 左滑略过：记进推荐算法的冷却项（不是拉黑，之后回流）
+      useAppStore.getState().markDatingPass(c.id);
     }
-    if (c.teaser) {
-      Alert.alert('他还未降临', '有什么东西正朝你走来。再等等。');
-      return;
-    }
+  };
+
+  const flyOut = (dir: 1 | -1) => {
+    if (!top) return;
+    Animated.timing(pan, {
+      toValue: { x: dir * SCREEN_W * 1.3, y: 40 },
+      duration: 240,
+      useNativeDriver: false,
+    }).start(() => completeSwipe(top, dir === 1));
+  };
+
+  const topId = top?.id;
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
+        onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
+          useNativeDriver: false,
+        }),
+        onPanResponderRelease: (_e, g) => {
+          if (Math.abs(g.dx) > 100) {
+            flyOut(g.dx >= 0 ? 1 : -1);
+          } else {
+            Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
+          }
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
+        },
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [topId]
+  );
+
+  const rotate = pan.x.interpolate({
+    inputRange: [-SCREEN_W, 0, SCREEN_W],
+    outputRange: ['-14deg', '0deg', '14deg'],
+  });
+  const likeStamp = pan.x.interpolate({
+    inputRange: [40, 120],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  const passStamp = pan.x.interpolate({
+    inputRange: [-120, -40],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  const sayHi = (c: Character) => {
+    setMatch(null);
     router.push({ pathname: '/chat/[characterId]', params: { characterId: c.id } });
   };
 
-  const statusOf = (c: Character) =>
-    bonds.some((b) => b.characterId === c.id)
-      ? ('adopted' as const)
-      : squareChats[c.id]?.messages.length
-        ? ('chatted' as const)
-        : ('new' as const);
-
-  const renderItem = (c: Character, key: string) => (
-    <CharacterCard key={key} c={c} status={statusOf(c)} onPress={() => openCharacter(c)} />
-  );
-
   return (
-    <AppScreen title="缘分">
-      <Text style={styles.subtitle}>这里人人都接你的话 · 匹配几天不聊会过期</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chipScroll}
-        contentContainerStyle={styles.chipRow}>
-        {CHIPS.map((c) => (
-          <Pressable
-            key={c.key}
-            onPress={() => setChip(c.key)}
-            style={[styles.chip, chip === c.key && styles.chipActive]}>
-            <Text style={[styles.chipText, chip === c.key && styles.chipTextActive]}>
-              {c.label}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-      <ScrollView contentContainerStyle={styles.feed} showsVerticalScrollIndicator={false}>
-        <View style={styles.columns}>
-          <View style={styles.column}>{colA.map((it, i) => renderItem(it, `a${i}`))}</View>
-          <View style={styles.column}>{colB.map((it, i) => renderItem(it, `b${i}`))}</View>
+    <AppScreen title="交友">
+      {/* 配对列表：滑到即配对；3 天不聊过期 */}
+      {matches.length > 0 && (
+        <View style={styles.matchesWrap}>
+          <Text style={styles.matchesTitle}>配对 · 3 天不聊会过期</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.matchesRow}>
+            {matches.map((c) => (
+              <Pressable
+                key={c.id}
+                style={styles.matchItem}
+                onPress={() => router.push({ pathname: '/chat/[characterId]', params: { characterId: c.id } })}>
+                <CharAvatar name={c.name} color={c.color} size={54} characterId={c.id} />
+                <Text style={styles.matchName} numberOfLines={1}>
+                  {c.name}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
         </View>
-        {items.length === 0 && (
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>这里还空着。去捏＋里创造第一个他吧。</Text>
+      )}
+
+      {/* 牌堆 */}
+      <View style={styles.deckArea}>
+        {top ? (
+          <>
+            {next ? (
+              <View style={[styles.card, styles.cardBehind]}>
+                <DeckCard c={next} />
+              </View>
+            ) : null}
+            <Animated.View
+              style={[
+                styles.card,
+                { transform: [...pan.getTranslateTransform(), { rotate }] },
+              ]}
+              {...panResponder.panHandlers}>
+              <DeckCard c={top} />
+              {/* 印章跟手浮现：右 = 心动（必成），左 = 略过 */}
+              <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeStamp }]}>
+                <Text style={styles.stampText}>心动 💘</Text>
+              </Animated.View>
+              <Animated.View style={[styles.stamp, styles.stampPass, { opacity: passStamp }]}>
+                <Text style={[styles.stampText, styles.stampPassText]}>略过</Text>
+              </Animated.View>
+            </Animated.View>
+          </>
+        ) : (
+          <View style={styles.emptyDeck}>
+            <Text style={styles.emptyEmoji}>🫧</Text>
+            <Text style={styles.emptyText}>这里的人都被你聊完了。</Text>
+            <Pressable style={styles.emptyBtn} onPress={() => router.push('/apps/create')}>
+              <Text style={styles.emptyBtnText}>去创造一个新的 TA</Text>
+            </Pressable>
           </View>
         )}
-      </ScrollView>
+      </View>
+
+      {top ? (
+        <View style={styles.footArea}>
+          <View style={styles.btnRow}>
+            <Pressable style={styles.passBtn} onPress={() => flyOut(-1)}>
+              <MingCute name="close" size={26} color={Romance.sub} />
+            </Pressable>
+            <Pressable style={styles.heartBtn} onPress={() => flyOut(1)}>
+              <MingCute name="heart" size={30} color="#FFFFFF" />
+            </Pressable>
+          </View>
+          <Text style={styles.footHint}>左滑略过 · 右滑心动——TA 一定会同意</Text>
+        </View>
+      ) : null}
+
+      {/* 配对成功 */}
+      {match ? (
+        <View style={styles.matchOverlay}>
+          <Text style={styles.matchBig}>配对成功</Text>
+          <CharAvatar name={match.name} color={match.color} size={96} characterId={match.id} />
+          <Text style={styles.matchCharName}>{match.name}</Text>
+          <Text style={styles.matchSub}>TA 同意了 · 在这个世界，你的心动不会落空</Text>
+          <Pressable style={styles.matchPrimary} onPress={() => sayHi(match)}>
+            <Text style={styles.matchPrimaryText}>去打招呼</Text>
+          </Pressable>
+          <Pressable style={styles.matchSecondary} onPress={() => setMatch(null)}>
+            <Text style={styles.matchSecondaryText}>继续滑</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </AppScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Romance.bg },
-  title: { fontSize: 28, fontWeight: '700', color: Romance.ink, paddingHorizontal: 18 },
-  subtitle: { fontSize: 13, color: Romance.sub, paddingHorizontal: 18, marginTop: 2 },
-  chipScroll: { flexGrow: 0, marginTop: 12 },
-  chipRow: { paddingHorizontal: 16, gap: 8 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-  },
-  chipActive: { backgroundColor: Romance.accent },
-  chipText: { fontSize: 13, color: Romance.sub },
-  chipTextActive: { color: '#FFFFFF', fontWeight: '600' },
-  feed: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 24 },
-  columns: { flexDirection: 'row', gap: 10 },
-  column: { flex: 1, gap: 10 },
-  card: {
-    borderRadius: 24,
-    padding: 14,
-  },
-  cardAvatar: { marginBottom: 10 },
-  cardName: { fontSize: 17, fontWeight: '700', color: Romance.ink },
-  cardIdentity: { fontSize: 11, color: Romance.sub, marginTop: 2 },
-  cardHook: { fontSize: 13, color: Romance.ink, lineHeight: 19, marginTop: 8 },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 10 },
-  tag: {
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  tagText: { fontSize: 10, color: Romance.sub },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 12,
-  },
-  adoptCount: { fontSize: 10, color: Romance.sub, flexShrink: 1 },
-  chatPill: {
-    backgroundColor: Romance.accent,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 18,
-  },
-  chatPillText: { fontSize: 12, color: '#FFFFFF', fontWeight: '600' },
-  teaserBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  teaserBadgeText: { fontSize: 10, color: '#D8CFE8' },
-  postHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  postHeadText: { flex: 1 },
-  empty: { alignItems: 'center', paddingVertical: 60 },
-  emptyText: { fontSize: 13, color: Romance.sub },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    matchesWrap: { paddingTop: 10 },
+    matchesTitle: {
+      fontSize: 11,
+      color: Romance.faint,
+      fontWeight: '600',
+      paddingHorizontal: 16,
+      marginBottom: 6,
+    },
+    matchesRow: { paddingHorizontal: 14, gap: 12 },
+    matchItem: { alignItems: 'center', width: 58 },
+    matchName: { fontSize: 10, color: Romance.sub, marginTop: 4, maxWidth: 58 },
+    deckArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    card: {
+      position: 'absolute',
+      width: CARD_W,
+      aspectRatio: 3 / 4,
+      borderRadius: 26,
+      backgroundColor: '#FFFFFF',
+      overflow: 'hidden',
+      shadowColor: '#B96A82',
+      shadowOpacity: 0.22,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 4,
+    },
+    cardBehind: { transform: [{ scale: 0.94 }, { translateY: 14 }] },
+    cardImage: { flex: 1, backgroundColor: Romance.accentSoft },
+    cardImageFill: { width: '100%', height: '100%' },
+    placeholderCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    placeholderLetter: { fontSize: 96, fontWeight: '700', color: 'rgba(255,255,255,0.9)' },
+    cardOverlay: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingHorizontal: 18,
+      paddingTop: 46,
+      paddingBottom: 16,
+    },
+    cardName: { fontSize: 26, fontWeight: '800', color: '#FFFFFF' },
+    cardIdentity: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 3 },
+    cardHook: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 8 },
+    heatRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+    heatText: { fontSize: 12, color: '#FF9A5C', fontWeight: '700' },
+    mineTag: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginLeft: 8 },
+    stamp: {
+      position: 'absolute',
+      top: 26,
+      backgroundColor: 'rgba(255,255,255,0.92)',
+      borderRadius: 16,
+      paddingHorizontal: 18,
+      paddingVertical: 8,
+    },
+    stampLike: { left: 18, transform: [{ rotate: '-8deg' }] },
+    stampPass: { right: 18, transform: [{ rotate: '8deg' }] },
+    stampText: { fontSize: 20, fontWeight: '800', color: Romance.accent },
+    stampPassText: { color: Romance.sub },
+    footArea: { alignItems: 'center', paddingBottom: 18, gap: 8 },
+    btnRow: { flexDirection: 'row', alignItems: 'center', gap: 26 },
+    passBtn: {
+      width: 54,
+      height: 54,
+      borderRadius: 27,
+      backgroundColor: '#FFFFFF',
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#3B2126',
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+    },
+    heartBtn: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: Romance.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: Romance.accent,
+      shadowOpacity: 0.4,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+    },
+    footHint: { fontSize: 11, color: Romance.faint },
+    emptyDeck: { alignItems: 'center', gap: 10, paddingHorizontal: 40 },
+    emptyEmoji: { fontSize: 44 },
+    emptyText: { fontSize: 14, color: Romance.sub, textAlign: 'center' },
+    emptyBtn: {
+      marginTop: 6,
+      backgroundColor: Romance.accent,
+      borderRadius: 20,
+      paddingHorizontal: 18,
+      paddingVertical: 11,
+    },
+    emptyBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+    matchOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(59,33,38,0.86)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingHorizontal: 40,
+    },
+    matchBig: { fontSize: 34, fontWeight: '800', color: '#FFFFFF', marginBottom: 10 },
+    matchCharName: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', marginTop: 4 },
+    matchSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)' },
+    matchPrimary: {
+      marginTop: 18,
+      backgroundColor: Romance.accent,
+      borderRadius: 24,
+      paddingHorizontal: 40,
+      paddingVertical: 14,
+    },
+    matchPrimaryText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+    matchSecondary: { padding: 10 },
+    matchSecondaryText: { color: 'rgba(255,255,255,0.8)', fontSize: 13 },
+  })
+);

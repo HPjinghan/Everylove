@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Romance } from '@/constants/theme';
+import { Romance, themed } from '@/constants/theme';
 
 /**
  * 手机壳内 App 的通用外框（D-021）：顶部返回桌面 + App 名。
@@ -39,19 +39,21 @@ export function AppScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Romance.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Romance.line,
-  },
-  back: { flexDirection: 'row', alignItems: 'center', width: 76 },
-  backText: { fontSize: 14, color: Romance.ink },
-  title: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '600', color: Romance.ink },
-  right: { width: 76, alignItems: 'flex-end' },
-  body: { flex: 1 },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: Romance.bg },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: Romance.line,
+    },
+    back: { flexDirection: 'row', alignItems: 'center', width: 76 },
+    backText: { fontSize: 14, color: Romance.ink },
+    title: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '600', color: Romance.ink },
+    right: { width: 76, alignItems: 'flex-end' },
+    body: { flex: 1 },
+  })
+);

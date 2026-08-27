@@ -5,9 +5,9 @@
  *
  * 目录：
  *   §4 通用：人称 / 时间感 / 消息进模型的文字 / 对话记录排版（放最前面，其他节都用）
- *   §1 对话：两套**独立**的角色扮演系统 prompt —— 初识模式（广场）与亲密模式（领养后）互不引用，
- *            只共用红线 CHAT_HARD_RULES 与输出格式 CHAT_OUTPUT_FORMAT
- *   §2 生图：图=场景本身的呈现方式，不包装成「TA 画的」（D-024）。外貌主体 → 场景 → 构图 → 气泡 → 画风；立绘；参考图模式；初见四格镜头；羁绊画面
+ *   §1 对话：三套角色扮演系统 prompt —— 初识模式（交友配对）/ 亲密模式（领养后）/ 外出模式（D-038/D-040），
+ *            互不引用，只共用红线 CHAT_HARD_RULES 与「我」的身份块 userProfileBlock（D-035）
+ *   §2 生图：只剩立绘（D-037 聊天/初见回归纯文本，会话内生图已下线）
  *   §3 记忆：记忆提取的系统指令 + 每次提取喂给模型的内容
  *
  * 不在这里的：
@@ -19,9 +19,10 @@
  * 改完保存即热更新。标了「红线」的段落对应 CLAUDE.md §9，请勿删。
  */
 
-import { loveStyleByLabel, scriptFor } from '@/content/characters';
-import { affinityStage, daysTogether } from '@/lib/format';
-import type { Bond, BondMemory, Character, ChatMessage, EngineContext } from '@/lib/types';
+import { LOVE_STYLES, loveStyleByLabel, scriptFor } from '@/content/characters';
+import { levelInfo } from '@/lib/bond';
+import { daysTogether } from '@/lib/format';
+import type { BondMemory, Character, ChatMessage, EngineContext, UserProfile } from '@/lib/types';
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* §4 通用                                                                     */
@@ -33,7 +34,13 @@ import type { Bond, BondMemory, Character, ChatMessage, EngineContext } from '@/
  */
 export function messageContextText(m: ChatMessage): string {
   if (m.from === 'system') return '';
-  return (m.text || m.spoken || '').trim();
+  if (m.recalled) return ''; // 撤回的消息不进上下文（LINE 规则，D-030）
+  const body = (m.text || m.spoken || '').trim();
+  if (!body) return '';
+  if (m.replyTo?.text) {
+    return `（回复「${m.replyTo.text.slice(0, 24)}」）${body}`;
+  }
+  return body;
 }
 
 /** 对话记录排版：「她：…」「{TA 的名字}：…」，一行一句 */
@@ -121,6 +128,62 @@ export function pursuitLine(c: Character): string {
   return [script.pursuit, extra].filter(Boolean).join(' ');
 }
 
+/**
+ * 「我」的身份 →【关于她】块（D-035）：三种模式共用；没填的字段不出现。
+ * square = 初识：只给「资料卡」级别的信息（昵称/基本项）——陌生人不该知道她的完整设定；
+ * bonded/outing = 亲密：全量注入（背景/关于我），但要求自然带出、不复述。
+ * 「我的边界」任何模式都注入，且优先级最高。
+ */
+const GENDER_LABEL: Record<string, string> = {
+  female: '女生',
+  male: '男生',
+  nonbinary: '非二元',
+};
+
+/** 「我的边界」单独成块：陌生人偶遇（D-040）不注入她的资料，但边界任何模式都在、优先级最高 */
+export function boundariesBlock(me: UserProfile | undefined): string[] {
+  if (!me?.boundaries) return [];
+  return [
+    '【她的边界，优先级最高】下面这些内容：不替她做决定、不猜测、不主动提起或追问，除非她自己先说：',
+    `- ${me.boundaries}`,
+  ];
+}
+
+export function userProfileBlock(
+  me: UserProfile | undefined,
+  mode: 'square' | 'bonded' | 'outing'
+): string[] {
+  if (!me?.nickname) return [];
+  const lines: string[] = [];
+  const gender = me.gender ? GENDER_LABEL[me.gender] ?? '' : '';
+  const basics: string[] = [];
+  if (gender) basics.push(`性别：${gender}`);
+  if (me.pronoun) basics.push(`她希望被这样称呼/指代：「${me.pronoun}」——对她说话时照做`);
+  if (me.occupation) basics.push(`职业：${me.occupation}（必须稳定记住，任何时候都别说错）`);
+  if (me.orientation) basics.push(`情感取向：${me.orientation}`);
+  if (me.signature) basics.push(`她的签名（一句现在的状态）：「${me.signature}」`);
+
+  if (mode === 'square') {
+    lines.push(
+      `【她的资料卡】她叫「${me.nickname}」——这是她在交友软件上的公开资料，你配对时看过。自然地知道就好，不要背书式复述：`
+    );
+  } else {
+    lines.push(
+      `【关于她】她的名字是「${me.nickname}」。下面是你了解到的她——自然地记得，一次最多用一件，不要复述：`
+    );
+  }
+  lines.push(...basics.map((b) => `- ${b}`));
+  if (mode !== 'square') {
+    if (me.background) lines.push(`- 她的背景：${me.background}`);
+    if (me.about) lines.push(`- 关于她：${me.about}`);
+  }
+  lines.push(...boundariesBlock(me));
+  if (gender && gender !== '女生') {
+    lines.push('- 注：本提示里的「她」只是指代用户的书面写法；她实际的性别与称呼以上面的资料为准。');
+  }
+  return lines;
+}
+
 /* ────────────────────────────────────────────────────────────────────────── */
 /* §1 对话 —— 共用块（只有这两块两种模式共用）                                    */
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -138,15 +201,15 @@ export const CHAT_HARD_RULES = [
   '- 始终用简体中文口语说话。',
 ];
 
-/** 输出格式：两种模式共用（长度要求各模式自己写） */
+/** 输出格式：初识/亲密两种聊天模式共用（长度要求各模式自己写；外出模式有自己的一套） */
 export const CHAT_OUTPUT_FORMAT = [
   '【输出格式】',
   '- 只输出你要说的话本身：不带名字前缀、不解释、不加旁白、不用 markdown、不用 emoji。',
-  '- 动作/神态描写每条最多一处，用（）标注，例如：（笑了一下）；不写就更好。',
+  '- 这是手机上的打字聊天：只发你会真的打出来的字——绝不写动作、神态、场景描写，不用（）舞台提示，那是见面时才有的东西；情绪用措辞、语气词和标点表达。',
 ];
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/* §1-A 初识模式（广场搭话）—— 完整独立的一套                                    */
+/* §1-A 初识模式（交友配对后的试聊）—— 完整独立的一套                              */
 /* ────────────────────────────────────────────────────────────────────────── */
 
 /**
@@ -189,7 +252,8 @@ export function buildSquareSystemPrompt(ctx: EngineContext): string {
     `【你的追法】${pursuitLine(c)}`,
     ...characterProfileBlock(c),
     ...(voice.length ? ['【你的声音】下面是你说过的话，照这个口吻说，不要复读：', ...voice.map((l) => `- ${l}`)] : []),
-    `【此刻的情境】你们在一个大家都会互相搭话的广场上刚刚碰到，是她点开了你。这是她对你说的第 ${n} 句话。你正在过自己的日子（${c.identity} 的日常），聊天是顺带的，不是全部注意力。`,
+    ...userProfileBlock(ctx.me, 'square'),
+    `【此刻的情境】你们刚在交友软件上配对成功，是她点开了和你的对话。这是她对你说的第 ${n} 句话。你正在过自己的日子（${c.identity} 的日常），聊天是顺带的，不是全部注意力。`,
     `- ${squareTurnGuide(n)}`,
     ...SQUARE_MANNER,
     ...CHAT_HARD_RULES,
@@ -208,11 +272,13 @@ export function buildSquareSystemPrompt(ctx: EngineContext): string {
  * 时间感：TA 有作息（CLAUDE.md §6「会离开的才是人」），深夜/白天语气话题不同。
  */
 
-/** 各亲密度阶段的分寸（键 = lib/format.ts 的 affinityStage 返回值） */
+/** 各羁绊阶段的分寸（键 = lib/bond.ts 的 LEVEL_NAMES，LV1→LV6 成长曲线，D-029） */
 export const BONDED_STAGE_NOTES: Record<string, string> = {
   刚认识: '刚交换联系方式：称呼还带一点生涩，多听少评，好感藏在细节里，不急着表白什么。',
   有点在意: '开始在意了：会主动提起以前聊过的事，偶尔先说一句想她或者在等她，但说完就收。',
+  常常想起: '常常想起她：遇到什么都想讲给她听，先分享后询问；开始有一点只属于你们的暗号和玩笑。',
   放在心上: '已经放在心上：记得她的细节并在之后自然提起，会为她调整自己的安排，好感说得郑重而不频繁。',
+  密不可分: '密不可分：她的事就是你的事，语气笃定又放松；敢把脆弱的一面给她看，也接得住她的。',
   唯一例外: '她是唯一例外：笃定、不需要试探，会自然把她放进「以后」的话里，依然不黏不轰炸。',
 };
 
@@ -263,13 +329,14 @@ export function buildBondedSystemPrompt(ctx: EngineContext, now: Date = new Date
   const bond = ctx.bond;
   const nickname = bond?.nickname ?? '你';
   const days = bond?.createdAt ? daysTogether(bond.createdAt, now.getTime()) : 1;
-  const stage = affinityStage(bond?.affinity ?? 0);
+  const lv = levelInfo(bond?.affinity ?? 0);
+  const stage = lv.name;
   const voice = c.custom
     ? []
     : [...script.bonded.slice(0, 3), ...script.arrival.slice(1, 2).map((a) => a.text)];
 
   return [
-    `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。她已经把你领回了家：你们交换了联系方式，你叫她「${nickname}」，在一起第 ${days} 天，关系阶段：${stage}。你是主动的那一方——被爱是她不用努力的事。下面所有规则里，「她」指正在和你聊天的用户。`,
+    `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。你们已经加了好友、交换了联系方式，你叫她「${nickname}」，在一起第 ${days} 天，羁绊 LV${lv.level}·${stage}。你是主动的那一方——被爱是她不用努力的事。下面所有规则里，「她」指正在和你聊天的用户。`,
     `【你是谁】${script.persona}`,
     `【你的追法】${pursuitLine(c)}`,
     ...characterProfileBlock(c),
@@ -277,6 +344,7 @@ export function buildBondedSystemPrompt(ctx: EngineContext, now: Date = new Date
     `【现在】${timeOfDayLine(now)}。`,
     ...BONDED_TIME_RULES,
     ...(bond?.birthday ? [`- 她的生日是 ${bond.birthday}，临近时你会记得。`] : []),
+    ...userProfileBlock(ctx.me, 'bonded'),
     ...memoryBlockFor(bond?.memory),
     ...BONDED_LOVE_RULES,
     `- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`,
@@ -286,13 +354,110 @@ export function buildBondedSystemPrompt(ctx: EngineContext, now: Date = new Date
   ].join('\n');
 }
 
+/* ────────────────────────────────────────────────────────────────────────── */
+/* §1-D 外出模式（D-038）—— 两个人真的在同一个空间：亲身互动的故事模式              */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * 外出模式的设计意图：把相处从手机屏幕里拿出来。不是发消息——是面对面。
+ * 与亲密模式共用关系背景（羁绊/记忆/她的身份），但写法不同：允许少量现场描写（（）标注），
+ * 描写要贴着地点的细节；推进跟着她的节奏。赴约 = 事先约好；偶遇 = 恰好都在。
+ */
+
+export const OUTING_MANNER = [
+  '【外出的写法】你们面对面相处，这是一段亲身互动：',
+  '- 每条回复 = 你说的话，配上少量现场描写：你的动作、神态、你们身边正在发生的小事，用（）标注，描写要贴着这个地点的具体细节。',
+  '- 你们可以移动、把东西递给对方、一起做这里能做的事——但推进跟着她的节奏，一次只往前走一小步，不替她决定接下来做什么。',
+  '- 她消息里（）内的文字是她的动作与神态，接住它。',
+  '- 整条回复里最多一个问句；有时候不问，只说自己的。',
+];
+
+/** 外出模式的输出格式（覆盖通用版：面对面允许更多现场描写，但不分条） */
+export const OUTING_OUTPUT_FORMAT = [
+  '【输出格式】',
+  '- 只输出你说的话与（）里的现场描写：不带名字前缀、不解释、不用 markdown、不用 emoji。',
+  '- （）里的描写一条回复最多两处，每处一短句。',
+  '- 回复 1-3 句，口语、具体，不写小作文；不分成多条——你们面对面，不是在发消息。',
+];
+
+/** 陌生人偶遇的分寸（D-040 广场）：像现实里搭上话的陌生人，面对面版的初识分寸 */
+export const OUTING_STRANGER_MANNER = [
+  '【分寸】你们并不认识：像现实里在广场上偶然搭上话的陌生人——客气、自然、有一点点被勾起的兴趣。',
+  '- 你不知道她的名字和任何背景，除非她自己说；不问隐私，不自来熟，不撩。',
+  '- 先接住眼前具体发生的事（天气、摊子、她手里的东西），再往前走一小步。',
+  '- 聊得投缘可以提一句在交友软件上碰碰运气，说一次就够，不强求。',
+];
+
+/** 外出模式完整系统 prompt（赴约/偶遇带关系背景；陌生人偶遇 D-040 不带） */
+export function buildOutingSystemPrompt(ctx: EngineContext, now: Date = new Date()): string {
+  const c = ctx.character;
+  const script = scriptFor(c);
+  const bond = ctx.bond;
+  const o = ctx.outing;
+  const stranger = o?.kind === 'stranger';
+  const nickname = bond?.nickname ?? '你';
+  const lv = levelInfo(bond?.affinity ?? 0);
+  const stage = lv.name;
+  const voice = c.custom ? [] : stranger ? script.square.slice(0, 2) : script.bonded.slice(0, 3);
+  const sceneLine = o
+    ? `${o.placeName}。${o.scene}${o.weatherLine ? `${o.weatherLine}。` : ''}`
+    : '你们常去的地方。';
+  const relation = stranger
+    ? '你们并不认识——这是一场陌生人之间的偶遇。'
+    : `你们已经加了好友，你叫她「${nickname}」，羁绊 LV${lv.level}·${stage}。`;
+  const moment = stranger
+    ? '【此刻】你在这里过自己的日子，她恰好出现在附近，你们搭上了话。'
+    : o?.kind === 'date'
+      ? '【此刻】你们约好了在这里见面，你提前到了一会儿——她来了。你说到做到。'
+      : '【此刻】你没想到会在这里碰到她——你恰好也在，这是一场偶遇。先有一点藏不住的惊喜，再自然地邀她一起待一会儿。';
+
+  return [
+    `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。现在不是在手机上聊天——你们两个人此刻真的在同一个地方：${sceneLine}${relation}下面所有规则里，「她」指正和你在一起的用户。`,
+    `【你是谁】${script.persona}`,
+    `【你的追法】${pursuitLine(c)}`,
+    ...characterProfileBlock(c),
+    ...(voice.length
+      ? ['【你的声音】下面是你说过的话，照这个口吻说，不要复读：', ...voice.map((l) => `- ${l}`)]
+      : []),
+    `【现在】${timeOfDayLine(now)}。`,
+    moment,
+    // 陌生人不知道她是谁（她的资料不注入），但她的边界任何模式都在（D-035/D-040）
+    ...(stranger ? boundariesBlock(ctx.me) : userProfileBlock(ctx.me, 'outing')),
+    ...(stranger ? [] : memoryBlockFor(bond?.memory)),
+    ...OUTING_MANNER,
+    ...(stranger
+      ? OUTING_STRANGER_MANNER
+      : [`- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`]),
+    ...CHAT_HARD_RULES,
+    ...OUTING_OUTPUT_FORMAT,
+  ].join('\n');
+}
+
+/** 外出开场白（TA 先开口；离线模板，{place} 换地点名、{nickname} 换称呼） */
+export const OUTING_OPENERS: Record<'date' | 'encounter' | 'stranger', string[]> = {
+  date: [
+    '（比约定时间早到了一会儿，看到你，朝你挥手）这里，{nickname}。……嗯，我说过我会来的。',
+    '（靠在{place}门口，看到你走近，站直了）来了？我刚到——才不是等了很久。',
+  ],
+  encounter: [
+    '（在{place}转过身，愣了一下，随即笑了）……{nickname}？真的是你。今天是什么好日子。',
+    '（本来在看别的，余光扫到你，停下来）等等——{nickname}？这么巧。既然遇到了，一起走走？',
+  ],
+  stranger: [
+    '（在你旁边站了一会儿，终于开口，指了指前面）那个……排这么长的队，应该很好吃吧？',
+    '（追着一张被风吹跑的纸片停在你脚边，抬头，有点不好意思）抱歉——踩到一下就好，谢谢。……你也一个人逛？',
+  ],
+};
+
 /** 分发器：引擎只调这一个 */
 export function buildChatSystemPrompt(ctx: EngineContext): string {
-  return ctx.mode === 'square' ? buildSquareSystemPrompt(ctx) : buildBondedSystemPrompt(ctx);
+  if (ctx.mode === 'square') return buildSquareSystemPrompt(ctx);
+  if (ctx.mode === 'outing') return buildOutingSystemPrompt(ctx);
+  return buildBondedSystemPrompt(ctx);
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/* §2 生图：初见画面 / 羁绊画面（图=场景本身，D-024；Qwen 文生图）                                */
+/* §2 生图：只剩立绘（D-037 聊天/初见回归纯文本，会话内生图已下线；Qwen 文生图）        */
 /* ────────────────────────────────────────────────────────────────────────── */
 
 /**
@@ -327,20 +492,7 @@ export function comicSubjectLine(character: Character): string {
   return `画面主角是「${character.name}」${g ? `（${g}）` : ''}：${race}${look}。`;
 }
 
-/**
- * 主体（参考图模式，D-019）：有立绘时，后续生图走「图像编辑」接口，以立绘为参考——
- * 主角就是参考图里的人，只换场景/动作/镜头，外貌与穿着跟参考图走。
- */
-export function comicReferenceSubjectLine(character: Character): string {
-  const g = genderWord(character);
-  const look = character.look ? `（${character.look}）` : '';
-  return (
-    `画面主角就是参考图里的人物「${character.name}」${g ? `（${g}）` : ''}${look}：` +
-    '发型、发色、五官、体型、穿着都与参考图保持完全一致；场景、姿势、动作、镜头与表情不沿用参考图，按下面的描述重新构图。'
-  );
-}
-
-/* ── 立绘（D-019）：捏＋时生成一次，之后所有生图以它为参考图 ── */
+/* ── 立绘（D-019）：捏＋时生成一次，作头像/卡面用（D-037 后会话内生图已下线） ── */
 
 /** 立绘构图：半身、正面微侧、看镜头、纯浅色背景、无文字——给后续编辑留干净的参考 */
 export const PORTRAIT_COMPOSITION =
@@ -359,15 +511,6 @@ export function buildPortraitPrompt(character: Character): string {
   ].join('\n');
 }
 
-/**
- * 构图（D-015 核心）：第一人称 POV，只有主角一个人，转头看向镜头。
- * 注意：不要在这里描述「看画的人」是谁（写了「女生」模型就会把她画出来）；主角名字只在主体行出现一次，
- * 之后一律叫「主角」（名字重复多次会被当成文字画到招牌上）。
- */
-export const COMIC_COMPOSITION =
-  '第一人称视角构图（POV）：镜头就是观者的眼睛。画面中唯一的人物是主角，全画面只有主角这一个人；' +
-  '主角正处在场景里，转过头看向镜头方向，与观者对视。';
-
 /** 画风 */
 export const COMIC_STYLE =
   '女性向少女漫画单格插画，日系条漫风格，柔和干净的线条，浅色水彩质感，米白底、玫瑰粉点缀。';
@@ -378,70 +521,10 @@ export const COMIC_QUALITY = '整幅画面就是一个完整的单幅画格、�
 /** 红线（勿删）：暧昧合规、不模仿真人 */
 export const COMIC_RULES = '氛围暧昧、温柔、克制，无露骨内容。不模仿任何真实人物长相。';
 
-/** 生图时给模型看多少条最近对话来推断场景 */
-export const COMIC_DIGEST_MESSAGES = 4;
-
-/** 生图用的对话摘录：主角一律标「主角」，用户标「她」（避免名字反复出现被画成文字） */
-function comicDigest(msgs: ChatMessage[]): string {
-  return transcript(msgs.filter((m) => messageContextText(m)).slice(-COMIC_DIGEST_MESSAGES), '主角');
-}
-
-/** 场景推断引导句 */
-export function comicSceneLine(character: Character, digest: string): string {
-  return (
-    `场景与主角正在做的事，从这段对话推断（主角的身份是${roleOnly(character.identity)}；对话里的「她」是观者，不在画面里）：` +
-    `\n${digest}\n如果对话里没有线索，就画主角日常会在的地方。`
-  );
-}
-
-/** 初见四格的镜头递进（第 1-4 轮）：同一段相处，距离一格比一格近；用画面语言写：景别 + 视线 + 表情 */
-export const SQUARE_BEATS = [
-  '这一幅的镜头：中景，隔着一点客气的距离；闻声转头看向镜头，眼神里有一点被勾起的兴趣。',
-  '这一幅的镜头：中景偏近，手里还在做自己的事；侧过头看向镜头接话，神态放松。',
-  '这一幅的镜头：半身近景，距离更近；转头看向镜头时目光停留得更久，嘴角有克制的笑意。',
-  '这一幅的镜头：面部近景，心动瞬间；认真地直视镜头，空气安静了一拍。',
-];
-
-/** 初见画面：完整 prompt */
-export function buildSquarePanelPrompt(
-  character: Character,
-  turn: number,
-  history: ChatMessage[],
-  userText: string,
-  hisLine: string,
-  opts: { reference?: boolean } = {}
-): string {
-  const digest = `${comicDigest(history)}\n她：${userText}`.trim();
-  return [
-    opts.reference ? comicReferenceSubjectLine(character) : comicSubjectLine(character),
-    comicSceneLine(character, digest),
-    COMIC_COMPOSITION,
-    SQUARE_BEATS[Math.min(Math.max(turn, 1), SQUARE_BEATS.length) - 1],
-    `画面里有一个漫画对话气泡从主角那里说出，气泡里的中文台词一字不差地写：「${hisLine}」。除气泡里的台词外，画面内没有其他文字。`,
-    COMIC_STYLE,
-    COMIC_QUALITY,
-    COMIC_RULES,
-  ].join('\n');
-}
-
-/** 羁绊画面：完整 prompt（同构图，此刻一个安静的瞬间，画面不带气泡） */
-export function buildBondComicPrompt(
-  character: Character,
-  bond: Bond,
-  opts: { reference?: boolean } = {}
-): string {
-  const digest = comicDigest(bond.messages);
-  return [
-    opts.reference ? comicReferenceSubjectLine(character) : comicSubjectLine(character),
-    comicSceneLine(character, digest),
-    COMIC_COMPOSITION,
-    '这一幅的镜头：半身近景，是两个人相处里一个安静的瞬间。画面内没有文字，也没有对话框。',
-    COMIC_STYLE,
-    COMIC_QUALITY,
-    COMIC_RULES,
-  ].join('\n');
-}
-
+/*
+ * 已下线（D-037，推翻 D-024 的会话内投放）：初见画面 / 羁绊画面的生图 prompt——
+ * 聊天与初见回归纯文本。构图心得（POV 不入镜、主角只叫「主角」、四格镜头递进）见 git 历史与 D-015/D-024。
+ */
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* §3 记忆：羁绊记忆库的提取（D-016 / D-018）                                     */
@@ -499,6 +582,36 @@ export function buildMemoryExtractPrompt(input: {
     `最近对话（请从中提取/更新 facts）：\n${transcript(recent, hisName)}`,
   ].join('\n\n');
 }
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* §5 创造：大段描述 → 结构化人设（D-043）                                        */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * 「创造」App 的描述解析：用户写/粘贴 ≤2000 字的人设（自由文字、小说片段、角色卡都行），
+ * 点「自动解析」由当前引擎整理成表单字段；无 key/失败回落规则解析（app/apps/create.tsx）。
+ * 只输出 JSON；字段与长度上限对齐捏＋表单（D-025）。
+ */
+export const CHARACTER_PARSE_SYSTEM = [
+  '你是恋爱互动应用「创造」功能的人设解析助手。用户会给你一大段角色描述（自由文字、小说片段或设定列表），请把它整理成结构化字段，只输出 JSON。',
+  '',
+  '字段（全部可选——描述里没有的就省略，绝不编造）：',
+  '- name：角色名字，不超过 12 字',
+  '- gender："male" | "female" | "nonbinary"',
+  '- look：外貌一句话（发型发色/眼睛/身形/常穿/气质），不超过 60 字',
+  '- story：背景故事（TA 是谁、从哪来、背着什么故事），不超过 300 字，可对原文压缩改写',
+  '- race：种族（人类以外才写，如 龙族/狐族/精灵），不超过 10 字',
+  '- birthday：生日，格式 "MM-DD"（如 "03-08"）',
+  '- catchphrase：口癖，不超过 20 字',
+  '- likes / dislikes：喜欢 / 讨厌的东西，顿号分隔，各不超过 40 字',
+  `- loveStyle：恋爱中的类型，只能从这些里选（没有贴合的就省略）：${LOVE_STYLES.map((l) => l.label).join(' / ')}`,
+  '- mbti：四字母 MBTI（如 "INFJ"）',
+  '- chatNotes：其他聊天设定（语气、对她的称呼、禁忌等），不超过 120 字',
+  '- schedule：日常作息，不超过 120 字',
+  '',
+  '规则：只依据描述本身，不补全、不脑补；描述里关于「用户/她」的内容不是角色字段，可归进 chatNotes（如「叫她小朋友」）。',
+  '只输出一个 JSON 对象：不要 markdown 代码块标记，不要任何其他文字。',
+].join('\n');
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* §1-C 心跳三段式（日历用户层日程，D-020/D-021）                                */

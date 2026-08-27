@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { useAppStore } from '@/store/app-store';
+import { themed } from '@/constants/theme';
 
 /**
  * 角色头像：有立绘（D-019，生成后存本机）就显示立绘；没有则主色圆底 + 名字首字
@@ -46,14 +47,16 @@ export function CharAvatar({
   );
 }
 
-const styles = StyleSheet.create({
-  circle: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  letter: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    circle: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    letter: {
+      color: '#FFFFFF',
+      fontWeight: '600',
+    },
+  })
+);

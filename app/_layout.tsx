@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import 'react-native-reanimated';
 
-import { Romance } from '@/constants/theme';
+import { applyThemeColors, Romance } from '@/constants/theme';
 import { deliverAndSyncArrivals } from '@/lib/arrivals';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import '@/lib/notifications';
@@ -19,20 +19,22 @@ export const unstable_settings = {
   anchor: 'index',
 };
 
-const theme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: Romance.bg,
-    primary: Romance.accent,
-    card: Romance.bg,
-    text: Romance.ink,
-  },
-};
-
 export default function RootLayout() {
   const router = useRouter();
   const hydrated = useHydrated();
+  // 主题（D-030）：水合即应用；切换时导航主题按新 Romance 重建，key 重挂载全树让 themed() 样式生效
+  const themeId = useAppStore((s) => s.themeId);
+  if (hydrated) applyThemeColors(themeId);
+  const theme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: Romance.bg,
+      primary: Romance.accent,
+      card: Romance.bg,
+      text: Romance.ink,
+    },
+  };
   // 首帧时导航树还没挂载，命令式跳转会崩；等 key 出现才可跳转
   const navReady = Boolean(useRootNavigationState()?.key);
 
@@ -76,13 +78,14 @@ export default function RootLayout() {
   }, [navReady]);
 
   return (
-    <ThemeProvider value={theme}>
+    <ThemeProvider key={themeId} value={theme}>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Romance.bg } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="chat/[characterId]" />
         <Stack.Screen name="adopt/[characterId]" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="bond/[bondId]" />
+        <Stack.Screen name="outing/[placeId]" />
       </Stack>
       <StatusBar style="dark" />
     </ThemeProvider>

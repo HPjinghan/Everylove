@@ -1,6 +1,6 @@
 /**
  * 全局状态：zustand + AsyncStorage 持久化。
- * - squareChats：广场搭话记录（3 天过期，免费层商业承重墙）
+ * - squareChats：交友配对记录（滑到即配对 D-040；3 天不聊过期，免费层商业承重墙）
  * - bonds：羁绊，个体层独立状态机（亲密度 / 记忆 / 开门排程）
  * - posts：动态流（广场公开帖 + 领养后物化帖）
  */
@@ -13,7 +13,11 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { bondedPostsFor, CHARACTERS, scriptFor, SQUARE_POSTS } from '@/content/characters';
 import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY } from '@/lib/engine';
 import { uid } from '@/lib/format';
+import { applyThemeColors } from '@/constants/theme';
+import { bondLevel, levelLabel } from '@/lib/bond';
 import { arrivalTimeLabel, nextEightPM } from '@/lib/notifications';
+import { DEFAULT_DOCK } from '@/constants/apps';
+import { placeById } from '@/content/places';
 import type {
   Bond,
   BondMemory,
@@ -22,8 +26,11 @@ import type {
   ChatMessage,
   EngineId,
   LovePref,
+  OutingPlan,
+  OutingSession,
   Post,
   SquareChat,
+  UserProfile,
 } from '@/lib/types';
 
 /** 搭话记录过期时长：3 天（免费层天花板是商业决策，不是产品缺陷） */
@@ -32,6 +39,10 @@ export const SQUARE_CHAT_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 interface AppState {
   onboarded: boolean;
   lovePref?: LovePref;
+  /** 「我」的默认身份（D-035）：onboarding 时建立，设置 → 我的身份 里补充 */
+  me?: UserProfile;
+  /** 为单个角色定制的身份（按角色 id；没有的角色用默认身份） */
+  meByCharacter: Record<string, UserProfile>;
   firstOpenAt: number;
   squareChats: Record<string, SquareChat>;
   bonds: Bond[];
@@ -39,23 +50,40 @@ interface AppState {
   posts: Post[];
   /** 角色立绘（本机文件 URI），按角色 id；作为后续所有生图的参考图（D-019） */
   portraits: Record<string, string>;
-  /** 手机壳桌面（D-020/D-021）：图标顺序（长按拖动后持久化）与壁纸 id */
+  /** 手机壳桌面（D-020/D-021）：图标顺序（旧模型，作迁移源保留）与壁纸 id */
   desktopOrder: string[];
+  /** 桌面自由格位（D-034）：appId → 格位序号（行优先），允许留空格 */
+  desktopSlots: Record<string, number>;
+  /** 底部 Dock（D-044）：固定在桌面底部的 App id，最多 4 个 */
+  desktopDock: string[];
   wallpaper: string;
+  /** 主题配色 id（constants/theme.ts THEMES，D-030） */
+  themeId: string;
   /** 日历用户层日程（D-020） */
   userEvents: CalendarEvent[];
+  /** 交友左滑略过记录（D-041）：characterId → 最近一次略过的时间戳（进推荐算法的冷却项） */
+  datingPasses: Record<string, number>;
+  /** 外出约定（D-038）：每个角色最多一条 */
+  outingPlans: OutingPlan[];
+  /** 当前外出场景会话（同一时间只有一场；结束后清空） */
+  outingSession: OutingSession | null;
   engine: EngineId;
   anthropicKey: string;
   qianfanKey: string;
 
   completeOnboarding: (pref: LovePref) => void;
+  /** 交友左滑：记一笔略过（略过不是拉黑，冷却后回流牌堆，D-041） */
+  markDatingPass: (characterId: string) => void;
+  setMe: (p: UserProfile) => void;
+  /** 为单个角色设置独立身份；传 undefined = 恢复使用默认身份 */
+  setMeForCharacter: (characterId: string, p?: UserProfile) => void;
   ensureSeedPosts: () => void;
-  /** 打开广场搭话：过期则清空重来（他忘记你了）。返回是否刚过期。 */
+  /** 确保配对记录存在（交友滑卡配对 / 打开会话时）：过期则清空重来（TA 忘记你了）。返回是否刚过期。 */
   ensureSquareChat: (characterId: string) => boolean;
   appendSquare: (
     characterId: string,
     msgs: ChatMessage[],
-    opts?: { userTurn?: boolean; offered?: boolean }
+    opts?: { userTurn?: boolean; offered?: boolean; heartDelta?: number }
   ) => void;
   createBond: (input: {
     characterId: string;
@@ -71,6 +99,9 @@ interface AppState {
   ) => void;
   markBondRead: (bondId: string) => void;
   markAwayNotified: (bondId: string) => void;
+  /** LINE 规则（D-030）：撤回=占位+清内容（仅自己的消息、24h 内，界面侧把关）；删除=本地移除任意消息 */
+  recallMessage: (scope: { bondId?: string; characterId?: string }, msgId: string) => void;
+  deleteMessage: (scope: { bondId?: string; characterId?: string }, msgId: string) => void;
   /** 写入羁绊记忆库（由 lib/memory.ts 后台提取后调用，D-016） */
   setBondMemory: (bondId: string, memory: BondMemory) => void;
   /** 到点开门：把「他来了」投递进会话，并排下一天的门。返回投递过的 bondId。 */
@@ -81,11 +112,26 @@ interface AppState {
   addCustomCharacter: (c: Character) => void;
   setPortrait: (characterId: string, uri: string) => void;
   setDesktopOrder: (order: string[]) => void;
+  setDesktopSlots: (slots: Record<string, number>) => void;
+  setDesktopDock: (ids: string[]) => void;
   setWallpaper: (id: string) => void;
+  setThemeId: (id: string) => void;
   addUserEvent: (e: CalendarEvent) => void;
   removeUserEvent: (id: string) => void;
   /** 心跳三段式：标记某段已投递（lib/heartbeat.ts） */
   markEventStage: (id: string, stage: 'caredBefore' | 'caredDay' | 'caredAfter') => void;
+  /** 外出（D-038）：立一个约定（同角色只保留最新一条），并在羁绊会话留系统记录 */
+  addOutingPlan: (characterId: string, placeId: string) => void;
+  removeOutingPlan: (id: string) => void;
+  /**
+   * 进入地点开一场外出：该地点有约定 → 赴约（消耗约定）；没有 → 偶遇一位通讯录里的 TA
+   * （跳过离席中的；赴约不跳过——TA 说到做到）。没有可遇的人返回 null。
+   * 若已有同地点的进行中会话则续上。
+   */
+  startOuting: (placeId: string) => OutingSession | null;
+  appendOuting: (msgs: ChatMessage[]) => void;
+  /** 结束外出：聊过的话在羁绊会话留一条系统记录，然后清空场景 */
+  endOuting: () => void;
   setEngine: (e: EngineId) => void;
   setAnthropicKey: (k: string) => void;
   setQianfanKey: (k: string) => void;
@@ -97,6 +143,8 @@ interface AppState {
 const initialData = {
   onboarded: false,
   lovePref: undefined as LovePref | undefined,
+  me: undefined as UserProfile | undefined,
+  meByCharacter: {} as Record<string, UserProfile>,
   firstOpenAt: Date.now(),
   squareChats: {} as Record<string, SquareChat>,
   bonds: [] as Bond[],
@@ -104,8 +152,14 @@ const initialData = {
   posts: [] as Post[],
   portraits: {} as Record<string, string>,
   desktopOrder: [] as string[],
+  desktopSlots: {} as Record<string, number>,
+  desktopDock: DEFAULT_DOCK,
   wallpaper: 'dawn',
+  themeId: 'peach',
   userEvents: [] as CalendarEvent[],
+  datingPasses: {} as Record<string, number>,
+  outingPlans: [] as OutingPlan[],
+  outingSession: null as OutingSession | null,
   // 工程配置里有 key 时默认走真模型（D-010）：Claude 优先，其次千帆；都没配则脚本引擎
   engine: (ENV_ANTHROPIC_KEY ? 'anthropic' : ENV_QIANFAN_KEY ? 'qianfan' : 'mock') as EngineId,
   anthropicKey: '',
@@ -118,6 +172,17 @@ export const useAppStore = create<AppState>()(
       ...initialData,
 
       completeOnboarding: (pref) => set({ onboarded: true, lovePref: pref }),
+
+      markDatingPass: (characterId) =>
+        set({ datingPasses: { ...get().datingPasses, [characterId]: Date.now() } }),
+
+      setMe: (p) => set({ me: p }),
+      setMeForCharacter: (characterId, p) => {
+        const next = { ...get().meByCharacter };
+        if (p) next[characterId] = p;
+        else delete next[characterId];
+        set({ meByCharacter: next });
+      },
 
       ensureSeedPosts: () => {
         const { posts } = get();
@@ -153,6 +218,7 @@ export const useAppStore = create<AppState>()(
                 lastActiveAt: now,
                 adoptionOffered: false,
                 userTurns: 0,
+                heart: 0,
               },
             },
           });
@@ -169,6 +235,7 @@ export const useAppStore = create<AppState>()(
                 lastActiveAt: now,
                 adoptionOffered: false,
                 userTurns: 0,
+                heart: 0,
               },
             },
           });
@@ -188,6 +255,7 @@ export const useAppStore = create<AppState>()(
               messages: [...chat.messages, ...msgs],
               lastActiveAt: Date.now(),
               userTurns: chat.userTurns + (opts?.userTurn ? 1 : 0),
+              heart: Math.min(100, (chat.heart ?? 0) + (opts?.heartDelta ?? 0)),
               adoptionOffered: chat.adoptionOffered || !!opts?.offered,
             },
           },
@@ -229,7 +297,7 @@ export const useAppStore = create<AppState>()(
           nickname,
           birthday,
           createdAt: now,
-          affinity: 10 + squareMsgs.length,
+          affinity: 0, // 羁绊 LV1 从零开始（心动值已在缘分阶段满 100，D-029）
           messages: [...squareMsgs, ceremony, ...farewell],
           arrivalAt: arrival.getTime(),
           unread: 0,
@@ -268,16 +336,29 @@ export const useAppStore = create<AppState>()(
 
       appendBond: (bondId, msgs, opts) =>
         set({
-          bonds: get().bonds.map((b) =>
-            b.id === bondId
-              ? {
-                  ...b,
-                  messages: [...b.messages, ...msgs],
-                  affinity: b.affinity + (opts?.affinityDelta ?? 0),
-                  unread: b.unread + (opts?.unreadDelta ?? 0),
-                }
-              : b
-          ),
+          bonds: get().bonds.map((b) => {
+            if (b.id !== bondId) return b;
+            const nextXp = b.affinity + (opts?.affinityDelta ?? 0);
+            const leveled = bondLevel(nextXp) > bondLevel(b.affinity);
+            // 升级瞬间：会话里出现系统提示（成长可感知，D-029）
+            const extra: ChatMessage[] = leveled
+              ? [
+                  {
+                    id: uid('m'),
+                    from: 'system' as const,
+                    kind: 'system' as const,
+                    text: `羁绊升级 · ${levelLabel(nextXp)}`,
+                    at: Date.now(),
+                  },
+                ]
+              : [];
+            return {
+              ...b,
+              messages: [...b.messages, ...msgs, ...extra],
+              affinity: nextXp,
+              unread: b.unread + (opts?.unreadDelta ?? 0),
+            };
+          }),
         }),
 
       markBondRead: (bondId) =>
@@ -289,6 +370,48 @@ export const useAppStore = create<AppState>()(
         set({
           bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, awayNotified: true } : b)),
         }),
+
+      recallMessage: ({ bondId, characterId }, msgId) => {
+        const wipe = (m: ChatMessage): ChatMessage =>
+          m.id === msgId
+            ? { id: m.id, from: m.from, kind: 'text', text: '', at: m.at, recalled: true }
+            : m;
+        if (bondId) {
+          set({
+            bonds: get().bonds.map((b) =>
+              b.id === bondId ? { ...b, messages: b.messages.map(wipe) } : b
+            ),
+          });
+        } else if (characterId) {
+          const chat = get().squareChats[characterId];
+          if (!chat) return;
+          set({
+            squareChats: {
+              ...get().squareChats,
+              [characterId]: { ...chat, messages: chat.messages.map(wipe) },
+            },
+          });
+        }
+      },
+
+      deleteMessage: ({ bondId, characterId }, msgId) => {
+        if (bondId) {
+          set({
+            bonds: get().bonds.map((b) =>
+              b.id === bondId ? { ...b, messages: b.messages.filter((m) => m.id !== msgId) } : b
+            ),
+          });
+        } else if (characterId) {
+          const chat = get().squareChats[characterId];
+          if (!chat) return;
+          set({
+            squareChats: {
+              ...get().squareChats,
+              [characterId]: { ...chat, messages: chat.messages.filter((m) => m.id !== msgId) },
+            },
+          });
+        }
+      },
 
       setBondMemory: (bondId, memory) =>
         set({
@@ -316,7 +439,7 @@ export const useAppStore = create<AppState>()(
           return {
             ...b,
             messages: [...b.messages, ...msgs],
-            affinity: b.affinity + 3,
+            affinity: b.affinity,
             unread: b.unread + msgs.length,
             arrivalAt: nextEightPM(new Date(now)).getTime(),
             notifId: undefined,
@@ -381,7 +504,13 @@ export const useAppStore = create<AppState>()(
         set({ portraits: { ...get().portraits, [characterId]: uri } }),
 
       setDesktopOrder: (order) => set({ desktopOrder: order }),
+      setDesktopSlots: (slots) => set({ desktopSlots: slots }),
+      setDesktopDock: (ids) => set({ desktopDock: ids.slice(0, 4) }),
       setWallpaper: (id) => set({ wallpaper: id }),
+      setThemeId: (id) => {
+        applyThemeColors(id);
+        set({ themeId: id });
+      },
       addUserEvent: (e) =>
         set({
           userEvents: [...get().userEvents, e].sort((a, b) => a.date.localeCompare(b.date)),
@@ -391,6 +520,133 @@ export const useAppStore = create<AppState>()(
         set({
           userEvents: get().userEvents.map((e) => (e.id === id ? { ...e, [stage]: true } : e)),
         }),
+
+      addOutingPlan: (characterId, placeId) => {
+        const state = get();
+        const place = placeById(placeId);
+        if (!place) return;
+        const plan: OutingPlan = { id: uid('op'), characterId, placeId, createdAt: Date.now() };
+        // 羁绊会话里留下这条约定（可感知；也给记忆提取一个钩子之外的人肉锚点）
+        const bond = state.bonds.find((b) => b.characterId === characterId);
+        set({
+          outingPlans: [...state.outingPlans.filter((p) => p.characterId !== characterId), plan],
+          bonds: bond
+            ? state.bonds.map((b) =>
+                b.id === bond.id
+                  ? {
+                      ...b,
+                      messages: [
+                        ...b.messages,
+                        {
+                          id: uid('m'),
+                          from: 'system' as const,
+                          kind: 'system' as const,
+                          text: `你们约好了去${place.name}见面 · 到「外出」里赴约`,
+                          at: Date.now(),
+                        },
+                      ],
+                    }
+                  : b
+              )
+            : state.bonds,
+        });
+      },
+
+      removeOutingPlan: (id) =>
+        set({ outingPlans: get().outingPlans.filter((p) => p.id !== id) }),
+
+      startOuting: (placeId) => {
+        // 同地点的进行中会话：续上（离开再进来 TA 还在）；换了地点则先体面结束上一场
+        if (get().outingSession?.placeId === placeId) {
+          return get().outingSession;
+        }
+        if (get().outingSession) get().endOuting();
+        const state = get();
+        const place = placeById(placeId);
+        const plan = state.outingPlans.find((p) => p.placeId === placeId);
+        let characterId: string | undefined;
+        let kind: OutingSession['kind'] = 'encounter';
+        if (place?.stranger) {
+          // 广场（D-040）：直接偶遇陌生人——还没加好友的角色（不含预告卡）。
+          // 优先还没配对过的新面孔，其次配对过但没加好友的；口味（lovePref）优先。
+          const bondedIds = new Set(state.bonds.map((b) => b.characterId));
+          const matchedIds = new Set(Object.keys(state.squareChats));
+          const pool = [...state.customCharacters, ...CHARACTERS].filter(
+            (c) => !c.teaser && !bondedIds.has(c.id)
+          );
+          const fresh = pool.filter((c) => !matchedIds.has(c.id));
+          const base = fresh.length ? fresh : pool;
+          const preferred =
+            state.lovePref && state.lovePref !== 'any'
+              ? base.filter((c) => c.loveTag === state.lovePref)
+              : [];
+          const candidates = preferred.length ? preferred : base;
+          if (!candidates.length) return null;
+          characterId = candidates[Math.floor(Math.random() * candidates.length)].id;
+          kind = 'stranger';
+        } else if (plan) {
+          // 赴约：约定优先于离席——TA 说到做到
+          characterId = plan.characterId;
+          kind = 'date';
+        } else {
+          // 偶遇：通讯录里的人恰好也在（跳过离席中的——他去忙了是真的去忙了，D-012）
+          const candidates = state.bonds.filter((b) => !b.away);
+          if (!candidates.length) return null;
+          const pickIdx = Math.floor(Math.random() * candidates.length);
+          characterId = candidates[pickIdx].characterId;
+        }
+        const session: OutingSession = {
+          id: uid('o'),
+          placeId,
+          characterId,
+          kind,
+          messages: [],
+          startedAt: Date.now(),
+        };
+        set({
+          outingSession: session,
+          outingPlans: plan ? state.outingPlans.filter((p) => p.id !== plan.id) : state.outingPlans,
+        });
+        return session;
+      },
+
+      appendOuting: (msgs) => {
+        const session = get().outingSession;
+        if (!session) return;
+        set({ outingSession: { ...session, messages: [...session.messages, ...msgs] } });
+      },
+
+      endOuting: () => {
+        const state = get();
+        const session = state.outingSession;
+        if (!session) return;
+        const place = placeById(session.placeId);
+        const bond = state.bonds.find((b) => b.characterId === session.characterId);
+        const talked = session.messages.some((m) => m.from === 'me');
+        set({
+          outingSession: null,
+          bonds:
+            bond && place && talked
+              ? state.bonds.map((b) =>
+                  b.id === bond.id
+                    ? {
+                        ...b,
+                        messages: [
+                          ...b.messages,
+                          {
+                            id: uid('m'),
+                            from: 'system' as const,
+                            kind: 'system' as const,
+                            text: `你们一起去了${place.name}`,
+                            at: Date.now(),
+                          },
+                        ],
+                      }
+                    : b
+                )
+              : state.bonds,
+        });
+      },
 
       setEngine: (e) => set({ engine: e }),
       setAnthropicKey: (k) => set({ anthropicKey: k }),
@@ -448,6 +704,12 @@ export function findCharacter(id: string): Character | undefined {
 
 export function findBond(bondId: string): Bond | undefined {
   return useAppStore.getState().bonds.find((b) => b.id === bondId);
+}
+
+/** 某角色眼中的「我」（D-035）：定制身份优先，其次默认身份 */
+export function meForCharacter(characterId: string): UserProfile | undefined {
+  const s = useAppStore.getState();
+  return s.meByCharacter[characterId] ?? s.me;
 }
 
 /** 亲密度阶段标签 */

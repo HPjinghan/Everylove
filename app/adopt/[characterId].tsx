@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharAvatar } from '@/components/char-avatar';
 import { scriptFor } from '@/content/characters';
-import { Romance } from '@/constants/theme';
+import { Romance, themed } from '@/constants/theme';
 import { deliverAndSyncArrivals } from '@/lib/arrivals';
 import { requestNotificationPermission } from '@/lib/notifications';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -264,77 +264,79 @@ function Ceremony({
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  screen: { flex: 1, backgroundColor: Romance.bg },
-  content: { paddingHorizontal: 28, flexGrow: 1, justifyContent: 'center' },
-  center: { alignItems: 'center' },
-  h1: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: Romance.ink,
-    marginTop: 20,
-    textAlign: 'center',
-  },
-  h2: { fontSize: 15, fontWeight: '600', color: Romance.ink, marginTop: 22, marginBottom: 8 },
-  slotCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 18,
-    marginTop: 18,
-    alignItems: 'center',
-  },
-  slotFree: { fontSize: 15, fontWeight: '700', color: Romance.accent },
-  slotFull: { fontSize: 15, fontWeight: '700', color: Romance.sub },
-  slotDesc: {
-    fontSize: 13,
-    color: Romance.sub,
-    lineHeight: 20,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: Romance.ink,
-    marginTop: 10,
-  },
-  presetRow: { flexDirection: 'row', gap: 8 },
-  preset: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-  },
-  presetActive: { backgroundColor: Romance.accent },
-  presetText: { fontSize: 14, color: Romance.sub },
-  presetTextActive: { color: '#fff', fontWeight: '600' },
-  primaryBtn: {
-    backgroundColor: Romance.accent,
-    borderRadius: 26,
-    paddingHorizontal: 40,
-    paddingVertical: 13,
-    marginTop: 28,
-    alignSelf: 'center',
-  },
-  btnDisabled: { opacity: 0.4 },
-  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  secondaryBtn: {
-    backgroundColor: Romance.line,
-    borderRadius: 26,
-    paddingHorizontal: 32,
-    paddingVertical: 13,
-    marginTop: 28,
-  },
-  secondaryBtnText: { color: Romance.sub, fontSize: 15, fontWeight: '600' },
-  cancelLink: { marginTop: 18, alignSelf: 'center' },
-  cancelLinkText: { fontSize: 13, color: Romance.faint },
-  ceremonyLines: { marginTop: 30, gap: 14, alignItems: 'center' },
-  ceremonyLine: { fontSize: 16, color: Romance.ink },
-  ceremonyHeart: { fontSize: 34, color: Romance.accent, marginTop: 22 },
-  pushClock: { fontSize: 56, fontWeight: '200', color: Romance.ink, letterSpacing: 2 },
-  pushSub: { fontSize: 15, color: Romance.sub, marginTop: 10 },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    screen: { flex: 1, backgroundColor: Romance.bg },
+    content: { paddingHorizontal: 28, flexGrow: 1, justifyContent: 'center' },
+    center: { alignItems: 'center' },
+    h1: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: Romance.ink,
+      marginTop: 20,
+      textAlign: 'center',
+    },
+    h2: { fontSize: 15, fontWeight: '600', color: Romance.ink, marginTop: 22, marginBottom: 8 },
+    slotCard: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 24,
+      padding: 18,
+      marginTop: 18,
+      alignItems: 'center',
+    },
+    slotFree: { fontSize: 15, fontWeight: '700', color: Romance.accent },
+    slotFull: { fontSize: 15, fontWeight: '700', color: Romance.sub },
+    slotDesc: {
+      fontSize: 13,
+      color: Romance.sub,
+      lineHeight: 20,
+      marginTop: 8,
+      textAlign: 'center',
+    },
+    input: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 18,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      fontSize: 16,
+      color: Romance.ink,
+      marginTop: 10,
+    },
+    presetRow: { flexDirection: 'row', gap: 8 },
+    preset: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 18,
+      paddingHorizontal: 16,
+      paddingVertical: 9,
+    },
+    presetActive: { backgroundColor: Romance.accent },
+    presetText: { fontSize: 14, color: Romance.sub },
+    presetTextActive: { color: '#fff', fontWeight: '600' },
+    primaryBtn: {
+      backgroundColor: Romance.accent,
+      borderRadius: 26,
+      paddingHorizontal: 40,
+      paddingVertical: 13,
+      marginTop: 28,
+      alignSelf: 'center',
+    },
+    btnDisabled: { opacity: 0.4 },
+    primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    secondaryBtn: {
+      backgroundColor: Romance.line,
+      borderRadius: 26,
+      paddingHorizontal: 32,
+      paddingVertical: 13,
+      marginTop: 28,
+    },
+    secondaryBtnText: { color: Romance.sub, fontSize: 15, fontWeight: '600' },
+    cancelLink: { marginTop: 18, alignSelf: 'center' },
+    cancelLinkText: { fontSize: 13, color: Romance.faint },
+    ceremonyLines: { marginTop: 30, gap: 14, alignItems: 'center' },
+    ceremonyLine: { fontSize: 16, color: Romance.ink },
+    ceremonyHeart: { fontSize: 34, color: Romance.accent, marginTop: 22 },
+    pushClock: { fontSize: 56, fontWeight: '200', color: Romance.ink, letterSpacing: 2 },
+    pushSub: { fontSize: 15, color: Romance.sub, marginTop: 10 },
+  })
+);

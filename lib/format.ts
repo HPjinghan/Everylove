@@ -17,10 +17,10 @@ export function clockTime(at: number): string {
   return `${hh}:${mm}`;
 }
 
-export function adoptedCountLabel(n: number): string {
-  if (n >= 10000) return `${(n / 10000).toFixed(1)} 万人领养`;
-  if (n <= 0) return '尚无人领养';
-  return `${n} 人领养`;
+/** 热度数字（D-032：原「N 人领养」改为小火苗 + 热度；火苗图标由界面渲染） */
+export function heatLabel(n: number): string {
+  if (n >= 10000) return `${(n / 10000).toFixed(1)} 万`;
+  return `${Math.max(0, n)}`;
 }
 
 /** 语音占位时长：按文字长度估一个自然的秒数 */
@@ -29,12 +29,11 @@ export function voiceDuration(text: string): string {
   return `0:${sec.toString().padStart(2, '0')}`;
 }
 
-/** 亲密度阶段（个体层状态机的可读名；prompt 与界面共用） */
+import { stageName } from '@/lib/bond';
+
+/** 亲密度阶段名（现由羁绊等级成长曲线推导，D-029；prompt 与界面共用） */
 export function affinityStage(affinity: number): string {
-  if (affinity < 20) return '刚认识';
-  if (affinity < 60) return '有点在意';
-  if (affinity < 120) return '放在心上';
-  return '唯一例外';
+  return stageName(affinity);
 }
 
 export function daysTogether(createdAt: number, now = Date.now()): number {

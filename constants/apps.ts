@@ -23,16 +23,21 @@ export interface DesktopApp {
 
 export const DESKTOP_APPS: DesktopApp[] = [
   { id: 'messages', label: 'Message', icon: 'chat', bg: '#D9F5E1', fg: '#4BBF87', route: '/apps/messages', badge: 'unread' },
+  { id: 'phone', label: '电话', icon: 'phone', bg: '#D5F2E3', fg: '#3EB489', route: '/apps/phone' },
   { id: 'moments', label: '朋友圈', icon: 'flower', bg: '#E4ECFF', fg: '#7B96F2', route: '/apps/moments' },
-  { id: 'dating', label: '缘分', icon: 'heart', bg: '#FFDBE6', fg: '#F5749B', route: '/apps/dating' },
+  { id: 'dating', label: '交友', icon: 'heart', bg: '#FFDBE6', fg: '#F5749B', route: '/apps/dating' },
   { id: 'contacts', label: '通讯录', icon: 'contacts', bg: '#FFEDD6', fg: '#F2A65A', route: '/apps/contacts' },
   { id: 'album', label: '相册', icon: 'album', bg: '#F0E4FB', fg: '#B287E0', route: '/apps/album' },
   { id: 'calendar', label: '日历', icon: 'calendar', bg: '#FFE0E0', fg: '#EF8080', route: '/apps/calendar' },
-  { id: 'create', label: '捏＋', icon: 'magicHat', bg: '#DFF5F2', fg: '#56C4B4', route: '/apps/create' },
+  { id: 'outing', label: '外出', icon: 'location', bg: '#FFF3D6', fg: '#E8B44A', route: '/apps/outing' },
+  { id: 'create', label: '创造', icon: 'magicHat', bg: '#DFF5F2', fg: '#56C4B4', route: '/apps/create' },
   { id: 'settings', label: '设置', icon: 'settings', bg: '#E8ECF2', fg: '#93A3B8', route: '/apps/settings' },
 ];
 
 export const DEFAULT_DESKTOP_ORDER = DESKTOP_APPS.map((a) => a.id);
+
+/** 底部 Dock 默认的 4 个 App（D-044）：编辑模式可拖入拖出，最多 4 个，不随（未来的）翻页滑动 */
+export const DEFAULT_DOCK = ['messages', 'dating', 'outing', 'settings'];
 
 export function appById(id: string): DesktopApp | undefined {
   return DESKTOP_APPS.find((a) => a.id === id);

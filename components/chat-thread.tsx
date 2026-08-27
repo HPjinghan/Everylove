@@ -2,12 +2,27 @@
  * 共用聊天线程：广场试聊与羁绊会话都用它。
  * variant='line'（D-027）：羁绊会话模拟 LINE 样式——蓝灰聊天背景、白色收信气泡、
  * 浅绿发信气泡（深色文字）、气泡旁小字时间与「已读」、深色半透明系统胶囊、绿色发送键。
- * 倒置列表；语音气泡为占位形态（点开看文字），供应商未定见 OPEN_QUESTIONS #6。
+ *
+ * LINE 对齐的消息能力（D-030）：
+ * - 文本 / 图片（相册选图）/ 语音（录音发送、点按播放）/ 表情（快捷面板）
+ * - 引用：长按 → 引用，气泡上方带被引摘要
+ * - 撤回：长按自己的消息（24h 内）→ 双方可见「你撤回了一条消息」占位，内容清空
+ * - 删除：长按任意消息 → 仅本地移除、无占位（LINE 的「删除只对自己生效」）
+ * TA 的语音仍为占位形态（点开看文字），供应商未定见 OPEN_QUESTIONS #6。
  */
 
-import { Image } from 'expo-image';
-import { useState, type ReactNode } from 'react';
 import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioRecorder,
+} from 'expo-audio';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -20,8 +35,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharAvatar } from '@/components/char-avatar';
+import { MingCute } from '@/components/mingcute';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Romance } from '@/constants/theme';
+import { Romance, themed } from '@/constants/theme';
 import { clockTime, voiceDuration } from '@/lib/format';
 import type { ChatMessage } from '@/lib/types';
 
@@ -34,7 +50,18 @@ const LINE = {
 };
 
 export type ChatVariant = 'default' | 'line';
+export type ReplyRef = { from: ChatMessage['from']; text: string };
 
+/** 撤回时限（LINE：24 小时内可撤回） */
+export const RECALL_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+const EMOJIS = [
+  '😊', '😂', '🥰', '😳', '🥺', '😤', '😭', '🤔',
+  '😴', '🙃', '😮', '🤭', '💕', '💖', '💔', '✨',
+  '🌙', '🌸', '🍓', '🐱', '🐶', '👍', '👋', '🎉',
+];
+
+/** TA 的语音：占位形态（点开看文字） */
 function VoiceBubble({ text, color }: { text: string; color: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -55,6 +82,36 @@ function VoiceBubble({ text, color }: { text: string; color: string }) {
   );
 }
 
+/** 我的语音：真实音频，点按播放/暂停 */
+function AudioVoiceBubble({ uri, durationMs, tint }: { uri: string; durationMs?: number; tint: string }) {
+  const player = useAudioPlayer(uri);
+  const [playing, setPlaying] = useState(false);
+  const toggle = () => {
+    if (playing) {
+      player.pause();
+      setPlaying(false);
+    } else {
+      player.seekTo(0);
+      player.play();
+      setPlaying(true);
+      const secs = (durationMs ?? 3000) / 1000;
+      setTimeout(() => setPlaying(false), secs * 1000 + 300);
+    }
+  };
+  const secs = Math.max(1, Math.round((durationMs ?? 0) / 1000));
+  return (
+    <Pressable onPress={toggle} style={styles.voiceRow}>
+      <IconSymbol name={playing ? 'pause.fill' : 'play.fill'} size={14} color={tint} />
+      {[10, 16, 8, 14, 6, 12, 9].map((h, i) => (
+        <View key={i} style={[styles.voiceBar, { height: h, backgroundColor: tint }]} />
+      ))}
+      <Text style={[styles.voiceDuration, { color: tint }]}>
+        0:{secs.toString().padStart(2, '0')}
+      </Text>
+    </Pressable>
+  );
+}
+
 function Bubble({
   msg,
   color,
@@ -62,6 +119,7 @@ function Bubble({
   characterId,
   variant = 'default',
   read,
+  onLongPress,
 }: {
   msg: ChatMessage;
   color: string;
@@ -70,6 +128,7 @@ function Bubble({
   variant?: ChatVariant;
   /** LINE 模式：我的消息是否显示「已读」（TA 回过话即视为已读） */
   read?: boolean;
+  onLongPress?: (msg: ChatMessage) => void;
 }) {
   const line = variant === 'line';
   if (msg.from === 'system') {
@@ -80,6 +139,16 @@ function Bubble({
     );
   }
   const mine = msg.from === 'me';
+  // 撤回占位（LINE：居中灰字，无内容）
+  if (msg.recalled) {
+    return (
+      <View style={styles.systemRow}>
+        <Text style={[styles.recalledText, line && styles.recalledTextLine]}>
+          {mine ? '你撤回了一条消息' : `${name} 撤回了一条消息`}
+        </Text>
+      </View>
+    );
+  }
   const meta = line ? (
     <View style={[styles.metaCol, mine ? styles.metaColMe : styles.metaColHim]}>
       {mine && read ? <Text style={styles.metaText}>已读</Text> : null}
@@ -89,14 +158,32 @@ function Bubble({
   const bubbleBg = mine
     ? { backgroundColor: line ? LINE.me : Romance.bubbleMe, borderBottomRightRadius: 4 }
     : { backgroundColor: line ? LINE.him : Romance.bubbleHim, borderBottomLeftRadius: 4 };
+  const textDark = !mine || line;
   return (
     <View style={[styles.msgRow, mine ? styles.msgRowMe : styles.msgRowHim]}>
       {!mine && (
         <CharAvatar name={name} color={color} size={32} style={styles.msgAvatar} characterId={characterId} />
       )}
       {mine ? meta : null}
-      <View style={[styles.bubble, line && styles.bubbleLine, bubbleBg]}>
-        {msg.kind === 'voice' ? (
+      <Pressable
+        onLongPress={onLongPress ? () => onLongPress(msg) : undefined}
+        delayLongPress={350}
+        style={[styles.bubble, line && styles.bubbleLine, bubbleBg]}>
+        {msg.replyTo ? (
+          <View style={styles.quote}>
+            <Text style={styles.quoteName}>{msg.replyTo.from === 'me' ? '你' : name}</Text>
+            <Text style={styles.quoteText} numberOfLines={1}>
+              {msg.replyTo.text}
+            </Text>
+          </View>
+        ) : null}
+        {msg.kind === 'voice' && msg.audioUri ? (
+          <AudioVoiceBubble
+            uri={msg.audioUri}
+            durationMs={msg.durationMs}
+            tint={textDark ? Romance.ink : '#FFFFFF'}
+          />
+        ) : msg.kind === 'voice' ? (
           <VoiceBubble text={msg.text} color={color} />
         ) : msg.kind === 'image' && msg.imageUri ? (
           <View>
@@ -104,9 +191,9 @@ function Bubble({
             {msg.text ? <Text style={styles.comicCaption}>{msg.text}</Text> : null}
           </View>
         ) : (
-          <Text style={[styles.bubbleText, mine && !line && { color: '#FFFFFF' }]}>{msg.text}</Text>
+          <Text style={[styles.bubbleText, !textDark && { color: '#FFFFFF' }]}>{msg.text}</Text>
         )}
-      </View>
+      </Pressable>
       {!mine ? meta : null}
     </View>
   );
@@ -119,6 +206,10 @@ export function ChatThread({
   typing,
   typingLabel = '正在输入…',
   onSend,
+  onSendImage,
+  onSendVoice,
+  onRecall,
+  onDelete,
   banner,
   cta,
   inputDisabled,
@@ -131,7 +222,15 @@ export function ChatThread({
   name: string;
   typing?: boolean;
   typingLabel?: string;
-  onSend: (text: string) => void;
+  onSend: (text: string, replyTo?: ReplyRef) => void;
+  /** 相册选图发送（不传则隐藏图片按钮） */
+  onSendImage?: (uri: string) => void;
+  /** 录音发送（不传则隐藏麦克风按钮） */
+  onSendVoice?: (uri: string, durationMs: number) => void;
+  /** 撤回（不传则长按菜单不出现撤回项） */
+  onRecall?: (msg: ChatMessage) => void;
+  /** 删除（本地移除） */
+  onDelete?: (msg: ChatMessage) => void;
   banner?: ReactNode;
   cta?: ReactNode;
   inputDisabled?: boolean;
@@ -143,8 +242,23 @@ export function ChatThread({
 }) {
   const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState('');
+  const [replyTo, setReplyTo] = useState<ReplyRef | null>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordSecs, setRecordSecs] = useState(0);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recordTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordStartAt = useRef(0);
+
   const data = [...messages].reverse();
   const line = variant === 'line';
+
+  useEffect(
+    () => () => {
+      if (recordTimer.current) clearInterval(recordTimer.current);
+    },
+    []
+  );
 
   // LINE「已读」：我的消息之后 TA 说过话，就算已读
   let lastHimAt = -1;
@@ -159,7 +273,80 @@ export function ChatThread({
     const text = draft.trim();
     if (!text || inputDisabled) return;
     setDraft('');
-    onSend(text);
+    const ref = replyTo ?? undefined;
+    setReplyTo(null);
+    setEmojiOpen(false);
+    onSend(text, ref);
+  };
+
+  /** 长按菜单：引用 / 撤回（自己的、24h 内）/ 删除（LINE 规则） */
+  const openActions = (msg: ChatMessage) => {
+    const excerpt =
+      msg.kind === 'image' ? '[照片]' : msg.kind === 'voice' ? '[语音]' : msg.text.slice(0, 24);
+    const buttons: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [];
+    if (msg.kind === 'text' && msg.text) {
+      buttons.push({
+        text: '引用',
+        onPress: () => setReplyTo({ from: msg.from, text: msg.text }),
+      });
+    }
+    if (onRecall && msg.from === 'me' && Date.now() - msg.at <= RECALL_WINDOW_MS) {
+      buttons.push({ text: '撤回', onPress: () => onRecall(msg) });
+    }
+    if (onDelete) {
+      buttons.push({
+        text: '删除',
+        style: 'destructive',
+        onPress: () =>
+          Alert.alert('删除这条消息？', '只从你的手机上删除，不会留下痕迹。', [
+            { text: '取消', style: 'cancel' },
+            { text: '删除', style: 'destructive', onPress: () => onDelete(msg) },
+          ]),
+      });
+    }
+    if (!buttons.length) return;
+    buttons.push({ text: '取消', style: 'cancel' });
+    Alert.alert(excerpt, undefined, buttons);
+  };
+
+  const pickImage = async () => {
+    if (!onSendImage || inputDisabled) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      onSendImage(result.assets[0].uri);
+    }
+  };
+
+  const toggleRecord = async () => {
+    if (!onSendVoice || inputDisabled) return;
+    if (!recording) {
+      const perm = await AudioModule.requestRecordingPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('需要麦克风权限', '在系统设置里允许录音后再试。');
+        return;
+      }
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      recordStartAt.current = Date.now();
+      setRecordSecs(0);
+      setRecording(true);
+      recordTimer.current = setInterval(
+        () => setRecordSecs(Math.floor((Date.now() - recordStartAt.current) / 1000)),
+        500
+      );
+    } else {
+      if (recordTimer.current) clearInterval(recordTimer.current);
+      await recorder.stop();
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+      setRecording(false);
+      const ms = Date.now() - recordStartAt.current;
+      const uri = recorder.uri;
+      if (uri && ms >= 600) onSendVoice(uri, ms);
+    }
   };
 
   return (
@@ -178,6 +365,7 @@ export function ChatThread({
             characterId={characterId}
             variant={variant}
             read={readIds.has(item.id)}
+            onLongPress={openActions}
           />
         )}
         style={line ? { backgroundColor: LINE.bg } : undefined}
@@ -207,23 +395,65 @@ export function ChatThread({
         keyboardDismissMode="interactive"
       />
       {cta}
+
+      {/* 引用预览条 */}
+      {replyTo ? (
+        <View style={[styles.replyBar, line && styles.replyBarLine]}>
+          <View style={styles.replyBody}>
+            <Text style={styles.replyName}>回复 {replyTo.from === 'me' ? '自己' : name}</Text>
+            <Text style={styles.replyText} numberOfLines={1}>
+              {replyTo.text}
+            </Text>
+          </View>
+          <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+            <MingCute name="close" size={18} color={Romance.faint} />
+          </Pressable>
+        </View>
+      ) : null}
+
       <View
         style={[
           styles.inputBar,
           line && styles.inputBarLine,
           { paddingBottom: Math.max(insets.bottom, 10) },
         ]}>
-        <TextInput
-          style={[styles.input, line && styles.inputLine, inputDisabled && { opacity: 0.5 }]}
-          value={draft}
-          onChangeText={setDraft}
-          placeholder={placeholder}
-          placeholderTextColor={Romance.faint}
-          editable={!inputDisabled}
-          onSubmitEditing={send}
-          returnKeyType="send"
-          submitBehavior="submit"
-        />
+        {onSendImage ? (
+          <Pressable onPress={pickImage} hitSlop={6} disabled={inputDisabled}>
+            <MingCute name="pic" size={24} color={line ? '#8E97A3' : Romance.sub} />
+          </Pressable>
+        ) : null}
+        {onSendVoice ? (
+          <Pressable onPress={toggleRecord} hitSlop={6} disabled={inputDisabled}>
+            <MingCute name="mic" size={24} color={recording ? '#E0433C' : line ? '#8E97A3' : Romance.sub} />
+          </Pressable>
+        ) : null}
+        {recording ? (
+          <View style={styles.recordingPill}>
+            <View style={styles.recordingDot} />
+            <Text style={styles.recordingText}>
+              录音中 0:{recordSecs.toString().padStart(2, '0')} · 再点一下发送
+            </Text>
+          </View>
+        ) : (
+          <TextInput
+            style={[styles.input, line && styles.inputLine, inputDisabled && { opacity: 0.5 }]}
+            value={draft}
+            onChangeText={setDraft}
+            placeholder={placeholder}
+            placeholderTextColor={Romance.faint}
+            editable={!inputDisabled}
+            onSubmitEditing={send}
+            returnKeyType="send"
+            submitBehavior="submit"
+          />
+        )}
+        <Pressable onPress={() => setEmojiOpen((v) => !v)} hitSlop={6} disabled={inputDisabled}>
+          <MingCute
+            name="emoji"
+            size={24}
+            color={emojiOpen ? (line ? LINE.brand : Romance.accent) : line ? '#8E97A3' : Romance.sub}
+          />
+        </Pressable>
         <Pressable onPress={send} hitSlop={8} disabled={inputDisabled}>
           <IconSymbol
             name="arrow.up.circle.fill"
@@ -234,72 +464,133 @@ export function ChatThread({
           />
         </Pressable>
       </View>
+
+      {/* 表情快捷面板 */}
+      {emojiOpen ? (
+        <View style={[styles.emojiPanel, line && styles.inputBarLine, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+          {EMOJIS.map((e) => (
+            <Pressable key={e} onPress={() => setDraft((d) => d + e)} style={styles.emojiCell}>
+              <Text style={styles.emojiChar}>{e}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  listContent: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 },
-  bannerWrap: { marginBottom: 10 },
-  msgRow: { flexDirection: 'row', marginVertical: 5, alignItems: 'flex-end' },
-  msgRowHim: { justifyContent: 'flex-start' },
-  msgRowMe: { justifyContent: 'flex-end' },
-  msgAvatar: { marginRight: 8 },
-  bubble: {
-    maxWidth: '74%',
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    shadowColor: '#3B2126',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  bubbleText: { fontSize: 16, lineHeight: 23, color: Romance.ink },
-  typingText: { fontSize: 14, color: Romance.sub },
-  systemRow: { alignItems: 'center', marginVertical: 10 },
-  systemTextLine: { backgroundColor: 'rgba(20,30,50,0.35)', color: '#FFFFFF' },
-  metaCol: { justifyContent: 'flex-end', paddingBottom: 2 },
-  metaColMe: { alignItems: 'flex-end', marginRight: 6 },
-  metaColHim: { alignItems: 'flex-start', marginLeft: 6 },
-  metaText: { fontSize: 10, color: 'rgba(255,255,255,0.95)', lineHeight: 13 },
-  bubbleLine: { borderRadius: 18, shadowOpacity: 0.08 },
-  inputBarLine: { backgroundColor: '#FFFFFF', borderTopColor: '#E5E9F0' },
-  inputLine: { backgroundColor: '#F1F3F6' },
-  systemText: {
-    fontSize: 12,
-    color: Romance.sub,
-    backgroundColor: Romance.line,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  comicImage: { width: 220, height: 220, borderRadius: 16, backgroundColor: Romance.line },
-  comicCaption: { fontSize: 13, color: Romance.sub, marginTop: 8, lineHeight: 19 },
-  voiceRow: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: 2 },
-  voiceBar: { width: 3, borderRadius: 2, opacity: 0.75 },
-  voiceDuration: { fontSize: 13, marginLeft: 6, fontWeight: '500' },
-  voiceHint: { fontSize: 11, color: Romance.faint, marginTop: 4 },
-  voiceTranscript: { fontSize: 14, color: Romance.sub, marginTop: 6, lineHeight: 20 },
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingTop: 8,
-    backgroundColor: Romance.bg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Romance.line,
-  },
-  input: {
-    flex: 1,
-    height: 40,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: Romance.ink,
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    listContent: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 },
+    bannerWrap: { marginBottom: 10 },
+    msgRow: { flexDirection: 'row', marginVertical: 5, alignItems: 'flex-end' },
+    msgRowHim: { justifyContent: 'flex-start' },
+    msgRowMe: { justifyContent: 'flex-end' },
+    msgAvatar: { marginRight: 8 },
+    bubble: {
+      maxWidth: '74%',
+      borderRadius: 22,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      shadowColor: '#3B2126',
+      shadowOpacity: 0.05,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+    },
+    bubbleText: { fontSize: 16, lineHeight: 23, color: Romance.ink },
+    typingText: { fontSize: 14, color: Romance.sub },
+    systemRow: { alignItems: 'center', marginVertical: 10 },
+    systemTextLine: { backgroundColor: 'rgba(20,30,50,0.35)', color: '#FFFFFF' },
+    recalledText: { fontSize: 12, color: Romance.faint },
+    recalledTextLine: { color: 'rgba(255,255,255,0.85)' },
+    quote: {
+      borderLeftWidth: 3,
+      borderLeftColor: 'rgba(0,0,0,0.18)',
+      backgroundColor: 'rgba(0,0,0,0.06)',
+      borderRadius: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 5,
+      marginBottom: 6,
+    },
+    quoteName: { fontSize: 11, fontWeight: '700', color: 'rgba(0,0,0,0.55)' },
+    quoteText: { fontSize: 12, color: 'rgba(0,0,0,0.55)', marginTop: 1 },
+    metaCol: { justifyContent: 'flex-end', paddingBottom: 2 },
+    metaColMe: { alignItems: 'flex-end', marginRight: 6 },
+    metaColHim: { alignItems: 'flex-start', marginLeft: 6 },
+    metaText: { fontSize: 10, color: 'rgba(255,255,255,0.95)', lineHeight: 13 },
+    bubbleLine: { borderRadius: 18, shadowOpacity: 0.08 },
+    inputBarLine: { backgroundColor: '#FFFFFF', borderTopColor: '#E5E9F0' },
+    inputLine: { backgroundColor: '#F1F3F6' },
+    systemText: {
+      fontSize: 12,
+      color: Romance.sub,
+      backgroundColor: Romance.line,
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: 10,
+      overflow: 'hidden',
+    },
+    comicImage: { width: 220, height: 220, borderRadius: 16, backgroundColor: Romance.line },
+    comicCaption: { fontSize: 13, color: Romance.sub, marginTop: 8, lineHeight: 19 },
+    voiceRow: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: 2 },
+    voiceBar: { width: 3, borderRadius: 2, opacity: 0.75 },
+    voiceDuration: { fontSize: 13, marginLeft: 6, fontWeight: '500' },
+    voiceHint: { fontSize: 11, color: Romance.faint, marginTop: 4 },
+    voiceTranscript: { fontSize: 14, color: Romance.sub, marginTop: 6, lineHeight: 20 },
+    replyBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      backgroundColor: Romance.bg,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: Romance.line,
+    },
+    replyBarLine: { backgroundColor: '#F7F9FC', borderTopColor: '#E5E9F0' },
+    replyBody: { flex: 1 },
+    replyName: { fontSize: 11, fontWeight: '700', color: Romance.accent },
+    replyText: { fontSize: 12, color: Romance.sub, marginTop: 1 },
+    inputBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 14,
+      paddingTop: 8,
+      backgroundColor: Romance.bg,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: Romance.line,
+    },
+    input: {
+      flex: 1,
+      height: 40,
+      borderRadius: 24,
+      backgroundColor: '#FFFFFF',
+      paddingHorizontal: 16,
+      fontSize: 16,
+      color: Romance.ink,
+    },
+    recordingPill: {
+      flex: 1,
+      height: 40,
+      borderRadius: 24,
+      backgroundColor: '#FDEBEA',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    recordingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0433C' },
+    recordingText: { fontSize: 13, color: '#C43A34', fontWeight: '600' },
+    emojiPanel: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      paddingHorizontal: 10,
+      paddingTop: 6,
+      backgroundColor: Romance.bg,
+    },
+    emojiCell: { width: '12.5%', alignItems: 'center', paddingVertical: 8 },
+    emojiChar: { fontSize: 26 },
+  })
+);

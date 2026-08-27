@@ -104,6 +104,18 @@ export function splitBubbles(text: string, max: number, name?: string): string[]
   return parts.slice(0, Math.max(1, max));
 }
 
+/**
+ * 聊天模式（初识/亲密）的打字感兜底（D-039）：prompt 已禁（）舞台提示，这里把模型
+ * 偶尔仍带出的（动作/神态）剥掉，保证 LINE 打字感。外出模式不走这里（现场描写是合法语法）。
+ * 整条只剩舞台提示的气泡直接丢弃；全部剥空则退回原文（宁可有旁白也不能不回话）。
+ */
+export function stripStageDirections(texts: string[]): string[] {
+  const cleaned = texts
+    .map((t) => t.replace(/（[^（）]*）/g, '').replace(/ {2,}/g, ' ').trim())
+    .filter(Boolean);
+  return cleaned.length ? cleaned : texts;
+}
+
 function pick<T>(arr: T[], salt = 0): T {
   return arr[Math.floor(Math.random() * 977 + salt) % arr.length];
 }
@@ -130,6 +142,12 @@ async function mockReply(ctx: EngineContext): Promise<EngineReply> {
 
   if (ctx.mode === 'square') {
     return { texts: [pick(script.square, salt)] };
+  }
+
+  // 外出（D-038）：脚本引擎给台词配一点现场动作，模拟亲身互动
+  if (ctx.mode === 'outing') {
+    const actions = ['（朝你走近了一步）', '（侧过头看你）', '（笑了一下，放慢脚步）'];
+    return { texts: [pick(actions, salt) + pick(script.bonded, salt)] };
   }
 
   const main = pick(script.bonded, salt);
@@ -167,7 +185,8 @@ async function anthropicReply(ctx: EngineContext, apiKey: string): Promise<Engin
     .join('')
     .trim();
   if (!text) throw new Error('empty reply');
-  return { texts: splitBubbles(text, ctx.mode === 'bonded' ? 2 : 1, ctx.character.name) };
+  const bubbles = splitBubbles(text, ctx.mode === 'bonded' ? 2 : 1, ctx.character.name);
+  return { texts: ctx.mode === 'outing' ? bubbles : stripStageDirections(bubbles) };
 }
 
 /** 百度千帆 v2（OpenAI 兼容格式），模型由 QIANFAN_MODEL 决定 */
@@ -195,7 +214,8 @@ async function qianfanReply(ctx: EngineContext, apiKey: string): Promise<EngineR
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const text = data.choices?.[0]?.message?.content?.trim();
   if (!text) throw new Error('empty reply');
-  return { texts: splitBubbles(text, ctx.mode === 'bonded' ? 2 : 1, ctx.character.name) };
+  const bubbles = splitBubbles(text, ctx.mode === 'bonded' ? 2 : 1, ctx.character.name);
+  return { texts: ctx.mode === 'outing' ? bubbles : stripStageDirections(bubbles) };
 }
 
 /**

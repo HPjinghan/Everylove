@@ -63,7 +63,7 @@ export function deliverDueHeartbeats(now = Date.now()): number {
       useAppStore.getState().appendBond(
         bond.id,
         [{ id: uid('m'), from: 'him', kind: 'text', text, at: now }],
-        { affinityDelta: 1, unreadDelta: 1 }
+        { unreadDelta: 1 }
       );
       useAppStore.getState().markEventStage(event.id, stage);
       delivered++;

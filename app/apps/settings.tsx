@@ -9,11 +9,12 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 
 import { AppScreen } from '@/components/app-screen';
 import { WALLPAPERS } from '@/constants/apps';
-import { Romance } from '@/constants/theme';
+import { THEMES } from '@/constants/theme';
+import { Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { deliverAndSyncArrivals } from '@/lib/arrivals';
 import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY, QIANFAN_MODEL } from '@/lib/engine';
-import { deliverComic, ensurePortrait, imageKeyReady } from '@/lib/imagegen';
+import { ensurePortrait, imageKeyReady } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
 import { cancelScheduled } from '@/lib/notifications';
 import { useAppStore } from '@/store/app-store';
@@ -56,31 +57,18 @@ export default function MeScreen() {
   const anthropicKey = useAppStore((s) => s.anthropicKey);
   const qianfanKey = useAppStore((s) => s.qianfanKey);
   const wallpaper = useAppStore((s) => s.wallpaper);
+  const themeId = useAppStore((s) => s.themeId);
 
   const testArrival = async () => {
     const bond = bonds[0];
     if (!bond) {
-      Alert.alert('还没有羁绊', '先去广场领养一个 TA，再来测试开门。');
+      Alert.alert('还没有羁绊', '先去交友里配对、加一个好友，再来测试开门。');
       return;
     }
     await cancelScheduled(bond.notifId);
     useAppStore.getState().devSetArrivalSoon(3);
     await deliverAndSyncArrivals();
     Alert.alert('已排好', `${bond.name}会在 3 分钟后来找你。\n把 App 收进后台，等他敲门。`);
-  };
-
-  const testComic = () => {
-    const bond = bonds[0];
-    if (!bond) {
-      Alert.alert('还没有羁绊', '先去「缘分」领养一个 TA，再来测试画面。');
-      return;
-    }
-    if (!imageKeyReady()) {
-      Alert.alert('未配置千帆 key', '图像与聊天共用千帆 key：在 .env.local 或上方输入框填好即可。');
-      return;
-    }
-    deliverComic(bond.id);
-    Alert.alert('生成中', '约半分钟到一分钟，画面会直接出现在会话里。');
   };
 
   /** 立绘（D-019）：为种子角色逐个生成（默认不自动，见 OPEN_QUESTIONS #14），或重画首个羁绊角色 */
@@ -94,7 +82,7 @@ export default function MeScreen() {
       Alert.alert('都有了', '6 位种子角色都已有立绘。要重画请用下面「重画」。');
       return;
     }
-    Alert.alert('后台生成中', `${missing.length} 位角色，逐个约 1 分钟。生成完广场卡片和会话头像会换成立绘。`);
+    Alert.alert('后台生成中', `${missing.length} 位角色，逐个约 1 分钟。生成完交友卡面和会话头像会换成立绘。`);
     void (async () => {
       for (const c of missing) await ensurePortrait(c.id);
     })();
@@ -103,7 +91,7 @@ export default function MeScreen() {
   const redrawBondPortrait = () => {
     const bond = bonds[0];
     if (!bond) {
-      Alert.alert('还没有羁绊', '先去广场领养一个 TA。');
+      Alert.alert('还没有羁绊', '先去交友里加一个好友。');
       return;
     }
     if (!imageKeyReady()) {
@@ -117,7 +105,7 @@ export default function MeScreen() {
   const showMemory = () => {
     const bond = useAppStore.getState().bonds[0];
     if (!bond) {
-      Alert.alert('还没有羁绊', '先去广场领养一个 TA，聊几轮再来看他记住了什么。');
+      Alert.alert('还没有羁绊', '先去交友里加一个好友，聊几轮再来看 TA 记住了什么。');
       return;
     }
     const m = bond.memory;
@@ -159,10 +147,37 @@ export default function MeScreen() {
     ]);
   };
 
+  const me = useAppStore((s) => s.me);
+
   return (
     <AppScreen title="设置">
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Section title="我">
+        <Row
+          label="我的身份"
+          value={me?.nickname ? `「${me.nickname}」` : '还没告诉 TA 们你是谁'}
+          onPress={() => router.push('/apps/identity')}
+        />
+        <Text style={styles.footHint}>TA 眼中的你：昵称、职业、关于你的一切。也能为单个角色使用不同身份。</Text>
+      </Section>
+
       <Section title="主题">
+        <View style={styles.themeRow}>
+          {Object.entries(THEMES).map(([id, t]) => (
+            <Pressable key={id} style={styles.themeItem} onPress={() => useAppStore.getState().setThemeId(id)}>
+              <View
+                style={[
+                  styles.themeDot,
+                  { backgroundColor: t.colors.accent },
+                  themeId === id && styles.themeDotActive,
+                ]}
+              />
+              <Text style={[styles.themeLabel, themeId === id && { color: Romance.accent, fontWeight: '700' }]}>
+                {t.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
         <View style={styles.wallRow}>
           {WALLPAPERS.map((w) => (
             <Pressable key={w.id} onPress={() => useAppStore.getState().setWallpaper(w.id)}>
@@ -180,7 +195,7 @@ export default function MeScreen() {
             </Pressable>
           ))}
         </View>
-        <Text style={styles.footHint}>壁纸即刻生效。锁屏换 TA 的照片、来电铃声：正式版开放。</Text>
+        <Text style={styles.footHint}>配色与壁纸即刻生效。锁屏换 TA 的照片、来电铃声：正式版开放。</Text>
       </Section>
 
       <Section title="订阅计划">
@@ -200,7 +215,7 @@ export default function MeScreen() {
 
       <Section title="我的创作">
         <Row label="捏出的角色" value={`${customs.length} 个`} />
-        <Row label="被领养数 · 分成" value="敬请期待" dim />
+        <Row label="热度 · 分成" value="敬请期待" dim />
       </Section>
 
       <Section title="开发者（试装）">
@@ -263,10 +278,6 @@ export default function MeScreen() {
           </>
         )}
         <Row label="让 TA 3 分钟后来开门（测试）" onPress={testArrival} />
-        <Row
-          label={`生成一个你们的画面（测试）${imageKeyReady() ? '' : ' · 未配 key'}`}
-          onPress={testComic}
-        />
         <Row label="查看 TA 记住了什么（记忆库）" onPress={showMemory} />
         <Row label="为 6 位种子角色生成立绘（测试，后台逐个）" onPress={genSeedPortraits} />
         <Row label="重画首个羁绊角色的立绘（测试）" onPress={redrawBondPortrait} />
@@ -279,62 +290,69 @@ export default function MeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Romance.bg },
-  content: { paddingHorizontal: 18, paddingBottom: 40 },
-  title: { fontSize: 28, fontWeight: '700', color: Romance.ink, marginBottom: 6 },
-  section: { marginTop: 18 },
-  sectionTitle: { fontSize: 13, fontWeight: '600', color: Romance.sub, marginBottom: 8 },
-  sectionBody: { backgroundColor: '#FFFFFF', borderRadius: 22, paddingHorizontal: 4 },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Romance.line,
-  },
-  rowLabel: { fontSize: 14, color: Romance.ink },
-  rowValue: { fontSize: 13, color: Romance.sub },
-  footHint: { fontSize: 11, color: Romance.faint, padding: 12 },
-  wallRow: { flexDirection: 'row', gap: 14, padding: 12, flexWrap: 'wrap' },
-  wallSwatch: {
-    width: 52,
-    height: 88,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  wallSwatchActive: { borderColor: Romance.accent },
-  wallSwatchInner: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%' },
-  wallLabel: { fontSize: 11, color: Romance.sub, textAlign: 'center', marginTop: 4 },
-  engineRow: { flexDirection: 'row', gap: 8, padding: 12 },
-  engineBtn: {
-    flex: 1,
-    borderRadius: 16,
-    paddingVertical: 10,
-    alignItems: 'center',
-    backgroundColor: Romance.bg,
-  },
-  engineBtnActive: { backgroundColor: Romance.accent },
-  engineText: { fontSize: 13, color: Romance.sub, fontWeight: '500' },
-  engineTextActive: { color: '#fff' },
-  keyInput: {
-    marginHorizontal: 12,
-    backgroundColor: Romance.bg,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 13,
-    color: Romance.ink,
-  },
-  about: {
-    textAlign: 'center',
-    fontSize: 11,
-    color: Romance.faint,
-    marginTop: 30,
-    lineHeight: 18,
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: Romance.bg },
+    content: { paddingHorizontal: 18, paddingBottom: 40 },
+    title: { fontSize: 28, fontWeight: '700', color: Romance.ink, marginBottom: 6 },
+    section: { marginTop: 18 },
+    sectionTitle: { fontSize: 13, fontWeight: '600', color: Romance.sub, marginBottom: 8 },
+    sectionBody: { backgroundColor: '#FFFFFF', borderRadius: 22, paddingHorizontal: 4 },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: Romance.line,
+    },
+    rowLabel: { fontSize: 14, color: Romance.ink },
+    rowValue: { fontSize: 13, color: Romance.sub },
+    footHint: { fontSize: 11, color: Romance.faint, padding: 12 },
+    themeRow: { flexDirection: 'row', gap: 18, paddingHorizontal: 12, paddingTop: 12, flexWrap: 'wrap' },
+    themeItem: { alignItems: 'center', gap: 5 },
+    themeDot: { width: 34, height: 34, borderRadius: 17, borderWidth: 2.5, borderColor: 'transparent' },
+    themeDotActive: { borderColor: Romance.ink },
+    themeLabel: { fontSize: 11, color: Romance.sub },
+    wallRow: { flexDirection: 'row', gap: 14, padding: 12, flexWrap: 'wrap' },
+    wallSwatch: {
+      width: 52,
+      height: 88,
+      borderRadius: 16,
+      overflow: 'hidden',
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    wallSwatchActive: { borderColor: Romance.accent },
+    wallSwatchInner: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%' },
+    wallLabel: { fontSize: 11, color: Romance.sub, textAlign: 'center', marginTop: 4 },
+    engineRow: { flexDirection: 'row', gap: 8, padding: 12 },
+    engineBtn: {
+      flex: 1,
+      borderRadius: 16,
+      paddingVertical: 10,
+      alignItems: 'center',
+      backgroundColor: Romance.bg,
+    },
+    engineBtnActive: { backgroundColor: Romance.accent },
+    engineText: { fontSize: 13, color: Romance.sub, fontWeight: '500' },
+    engineTextActive: { color: '#fff' },
+    keyInput: {
+      marginHorizontal: 12,
+      backgroundColor: Romance.bg,
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 13,
+      color: Romance.ink,
+    },
+    about: {
+      textAlign: 'center',
+      fontSize: 11,
+      color: Romance.faint,
+      marginTop: 30,
+      lineHeight: 18,
+    },
+  })
+);

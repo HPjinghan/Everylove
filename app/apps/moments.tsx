@@ -1,6 +1,6 @@
 /**
  * 朋友圈：只有缔结契约（领养）的 TA 们的帖子流（D-027）。「偷看」的家。
- * TA 会回你的评论。想看更多人？先去「缘分」和 TA 加好友。
+ * TA 会回你的评论。想看更多人？先去「交友」和 TA 加好友。
  */
 
 import { useState } from 'react';
@@ -16,7 +16,7 @@ import {
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Romance } from '@/constants/theme';
+import { Romance, themed } from '@/constants/theme';
 import { timeAgo } from '@/lib/format';
 import type { Post } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -131,46 +131,48 @@ export default function FeedScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Romance.bg },
-  title: { fontSize: 28, fontWeight: '700', color: Romance.ink, paddingHorizontal: 18 },
-  subtitle: {
-    fontSize: 13,
-    color: Romance.sub,
-    paddingHorizontal: 18,
-    marginTop: 2,
-    marginBottom: 10,
-  },
-  list: { paddingHorizontal: 14, paddingBottom: 24 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 22, padding: 14, marginBottom: 10 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headText: { flex: 1 },
-  name: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-  meta: { fontSize: 11, color: Romance.faint, marginTop: 1 },
-  body: { fontSize: 15, color: Romance.ink, lineHeight: 22, marginTop: 10 },
-  actions: { flexDirection: 'row', gap: 18, marginTop: 12 },
-  action: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  actionText: { fontSize: 12, color: Romance.faint },
-  comment: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 10,
-    backgroundColor: Romance.bg,
-    borderRadius: 10,
-    padding: 10,
-  },
-  commentFrom: { fontSize: 13, fontWeight: '600', color: Romance.accent },
-  commentText: { flex: 1, fontSize: 13, color: Romance.ink, lineHeight: 19 },
-  commentBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
-  commentInput: {
-    flex: 1,
-    height: 36,
-    borderRadius: 22,
-    backgroundColor: Romance.bg,
-    paddingHorizontal: 14,
-    fontSize: 14,
-    color: Romance.ink,
-  },
-  empty: { alignItems: 'center', paddingVertical: 60 },
-  emptyText: { fontSize: 13, color: Romance.sub },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: Romance.bg },
+    title: { fontSize: 28, fontWeight: '700', color: Romance.ink, paddingHorizontal: 18 },
+    subtitle: {
+      fontSize: 13,
+      color: Romance.sub,
+      paddingHorizontal: 18,
+      marginTop: 2,
+      marginBottom: 10,
+    },
+    list: { paddingHorizontal: 14, paddingBottom: 24 },
+    card: { backgroundColor: '#FFFFFF', borderRadius: 22, padding: 14, marginBottom: 10 },
+    head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    headText: { flex: 1 },
+    name: { fontSize: 15, fontWeight: '600', color: Romance.ink },
+    meta: { fontSize: 11, color: Romance.faint, marginTop: 1 },
+    body: { fontSize: 15, color: Romance.ink, lineHeight: 22, marginTop: 10 },
+    actions: { flexDirection: 'row', gap: 18, marginTop: 12 },
+    action: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    actionText: { fontSize: 12, color: Romance.faint },
+    comment: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 10,
+      backgroundColor: Romance.bg,
+      borderRadius: 10,
+      padding: 10,
+    },
+    commentFrom: { fontSize: 13, fontWeight: '600', color: Romance.accent },
+    commentText: { flex: 1, fontSize: 13, color: Romance.ink, lineHeight: 19 },
+    commentBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+    commentInput: {
+      flex: 1,
+      height: 36,
+      borderRadius: 22,
+      backgroundColor: Romance.bg,
+      paddingHorizontal: 14,
+      fontSize: 14,
+      color: Romance.ink,
+    },
+    empty: { alignItems: 'center', paddingVertical: 60 },
+    emptyText: { fontSize: 13, color: Romance.sub },
+  })
+);

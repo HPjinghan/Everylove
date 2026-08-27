@@ -1,10 +1,12 @@
 /**
- * 捏＋（D-025 大改版）：
+ * 创造（D-025 大改版；D-043 更名并加描述解析）：
+ * 描述导入：写/粘贴一大段人设（≤2000 字）→「自动解析」由当前引擎整理成表单字段
+ *          （prompt 在 content/prompts.ts 的 CHARACTER_PARSE_SYSTEM），无 key/失败回落规则解析；解析后仍可手改。
  * 基础：名字 → 性别（男/女/非二元）→ 长相描述 → 背景故事 → 立绘生成
  * 高级（默认收起）：种族 / 生日 / 口癖 / 喜欢 / 讨厌 / 确定关系的节奏（聊几句后 TA 开口）/
  *                 恋爱中的类型（content/characters.ts 的 LOVE_STYLES）/ MBTI / 其他聊天设定 / 日常作息
  * 全部设定进对话与生图 prompt（content/prompts.ts 的 characterProfileBlock / pursuitLine）。
- * 审核最小拦截：挡真人明星与 IP 角色（红线 #1/#4，完整流程见 OPEN_QUESTIONS #7）。
+ * 审核最小拦截：挡真人明星与 IP 角色（红线 #1/#4，完整流程见 OPEN_QUESTIONS #7）——描述文本同样过拦截。
  */
 
 import { Image } from 'expo-image';
@@ -27,11 +29,48 @@ import {
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { BLOCKED_NAME_PATTERN, LOVE_STYLES, loveStyleByLabel, RACES } from '@/content/characters';
-import { Romance } from '@/constants/theme';
+import { CHARACTER_PARSE_SYSTEM } from '@/content/prompts';
+import { Romance, themed } from '@/constants/theme';
+import { completeText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { ensurePortrait, generatePortraitFor, imageKeyReady } from '@/lib/imagegen';
 import type { Character } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
+
+/** 描述导入的最大长度（D-043） */
+const DESC_MAX = 2000;
+
+/**
+ * 规则解析（无 key / 引擎失败时的回落）：认「标签：内容」式的行，MBTI 直接正则；
+ * 什么标签都没有时，整段进背景故事。
+ */
+function heuristicParse(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const grab = (labels: string[]): string | undefined => {
+    for (const l of labels) {
+      const m = text.match(new RegExp(`${l}\\s*[:：]\\s*([^\\n；;]+)`));
+      if (m) return m[1].trim();
+    }
+    return undefined;
+  };
+  const put = (k: string, v?: string) => {
+    if (v) out[k] = v;
+  };
+  put('name', grab(['名字', '姓名']));
+  put('look', grab(['外貌', '长相', '外形', '样貌']));
+  put('race', grab(['种族']));
+  put('birthday', grab(['生日']));
+  put('catchphrase', grab(['口癖', '口头禅']));
+  put('likes', grab(['喜欢', '喜好']));
+  put('dislikes', grab(['讨厌', '厌恶']));
+  put('mbti', text.match(/\b([IE][NS][TF][JP])\b/i)?.[1]?.toUpperCase());
+  put('schedule', grab(['作息', '日常作息']));
+  put('chatNotes', grab(['聊天设定', '说话方式', '语气']));
+  const g = grab(['性别']);
+  if (g) out.gender = /男/.test(g) ? 'male' : /女/.test(g) ? 'female' : 'nonbinary';
+  put('story', grab(['背景故事', '背景', '故事', '经历']) ?? text.slice(0, 300));
+  return out;
+}
 
 const PALETTES = [
   { color: '#E58AA5', colorSoft: '#FDEDF2' },
@@ -81,6 +120,10 @@ function Chip({
 export default function CreateScreen() {
   const router = useRouter();
 
+  // ── 描述导入（D-043） ──
+  const [desc, setDesc] = useState('');
+  const [parsing, setParsing] = useState(false);
+
   // ── 基础 ──
   const [name, setName] = useState('');
   const [gender, setGender] = useState<(typeof GENDERS)[number]['key']>('male');
@@ -106,9 +149,73 @@ export default function CreateScreen() {
 
   const finalRace = race === '其他' ? raceCustom.trim() : race;
   const style = loveStyleByLabel(loveStyle);
-  const allText = [name, look, story, raceCustom, catchphrase, likes, dislikes, chatNotes, schedule]
+  const allText = [desc, name, look, story, raceCustom, catchphrase, likes, dislikes, chatNotes, schedule]
     .join(' ')
     .trim();
+
+  /** 解析结果落进表单（各字段裁到表单上限；解析后仍可手改）；返回填了几项 */
+  const applyParsed = (p: Record<string, unknown>): number => {
+    const s = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+    let n = 0;
+    let advanced = false;
+    if (s(p.name)) { setName(s(p.name).slice(0, 12)); n++; }
+    const g = s(p.gender);
+    if (g === 'male' || g === 'female' || g === 'nonbinary') { setGender(g); n++; }
+    if (s(p.look)) { setLook(s(p.look).slice(0, 60)); n++; }
+    if (s(p.story)) { setStory(s(p.story).slice(0, 300)); n++; }
+    const r = s(p.race).slice(0, 10);
+    if (r && r !== '人类') {
+      if (RACES.includes(r)) setRace(r);
+      else { setRace('其他'); setRaceCustom(r); }
+      advanced = true; n++;
+    }
+    const bd = s(p.birthday).replace(/[月./]/g, '-').replace(/日/g, '');
+    if (/^\d{1,2}-\d{1,2}$/.test(bd)) { setBirthday(bd); advanced = true; n++; }
+    if (s(p.catchphrase)) { setCatchphrase(s(p.catchphrase).slice(0, 20)); advanced = true; n++; }
+    if (s(p.likes)) { setLikes(s(p.likes).slice(0, 40)); advanced = true; n++; }
+    if (s(p.dislikes)) { setDislikes(s(p.dislikes).slice(0, 40)); advanced = true; n++; }
+    const ls = s(p.loveStyle);
+    if (ls && LOVE_STYLES.some((l) => l.label === ls)) { setLoveStyle(ls); advanced = true; n++; }
+    const mb = s(p.mbti).toUpperCase();
+    if (MBTI_LIST.includes(mb)) { setMbti(mb); advanced = true; n++; }
+    if (s(p.chatNotes)) { setChatNotes(s(p.chatNotes).slice(0, 120)); advanced = true; n++; }
+    if (s(p.schedule)) { setSchedule(s(p.schedule).slice(0, 120)); advanced = true; n++; }
+    if (advanced) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setAdvancedOpen(true);
+    }
+    return n;
+  };
+
+  /** 自动解析：当前引擎整理成 JSON（prompt 见 content/prompts.ts）；无 key/失败回落规则解析 */
+  const parseDesc = async () => {
+    const text = desc.trim();
+    if (!text || parsing) return;
+    if (BLOCKED_NAME_PATTERN.test(text)) {
+      Alert.alert('这个 TA 不能被创造出来', '描述里包含真人明星或已有 IP 的角色。\n用文字描述「神似」是可以的。');
+      return;
+    }
+    setParsing(true);
+    let parsed: Record<string, unknown> | null = null;
+    try {
+      const { engine, anthropicKey, qianfanKey } = useAppStore.getState();
+      const raw = await completeText(CHARACTER_PARSE_SYSTEM, text, engine, {
+        anthropic: anthropicKey,
+        qianfan: qianfanKey,
+      });
+      const jsonStr = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+      parsed = JSON.parse(jsonStr) as Record<string, unknown>;
+    } catch (e) {
+      console.warn('[create] 引擎解析失败，回落规则解析：', e);
+      parsed = null;
+    }
+    const n = applyParsed(parsed ?? heuristicParse(text));
+    setParsing(false);
+    Alert.alert(
+      n ? '解析好了' : '没读出结构化的字段',
+      n ? `填好了 ${n} 项。往下检查一下，每一项都还能改。` : '已把描述放进背景故事，其他项可以手动补。'
+    );
+  };
 
   /** 表单里的 TA（还没入库）：预览与立绘生成共用 */
   const draftCharacter = (id = 'draft'): Character | null => {
@@ -147,7 +254,7 @@ export default function CreateScreen() {
 
   const guard = (): boolean => {
     if (BLOCKED_NAME_PATTERN.test(allText)) {
-      Alert.alert('这个 TA 不能被捏出来', '不能捏真人明星或已有 IP 的角色。\n用文字描述「神似」是可以的。');
+      Alert.alert('这个 TA 不能被创造出来', '不能创造真人明星或已有 IP 的角色。\n用文字描述「神似」是可以的。');
       return false;
     }
     return true;
@@ -182,12 +289,12 @@ export default function CreateScreen() {
     if (portraitUri) useAppStore.getState().setPortrait(id, portraitUri);
     else if (imageKeyReady()) void ensurePortrait(id);
     // 重置表单
-    setName(''); setLook(''); setStory(''); setPortraitUri(undefined);
+    setDesc(''); setName(''); setLook(''); setStory(''); setPortraitUri(undefined);
     setRace('人类'); setRaceCustom(''); setBirthday(''); setCatchphrase('');
     setLikes(''); setDislikes(''); setOfferTurns(4); setLoveStyle(undefined);
     setMbti(undefined); setChatNotes(''); setSchedule(''); setAdvancedOpen(false);
-    Alert.alert('TA 醒过来了', '去「缘分」看看 TA。', [
-      { text: '去缘分看看', onPress: () => router.push('/apps/dating') },
+    Alert.alert('TA 醒过来了', '去「交友」里滑到 TA。', [
+      { text: '去交友看看', onPress: () => router.push('/apps/dating') },
     ]);
   };
 
@@ -197,7 +304,7 @@ export default function CreateScreen() {
   };
 
   return (
-    <AppScreen title="捏＋">
+    <AppScreen title="创造">
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -205,7 +312,41 @@ export default function CreateScreen() {
           style={styles.screen}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled">
-          <Text style={styles.subtitle}>捏一个只属于你的 TA</Text>
+          <Text style={styles.subtitle}>创造一个只属于你的 TA</Text>
+
+          {/* ───────── 描述导入（D-043） ───────── */}
+          <Text style={styles.step}>用一段话描述 TA（可选）</Text>
+          <Text style={styles.stepHint}>
+            写下或粘贴一段人设——小说片段、角色卡、脑子里的画面都行，最多 {DESC_MAX} 字。
+            点「自动解析」帮你填好下面的表单，每一项都还能改。
+          </Text>
+          <TextInput
+            style={[styles.input, styles.inputDesc]}
+            value={desc}
+            onChangeText={setDesc}
+            placeholder="银灰色头发的年轻外科医生，毒舌但心软。父母常年在国外，一个人住在老城区……"
+            placeholderTextColor={Romance.faint}
+            multiline
+            maxLength={DESC_MAX}
+          />
+          <View style={styles.descFoot}>
+            <Text style={styles.descCount}>
+              {desc.length}/{DESC_MAX}
+            </Text>
+            <Pressable
+              style={[styles.parseBtn, (!desc.trim() || parsing) && styles.btnDisabled]}
+              disabled={!desc.trim() || parsing}
+              onPress={parseDesc}>
+              {parsing ? (
+                <View style={styles.btnRow}>
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                  <Text style={styles.parseBtnText}>解析中…</Text>
+                </View>
+              ) : (
+                <Text style={styles.parseBtnText}>自动解析</Text>
+              )}
+            </Pressable>
+          </View>
 
           {/* ───────── 基础 ───────── */}
           <Text style={styles.step}>① TA 叫什么</Text>
@@ -440,99 +581,116 @@ export default function CreateScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  screen: { flex: 1, backgroundColor: Romance.bg },
-  content: { paddingHorizontal: 18, paddingBottom: 40 },
-  subtitle: { fontSize: 13, color: Romance.sub, marginTop: 8 },
-  step: { fontSize: 15, fontWeight: '600', color: Romance.ink, marginTop: 22, marginBottom: 10 },
-  stepHint: { fontSize: 12, color: Romance.sub, marginTop: -6, marginBottom: 10, lineHeight: 18 },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: Romance.ink,
-  },
-  inputMultiline: { minHeight: 68, textAlignVertical: 'top' },
-  inputStory: { minHeight: 100, textAlignVertical: 'top' },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  chipActive: { backgroundColor: Romance.accentSoft, borderColor: Romance.accent },
-  chipText: { fontSize: 13, color: Romance.sub, fontWeight: '500' },
-  chipTextActive: { color: Romance.accent, fontWeight: '700' },
-  paletteRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  swatch: { width: 32, height: 32, borderRadius: 16 },
-  swatchActive: { borderWidth: 3, borderColor: Romance.ink },
-  paceCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-  },
-  paceCardActive: { backgroundColor: Romance.accent },
-  paceLabel: { fontSize: 14, fontWeight: '700', color: Romance.ink },
-  paceHint: { fontSize: 10, color: Romance.faint, marginTop: 3 },
-  styleDesc: {
-    fontSize: 12,
-    color: Romance.accent,
-    backgroundColor: Romance.accentSoft,
-    borderRadius: 14,
-    padding: 12,
-    marginTop: 10,
-    lineHeight: 18,
-  },
-  advToggle: {
-    marginTop: 26,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
-    alignItems: 'center',
-  },
-  advToggleText: { fontSize: 14, fontWeight: '700', color: Romance.accent },
-  advToggleHint: { fontSize: 11, color: Romance.faint, marginTop: 3 },
-  previewCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 14,
-    marginTop: 24,
-  },
-  previewText: { flex: 1 },
-  previewName: { fontSize: 16, fontWeight: '700', color: Romance.ink },
-  previewHook: { fontSize: 12, color: Romance.sub, marginTop: 3 },
-  primaryBtn: {
-    marginTop: 14,
-    backgroundColor: Romance.accent,
-    borderRadius: 26,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  btnDisabled: { opacity: 0.4 },
-  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  secondaryBtn: {
-    marginTop: 10,
-    borderRadius: 20,
-    paddingVertical: 13,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: Romance.accent,
-  },
-  secondaryBtnText: { color: Romance.accent, fontSize: 15, fontWeight: '600' },
-  btnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  portrait: { width: 180, height: 180, borderRadius: 26, alignSelf: 'center', marginBottom: 4 },
-  footnote: { textAlign: 'center', fontSize: 11, color: Romance.faint, marginTop: 12 },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    screen: { flex: 1, backgroundColor: Romance.bg },
+    content: { paddingHorizontal: 18, paddingBottom: 40 },
+    subtitle: { fontSize: 13, color: Romance.sub, marginTop: 8 },
+    step: { fontSize: 15, fontWeight: '600', color: Romance.ink, marginTop: 22, marginBottom: 10 },
+    stepHint: { fontSize: 12, color: Romance.sub, marginTop: -6, marginBottom: 10, lineHeight: 18 },
+    input: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 14,
+      color: Romance.ink,
+    },
+    inputMultiline: { minHeight: 68, textAlignVertical: 'top' },
+    inputStory: { minHeight: 100, textAlignVertical: 'top' },
+    inputDesc: { minHeight: 130, textAlignVertical: 'top' },
+    descFoot: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 8,
+    },
+    descCount: { fontSize: 11, color: Romance.faint },
+    parseBtn: {
+      backgroundColor: Romance.accent,
+      borderRadius: 18,
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+    },
+    parseBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 18,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderWidth: 1.5,
+      borderColor: 'transparent',
+    },
+    chipActive: { backgroundColor: Romance.accentSoft, borderColor: Romance.accent },
+    chipText: { fontSize: 13, color: Romance.sub, fontWeight: '500' },
+    chipTextActive: { color: Romance.accent, fontWeight: '700' },
+    paletteRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+    swatch: { width: 32, height: 32, borderRadius: 16 },
+    swatchActive: { borderWidth: 3, borderColor: Romance.ink },
+    paceCard: {
+      flex: 1,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 18,
+      paddingVertical: 12,
+      paddingHorizontal: 10,
+      alignItems: 'center',
+    },
+    paceCardActive: { backgroundColor: Romance.accent },
+    paceLabel: { fontSize: 14, fontWeight: '700', color: Romance.ink },
+    paceHint: { fontSize: 10, color: Romance.faint, marginTop: 3 },
+    styleDesc: {
+      fontSize: 12,
+      color: Romance.accent,
+      backgroundColor: Romance.accentSoft,
+      borderRadius: 14,
+      padding: 12,
+      marginTop: 10,
+      lineHeight: 18,
+    },
+    advToggle: {
+      marginTop: 26,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 18,
+      padding: 14,
+      alignItems: 'center',
+    },
+    advToggleText: { fontSize: 14, fontWeight: '700', color: Romance.accent },
+    advToggleHint: { fontSize: 11, color: Romance.faint, marginTop: 3 },
+    previewCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 20,
+      padding: 14,
+      marginTop: 24,
+    },
+    previewText: { flex: 1 },
+    previewName: { fontSize: 16, fontWeight: '700', color: Romance.ink },
+    previewHook: { fontSize: 12, color: Romance.sub, marginTop: 3 },
+    primaryBtn: {
+      marginTop: 14,
+      backgroundColor: Romance.accent,
+      borderRadius: 26,
+      paddingVertical: 15,
+      alignItems: 'center',
+    },
+    btnDisabled: { opacity: 0.4 },
+    primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    secondaryBtn: {
+      marginTop: 10,
+      borderRadius: 20,
+      paddingVertical: 13,
+      alignItems: 'center',
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+      borderColor: Romance.accent,
+    },
+    secondaryBtnText: { color: Romance.accent, fontSize: 15, fontWeight: '600' },
+    btnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    portrait: { width: 180, height: 180, borderRadius: 26, alignSelf: 'center', marginBottom: 4 },
+    footnote: { textAlign: 'center', fontSize: 11, color: Romance.faint, marginTop: 12 },
+  })
+);

@@ -9,7 +9,7 @@ export interface Character {
   name: string;
   /** 追法家族（行为树原型层，捏＋兜底脚本用） */
   archetype: ArchetypeId;
-  /** 性向分类（onboarding 第一问 / 广场 chips 用）；nonbinary 只出现在推荐/自创流里 */
+  /** 性向分类（onboarding 第一问 / 交友推荐排序用）；nonbinary 只出现在推荐/自创流里 */
   loveTag: 'male' | 'female' | 'nonhuman' | 'nonbinary';
   /** 性别（捏＋基础项，D-025）：male / female / nonbinary */
   gender?: 'male' | 'female' | 'nonbinary';
@@ -60,6 +60,34 @@ export interface Character {
   custom?: boolean;
 }
 
+/**
+ * 「我」的身份（D-035）：TA 眼中的用户。
+ * 默认一份（store.me，onboarding 时建立），可为单个角色定制一份（store.meByCharacter）。
+ * 除 nickname 外全部可选；没填的字段不进 prompt。
+ */
+export interface UserProfile {
+  /** 头像（本机图片 URI，可空） */
+  avatarUri?: string;
+  /** 昵称（必填）：角色看到的名字 */
+  nickname: string;
+  /** 性别；unspecified/缺省 = 不指定 */
+  gender?: 'unspecified' | 'female' | 'male' | 'nonbinary';
+  /** 称呼 / 代词（自由文本，可不填） */
+  pronoun?: string;
+  /** 职业：角色必须稳定记住 */
+  occupation?: string;
+  /** 情感取向（如「喜欢女生」） */
+  orientation?: string;
+  /** 个性签名：一句现在的状态 */
+  signature?: string;
+  /** 背景：成长背景、家庭或当前生活背景等稳定事实 */
+  background?: string;
+  /** 关于我：身份、经历、性格、兴趣，以及希望角色记住的事实 */
+  about?: string;
+  /** 我的边界：不希望角色替你决定、猜测或触碰的内容 */
+  boundaries?: string;
+}
+
 export type MessageFrom = 'him' | 'me' | 'system';
 export type MessageKind = 'text' | 'voice' | 'system' | 'image';
 
@@ -76,6 +104,13 @@ export interface ChatMessage {
    * 只供对话引擎的上下文与记忆提取使用，保证他记得自己说过什么（D-016）。
    */
   spoken?: string;
+  /** 已撤回（LINE 规则：双方可见占位「XX撤回了一条消息」，内容清空；D-030） */
+  recalled?: boolean;
+  /** 引用回复（LINE 规则：气泡上方带被引消息摘要；D-030） */
+  replyTo?: { from: MessageFrom; text: string };
+  /** 用户语音消息的本机音频（expo-audio 录制；D-030） */
+  audioUri?: string;
+  durationMs?: number;
 }
 
 /** 广场搭话记录：不入消息 tab，会过期（免费层商业承重墙） */
@@ -86,8 +121,10 @@ export interface SquareChat {
   lastActiveAt: number;
   /** 他已开口要联系方式 */
   adoptionOffered: boolean;
-  /** 用户在本条记录里发过的消息数（领养触发器用） */
+  /** 用户在本条记录里发过的消息数 */
   userTurns: number;
+  /** 心动值 0-100（D-029）：满了 = 羁绊 LV1，TA 主动交换联系方式 */
+  heart?: number;
 }
 
 /**
@@ -117,6 +154,7 @@ export interface Bond {
   /** 用户生日 MM-DD，可空 */
   birthday?: string;
   createdAt: number;
+  /** 羁绊值（XP，D-029）：等级与阶段名由 lib/bond.ts 的成长曲线推导 */
   affinity: number;
   messages: ChatMessage[];
   /** 下一次「开门」时间戳（他主动来找你） */
@@ -165,13 +203,49 @@ export interface CalendarEvent {
   caredAfter?: boolean;
 }
 
+/* ── 外出（D-038）：把相处从手机屏幕里拿出来——两个人真的在同一个空间 ── */
+
+/** 外出约定：和某个 TA 约好去某个地点；进入该地点即赴约（消耗掉这条约定） */
+export interface OutingPlan {
+  id: string;
+  characterId: string;
+  placeId: string;
+  createdAt: number;
+}
+
+/** 外出场景会话：同一时间只有一场（store.outingSession）；结束后在羁绊会话留一条系统记录 */
+export interface OutingSession {
+  id: string;
+  placeId: string;
+  characterId: string;
+  /**
+   * date = 赴约（事先有约定）；encounter = 偶遇（通讯录里的人恰好也在）；
+   * stranger = 广场偶遇陌生人（D-040：还没配对的角色）
+   */
+  kind: 'date' | 'encounter' | 'stranger';
+  messages: ChatMessage[];
+  startedAt: number;
+}
+
 export type EngineId = 'mock' | 'anthropic' | 'qianfan';
 
 export interface EngineContext {
   character: Character;
-  mode: 'square' | 'bonded';
-  /** bonded 模式下的关系信息（含记忆库、缔结时间，注入系统 prompt） */
+  /** square 初识 / bonded 亲密 / outing 外出（亲身互动故事模式，D-038） */
+  mode: 'square' | 'bonded' | 'outing';
+  /** bonded/outing 模式下的关系信息（含记忆库、缔结时间，注入系统 prompt） */
   bond?: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'birthday' | 'memory' | 'createdAt'>;
+  /** 「我」的身份（D-035）：注入系统 prompt，TA 借此认识她 */
+  me?: UserProfile;
+  /** outing 模式的场景信息（D-038/D-040） */
+  outing?: {
+    placeName: string;
+    /** 地点的场景设定（content/places.ts） */
+    scene: string;
+    kind: 'date' | 'encounter' | 'stranger';
+    /** 今天的天气一句话（lib/weather.ts），进场景氛围 */
+    weatherLine?: string;
+  };
   history: ChatMessage[];
   userText: string;
 }
