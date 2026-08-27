@@ -12,6 +12,7 @@ import { CharAvatar } from '@/components/char-avatar';
 import { ChatThread, type ReplyRef } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ARCHETYPE_LABEL } from '@/content/characters';
+import { characterSecrets, unlockedSecretCount } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
 import { generateReply } from '@/lib/engine';
 import { updateBondMemory } from '@/lib/memory';
@@ -213,6 +214,15 @@ export default function BondScreen() {
               <View style={styles.profileRow}>
                 <Text style={styles.profileRowLabel}>你的生日</Text>
                 <Text style={styles.profileRowValue}>{bond.birthday}</Text>
+              </View>
+            )}
+            {characterSecrets(character).length > 0 && (
+              <View style={styles.profileRow}>
+                <Text style={styles.profileRowLabel}>TA 的秘密</Text>
+                <Text style={styles.profileRowValueDim}>
+                  已看见 {unlockedSecretCount(levelInfo(bond.affinity).level, characterSecrets(character).length)}/
+                  {characterSecrets(character).length} · 关系越近，看得越深
+                </Text>
               </View>
             )}
             <View style={styles.profileRow}>

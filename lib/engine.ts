@@ -152,8 +152,9 @@ async function mockReply(ctx: EngineContext): Promise<EngineReply> {
 
   const main = pick(script.bonded, salt);
   const texts = [main];
-  // 羁绊模式的主动性：偶尔追一句称呼，体现「被爱」
-  if (ctx.bond && salt % 3 === 0) {
+  // 羁绊模式的主动性：偶尔追一句称呼，体现「被爱」；频率随主动联系强度变（D-045）
+  const chattiness = ctx.character.initiative === 'high' ? 2 : ctx.character.initiative === 'low' ? 5 : 3;
+  if (ctx.bond && salt % chattiness === 0) {
     texts.push(`${ctx.bond.nickname}，在想什么？说来听听。`);
   }
   return { texts };

@@ -117,7 +117,64 @@ export function characterProfileBlock(c: Character): string[] {
   if (c.schedule) facts.push(`你的日常作息：${c.schedule}`);
   if (facts.length) lines.push('【关于你】', ...facts.map((f) => `- ${f}`));
   if (c.chatNotes) lines.push(`【额外设定】${c.chatNotes}`);
+  if (c.taboos)
+    lines.push(`【你的禁忌与边界】${c.taboos}——涉及时温和回避或直接拒绝，不解释这是设定。`);
   return lines;
+}
+
+/* ── 创造扩展的注入块（D-045）── */
+
+/** 预设共同记忆：你们都记得的过去（创作层设定，三种模式都注入；不受「广场无记忆」商业墙约束） */
+export function sharedMemoryBlock(c: Character): string[] {
+  const items = (c.presetMemories ?? '')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!items.length) return [];
+  return [
+    '【你们的共同记忆】下面是你和她都记得的过去——自然提起，一次最多一件，不要当设定复述：',
+    ...items.map((s) => `- ${s}`),
+  ];
+}
+
+/** 主动联系强度（只注入亲密/外出）：TA 有多主动 */
+export const INITIATIVE_NOTES: Record<NonNullable<Character['initiative']>, string> = {
+  high: '主动联系强度：高——想到她就说，常常先开口，分享欲藏不住；但依然不刷屏、不查岗。',
+  mid: '主动联系强度：中——自然往来，有事分享、有话接话，先开口和等她来各占一半。',
+  low: '主动联系强度：低——多半等她先开口；回应少而走心，偶尔一句主动才显得珍贵。',
+};
+
+export function initiativeLine(c: Character): string[] {
+  return c.initiative ? [`- ${INITIATIVE_NOTES[c.initiative]}`] : [];
+}
+
+/** 隐藏设定/剧情钩子：每行一条，羁绊 LV3 起每升一级解锁一条（查手机通道待做，OPEN_QUESTIONS #19） */
+export const SECRET_START_LEVEL = 3;
+
+export function characterSecrets(c: Character): string[] {
+  return (c.secrets ?? '')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+export function unlockedSecretCount(level: number, total: number): number {
+  return Math.max(0, Math.min(total, level - SECRET_START_LEVEL + 1));
+}
+
+/** 已解锁的可流露；未解锁的完全不进 prompt（模型不知道就绝不会说漏） */
+export function secretsBlock(c: Character, level: number): string[] {
+  const all = characterSecrets(c);
+  if (!all.length) return [];
+  const n = unlockedSecretCount(level, all.length);
+  if (n === 0) {
+    return ['【你的隐藏面】你有还没让她看见的一面——现在关系还没到，只在只言片语里留一点影子，绝不说破。'];
+  }
+  return [
+    '【你的隐藏面】下面是你一直藏着的事，关系走到现在，可以让她逐渐看见——在合适的时刻自然流露，一次最多一件，不要当设定报出来：',
+    ...all.slice(0, n).map((s) => `- ${s}`),
+    ...(all.length > n ? ['- （还有更深的事，现在还不能说）'] : []),
+  ];
 }
 
 /** 追法：角色脚本的 pursuit + 恋爱类型描述（捏＋选的类型，D-025） */
@@ -253,7 +310,11 @@ export function buildSquareSystemPrompt(ctx: EngineContext): string {
     ...characterProfileBlock(c),
     ...(voice.length ? ['【你的声音】下面是你说过的话，照这个口吻说，不要复读：', ...voice.map((l) => `- ${l}`)] : []),
     ...userProfileBlock(ctx.me, 'square'),
+    ...sharedMemoryBlock(c),
     `【此刻的情境】你们刚在交友软件上配对成功，是她点开了和你的对话。这是她对你说的第 ${n} 句话。你正在过自己的日子（${c.identity} 的日常），聊天是顺带的，不是全部注意力。`,
+    ...(c.presetMemories
+      ? ['- 你们有共同的过去（见上）——这次配对更像一场重逢：带着熟稔，但仍从当下聊起。']
+      : []),
     `- ${squareTurnGuide(n)}`,
     ...SQUARE_MANNER,
     ...CHAT_HARD_RULES,
@@ -345,8 +406,11 @@ export function buildBondedSystemPrompt(ctx: EngineContext, now: Date = new Date
     ...BONDED_TIME_RULES,
     ...(bond?.birthday ? [`- 她的生日是 ${bond.birthday}，临近时你会记得。`] : []),
     ...userProfileBlock(ctx.me, 'bonded'),
+    ...sharedMemoryBlock(c),
     ...memoryBlockFor(bond?.memory),
+    ...secretsBlock(c, lv.level),
     ...BONDED_LOVE_RULES,
+    ...initiativeLine(c),
     `- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`,
     ...CHAT_HARD_RULES,
     ...CHAT_OUTPUT_FORMAT,
@@ -423,11 +487,13 @@ export function buildOutingSystemPrompt(ctx: EngineContext, now: Date = new Date
     moment,
     // 陌生人不知道她是谁（她的资料不注入），但她的边界任何模式都在（D-035/D-040）
     ...(stranger ? boundariesBlock(ctx.me) : userProfileBlock(ctx.me, 'outing')),
+    ...sharedMemoryBlock(c),
     ...(stranger ? [] : memoryBlockFor(bond?.memory)),
+    ...(stranger ? [] : secretsBlock(c, lv.level)),
     ...OUTING_MANNER,
     ...(stranger
       ? OUTING_STRANGER_MANNER
-      : [`- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`]),
+      : [`- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`, ...initiativeLine(c)]),
     ...CHAT_HARD_RULES,
     ...OUTING_OUTPUT_FORMAT,
   ].join('\n');
@@ -606,10 +672,14 @@ export const CHARACTER_PARSE_SYSTEM = [
   '- likes / dislikes：喜欢 / 讨厌的东西，顿号分隔，各不超过 40 字',
   `- loveStyle：恋爱中的类型，只能从这些里选（没有贴合的就省略）：${LOVE_STYLES.map((l) => l.label).join(' / ')}`,
   '- mbti：四字母 MBTI（如 "INFJ"）',
-  '- chatNotes：其他聊天设定（语气、对她的称呼、禁忌等），不超过 120 字',
+  '- chatNotes：其他聊天设定（语气、对她的称呼等），不超过 120 字',
   '- schedule：日常作息，不超过 120 字',
+  '- initiative：主动联系强度，"high" | "mid" | "low"',
+  '- taboos：角色的禁忌与边界（不做的事、回避的话题），不超过 120 字',
+  '- presetMemories：角色与用户的共同记忆/共同过去，每行一条，总共不超过 200 字',
+  '- secrets：隐藏设定/剧情钩子（角色藏着的事，会随关系亲近逐渐解锁），每行一条、浅的在前深的在后，总共不超过 300 字',
   '',
-  '规则：只依据描述本身，不补全、不脑补；描述里关于「用户/她」的内容不是角色字段，可归进 chatNotes（如「叫她小朋友」）。',
+  '规则：只依据描述本身，不补全、不脑补；描述里关于「用户/她」的内容不是角色字段，可归进 chatNotes 或 presetMemories（如「叫她小朋友」「小时候是邻居」）。',
   '只输出一个 JSON 对象：不要 markdown 代码块标记，不要任何其他文字。',
 ].join('\n');
 

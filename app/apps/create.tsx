@@ -10,6 +10,7 @@
  */
 
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -17,6 +18,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   LayoutAnimation,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -66,6 +68,9 @@ function heuristicParse(text: string): Record<string, string> {
   put('mbti', text.match(/\b([IE][NS][TF][JP])\b/i)?.[1]?.toUpperCase());
   put('schedule', grab(['作息', '日常作息']));
   put('chatNotes', grab(['聊天设定', '说话方式', '语气']));
+  put('taboos', grab(['禁忌', '边界', '雷点']));
+  put('presetMemories', grab(['共同记忆', '共同的过去']));
+  put('secrets', grab(['秘密', '隐藏设定', '剧情钩子']));
   const g = grab(['性别']);
   if (g) out.gender = /男/.test(g) ? 'male' : /女/.test(g) ? 'female' : 'nonbinary';
   put('story', grab(['背景故事', '背景', '故事', '经历']) ?? text.slice(0, 300));
@@ -87,12 +92,23 @@ const GENDERS = [
   { key: 'nonbinary', label: '非二元', pronoun: 'TA' },
 ] as const;
 
-/** 确定关系的节奏：聊几句后 TA 会开口要联系方式 */
+/** 确定关系的节奏（机制上=心动值步长；界面不暴露机制口径，D-045） */
 const OFFER_PACES = [
-  { turns: 2, label: '心动很快', hint: '第 2 句就想留下你' },
-  { turns: 4, label: '标准', hint: '聊上几句自然开口' },
-  { turns: 7, label: '慢热', hint: '要多聊一会儿才肯说' },
+  { turns: 2, label: '心动很快', hint: '一眼就沦陷' },
+  { turns: 4, label: '标准', hint: '顺其自然' },
+  { turns: 7, label: '慢热', hint: '需要时间发酵' },
 ];
+
+/** 主动联系强度（D-045）：进亲密/外出 prompt */
+const INITIATIVES = [
+  { key: 'high', label: '高', hint: '常常先来找你' },
+  { key: 'mid', label: '中', hint: '自然往来' },
+  { key: 'low', label: '低', hint: '多半等你先开口' },
+] as const;
+
+/** 生日下拉用：某月的天数（2 月给到 29） */
+const daysInMonth = (m: number) => (m === 2 ? 29 : [4, 6, 9, 11].includes(m) ? 30 : 31);
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 const MBTI_LIST = [
   'INTJ', 'INTP', 'ENTJ', 'ENTP',
@@ -127,6 +143,8 @@ export default function CreateScreen() {
   // ── 基础 ──
   const [name, setName] = useState('');
   const [gender, setGender] = useState<(typeof GENDERS)[number]['key']>('male');
+  // 年龄状态（D-045）：发布必须确认成年；未成年走加强审查（试装不放行）
+  const [ageStatus, setAgeStatus] = useState<'adult' | 'minor'>('adult');
   const [look, setLook] = useState('');
   const [story, setStory] = useState('');
   const [palette, setPalette] = useState(0);
@@ -137,19 +155,34 @@ export default function CreateScreen() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [race, setRace] = useState('人类');
   const [raceCustom, setRaceCustom] = useState('');
-  const [birthday, setBirthday] = useState('');
+  // 生日下拉（D-045）：月 / 日 两级选单
+  const [birthMonth, setBirthMonth] = useState<number | null>(null);
+  const [birthDay, setBirthDay] = useState<number | null>(null);
+  const [pickerOpen, setPickerOpen] = useState<null | 'month' | 'day'>(null);
   const [catchphrase, setCatchphrase] = useState('');
   const [likes, setLikes] = useState('');
   const [dislikes, setDislikes] = useState('');
   const [offerTurns, setOfferTurns] = useState(4);
   const [loveStyle, setLoveStyle] = useState<string | undefined>();
   const [mbti, setMbti] = useState<string | undefined>();
+  // 创造扩展（D-045）
+  const [initiative, setInitiative] = useState<'high' | 'mid' | 'low'>('mid');
+  const [presetMemories, setPresetMemories] = useState('');
+  const [taboos, setTaboos] = useState('');
+  const [secrets, setSecrets] = useState('');
   const [chatNotes, setChatNotes] = useState('');
   const [schedule, setSchedule] = useState('');
 
   const finalRace = race === '其他' ? raceCustom.trim() : race;
+  const birthday =
+    birthMonth && birthDay
+      ? `${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
+      : '';
   const style = loveStyleByLabel(loveStyle);
-  const allText = [desc, name, look, story, raceCustom, catchphrase, likes, dislikes, chatNotes, schedule]
+  const allText = [
+    desc, name, look, story, raceCustom, catchphrase, likes, dislikes,
+    presetMemories, taboos, secrets, chatNotes, schedule,
+  ]
     .join(' ')
     .trim();
 
@@ -170,7 +203,12 @@ export default function CreateScreen() {
       advanced = true; n++;
     }
     const bd = s(p.birthday).replace(/[月./]/g, '-').replace(/日/g, '');
-    if (/^\d{1,2}-\d{1,2}$/.test(bd)) { setBirthday(bd); advanced = true; n++; }
+    if (/^\d{1,2}-\d{1,2}$/.test(bd)) {
+      const [bm, bday] = bd.split('-').map(Number);
+      if (bm >= 1 && bm <= 12 && bday >= 1 && bday <= daysInMonth(bm)) {
+        setBirthMonth(bm); setBirthDay(bday); advanced = true; n++;
+      }
+    }
     if (s(p.catchphrase)) { setCatchphrase(s(p.catchphrase).slice(0, 20)); advanced = true; n++; }
     if (s(p.likes)) { setLikes(s(p.likes).slice(0, 40)); advanced = true; n++; }
     if (s(p.dislikes)) { setDislikes(s(p.dislikes).slice(0, 40)); advanced = true; n++; }
@@ -180,6 +218,11 @@ export default function CreateScreen() {
     if (MBTI_LIST.includes(mb)) { setMbti(mb); advanced = true; n++; }
     if (s(p.chatNotes)) { setChatNotes(s(p.chatNotes).slice(0, 120)); advanced = true; n++; }
     if (s(p.schedule)) { setSchedule(s(p.schedule).slice(0, 120)); advanced = true; n++; }
+    const init = s(p.initiative);
+    if (init === 'high' || init === 'mid' || init === 'low') { setInitiative(init); advanced = true; n++; }
+    if (s(p.taboos)) { setTaboos(s(p.taboos).slice(0, 120)); advanced = true; n++; }
+    if (s(p.presetMemories)) { setPresetMemories(s(p.presetMemories).slice(0, 200)); advanced = true; n++; }
+    if (s(p.secrets)) { setSecrets(s(p.secrets).slice(0, 300)); advanced = true; n++; }
     if (advanced) {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setAdvancedOpen(true);
@@ -234,7 +277,7 @@ export default function CreateScreen() {
       pronoun: g.pronoun,
       story: story.trim() || undefined,
       race: finalRace && finalRace !== '人类' ? finalRace : undefined,
-      birthday: /^\d{1,2}-\d{1,2}$/.test(birthday.trim()) ? birthday.trim() : undefined,
+      birthday: birthday || undefined,
       catchphrase: catchphrase.trim() || undefined,
       likes: likes.trim() || undefined,
       dislikes: dislikes.trim() || undefined,
@@ -242,6 +285,11 @@ export default function CreateScreen() {
       mbti,
       chatNotes: chatNotes.trim() || undefined,
       schedule: schedule.trim() || undefined,
+      adultConfirmed: ageStatus === 'adult' ? true : undefined,
+      initiative,
+      presetMemories: presetMemories.trim() || undefined,
+      taboos: taboos.trim() || undefined,
+      secrets: secrets.trim() || undefined,
       offerAfterTurns: offerTurns,
       hook: style ? style.desc.split('；')[0] : 'TA 在等一个点开 TA 的人。',
       intro: '……你捏出来的 TA，正在看你。',
@@ -258,6 +306,19 @@ export default function CreateScreen() {
       return false;
     }
     return true;
+  };
+
+  /** 上传头像（D-045）：相册选图；红线 #1——不收真人照片（试装为自我声明，真人检测见 OPEN_QUESTIONS #14） */
+  const uploadAvatar = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.9,
+      allowsEditing: true,
+      aspect: [3, 4],
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      setPortraitUri(result.assets[0].uri);
+    }
   };
 
   const genPortrait = async () => {
@@ -290,9 +351,11 @@ export default function CreateScreen() {
     else if (imageKeyReady()) void ensurePortrait(id);
     // 重置表单
     setDesc(''); setName(''); setLook(''); setStory(''); setPortraitUri(undefined);
-    setRace('人类'); setRaceCustom(''); setBirthday(''); setCatchphrase('');
+    setAgeStatus('adult'); setRace('人类'); setRaceCustom('');
+    setBirthMonth(null); setBirthDay(null); setCatchphrase('');
     setLikes(''); setDislikes(''); setOfferTurns(4); setLoveStyle(undefined);
-    setMbti(undefined); setChatNotes(''); setSchedule(''); setAdvancedOpen(false);
+    setMbti(undefined); setInitiative('mid'); setPresetMemories(''); setTaboos(''); setSecrets('');
+    setChatNotes(''); setSchedule(''); setAdvancedOpen(false);
     Alert.alert('TA 醒过来了', '去「交友」里滑到 TA。', [
       { text: '去交友看看', onPress: () => router.push('/apps/dating') },
     ]);
@@ -366,7 +429,20 @@ export default function CreateScreen() {
             ))}
           </View>
 
-          <Text style={styles.step}>③ TA 长什么样</Text>
+          <Text style={styles.step}>③ 年龄状态</Text>
+          <View style={styles.chipRow}>
+            <Chip label="确认成年" active={ageStatus === 'adult'} onPress={() => setAgeStatus('adult')} />
+            <Chip label="未成年" active={ageStatus === 'minor'} onPress={() => setAgeStatus('minor')} />
+          </View>
+          {ageStatus === 'minor' ? (
+            <Text style={styles.minorNotice}>
+              未成年角色进入加强审查通道，且不开放恋爱互动。试装还没接审查系统，暂时不能发布。
+            </Text>
+          ) : (
+            <Text style={styles.afterHint}>发布即确认 TA 是成年人。</Text>
+          )}
+
+          <Text style={styles.step}>④ TA 长什么样</Text>
           <TextInput
             style={[styles.input, styles.inputMultiline]}
             value={look}
@@ -376,6 +452,7 @@ export default function CreateScreen() {
             multiline
             maxLength={60}
           />
+          <Text style={styles.afterHint}>TA 的主题色——没头像时的底色、界面点缀的颜色：</Text>
           <View style={styles.paletteRow}>
             {PALETTES.map((p, i) => (
               <Pressable
@@ -386,7 +463,7 @@ export default function CreateScreen() {
             ))}
           </View>
 
-          <Text style={styles.step}>④ TA 的背景故事</Text>
+          <Text style={styles.step}>⑤ TA 的背景故事</Text>
           <TextInput
             style={[styles.input, styles.inputStory]}
             value={story}
@@ -397,28 +474,34 @@ export default function CreateScreen() {
             maxLength={300}
           />
 
-          <Text style={styles.step}>⑤ TA 的立绘（可选，约 1 分钟）</Text>
+          <Text style={styles.step}>⑥ TA 的头像（可选）</Text>
           <Text style={styles.stepHint}>
-            按 ③ 的描述画一张半身像。之后你们相处的每一格画面都会以它为参考，长相与穿着保持一致。
+            上传一张图，或按 ④ 的描述生成一张半身立绘（约 1 分钟）；交友卡面与会话头像都用它。
+            不能上传真人照片。
           </Text>
           {portraitUri ? (
             <Image source={{ uri: portraitUri }} style={styles.portrait} contentFit="cover" />
           ) : null}
-          <Pressable
-            style={[styles.secondaryBtn, (!name.trim() || generating) && styles.btnDisabled]}
-            disabled={!name.trim() || generating}
-            onPress={genPortrait}>
-            {generating ? (
-              <View style={styles.btnRow}>
-                <ActivityIndicator color={Romance.accent} />
-                <Text style={styles.secondaryBtnText}>正在生成立绘……</Text>
-              </View>
-            ) : (
-              <Text style={styles.secondaryBtnText}>
-                {portraitUri ? '不像？重画一张' : imageKeyReady() ? '生成 TA 的立绘' : '生成 TA 的立绘（未配千帆 key）'}
-              </Text>
-            )}
-          </Pressable>
+          <View style={styles.portraitBtnRow}>
+            <Pressable style={[styles.secondaryBtn, styles.portraitBtn]} onPress={uploadAvatar}>
+              <Text style={styles.secondaryBtnText}>{portraitUri ? '换一张' : '上传头像'}</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.secondaryBtn, styles.portraitBtn, (!name.trim() || generating) && styles.btnDisabled]}
+              disabled={!name.trim() || generating}
+              onPress={genPortrait}>
+              {generating ? (
+                <View style={styles.btnRow}>
+                  <ActivityIndicator color={Romance.accent} />
+                  <Text style={styles.secondaryBtnText}>生成中…</Text>
+                </View>
+              ) : (
+                <Text style={styles.secondaryBtnText}>
+                  {imageKeyReady() ? '生成立绘' : '生成立绘（未配 key）'}
+                </Text>
+              )}
+            </Pressable>
+          </View>
 
           {/* ───────── 高级选项（收起） ───────── */}
           <Pressable style={styles.advToggle} onPress={toggleAdvanced}>
@@ -436,7 +519,7 @@ export default function CreateScreen() {
               </View>
               {race === '其他' ? (
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, styles.raceCustomInput]}
                   value={raceCustom}
                   onChangeText={setRaceCustom}
                   placeholder="自定义种族，如：半人马 / 図书馆精"
@@ -446,14 +529,32 @@ export default function CreateScreen() {
               ) : null}
 
               <Text style={styles.step}>TA 的生日</Text>
-              <TextInput
-                style={styles.input}
-                value={birthday}
-                onChangeText={setBirthday}
-                placeholder="MM-DD，如 03-08（会出现在你们的日历上）"
-                placeholderTextColor={Romance.faint}
-                maxLength={5}
-              />
+              <View style={styles.chipRow}>
+                <Pressable style={styles.ddBtn} onPress={() => setPickerOpen('month')}>
+                  <Text style={[styles.ddText, !birthMonth && { color: Romance.faint }]}>
+                    {birthMonth ? `${birthMonth} 月` : '月份 ▾'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.ddBtn, !birthMonth && styles.btnDisabled]}
+                  disabled={!birthMonth}
+                  onPress={() => setPickerOpen('day')}>
+                  <Text style={[styles.ddText, !birthDay && { color: Romance.faint }]}>
+                    {birthDay ? `${birthDay} 日` : '日期 ▾'}
+                  </Text>
+                </Pressable>
+                {birthMonth ? (
+                  <Pressable
+                    style={styles.ddClear}
+                    onPress={() => {
+                      setBirthMonth(null);
+                      setBirthDay(null);
+                    }}>
+                    <Text style={styles.ddClearText}>清除</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              <Text style={styles.afterHint}>会出现在你们的日历上。</Text>
 
               <Text style={styles.step}>口癖</Text>
               <TextInput
@@ -486,7 +587,7 @@ export default function CreateScreen() {
               />
 
               <Text style={styles.step}>确定关系的节奏</Text>
-              <Text style={styles.stepHint}>聊几句之后，TA 会开口想要你的联系方式。</Text>
+              <Text style={styles.stepHint}>TA 陷入心动、想和你确定关系的速度。</Text>
               <View style={styles.chipRow}>
                 {OFFER_PACES.map((p) => (
                   <Pressable
@@ -527,6 +628,65 @@ export default function CreateScreen() {
                   />
                 ))}
               </View>
+
+              <Text style={styles.step}>主动联系强度</Text>
+              <Text style={styles.stepHint}>TA 平时有多主动来找你。</Text>
+              <View style={styles.chipRow}>
+                {INITIATIVES.map((it) => (
+                  <Pressable
+                    key={it.key}
+                    style={[styles.paceCard, initiative === it.key && styles.paceCardActive]}
+                    onPress={() => setInitiative(it.key)}>
+                    <Text style={[styles.paceLabel, initiative === it.key && { color: '#fff' }]}>
+                      {it.label}
+                    </Text>
+                    <Text style={[styles.paceHint, initiative === it.key && { color: '#FFE3EC' }]}>
+                      {it.hint}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.step}>预设共同记忆</Text>
+              <Text style={styles.stepHint}>
+                你们「早就认识」的部分：一行一条，TA 会自然提起，初次配对也会像一场重逢。
+              </Text>
+              <TextInput
+                style={[styles.input, styles.inputMultiline]}
+                value={presetMemories}
+                onChangeText={setPresetMemories}
+                placeholder={'高中同桌三年，TA 总抄你的笔记\n去年冬天一起看过一场雪'}
+                placeholderTextColor={Romance.faint}
+                multiline
+                maxLength={200}
+              />
+
+              <Text style={styles.step}>禁忌 / 边界</Text>
+              <Text style={styles.stepHint}>TA 不做的事、回避的话题——涉及时 TA 会温和回避或直接拒绝。</Text>
+              <TextInput
+                style={[styles.input, styles.inputMultiline]}
+                value={taboos}
+                onChangeText={setTaboos}
+                placeholder="不谈家里的事；不喝酒；被问到左手的疤会岔开话题……"
+                placeholderTextColor={Romance.faint}
+                multiline
+                maxLength={120}
+              />
+
+              <Text style={styles.step}>隐藏设定 / 剧情钩子</Text>
+              <Text style={styles.stepHint}>
+                TA 藏着的事：一行一条、浅的在前。羁绊 LV3 起每亲近一级解锁一条，之后「查手机」也能翻到；
+                没解锁的 TA 绝不说漏。
+              </Text>
+              <TextInput
+                style={[styles.input, styles.inputMultiline]}
+                value={secrets}
+                onChangeText={setSecrets}
+                placeholder={'其实注册交友软件只是为了找一个人\n左手的疤是替别人挡下来的\n真实身份是……'}
+                placeholderTextColor={Romance.faint}
+                multiline
+                maxLength={300}
+              />
 
               <Text style={styles.step}>其他关于聊天的设定</Text>
               <TextInput
@@ -569,14 +729,56 @@ export default function CreateScreen() {
           ) : null}
 
           <Pressable
-            style={[styles.primaryBtn, !name.trim() && styles.btnDisabled]}
-            disabled={!name.trim()}
+            style={[styles.primaryBtn, (!name.trim() || ageStatus === 'minor') && styles.btnDisabled]}
+            disabled={!name.trim() || ageStatus === 'minor'}
             onPress={submit}>
-            <Text style={styles.primaryBtnText}>让 TA 醒来</Text>
+            <Text style={styles.primaryBtnText}>
+              {ageStatus === 'minor' ? '未成年角色暂不能发布' : '让 TA 醒来'}
+            </Text>
           </Pressable>
-          <Text style={styles.footnote}>不能捏真人与 IP 角色 · 发布即默认同意创作规范</Text>
+          <Text style={styles.footnote}>不能创造真人与 IP 角色 · 发布即默认同意创作规范</Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* 生日下拉选单（D-045） */}
+      <Modal
+        visible={pickerOpen !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPickerOpen(null)}>
+        <Pressable style={styles.pickerMask} onPress={() => setPickerOpen(null)}>
+          <Pressable style={styles.pickerSheet} onPress={() => {}}>
+            <Text style={styles.pickerTitle}>{pickerOpen === 'month' ? '选择月份' : '选择日期'}</Text>
+            <ScrollView style={styles.pickerList}>
+              {(pickerOpen === 'month'
+                ? MONTH_OPTIONS
+                : Array.from({ length: daysInMonth(birthMonth ?? 1) }, (_, i) => i + 1)
+              ).map((n) => {
+                const active = (pickerOpen === 'month' ? birthMonth : birthDay) === n;
+                return (
+                  <Pressable
+                    key={n}
+                    style={styles.pickerRow}
+                    onPress={() => {
+                      if (pickerOpen === 'month') {
+                        setBirthMonth(n);
+                        if (birthDay && birthDay > daysInMonth(n)) setBirthDay(null);
+                        setPickerOpen('day');
+                      } else {
+                        setBirthDay(n);
+                        setPickerOpen(null);
+                      }
+                    }}>
+                    <Text style={[styles.pickerRowText, active && styles.pickerRowActive]}>
+                      {n} {pickerOpen === 'month' ? '月' : '日'}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </AppScreen>
   );
 }
@@ -626,6 +828,56 @@ const styles = themed(() =>
     chipActive: { backgroundColor: Romance.accentSoft, borderColor: Romance.accent },
     chipText: { fontSize: 13, color: Romance.sub, fontWeight: '500' },
     chipTextActive: { color: Romance.accent, fontWeight: '700' },
+    afterHint: { fontSize: 11, color: Romance.faint, marginTop: 10, lineHeight: 16 },
+    minorNotice: {
+      fontSize: 12,
+      color: '#B3453C',
+      backgroundColor: '#FDEBEA',
+      borderRadius: 12,
+      padding: 12,
+      marginTop: 10,
+      lineHeight: 18,
+    },
+    raceCustomInput: { marginTop: 10 },
+    ddBtn: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 16,
+      paddingHorizontal: 18,
+      paddingVertical: 11,
+    },
+    ddText: { fontSize: 14, color: Romance.ink, fontWeight: '500' },
+    ddClear: { justifyContent: 'center', paddingHorizontal: 8 },
+    ddClearText: { fontSize: 12, color: Romance.faint },
+    pickerMask: {
+      flex: 1,
+      backgroundColor: 'rgba(59,33,38,0.4)',
+      justifyContent: 'flex-end',
+    },
+    pickerSheet: {
+      backgroundColor: Romance.bg,
+      borderTopLeftRadius: 26,
+      borderTopRightRadius: 26,
+      paddingTop: 18,
+      paddingBottom: 30,
+      maxHeight: '60%',
+    },
+    pickerTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: Romance.ink,
+      textAlign: 'center',
+      marginBottom: 8,
+    },
+    pickerList: { paddingHorizontal: 20 },
+    pickerRow: {
+      paddingVertical: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: Romance.line,
+    },
+    pickerRowText: { fontSize: 15, color: Romance.ink, textAlign: 'center' },
+    pickerRowActive: { color: Romance.accent, fontWeight: '700' },
+    portraitBtnRow: { flexDirection: 'row', gap: 10 },
+    portraitBtn: { flex: 1 },
     paletteRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
     swatch: { width: 32, height: 32, borderRadius: 16 },
     swatchActive: { borderWidth: 3, borderColor: Romance.ink },

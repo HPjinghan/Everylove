@@ -46,6 +46,17 @@ export interface Character {
   chatNotes?: string;
   /** 日常作息（自由文本；进亲密 prompt 的时间感，用于生成 TA 的时间线） */
   schedule?: string;
+  /* ── 创造扩展（D-045） ── */
+  /** 年龄状态：发布必须确认成年；未成年走加强审查通道（试装不放行，OPEN_QUESTIONS #18） */
+  adultConfirmed?: boolean;
+  /** 预设共同记忆：你们都记得的过去，每行一条；三种对话模式都注入（创作层设定，不受广场无记忆墙约束） */
+  presetMemories?: string;
+  /** 主动联系强度：注入亲密/外出 prompt 的主动性口径；脚本引擎的加句概率也随之变 */
+  initiative?: 'high' | 'mid' | 'low';
+  /** 禁忌/边界：TA 不做的事、回避的话题（三种模式都注入，涉及时回避或拒绝） */
+  taboos?: string;
+  /** 隐藏设定/剧情钩子：每行一条，羁绊 LV3 起每升一级解锁一条；查手机解锁通道待做（OPEN_QUESTIONS #19） */
+  secrets?: string;
   /** 聊几句后 TA 会想确定关系（默认 4，见 lib/engine ADOPTION_OFFER_AFTER_TURNS） */
   offerAfterTurns?: number;
   tags: string[];

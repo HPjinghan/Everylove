@@ -415,3 +415,20 @@
 - **决策**：桌面底部新增 **iPhone 式 Dock**——半透明圆角固定栏，最多 4 个 App、图标无标签、不随（未来的）翻页滑动；默认 Message / 交友 / 外出 / 设置（`constants/apps.ts` 的 DEFAULT_DOCK，`store.desktopDock` 持久化）。编辑模式（长按抖动）下网格与 Dock 之间可**拖入拖出**：拖进空位追加、拖到占位与对方交换（被换下的回到拖来的格位）、Dock 内拖动重排；网格行数自动让出 Dock 区域。
 - **推翻**：无（D-034 网格自由摆放不变，Dock 是其下方的固定层）。
 - **影响文件**：`app/index.tsx`、`constants/apps.ts`（DEFAULT_DOCK）、`store/app-store.ts`（desktopDock/setDesktopDock）。
+
+## D-045 · 2026-08-28 · 创造表单大修：年龄状态/上传头像/生日选单/共同记忆/主动强度/禁忌/隐藏设定（Harper 拍板）
+
+- **决策**（`app/apps/create.tsx` + 系统落地）：
+  1. **主题色说明**：长相下方的色板加说明文字「TA 的主题色——没头像时的底色、界面点缀的颜色」（原来光秃秃一排色块看不懂）。
+  2. **种族「其他」输入框**：加 marginTop 修掉与按钮的重叠。
+  3. **生日改下拉选单**：月/日两级底部弹层（2 月给到 29 天，切月自动校正非法日），可清除；不再手输 MM-DD。
+  4. **节奏 tip 去机制化**：不再写「聊几句后要联系方式」——改「TA 陷入心动、想和你确定关系的速度」，三档 hint 改「一眼就沦陷/顺其自然/需要时间发酵」（机制口径只留代码注释）。
+  5. **上传头像**：与「生成立绘」并排；相册选图（3:4 裁剪）即为 TA 的头像与交友卡面。红线 #1 不变：界面明示「不能上传真人照片」（试装为自我声明，真人检测归 OPEN_QUESTIONS #14 的审核管线）。
+  6. **年龄状态**（基础第 ③ 步，必选，默认确认成年）：「确认成年 / 未成年」。**未成年 = 进入加强审查通道且不开放恋爱互动；试装未接审查系统，暂不能发布**（发布键置灰并说明）；成年发布即确认（`Character.adultConfirmed`）。加强审查的具体流程 = OPEN_QUESTIONS #18。
+  7. **预设共同记忆**（`presetMemories`，一行一条 ≤200 字）：三种对话模式都注入【你们的共同记忆】块（创作层设定，不受「广场无记忆」商业墙约束——那堵墙限制的是用户数据记忆）；有共同记忆时初识模式加注「这次配对更像一场重逢」，广场陌生人偶遇同理成为重逢。
+  8. **主动联系强度**（`initiative` 高/中/低，默认中）：注入亲密/外出 prompt（INITIATIVE_NOTES 三档口径）；脚本引擎的「追一句」概率随档位变（1/2、1/3、1/5）。
+  9. **禁忌/边界**（`taboos` ≤120 字）：进 characterProfileBlock（三种模式都注入）——涉及时温和回避或直接拒绝，不解释是设定。
+  10. **隐藏设定/剧情钩子**（`secrets`，一行一条 ≤300 字、浅前深后）：**羁绊 LV3 起每升一级解锁一条**（SECRET_START_LEVEL=3）；未解锁的**完全不进 prompt**（模型不知道就绝不说漏），全锁时只注入「留一点影子、绝不说破」的暗示行；已解锁的要求自然流露、一次一件。TA 主页显示「TA 的秘密 · 已看见 n/m」。「查手机」解锁通道待做 = OPEN_QUESTIONS #19。
+  11. **描述解析同步扩展**（D-043 的 CHARACTER_PARSE_SYSTEM + 规则解析）：新增 initiative/taboos/presetMemories/secrets 四个字段的解析与回填。
+- **推翻**：无（D-025 表单的既有项不变，属扩展与修补）。
+- **影响文件**：`app/apps/create.tsx`、`lib/types.ts`（Character 五个新字段）、`content/prompts.ts`（sharedMemoryBlock/initiativeLine/secretsBlock/taboos 注入 + 解析字段）、`lib/engine.ts`（mock 追句概率）、`app/bond/[bondId].tsx`（秘密解锁进度行）。

@@ -55,7 +55,7 @@
 
 **系统级拟真彩蛋**：锁屏（可换他的照片）、壁纸、来电铃声、真实时间电量。
 
-**创造**（原捏＋，2026-08-27 D-043 更名）：桌面图标「创造」；表单顶部新增**描述导入**——写/粘贴 ≤2000 字人设，点「自动解析」由引擎整理成表单字段（无 key 回落规则解析），解析后全部可手改；表单结构与审核拦截不变（D-025）。
+**创造**（原捏＋，2026-08-27 D-043 更名；2026-08-28 D-045 大修）：桌面图标「创造」；表单顶部**描述导入**——写/粘贴 ≤2000 字人设，点「自动解析」由引擎整理成表单字段（无 key 回落规则解析），解析后全部可手改。基础项新增**年龄状态**（必选：确认成年/未成年——未成年走加强审查、试装不能发布，OPEN_QUESTIONS #18）与**上传头像**（与生成立绘并排；不收真人照片，红线 #1）；生日改月/日下拉选单。高级项新增：**预设共同记忆**（三种对话模式注入，初识变重逢）、**主动联系强度**（高/中/低，进亲密/外出 prompt 与脚本引擎追句概率）、**禁忌/边界**（涉及即回避或拒绝）、**隐藏设定/剧情钩子**（羁绊 LV3 起逐级解锁，未解锁的不进 prompt 绝不说漏；TA 主页显示解锁进度；查手机解锁通道待做，OPEN_QUESTIONS #19）。
 
 **桌面 Dock**（2026-08-27 D-044）：底部 iPhone 式固定栏，最多 4 个 App（默认 Message/交友/外出/设置）、无标签、不随翻页滑动；编辑模式下网格 ↔ Dock 可拖入拖出（占位交换、Dock 内重排），`store.desktopDock` 持久化。
 
@@ -162,6 +162,7 @@
 * 外出（2026-08-27，D-038/D-040）：地点在 `content/places.ts`（scene 进 prompt / hook 给用户；plaza 标 `stranger: true`，不进约定选项）；`store.outingPlans`（约定，每角色一条）与 `store.outingSession`（同时只有一场，换地点自动结束上一场并留记录；kind: date/encounter/stranger）；赴约优先于离席、偶遇跳过离席（D-012）；陌生人偶遇不注入她的资料与记忆、只注入边界（D-040）；外出对话暂不进记忆提取窗口（试装已知限制，见 D-038）。
 * 交友滑卡（2026-08-27，D-040/D-041/D-042）：`app/apps/dating.tsx`——Animated + PanResponder 牌堆；右滑 `ensureSquareChat` 建配对（TA 必同意），左滑 `markDatingPass` 记冷却；牌堆顺序 `lib/recommend.ts` 的 `rankDeck`（UGC 供给进同一池同一套打分，服务端推荐落地时接口不变），冷却只在 `hasFreshSupply` 为真时生效、划完自动回流（D-042）；配对条 = squareChats 里未加好友的；预告卡不进牌堆；搜索与 chips 已随滑卡形态移除。
 * 创造描述导入（2026-08-27，D-043）：`app/apps/create.tsx` 顶部 ≤2000 字描述框 + 自动解析——引擎走 `completeText` + `CHARACTER_PARSE_SYSTEM`（prompts.ts §5，只输出 JSON），失败回落规则解析（标签行 + MBTI 正则）；解析结果裁到表单上限、全部可手改，描述同过 BLOCKED_NAME_PATTERN。
+* 创造扩展字段（2026-08-28，D-045）：`Character` 新增 adultConfirmed / presetMemories / initiative / taboos / secrets；注入函数在 prompts.ts——`sharedMemoryBlock`（三模式）、`initiativeLine`（亲密/外出）、taboos 走 characterProfileBlock（三模式）、`secretsBlock`（亲密/外出，SECRET_START_LEVEL=3 起每级解一条，未解锁的不进 prompt）；TA 主页秘密进度用 `characterSecrets`/`unlockedSecretCount`；未成年角色发布拦在创造表单（试装无审查后端）。
 * 桌面 Dock（2026-08-27，D-044）：`store.desktopDock`（默认 `DEFAULT_DOCK`）；`app/index.tsx` 网格行数让出 Dock 区，拖拽落点在 Dock 带 = 追加/交换/重排，Dock ↔ 网格对称交换。
 * 对话上下文与记忆（2026-08-17，D-016）：所有引擎共用 `lib/engine.ts` 的 `buildTurns()`——**最近 20 轮完整对话**进模型（`HISTORY_ROUNDS`），系统提示条/空消息不进、同角色合并、首条保证为 user；甩图/漫画里他说的话存 `ChatMessage.spoken`（不上屏、只供上下文）。**羁绊记忆库** `lib/memory.ts`：mem0 式本地实现，`Bond.memory = { facts, summary }`——每 3 个用户轮次后台由当前引擎提取长期事实（≤30 条）并把滑出窗口的旧对话滚动进摘要，注入 bonded 模式系统 prompt；失败静默。**只有羁绊层有记忆**，广场层故意没有（商业承重墙）。正式版服务端代理落地后记忆层切自托管 mem0，接口不变。
 * 心动值与羁绊等级（2026-08-21，D-029/D-030）：曲线在 `lib/bond.ts`；XP 目前唯一来源=她发消息 +5（羁绊会话与外出场景同口径，D-038；开门/画面/心跳加成已移除，数值另行设计）；心动值存 `SquareChat.heart`，羁绊 XP 即 `Bond.affinity`（按新曲线解释）；升级系统消息在 `store.appendBond` 统一产生。
