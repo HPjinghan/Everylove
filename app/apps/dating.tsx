@@ -91,6 +91,13 @@ export default function DatingScreen() {
   const lovePref = useAppStore((s) => s.lovePref);
   const datingPasses = useAppStore((s) => s.datingPasses);
   const view = useAppStore((s) => s.datingView);
+  const introDone = useAppStore((s) => s.introDone);
+
+  // 新手流逃生门（D-058）：不想滑了也放行桌面
+  const escapeIntro = () => {
+    useAppStore.getState().setIntroDone();
+    router.replace('/');
+  };
 
   const [swipedIds, setSwipedIds] = useState<string[]>([]);
   const [match, setMatch] = useState<Character | null>(null);
@@ -221,11 +228,18 @@ export default function DatingScreen() {
   return (
     <AppScreen
       title="交友"
+      onBack={!introDone ? escapeIntro : undefined}
       right={
         <Pressable onPress={() => setPrefOpen(true)} hitSlop={8}>
           <Text style={styles.prefAction}>偏好</Text>
         </Pressable>
       }>
+      {/* 新手流（D-058）：滑到心动就是入口；不想滑有逃生门 */}
+      {!introDone ? (
+        <Pressable onPress={escapeIntro} hitSlop={6}>
+          <Text style={styles.skipIntro}>先不滑了，随便逛逛 →</Text>
+        </Pressable>
+      ) : null}
       {/* 视图切换（D-049）：滑卡 / 瀑布流 */}
       <View style={styles.viewToggle}>
         {(
@@ -393,6 +407,12 @@ export default function DatingScreen() {
 const styles = themed(() =>
   StyleSheet.create({
     prefAction: { fontSize: 14, fontWeight: '700', color: Romance.accent },
+    skipIntro: {
+      textAlign: 'center',
+      fontSize: 12,
+      color: Romance.faint,
+      marginTop: 8,
+    },
     viewToggle: {
       flexDirection: 'row',
       alignSelf: 'center',

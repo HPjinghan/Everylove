@@ -48,13 +48,14 @@ export default function AdoptScreen() {
   const finalNickname = (customNickname.trim() || nickname).trim();
 
   const finish = () => {
-    const bondId = useAppStore.getState().createBond({
+    useAppStore.getState().createBond({
       characterId: character.id,
       name: hisName.trim() || character.name,
       nickname: finalNickname || '你',
       birthday: birthday.trim() || undefined,
     });
-    router.replace({ pathname: '/bond/[bondId]', params: { bondId } });
+    // 方案 B（D-058）：缔结后落桌面——首次会揭幕，TA 的第一句话在未读横幅里等她
+    router.replace('/');
   };
 
   return (
@@ -248,7 +249,7 @@ function Ceremony({
       </Animated.Text>
       {done && (
         <Pressable style={styles.primaryBtn} onPress={onDone}>
-          <Text style={styles.primaryBtnText}>去和 TA 说话</Text>
+          <Text style={styles.primaryBtnText}>去看看你们的手机</Text>
         </Pressable>
       )}
     </View>

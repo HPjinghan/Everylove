@@ -528,3 +528,13 @@
 - **配套**：tsconfig 排除 supabase/（Deno 代码不进 RN 类型检查）；ai_usage 建表与函数部署经管理 API 远程完成并验证（未登录 401、匿名拒绝）。
 - **推翻**：修订 D-054 之「本地优先 + 手动/慢防抖备份」（升级为云端为主）；D-004/D-010 的「key 打包进客户端」自此有了下机通道（开发机直连仍可用）。
 - **影响文件**：`supabase/functions/ai/index.ts`（新）、`lib/proxy.ts`（新）、`lib/auth.ts`（URL/ANON 导出 + 会话缓存）、`lib/engine.ts`（代理回落）、`lib/imagegen.ts`、`lib/tts.ts`、`lib/sync.ts`（重写自动同步）、`app/_layout.tsx`、`app/apps/settings.tsx`、`tsconfig.json`。
+
+## D-058 · 2026-08-30 · 新用户流：落交友滑卡，桌面是奖励（Harper 拍板）
+
+- **决策**（回应 OPEN_QUESTIONS #16 的「新用户落点」半边）：
+  1. **流程**：你想被谁爱 → 先让 TA 们认识你（D-035 现状）→ **直接落交友滑卡**（不见桌面）→ 滑/配对/试聊 → 心动满加好友 → 缔结仪式 →（方案 B）**落桌面揭幕**：「这部手机，现在是你们的了」+ 三张模块卡逐个划过（Message：TA 的第一句话在横幅里 / 创造 / 外出），可跳过；TA 的打招呼计未读——桌面横幅本身就是「点进去」的教学。之后每次启动照常落桌面。
+  2. **逃生门**：滑卡页顶部「先不滑了，随便逛逛 →」+ 返回键同效（AppScreen.onBack 覆盖）——放行桌面、不再拦。强制感是留存杀手，也防 App Store 审核被卡。
+  3. **提示形态**：揭幕三卡（一次性）+ 既有的「空态即教程」语法；不做「TA 顺口介绍机制」彩蛋（Harper 明示不做——TA 不当客服）。
+  4. **机制**：`store.introDone`（首次加好友或逃生门置真，门禁在桌面 Redirect）/ `introRevealSeen`（揭幕播一次）；persist v3 迁移——老存档两标记直接置真，不重走新手流；缔结后 `createBond` 打招呼计未读、领养流终点从羁绊会话改为桌面。
+- **推翻**：D-020 时代「新用户默认落桌面」的落点；D-046 后「缔结直接进会话」的终点（改落桌面揭幕）。§4 首十分钟随之改写。
+- **影响文件**：`store/app-store.ts`（introDone/introRevealSeen/v3 迁移/unread）、`app/index.tsx`（门禁 + IntroReveal）、`app/apps/dating.tsx`（逃生门）、`components/app-screen.tsx`（onBack）、`app/adopt/[characterId].tsx`（终点/按钮文案）。

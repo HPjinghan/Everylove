@@ -14,10 +14,13 @@ export function AppScreen({
   title,
   children,
   right,
+  onBack,
 }: {
   title: string;
   children: ReactNode;
   right?: ReactNode;
+  /** 覆盖返回行为（新手流逃生门等场景，D-058） */
+  onBack?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -25,7 +28,9 @@ export function AppScreen({
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Pressable
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          onPress={() =>
+            onBack ? onBack() : router.canGoBack() ? router.back() : router.replace('/')
+          }
           hitSlop={10}
           style={styles.back}>
           <IconSymbol name="chevron.left" size={20} color={Romance.ink} />

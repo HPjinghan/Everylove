@@ -37,6 +37,10 @@ export const SQUARE_CHAT_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 
 interface AppState {
   onboarded: boolean;
+  /** 新手流（D-058）：onboarding 后直接落交友滑卡；首次加好友或点「先逛逛」后才放行桌面 */
+  introDone: boolean;
+  /** 桌面揭幕 + 气泡标注是否已看过（首次加好友后播一次） */
+  introRevealSeen: boolean;
   lovePref?: LovePref;
   /** 「我」的默认身份（D-035）：onboarding 时建立，设置 → 我的身份 里补充 */
   me?: UserProfile;
@@ -75,6 +79,9 @@ interface AppState {
   qianfanKey: string;
 
   completeOnboarding: (pref: LovePref) => void;
+  /** 新手流逃生门 / 完成（D-058） */
+  setIntroDone: () => void;
+  setIntroRevealSeen: () => void;
   /** 交友偏好（D-049）：随时改口味（原只在 onboarding 定一次） */
   setLovePref: (pref: LovePref) => void;
   setDatingView: (v: 'swipe' | 'grid') => void;
@@ -148,6 +155,8 @@ interface AppState {
 
 const initialData = {
   onboarded: false,
+  introDone: false,
+  introRevealSeen: false,
   lovePref: undefined as LovePref | undefined,
   me: undefined as UserProfile | undefined,
   meByCharacter: {} as Record<string, UserProfile>,
@@ -180,6 +189,9 @@ export const useAppStore = create<AppState>()(
       ...initialData,
 
       completeOnboarding: (pref) => set({ onboarded: true, lovePref: pref }),
+
+      setIntroDone: () => set({ introDone: true }),
+      setIntroRevealSeen: () => set({ introRevealSeen: true }),
 
       setLovePref: (pref) => set({ lovePref: pref }),
       setDatingView: (v) => set({ datingView: v }),
@@ -313,7 +325,8 @@ export const useAppStore = create<AppState>()(
           createdAt: now,
           affinity: 0, // 羁绊 LV1 从零开始（心动值已在暧昧期满 100，D-029/D-052）
           messages: [...squareMsgs, ceremony, ...greeting],
-          unread: 0,
+          // 缔结后落桌面（D-058 方案 B）：打招呼计未读——桌面横幅就是「点进去」的教学
+          unread: greeting.length,
         };
 
         // 领养后帖物化进动态流
@@ -336,6 +349,8 @@ export const useAppStore = create<AppState>()(
           bonds: [...state.bonds, bond],
           squareChats: remaining,
           posts: [...state.posts, ...bondedPosts],
+          // 首次加好友 = 新手流完成（D-058）：桌面从此放行，并在首次进入时揭幕
+          introDone: true,
         });
         return bond.id;
       },
@@ -649,20 +664,27 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'everylove-store',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => AsyncStorage),
       // v2：种子角色改版（陆隽行下架、人外上新），清掉指向已删除角色的数据
+      // v3：新手流标记（D-058）——已有存档的老用户不重走新手流
       migrate: (persisted: unknown, version) => {
         const state = persisted as Partial<AppState> | undefined;
-        if (!state || version >= 2) return state;
-        const seedIds = new Set(CHARACTERS.map((c) => c.id));
-        const customIds = new Set((state.customCharacters ?? []).map((c) => c.id));
-        const valid = (id: string) => seedIds.has(id) || customIds.has(id);
-        state.bonds = (state.bonds ?? []).filter((b) => valid(b.characterId));
-        state.squareChats = Object.fromEntries(
-          Object.entries(state.squareChats ?? {}).filter(([id]) => valid(id))
-        );
-        state.posts = (state.posts ?? []).filter((p) => valid(p.characterId));
+        if (!state) return state;
+        if (version < 2) {
+          const seedIds = new Set(CHARACTERS.map((c) => c.id));
+          const customIds = new Set((state.customCharacters ?? []).map((c) => c.id));
+          const valid = (id: string) => seedIds.has(id) || customIds.has(id);
+          state.bonds = (state.bonds ?? []).filter((b) => valid(b.characterId));
+          state.squareChats = Object.fromEntries(
+            Object.entries(state.squareChats ?? {}).filter(([id]) => valid(id))
+          );
+          state.posts = (state.posts ?? []).filter((p) => valid(p.characterId));
+        }
+        if (version < 3) {
+          state.introDone = true;
+          state.introRevealSeen = true;
+        }
         return state;
       },
     }

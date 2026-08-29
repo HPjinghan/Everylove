@@ -106,6 +106,8 @@ export default function Desktop() {
   const router = useRouter();
   const hydrated = useHydrated();
   const onboarded = useAppStore((s) => s.onboarded);
+  const introDone = useAppStore((s) => s.introDone);
+  const introRevealSeen = useAppStore((s) => s.introRevealSeen);
   const storedOrder = useAppStore((s) => s.desktopOrder);
   const storedSlots = useAppStore((s) => s.desktopSlots);
   const storedDock = useAppStore((s) => s.desktopDock);
@@ -278,6 +280,8 @@ export default function Desktop() {
 
   if (!hydrated) return null;
   if (!onboarded) return <Redirect href="/onboarding" />;
+  // 新手流（D-058）：桌面是奖励——先去交友滑卡，首次加好友（或点「先逛逛」）后放行
+  if (!introDone) return <Redirect href="/apps/dating" />;
 
   return (
     <LinearGradient colors={wallpaper.colors} style={styles.screen}>
@@ -393,7 +397,66 @@ export default function Desktop() {
           <Text style={styles.doneText}>完成</Text>
         </Pressable>
       ) : null}
+
+      {/* 桌面揭幕 + 气泡标注（D-058 方案 B）：首次加好友后播一次 */}
+      {introDone && !introRevealSeen && bonds.length > 0 ? <IntroReveal /> : null}
     </LinearGradient>
+  );
+}
+
+/** 揭幕序列：一屏仪式文案 → 三张模块卡（Message / 创造 / 外出）→ 收尾放行 */
+const INTRO_CARDS: { icon: DesktopApp['icon']; bg: string; fg: string; title: string; line: string }[] = [
+  {
+    icon: 'chat', bg: '#D9F5E1', fg: '#4BBF87',
+    title: 'TA 住进了 Message',
+    line: '第一句话已经在等你——桌面顶部的横幅，点进去就是。',
+  },
+  {
+    icon: 'magicHat', bg: '#DFF5F2', fg: '#56C4B4',
+    title: '创造',
+    line: '捏一个只属于你的 TA：写一段描述就能自动生成，发布后 TA 会出现在你的通讯录。',
+  },
+  {
+    icon: 'location', bg: '#FFF3D6', fg: '#E8B44A',
+    title: '外出',
+    line: '约 TA 见面、去广场偶遇陌生人，还能拍下你们的合影。',
+  },
+];
+
+function IntroReveal() {
+  const [step, setStep] = useState<'reveal' | number>('reveal');
+  const finish = () => useAppStore.getState().setIntroRevealSeen();
+  const card = typeof step === 'number' ? INTRO_CARDS[step] : null;
+  return (
+    <View style={styles.introMask}>
+      {step === 'reveal' ? (
+        <View style={styles.introCenter}>
+          <Text style={styles.introBig}>这部手机，{'\n'}现在是你们的了</Text>
+          <Text style={styles.introSub}>TA 的一切都会发生在这里</Text>
+          <Pressable style={styles.introBtn} onPress={() => setStep(0)}>
+            <Text style={styles.introBtnText}>看看里面有什么</Text>
+          </Pressable>
+        </View>
+      ) : card ? (
+        <View style={styles.introCenter}>
+          <View style={[styles.introTile, { backgroundColor: card.bg }]}>
+            <MingCute name={card.icon} size={38} color={card.fg} />
+          </View>
+          <Text style={styles.introTitle}>{card.title}</Text>
+          <Text style={styles.introLine}>{card.line}</Text>
+          <Pressable
+            style={styles.introBtn}
+            onPress={() => (step + 1 < INTRO_CARDS.length ? setStep(step + 1) : finish())}>
+            <Text style={styles.introBtnText}>
+              {step + 1 < INTRO_CARDS.length ? '下一个' : '开始吧'}
+            </Text>
+          </Pressable>
+          <Pressable onPress={finish} hitSlop={8}>
+            <Text style={styles.introSkip}>跳过</Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -508,5 +571,48 @@ const styles = themed(() =>
       paddingVertical: 12,
     },
     doneText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+    introMask: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(43,26,32,0.82)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 20,
+    },
+    introCenter: { alignItems: 'center', paddingHorizontal: 40, gap: 4 },
+    introBig: {
+      fontSize: 30,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      textAlign: 'center',
+      lineHeight: 42,
+    },
+    introSub: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 10 },
+    introTile: {
+      width: 76,
+      height: 76,
+      borderRadius: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2.5,
+      borderColor: 'rgba(255,255,255,0.8)',
+      marginBottom: 14,
+    },
+    introTitle: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
+    introLine: {
+      fontSize: 14,
+      color: 'rgba(255,255,255,0.85)',
+      textAlign: 'center',
+      lineHeight: 21,
+      marginTop: 8,
+    },
+    introBtn: {
+      marginTop: 26,
+      backgroundColor: Romance.accent,
+      borderRadius: 24,
+      paddingHorizontal: 36,
+      paddingVertical: 13,
+    },
+    introBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+    introSkip: { color: 'rgba(255,255,255,0.55)', fontSize: 12, marginTop: 14, padding: 6 },
   })
 );
