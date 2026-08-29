@@ -484,3 +484,24 @@
   2. **回帖实装模型**：她评论 → TA 用当前引擎真的回一条（`buildPostReplySystem/UserPrompt`，prompts.ts §1-E：人设 + 追法 + 她的身份 + 共同记忆 + 羁绊记忆注入，回帖写法 = 短、口语、半公开分寸），生成期间显示「TA 正在回复…」；**可多次回复**（原「只回一次」的脚本限制取消）。暗面路由前置（红线 #3：评论区也不例外）；mock/无 key/失败回落台词库 commentReply。输出走 splitBubbles + stripStageDirections 保持打字感（D-039 口径延伸到评论区）。
 - **推翻**：D-020 之朋友圈命名与卡片样式；D-008 时代的脚本回帖（commentReply 降为回落）。
 - **影响文件**：`app/apps/moments.tsx`（重写）、`content/prompts.ts`（§1-E）、`store/app-store.ts`（addHisReply 改传文本、去只回一次限制）、`constants/apps.ts`（图标/标签）。
+
+## D-054 · 2026-08-29 · 账号与云备份：Supabase（Apple + 邮箱 OTP，快照同步 v0）（Harper 拍板选 A）
+
+- **决策**（方案见当日提案，Harper 拍板供应商 = Supabase）：
+  1. **注册不是门，是保险箱**：无登录墙、onboarding 不变，游客 = 纯本地完整体验；登录的价值主张 = 云备份/跨设备（「换手机也不会失去 TA」）。入口在设置顶部「账号 · 云端」。
+  2. **登录方式**：Apple 登录（expo-apple-authentication → signInWithIdToken）+ 邮箱验证码（OTP 无密码，省掉忘记密码流）。手机号/微信不做（试装）；匿名账号暂不做（游客即本地，登录时再绑定）。
+  3. **同步 v0 = 全量快照**：zustand persist 的整份 AsyncStorage 快照 ↔ `snapshots` 表（jsonb，RLS 仅本人），last-write-wins；登录态下 store 变化防抖 60s 自动上传；登录时云端有备份 → 弹「恢复到本机 / 用本机覆盖云端」；恢复 = 覆写 + rehydrate。含聊天与记忆，按最高敏感级（红线 #3），TLS 传输。
+  4. **删除**：设置内「删除云端数据」（删 snapshots + 退出）；账号本体删除需服务端函数，正式版补（App Store 合规项）。
+  5. **供应商抽象**：界面只认 `lib/auth.ts`/`lib/sync.ts` 导出——正式版若因大陆可达性迁自建/LeanCloud，只改这两个文件。
+  6. **下一步（未在本次）**：Edge Functions LLM 代理（/ai/chat /image /tts，key 收回服务端 + 按 uid 限流）——回应 OPEN_QUESTIONS #9 的路径已定。
+- **配置**：`.env.local` 填 `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY`；Dashboard 跑 `docs/supabase-setup.sql` 建表开 RLS；Auth Providers 开 Email OTP 与 Apple。
+- **影响文件**：`lib/auth.ts`（新）、`lib/sync.ts`（新）、`app/apps/settings.tsx`（账号区）、`app/_layout.tsx`（自动备份）、`docs/supabase-setup.sql`（新）、`.env.example`、`package.json`（+@supabase/supabase-js、expo-apple-authentication、react-native-url-polyfill）。
+
+## D-055 · 2026-08-29 · 发帖调度器：TA 的 X 时间线活起来，频率遵循 MBTI（Harper 拍板）
+
+- **决策**：
+  1. **调度**（`lib/posts.ts`，与心跳同机制：启动/回前台补投）：只有缔结的 TA 发帖（D-027 口径）；每角色一只钟（`store.postSchedule`），到点生成一条并重排下一次；错过再久也只补 1 条（时间线不炸屏）；缔结后第一条不立发（铺设帖已在，隔一个周期才开始）。
+  2. **频率 = MBTI 映射**（每天条数，试装数值）：ENFP/ESFP 3 · ENTP/ESTP 2.5 · ENFJ/ESFJ 2 · ENTJ 1.5 · INFP 1.5 · ESTJ/ISFP 1.2 · INFJ 1 · INTP/ISFJ 0.8 · INTJ 0.6 · ISTP/ISTJ 0.5；无 MBTI 默认 1。直觉：E 表达欲 > I，NF 爱抒发、SP 爱直播生活，ISTJ/ISTP 两天一条。间隔 ±35% 抖动防准点。
+  3. **内容实装模型**（prompts §1-F）：人设 + 追法 + 羁绊记忆 + 时段 + 天气 → 一条 ≤60 字口语帖；「不 @ 她不点名，但有你们生活的影子」；深夜帖更轻更软；打字感纪律（无 emoji/话题/（））。mock/无 key/失败 = 本周期静默跳过。互动数为确定性伪随机小体量。
+- **推翻**：补足 D-020/D-027 时代「静态种子帖一次性铺设、此后时间线死亡」的状态（种子铺设保留为开场存量）。
+- **影响文件**：`lib/posts.ts`（新）、`content/prompts.ts`（§1-F + weatherLine 引入）、`store/app-store.ts`（postSchedule/setPostDue/addCharacterPost）、`app/_layout.tsx`。

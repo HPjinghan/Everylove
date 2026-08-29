@@ -60,6 +60,8 @@ interface AppState {
   themeId: string;
   /** 日历用户层日程（D-020） */
   userEvents: CalendarEvent[];
+  /** 发帖调度（D-055）：characterId → 下一条帖子的到点时间（频率按 MBTI，lib/posts.ts） */
+  postSchedule: Record<string, number>;
   /** 交友左滑略过记录（D-041）：characterId → 最近一次略过的时间戳（进推荐算法的冷却项） */
   datingPasses: Record<string, number>;
   /** 交友视图（D-049）：滑卡 / 双列瀑布流 */
@@ -108,6 +110,9 @@ interface AppState {
   setBondMemory: (bondId: string, memory: BondMemory) => void;
   toggleLike: (postId: string) => void;
   addMyComment: (postId: string, text: string) => void;
+  /** 发帖调度（D-055） */
+  setPostDue: (characterId: string, at: number) => void;
+  addCharacterPost: (characterId: string, bondId: string, text: string) => void;
   /** TA 的回帖（D-053）：文本由调用方生成（模型或台词库回落），可多次回复 */
   addHisReply: (postId: string, text: string) => void;
   addCustomCharacter: (c: Character) => void;
@@ -158,6 +163,7 @@ const initialData = {
   wallpaper: 'dawn',
   themeId: 'peach',
   userEvents: [] as CalendarEvent[],
+  postSchedule: {} as Record<string, number>,
   datingPasses: {} as Record<string, number>,
   datingView: 'swipe' as 'swipe' | 'grid',
   outingPlans: [] as OutingPlan[],
@@ -420,6 +426,27 @@ export const useAppStore = create<AppState>()(
               ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) }
               : p
           ),
+        }),
+
+      setPostDue: (characterId, at) =>
+        set({ postSchedule: { ...get().postSchedule, [characterId]: at } }),
+
+      addCharacterPost: (characterId, bondId, text) =>
+        set({
+          posts: [
+            ...get().posts,
+            {
+              id: uid('p'),
+              characterId,
+              bondId,
+              text,
+              at: Date.now(),
+              // 小体量互动数：确定性伪随机（羁绊层帖子的量级，D-055）
+              likes: 40 + ((text.length * 37 + characterId.length * 13) % 220),
+              liked: false,
+              comments: [],
+            },
+          ],
         }),
 
       addMyComment: (postId, text) =>

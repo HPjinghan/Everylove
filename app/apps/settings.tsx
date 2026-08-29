@@ -3,9 +3,10 @@
  */
 
 import * as Notifications from 'expo-notifications';
-import { type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import type { Session } from '@supabase/supabase-js';
 
 import { AppScreen } from '@/components/app-screen';
 import { WALLPAPERS } from '@/constants/apps';
@@ -15,6 +16,17 @@ import { CHARACTERS } from '@/content/characters';
 import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY, QIANFAN_MODEL } from '@/lib/engine';
 import { ensurePortrait, imageKeyReady } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
+import {
+  authConfigured,
+  currentSession,
+  onAuthChange,
+  sendEmailOtp,
+  sessionLabel,
+  signInWithApple,
+  signOut,
+  verifyEmailOtp,
+} from '@/lib/auth';
+import { cloudSnapshotAt, deleteCloudData, restoreSnapshot, uploadSnapshot } from '@/lib/sync';
 import { useAppStore } from '@/store/app-store';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -135,9 +147,184 @@ export default function MeScreen() {
 
   const me = useAppStore((s) => s.me);
 
+  /* ── 账号 · 云端（D-054）：登录只为云备份，游客照玩 ── */
+  const [session, setSession] = useState<Session | null>(null);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authOtp, setAuthOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
+
+  useEffect(() => {
+    if (!authConfigured()) return;
+    currentSession().then(setSession);
+    return onAuthChange(setSession);
+  }, []);
+
+  /** 登录成功后：云端已有备份 → 问恢复还是覆盖；没有 → 静默上传第一份 */
+  const afterLogin = async () => {
+    const at = await cloudSnapshotAt();
+    if (at) {
+      Alert.alert(
+        '云端已有一份备份',
+        `备份于 ${new Date(at).toLocaleString('zh-CN')}。要恢复到这台手机，还是用本机数据覆盖云端？`,
+        [
+          {
+            text: '恢复到本机',
+            onPress: async () => {
+              const ok = await restoreSnapshot();
+              Alert.alert(ok ? '已恢复' : '恢复失败', ok ? 'TA 们回来了。' : '稍后再试。');
+            },
+          },
+          { text: '用本机覆盖云端', onPress: () => void uploadSnapshot() },
+        ]
+      );
+    } else {
+      const r = await uploadSnapshot();
+      Alert.alert('云端已开通', r === 'ok' ? '当前数据已备份。之后会自动备份。' : '首次备份稍后自动重试。');
+    }
+  };
+
+  const doApple = async () => {
+    if (authBusy) return;
+    setAuthBusy(true);
+    try {
+      await signInWithApple();
+      await afterLogin();
+    } catch (e) {
+      const err = e as { code?: string; message?: string };
+      if (err.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('Apple 登录失败', err.message ?? '稍后再试。');
+      }
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const doSendOtp = async () => {
+    const email = authEmail.trim();
+    if (!email || authBusy) return;
+    setAuthBusy(true);
+    try {
+      await sendEmailOtp(email);
+      setOtpSent(true);
+      Alert.alert('验证码已发出', '去邮箱看看（也翻翻垃圾箱）。');
+    } catch (e) {
+      Alert.alert('发送失败', (e as Error).message ?? '稍后再试。');
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const doVerifyOtp = async () => {
+    const code = authOtp.trim();
+    if (!code || authBusy) return;
+    setAuthBusy(true);
+    try {
+      await verifyEmailOtp(authEmail.trim(), code);
+      setOtpSent(false);
+      setAuthOtp('');
+      await afterLogin();
+    } catch (e) {
+      Alert.alert('验证失败', (e as Error).message ?? '检查验证码是否正确或已过期。');
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const doBackupNow = async () => {
+    const r = await uploadSnapshot();
+    Alert.alert(r === 'ok' ? '已备份' : '备份失败', r === 'ok' ? '云端已是最新。' : '稍后再试。');
+  };
+
+  const doRestore = () => {
+    Alert.alert('从云端恢复', '会用云端备份覆盖这台手机上的全部数据。', [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '恢复',
+        style: 'destructive',
+        onPress: async () => {
+          const ok = await restoreSnapshot();
+          Alert.alert(ok ? '已恢复' : '恢复失败', ok ? 'TA 们回来了。' : '云端可能还没有备份。');
+        },
+      },
+    ]);
+  };
+
+  const doSignOut = () => {
+    Alert.alert('退出登录', '数据留在这台手机上，云端备份保留；再次登录可恢复。', [
+      { text: '取消', style: 'cancel' },
+      { text: '退出', onPress: () => void signOut() },
+    ]);
+  };
+
+  const doDeleteCloud = () => {
+    Alert.alert('删除云端数据', '云端备份将被永久删除并退出登录；本机数据保留。', [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除并退出',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteCloudData();
+          await signOut();
+          Alert.alert('已删除', '云端已清空。账号本体删除将在正式版提供。');
+        },
+      },
+    ]);
+  };
+
   return (
     <AppScreen title="设置">
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Section title="账号 · 云端">
+        {!authConfigured() ? (
+          <Text style={styles.footHint}>
+            未配置 Supabase：在 .env.local 填 EXPO_PUBLIC_SUPABASE_URL 与
+            EXPO_PUBLIC_SUPABASE_ANON_KEY 并重启 expo start；建表 SQL 见 docs/supabase-setup.sql。
+          </Text>
+        ) : session ? (
+          <>
+            <Row label="账号" value={sessionLabel(session)} />
+            <Row label="立即备份到云端" onPress={doBackupNow} />
+            <Row label="从云端恢复到本机" onPress={doRestore} />
+            <Row label="退出登录" onPress={doSignOut} />
+            <Row label="删除云端数据" onPress={doDeleteCloud} />
+            <Text style={styles.footHint}>数据变化后会自动备份（含聊天与记忆，按最高敏感级）。</Text>
+          </>
+        ) : (
+          <>
+            <Row label={authBusy ? '连接中…' : ' 用 Apple 登录'} onPress={doApple} />
+            <TextInput
+              style={styles.keyInput}
+              value={authEmail}
+              onChangeText={setAuthEmail}
+              placeholder="或用邮箱：填邮箱收验证码"
+              placeholderTextColor={Romance.faint}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+            />
+            {otpSent ? (
+              <TextInput
+                style={styles.keyInput}
+                value={authOtp}
+                onChangeText={setAuthOtp}
+                placeholder="输入邮箱里的 6 位验证码"
+                placeholderTextColor={Romance.faint}
+                keyboardType="number-pad"
+                onSubmitEditing={doVerifyOtp}
+              />
+            ) : null}
+            <Row
+              label={otpSent ? '验证并登录' : '发送验证码'}
+              onPress={otpSent ? doVerifyOtp : doSendOtp}
+            />
+            <Text style={styles.footHint}>
+              开通云端：TA 和你们的故事存进云端，换手机也不会失去。不开通也能完整游玩（数据只在本机）。
+            </Text>
+          </>
+        )}
+      </Section>
+
       <Section title="我">
         <Row
           label="我的身份"

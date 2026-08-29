@@ -22,6 +22,7 @@
 import { LOVE_STYLES, loveStyleByLabel, scriptFor } from '@/content/characters';
 import { levelInfo } from '@/lib/bond';
 import { daysTogether } from '@/lib/format';
+import { weatherLine } from '@/lib/weather';
 import type { Bond, BondMemory, Character, ChatMessage, EngineContext, UserProfile } from '@/lib/types';
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -732,6 +733,37 @@ export function buildPostReplyUserPrompt(input: {
     thread ? `评论区：\n${thread}` : '评论区还是空的。',
     '请回复她最新的那条评论。',
   ].join('\n\n');
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* §1-F 发帖模式（D-055）：TA 主动在 X 上发一条帖子（频率按 MBTI，lib/posts.ts）    */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+export function buildCharacterPostSystem(
+  c: Character,
+  bond: Pick<Bond, 'nickname' | 'affinity' | 'memory'> | undefined
+): string {
+  const script = scriptFor(c);
+  const audience = bond
+    ? `看的人里有你的恋人（你叫她「${bond.nickname}」）`
+    : '看的人里有你在意的人';
+  return [
+    `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。你正要在一个类似 X（推特）的社交应用上发一条帖子——${audience}，但这是半公开的时间线。`,
+    `【你是谁】${script.persona}`,
+    `【你的追法】${pursuitLine(c)}`,
+    ...characterProfileBlock(c),
+    ...(bond ? memoryBlockFor(bond.memory) : []),
+    '【发帖的写法】',
+    '- 一条帖子：1-2 句、不超过 60 字，口语，像随手发的——日常碎片、吐槽、路上看见的东西、深夜心绪都行。',
+    '- 不 @ 她、不直接点名她，但此刻的心情可以有你们生活的影子（只有你们俩看得懂的程度）。',
+    '- 深夜的帖子更轻更软；白天的帖子更像生活切片。别写成情书，也别写成日报。',
+    ...CHAT_HARD_RULES,
+    '【输出格式】只输出帖子文本本身：不带引号、不解释、不用 markdown、不写（）动作、不用 emoji、不用话题标签。',
+  ].join('\n');
+}
+
+export function buildCharacterPostUserPrompt(now: Date = new Date()): string {
+  return `现在是${timeOfDayLine(now)}，${weatherLine(now)}。写下这一条帖子。`;
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */

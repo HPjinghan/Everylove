@@ -7,7 +7,10 @@ import { AppState } from 'react-native';
 import 'react-native-reanimated';
 
 import { applyThemeColors, Romance } from '@/constants/theme';
+import { authConfigured } from '@/lib/auth';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
+import { deliverDuePosts } from '@/lib/posts';
+import { startAutoBackup } from '@/lib/sync';
 import '@/lib/notifications';
 import { useAppStore, useHydrated } from '@/store/app-store';
 
@@ -32,19 +35,29 @@ export default function RootLayout() {
       text: Romance.ink,
     },
   };
-  // 启动：种子帖、心跳补投（开门链路已下线，D-046）。onboarding 门禁是声明式的（app/index.tsx 桌面），
-  // 根布局不做任何命令式跳转——首帧跳转会崩在 assertIsReady。
+  // 启动：种子帖、心跳与发帖补投（开门链路已下线，D-046；发帖调度 D-055）。
+  // onboarding 门禁是声明式的（app/index.tsx 桌面），根布局不做任何命令式跳转——首帧跳转会崩在 assertIsReady。
   useEffect(() => {
     if (!hydrated) return;
     useAppStore.getState().ensureSeedPosts();
     deliverDueHeartbeats();
+    void deliverDuePosts();
     SplashScreen.hideAsync();
   }, [hydrated]);
 
-  // 回前台补投心跳
+  // 云备份（D-054）：登录态下 store 变化后防抖自动上传
+  useEffect(() => {
+    if (!hydrated || !authConfigured()) return;
+    return startAutoBackup();
+  }, [hydrated]);
+
+  // 回前台补投心跳与帖子
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') deliverDueHeartbeats();
+      if (s === 'active') {
+        deliverDueHeartbeats();
+        void deliverDuePosts();
+      }
     });
     return () => sub.remove();
   }, []);
