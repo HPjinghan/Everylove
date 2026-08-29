@@ -108,8 +108,10 @@ export interface ChatMessage {
   kind: MessageKind;
   text: string;
   at: number;
-  /** kind === 'image' 时的本地图片 URI（漫画显影，已下载到本机） */
+  /** kind === 'image' 时的本地图片 URI（已下载到本机） */
   imageUri?: string;
+  /** 拍立得（D-056）：生成的照片以拍立得框居中呈现（非对话气泡）；text 作相纸下方手写字 */
+  polaroid?: boolean;
   /**
    * 他在这条消息里「说」的话但不上屏（初见甩图：台词画在气泡里、不发文字）。
    * 只供对话引擎的上下文与记忆提取使用，保证他记得自己说过什么（D-016）。

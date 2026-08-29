@@ -37,6 +37,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
+import { PhotoViewer, Polaroid, type ViewerShot } from '@/components/polaroid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Romance, themed } from '@/constants/theme';
 import { clockTime, voiceDuration } from '@/lib/format';
@@ -182,6 +183,7 @@ function Bubble({
   variant = 'default',
   read,
   onLongPress,
+  onOpenPhoto,
 }: {
   msg: ChatMessage;
   color: string;
@@ -191,8 +193,24 @@ function Bubble({
   /** LINE 模式：我的消息是否显示「已读」（TA 回过话即视为已读） */
   read?: boolean;
   onLongPress?: (msg: ChatMessage) => void;
+  /** 拍立得点开看大图（D-056） */
+  onOpenPhoto?: (shot: ViewerShot) => void;
 }) {
   const line = variant === 'line';
+  // 拍立得（D-056）：生成的照片居中呈现——照片不是谁「说」的话，是你们的东西
+  if (msg.kind === 'image' && msg.imageUri && msg.polaroid) {
+    return (
+      <View style={styles.polaroidRow}>
+        <Polaroid
+          uri={msg.imageUri}
+          caption={msg.text || undefined}
+          tiltKey={msg.id}
+          onPress={() => onOpenPhoto?.({ uri: msg.imageUri!, caption: msg.text || undefined })}
+          onLongPress={onLongPress ? () => onLongPress(msg) : undefined}
+        />
+      </View>
+    );
+  }
   if (msg.from === 'system') {
     return (
       <View style={styles.systemRow}>
@@ -305,6 +323,7 @@ export function ChatThread({
   const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState<ReplyRef | null>(null);
+  const [viewingShot, setViewingShot] = useState<ViewerShot | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordSecs, setRecordSecs] = useState(0);
@@ -428,6 +447,7 @@ export function ChatThread({
             variant={variant}
             read={readIds.has(item.id)}
             onLongPress={openActions}
+            onOpenPhoto={setViewingShot}
           />
         )}
         style={line ? { backgroundColor: LINE.bg } : undefined}
@@ -456,6 +476,7 @@ export function ChatThread({
         }
         keyboardDismissMode="interactive"
       />
+      <PhotoViewer shot={viewingShot} onClose={() => setViewingShot(null)} />
       {cta}
 
       {/* 引用预览条 */}
@@ -563,6 +584,7 @@ const styles = themed(() =>
     bubbleText: { fontSize: 16, lineHeight: 23, color: Romance.ink },
     typingText: { fontSize: 14, color: Romance.sub },
     systemRow: { alignItems: 'center', marginVertical: 10 },
+    polaroidRow: { alignItems: 'center', marginVertical: 12 },
     systemTextLine: { backgroundColor: 'rgba(20,30,50,0.35)', color: '#FFFFFF' },
     recalledText: { fontSize: 12, color: Romance.faint },
     recalledTextLine: { color: 'rgba(255,255,255,0.85)' },

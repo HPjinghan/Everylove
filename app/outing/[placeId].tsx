@@ -14,11 +14,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChatThread } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { scriptFor } from '@/content/characters';
 import { buildOutingPhotoPrompt, OUTING_OPENERS, transcript } from '@/content/prompts';
 import { placeById } from '@/content/places';
 import { Romance, themed } from '@/constants/theme';
-import { XP_PER_MESSAGE } from '@/lib/bond';
-import { generateReply } from '@/lib/engine';
+import { HEART_FULL, heartGain, XP_PER_MESSAGE } from '@/lib/bond';
+import { ADOPTION_OFFER_AFTER_TURNS, generateReply } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { generateScenePhoto, imageKeyReady } from '@/lib/imagegen';
 import { weatherLine } from '@/lib/weather';
@@ -41,6 +42,11 @@ export default function OutingSceneScreen() {
   const active = session && session.placeId === placeId ? session : null;
   const bond = active ? bonds.find((b) => b.characterId === active.characterId) : undefined;
   const character = active ? findCharacter(active.characterId) : undefined;
+  const squareChat = useAppStore((s) =>
+    active ? s.squareChats[active.characterId] : undefined
+  );
+  // 陌生人在现场交换了联系方式后（D-056），这场偶遇就地升格为熟人偶遇
+  const kind = active?.kind === 'stranger' && bond ? 'encounter' : active?.kind;
 
   // 进场：开一场外出；新场次由 TA 先开口（离线模板，带现场动作）
   useEffect(() => {
@@ -103,6 +109,18 @@ export default function OutingSceneScreen() {
     // 她开口 = +XP（升级系统提示会出现在羁绊会话里）
     if (bond) appendBond(bond.id, [], { affinityDelta: XP_PER_MESSAGE });
 
+    // 陌生人偶遇也积累心动（D-056）：与交友试聊同一套心动值（记在 squareChats 上，两处共通）
+    if (!bond) {
+      const { ensureSquareChat, appendSquare } = useAppStore.getState();
+      ensureSquareChat(character.id);
+      const chat = useAppStore.getState().squareChats[character.id];
+      const pace = character.offerAfterTurns ?? ADOPTION_OFFER_AFTER_TURNS;
+      appendSquare(character.id, [], {
+        userTurn: true,
+        heartDelta: heartGain(pace, (chat?.userTurns ?? 0) * 31 + text.length),
+      });
+    }
+
     setTyping(true);
     const current = useAppStore.getState().outingSession;
     const reply = await generateReply(
@@ -123,7 +141,7 @@ export default function OutingSceneScreen() {
         outing: {
           placeName: place.name,
           scene: place.scene,
-          kind: active.kind,
+          kind: kind ?? active.kind,
           weatherLine: weatherLine(),
         },
         history: current?.messages ?? [],
@@ -138,6 +156,19 @@ export default function OutingSceneScreen() {
       useAppStore
         .getState()
         .appendOuting([{ id: uid('m'), from: 'him', kind: 'text', text: t, at: Date.now() }]);
+    }
+
+    // 心动满 100（D-056）：TA 当场开口想交换联系方式（产品触发器，不由模型决定，D-029 纪律）
+    const after = useAppStore.getState().squareChats[character.id];
+    if (!bond && after && !after.adoptionOffered && (after.heart ?? 0) >= HEART_FULL) {
+      const script = scriptFor(character);
+      for (const line of script.offer) {
+        await wait(900);
+        useAppStore
+          .getState()
+          .appendOuting([{ id: uid('m'), from: 'him', kind: 'text', text: line, at: Date.now() }]);
+      }
+      useAppStore.getState().appendSquare(character.id, [], { offered: true });
     }
   };
 
@@ -167,8 +198,11 @@ export default function OutingSceneScreen() {
           id: uid('m'),
           from: 'me',
           kind: 'image',
-          text: kind === 'together' ? `和${name}在${place.name}的合影` : '',
+          // 拍立得手写字（D-056）
+          text:
+            kind === 'together' ? `和${name}的合影 · ${place.name}` : `${name} · ${place.name}`,
           imageUri: uri,
+          polaroid: true,
           at: Date.now(),
         },
       ]);
@@ -180,11 +214,13 @@ export default function OutingSceneScreen() {
     }
   };
 
+  const heart = Math.min(HEART_FULL, squareChat?.heart ?? 0);
+  const offered = !bond && !!squareChat?.adoptionOffered;
   const subtitle =
-    active.kind === 'date'
+    kind === 'date'
       ? `和${name}的约会`
-      : active.kind === 'stranger'
-        ? `陌生人 · ${name}`
+      : kind === 'stranger'
+        ? `陌生人 · ${name} · 心动 ${heart}/${HEART_FULL}`
         : `偶遇了${name}`;
 
   return (
@@ -205,7 +241,26 @@ export default function OutingSceneScreen() {
         onSend={onSend}
         placeholder="说点什么，或用（）写下你的动作…"
         cta={
-          <View style={styles.shootRow}>
+          <View>
+            {offered ? (
+              <View style={styles.offerWrap}>
+                <View style={styles.offerText}>
+                  <Text style={styles.offerTitle}>羁绊 LV1 · TA 想和你交换联系方式</Text>
+                  <Text style={styles.offerSub}>就在这里、就是现在——面对面的那种</Text>
+                </View>
+                <Pressable
+                  style={styles.offerBtn}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/adopt/[characterId]',
+                      params: { characterId: character.id },
+                    })
+                  }>
+                  <Text style={styles.offerBtnText}>交换</Text>
+                </Pressable>
+              </View>
+            ) : null}
+            <View style={styles.shootRow}>
             <Pressable
               style={[styles.shootBtn, shooting && styles.shootBtnDim]}
               disabled={!!shooting}
@@ -220,13 +275,14 @@ export default function OutingSceneScreen() {
               onPress={() => shoot('solo')}>
               <Text style={styles.shootText}>{shooting === 'solo' ? '拍摄中…' : '📷 拍 TA'}</Text>
             </Pressable>
+            </View>
           </View>
         }
         banner={
           <View style={styles.sceneBanner}>
             <Text style={styles.sceneBannerText}>
-              {active.kind === 'stranger'
-                ? `${place.emoji} 你们还不认识 · 想再见到 TA，去「交友」里滑到 TA`
+              {kind === 'stranger'
+                ? `${place.emoji} 你们还不认识 · 聊得来，TA 会想留下你的联系方式`
                 : `${place.emoji} ${place.hook} · 你们面对面`}
             </Text>
           </View>
@@ -318,6 +374,29 @@ const styles = themed(() =>
     },
     shootBtnDim: { opacity: 0.5 },
     shootText: { fontSize: 13, fontWeight: '600', color: Romance.ink },
+    offerWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginHorizontal: 14,
+      marginBottom: 8,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 20,
+      padding: 12,
+      shadowColor: '#3B2126',
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+    },
+    offerText: { flex: 1 },
+    offerTitle: { fontSize: 14, fontWeight: '700', color: Romance.ink },
+    offerSub: { fontSize: 11, color: Romance.sub, marginTop: 2 },
+    offerBtn: {
+      backgroundColor: Romance.accent,
+      borderRadius: 18,
+      paddingHorizontal: 16,
+      paddingVertical: 9,
+    },
+    offerBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
     emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
     emptyEmoji: { fontSize: 52 },
     emptyText: {

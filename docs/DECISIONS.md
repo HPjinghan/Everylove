@@ -505,3 +505,10 @@
   3. **内容实装模型**（prompts §1-F）：人设 + 追法 + 羁绊记忆 + 时段 + 天气 → 一条 ≤60 字口语帖；「不 @ 她不点名，但有你们生活的影子」；深夜帖更轻更软；打字感纪律（无 emoji/话题/（））。mock/无 key/失败 = 本周期静默跳过。互动数为确定性伪随机小体量。
 - **推翻**：补足 D-020/D-027 时代「静态种子帖一次性铺设、此后时间线死亡」的状态（种子铺设保留为开场存量）。
 - **影响文件**：`lib/posts.ts`（新）、`content/prompts.ts`（§1-F + weatherLine 引入）、`store/app-store.ts`（postSchedule/setPostDue/addCharacterPost）、`app/_layout.tsx`。
+
+## D-056 · 2026-08-29 · 广场偶遇也积累心动；生成照片改拍立得（Harper 拍板）
+
+- **决策**：
+  1. **广场陌生人偶遇积累心动**（修订 D-040 的「纯逛」）：外出陌生人场景与交友试聊共用同一套心动值（记在 squareChats 上，两处进度互通——广场聊过再去交友里滑到 TA，心动是接着涨的）；她每开口一句按角色节奏上涨，头部实时显示「心动 n/100」。**满 100 = TA 当场开口想交换联系方式**（产品触发器不由模型决定，D-029 纪律；prompt 明示模型不要自己张罗这件事），场景内出现 CTA「交换」→ 领养流（面对面交换联系方式，叙事天然成立）→ 缔结后这场偶遇就地升格为熟人偶遇（kind 派生，prompt/界面同步切换）。陌生人模式仍无 XP（心动与羁绊值分层不变）。
+  2. **拍立得**（生成照片的统一呈现，`components/polaroid.tsx`）：外出拍的合影/拍TA 不再走对话气泡（「像她自己发的话」出戏）——**白框相纸居中呈现**，下方一行手写字（「和X的合影 · 地点」），每张带确定性小倾角；点开进暗场大图，**可分享**（expo-sharing 系统分享面板）。相册整体改**拍立得墙**（网格同框 + 同一查看器）。旧图片消息（无 polaroid 标记）仍走气泡，用户相册发的图不受影响。
+- **影响文件**：`components/polaroid.tsx`（新）、`components/chat-thread.tsx`（居中渲染 + 查看器）、`app/apps/album.tsx`（拍立得墙）、`app/outing/[placeId].tsx`（心动累积/当场 offer/CTA/拍立得标记）、`lib/types.ts`（ChatMessage.polaroid）、`content/prompts.ts`（陌生人分寸改写）、`package.json`（+expo-sharing）。

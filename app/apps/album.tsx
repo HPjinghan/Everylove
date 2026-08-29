@@ -1,13 +1,13 @@
 /**
- * 相册（D-020/D-024）：你们的画面时间轴——图不是「TA 画的」，图就是你们相处的瞬间本身。
- * 试装：汇集所有羁绊会话里的画面（image 消息），按日分组网格展示；点开全屏看。
+ * 相册（D-020/D-024/D-056）：你们的拍立得墙——外出拍的照片结束时并入羁绊会话，在这里汇集。
+ * 按日分组、拍立得框网格；点开大图 + 分享（components/polaroid.tsx）。
  */
 
-import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
-import { Dimensions, Modal, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
+import { PhotoViewer, Polaroid } from '@/components/polaroid';
 import { Romance, themed } from '@/constants/theme';
 import { useAppStore } from '@/store/app-store';
 
@@ -68,13 +68,13 @@ export default function AlbumScreen() {
         renderItem={({ item: row }) => (
           <View style={styles.gridRow}>
             {row.map((shot) => (
-              <Pressable key={shot.id} onPress={() => setViewing(shot)}>
-                <Image
-                  source={{ uri: shot.uri }}
-                  style={{ width: cell, height: cell, borderRadius: 14 }}
-                  contentFit="cover"
-                />
-              </Pressable>
+              <Polaroid
+                key={shot.id}
+                uri={shot.uri}
+                width={cell}
+                tiltKey={shot.id}
+                onPress={() => setViewing(shot)}
+              />
             ))}
           </View>
         )}
@@ -88,20 +88,22 @@ export default function AlbumScreen() {
         }
       />
 
-      <Modal visible={!!viewing} transparent animationType="fade" onRequestClose={() => setViewing(null)}>
-        <Pressable style={styles.viewer} onPress={() => setViewing(null)}>
-          {viewing ? (
-            <>
-              <Image source={{ uri: viewing.uri }} style={styles.viewerImg} contentFit="contain" />
-              <Text style={styles.viewerMeta}>
-                {viewing.from} ·{' '}
-                {new Date(viewing.at).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })}
-              </Text>
-              {viewing.caption ? <Text style={styles.viewerCaption}>{viewing.caption}</Text> : null}
-            </>
-          ) : null}
-        </Pressable>
-      </Modal>
+      <PhotoViewer
+        shot={
+          viewing
+            ? {
+                uri: viewing.uri,
+                caption:
+                  viewing.caption ||
+                  `${viewing.from} · ${new Date(viewing.at).toLocaleDateString('zh-CN', {
+                    month: 'numeric',
+                    day: 'numeric',
+                  })}`,
+              }
+            : null
+        }
+        onClose={() => setViewing(null)}
+      />
     </AppScreen>
   );
 }
