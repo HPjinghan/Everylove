@@ -1,22 +1,51 @@
 /**
- * 云备份（D-054 快照同步 v0）：本地优先，云端是保险箱——「换手机也不会失去 TA」。
- * 同步单位 = zustand persist 的整份快照（AsyncStorage 'everylove-store'，含聊天/记忆，按最高敏感级）。
- * 冲突策略 last-write-wins；登录态下 store 变化后防抖 60s 自动上传；恢复 = 覆写本地 + rehydrate。
+ * 云同步（D-054 快照 v0 → D-057 云端为主）：数据尽量存云端，本地 AsyncStorage 是工作缓存。
+ * - 登录态下：store 变化 15s 防抖自动上传；App 退后台立即冲刷；启动/登录时对账（reconcile）——
+ *   云端更新且本地无未同步改动 → 静默拉下来；本地有改动 → 本地覆盖云端（正在用的设备赢）。
+ * - 离线/未登录：一切照旧跑在本地缓存上，回线后按上面规则补同步。
+ * 同步单位 = zustand persist 的整份快照（含聊天/记忆，按最高敏感级）。
  * 服务端只有一张表 snapshots（建表 SQL 见 docs/supabase-setup.sql，RLS 只许本人读写）。
  * 正式版演进：按实体增量同步 + 服务端记忆库（D-016 预留），接口保持本文件不变。
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 
-import { currentSession, getSupabase } from '@/lib/auth';
+import { currentSession, getSupabase, onAuthChange } from '@/lib/auth';
 import { useAppStore } from '@/store/app-store';
 
 /** zustand persist 的存储键（store/app-store.ts 的 name） */
 const STORE_KEY = 'everylove-store';
+/** 同步元数据（本机）：上次成功同步时间 + 是否有未上传的改动 */
+const META_KEY = 'everylove-sync-meta';
 
 let lastSyncAt: number | null = null;
 export function lastSyncTime(): number | null {
   return lastSyncAt;
+}
+
+interface SyncMeta {
+  lastSyncedAt: number;
+  dirty: boolean;
+}
+
+let meta: SyncMeta = { lastSyncedAt: 0, dirty: false };
+let metaLoaded = false;
+/** 恢复中：rehydrate 会触发 store.subscribe，别把「恢复」误记成本地改动 */
+let restoring = false;
+
+async function loadMeta(): Promise<void> {
+  if (metaLoaded) return;
+  try {
+    const raw = await AsyncStorage.getItem(META_KEY);
+    if (raw) meta = { ...meta, ...JSON.parse(raw) };
+  } catch {}
+  metaLoaded = true;
+  lastSyncAt = meta.lastSyncedAt || null;
+}
+
+function saveMeta(): void {
+  void AsyncStorage.setItem(META_KEY, JSON.stringify(meta)).catch(() => {});
 }
 
 /** 上传当前本地快照（覆盖云端） */
@@ -34,6 +63,9 @@ export async function uploadSnapshot(): Promise<'ok' | 'no-session' | 'fail'> {
     });
     if (error) throw error;
     lastSyncAt = Date.now();
+    meta.lastSyncedAt = lastSyncAt;
+    meta.dirty = false;
+    saveMeta();
     return 'ok';
   } catch (e) {
     console.warn('[sync] 上传失败：', e);
@@ -66,9 +98,19 @@ export async function restoreSnapshot(): Promise<boolean> {
     .eq('user_id', session.user.id)
     .maybeSingle();
   if (error || !data?.data) return false;
-  await AsyncStorage.setItem(STORE_KEY, JSON.stringify(data.data));
-  await useAppStore.persist.rehydrate();
+  restoring = true;
+  try {
+    await AsyncStorage.setItem(STORE_KEY, JSON.stringify(data.data));
+    await useAppStore.persist.rehydrate();
+  } finally {
+    setTimeout(() => {
+      restoring = false;
+    }, 500);
+  }
   lastSyncAt = Date.now();
+  meta.lastSyncedAt = lastSyncAt;
+  meta.dirty = false;
+  saveMeta();
   return true;
 }
 
@@ -86,15 +128,66 @@ export async function deleteCloudData(): Promise<boolean> {
   return true;
 }
 
-/** 自动备份：store 变化后防抖 60s 上传（uploadSnapshot 自带登录态判断）。返回退订函数。 */
-export function startAutoBackup(): () => void {
+/**
+ * 对账（D-057 云端为主）：云端更新且本地干净 → 静默恢复云端；本地有未同步改动 → 上传覆盖
+ * （正在用的设备赢——她手里这台永远不丢字）。登录时、启动时、回线时都可调用。
+ */
+export async function reconcileNow(): Promise<'pulled' | 'pushed' | 'noop'> {
+  await loadMeta();
+  const session = await currentSession();
+  if (!session) return 'noop';
+  const cloudAt = await cloudSnapshotAt();
+  if (cloudAt == null) {
+    // 云端还没有备份：把本机第一份传上去
+    const r = await uploadSnapshot();
+    return r === 'ok' ? 'pushed' : 'noop';
+  }
+  if (meta.dirty) {
+    const r = await uploadSnapshot();
+    return r === 'ok' ? 'pushed' : 'noop';
+  }
+  if (cloudAt > meta.lastSyncedAt + 1500) {
+    const ok = await restoreSnapshot();
+    if (ok) console.log('[sync] 云端较新，已静默恢复');
+    return ok ? 'pulled' : 'noop';
+  }
+  return 'noop';
+}
+
+/**
+ * 云同步总开关（在根布局水合后启动）：
+ * 变化标脏 + 防抖 15s 上传；退后台立即冲刷；登录时对账。返回退订函数。
+ */
+export function initCloudSync(): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
-  const unsub = useAppStore.subscribe(() => {
+
+  const scheduleUpload = () => {
     if (timer) clearTimeout(timer);
-    timer = setTimeout(() => void uploadSnapshot(), 60_000);
+    timer = setTimeout(() => void uploadSnapshot(), 15_000);
+  };
+
+  const unsubStore = useAppStore.subscribe(() => {
+    if (restoring) return;
+    meta.dirty = true;
+    saveMeta();
+    scheduleUpload();
   });
+
+  const unsubAuth = onAuthChange((session) => {
+    if (session) void reconcileNow();
+  });
+
+  const appStateSub = AppState.addEventListener('change', (s) => {
+    if (s === 'background' && meta.dirty) void uploadSnapshot();
+    if (s === 'active') void reconcileNow();
+  });
+
+  void reconcileNow();
+
   return () => {
-    unsub();
+    unsubStore();
+    unsubAuth();
+    appStateSub.remove();
     if (timer) clearTimeout(timer);
   };
 }

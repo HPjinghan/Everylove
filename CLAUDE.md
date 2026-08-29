@@ -150,7 +150,7 @@
 ## 13\. 技术栈与工程（2026-08-13 起，详见 docs/DECISIONS.md D-001~D-008）
 
 * 客户端：Expo **SDK 54**（锁定，勿升级）+ React Native + TypeScript，expo-router 文件路由；**只做 iOS**，试装跑 Expo Go（`npx expo start` 后手机扫码）。
-* 状态：zustand + AsyncStorage 持久化（`store/app-store.ts`）；无后端，全部本地。
+* 状态：zustand + AsyncStorage 持久化（`store/app-store.ts`）。~~无后端，全部本地~~（2026-08-30 D-057：**云端为主、本地缓存**——登录态下快照自动同步 Supabase，`lib/sync.ts` 对账；离线跑缓存）。
 * ~~八点开门：`expo-notifications` 本地定时通知；投递与排程统一走 `lib/arrivals.ts`~~（已推翻，2026-08-29 D-046：开门下线，`lib/arrivals.ts` 已删；`lib/notifications.ts` 保留供未来推送）。
 * 对话：`lib/engine.ts` 的 ChatEngine 抽象——mock（原型脚本）/ anthropic（Claude）/ qianfan（百度千帆 v2 OpenAI 兼容接口，模型默认 deepseek-v4 可配）。API key 走工程配置 `.env.local`（不进 git，模板见 `.env.example`），开发者面板手填可覆盖；有 key 时默认引擎自动选真模型，无 key 或调用失败回落 mock（2026-08-14，D-010）。正式版必须换服务端代理。暗面路由、尺度、无 PUA 规则在引擎入口执行，任何引擎不可绕过。
 * 内容：种子角色与全部台词脚本在 `content/characters.ts`；**全部 prompt（对话系统 prompt / 生图 / 记忆提取）集中在 `content/prompts.ts`**，改 prompt 只动这一个文件（2026-08-17，D-017）；初识/亲密/**外出**是**三套独立 prompt**（2026-08-27 D-038 扩为三套；只共用红线与「我」的身份块），亲密模式带时间感、阶段分寸、分组记忆注入、可拆两条气泡；聊天两模式为**纯打字感**（D-039：禁（）动作/情景描写，`lib/engine.ts` 的 stripStageDirections 兜底剥离）；外出模式独享（）现场描写、不分条；角色有 `look`（外貌，生图用）与 `pronoun`（人称）（D-018）；界面强制浅色，配色 `constants/theme.ts` 的 `Romance`。
@@ -169,6 +169,7 @@
 * 对话上下文与记忆（2026-08-17，D-016）：所有引擎共用 `lib/engine.ts` 的 `buildTurns()`——**最近 20 轮完整对话**进模型（`HISTORY_ROUNDS`），系统提示条/空消息不进、同角色合并、首条保证为 user；甩图/漫画里他说的话存 `ChatMessage.spoken`（不上屏、只供上下文）。**羁绊记忆库** `lib/memory.ts`：mem0 式本地实现，`Bond.memory = { facts, summary }`——每 3 个用户轮次后台由当前引擎提取长期事实（≤30 条）并把滑出窗口的旧对话滚动进摘要，注入 bonded 模式系统 prompt；失败静默。**只有羁绊层有记忆**，广场层故意没有（商业承重墙）。正式版服务端代理落地后记忆层切自托管 mem0，接口不变。
 * 心动值与羁绊等级（2026-08-21，D-029/D-030）：曲线在 `lib/bond.ts`；XP 目前唯一来源=她发消息 +5（羁绊会话与外出场景同口径，D-038；开门/画面/心跳加成已移除，数值另行设计）；心动值存 `SquareChat.heart`，羁绊 XP 即 `Bond.affinity`（按新曲线解释）；升级系统消息在 `store.appendBond` 统一产生。
 * 手机壳（2026-08-20，D-021）：`app/index.tsx` 桌面 + `app/apps/*` 模块，App 注册表与壁纸在 `constants/apps.ts`（供给纪律在注册表执行：闹钟无 TTS 不上架）；日历世界层数据 `content/calendar.ts`；心跳三段式 `lib/heartbeat.ts`（错过不补投，给「错过回溯」留闭环）。
+* AI 服务端代理（2026-08-30，D-057）：`supabase/functions/ai`（已部署）——上游 key 在 Supabase Secrets、按用户日限量（ai_usage）；客户端 `lib/proxy.ts` 三层取路：本地 key 直连 > 登录走代理 > mock。分发包不带上游 key（回应 #9）。
 * 账号与云备份（2026-08-29，D-054）：`lib/auth.ts`（Supabase：Apple + 邮箱 OTP，供应商抽象）+ `lib/sync.ts`（全量快照 ↔ snapshots 表，RLS 仅本人；防抖 60s 自动上传，登录时恢复/覆盖二选一）；env `EXPO_PUBLIC_SUPABASE_URL/_ANON_KEY`，建表 `docs/supabase-setup.sql`；LLM 服务端代理为下一步（OPEN_QUESTIONS #9）。
 * 发帖调度器（2026-08-29，D-055）：`lib/posts.ts`——`MBTI_POSTS_PER_DAY` 定频（±35% 抖动）、`store.postSchedule` 记钟、prompts §1-F 生成、启动/回前台补投；mock/失败静默跳过。
 * 测试工具：「设置 → 开发者」可切引擎、填 key、查看 TA 记住了什么（记忆库，可强制提取一次）、生成/重画立绘、重置数据（开门测试随 D-046、「送一张漫画」随 D-037 移除）。

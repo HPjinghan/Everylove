@@ -11,6 +11,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { buildPortraitPrompt } from '@/content/prompts';
 // （外出拍照的 prompt 由调用方拼好传入，见 content/prompts.ts 的 buildOutingPhotoPrompt，D-051）
 import { resolveKey } from '@/lib/engine';
+import { proxyJson, proxyReadySync } from '@/lib/proxy';
 import { uid } from '@/lib/format';
 import type { Character } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -28,9 +29,9 @@ function imageKey(): string {
   return resolveKey('qianfan', { qianfan: useAppStore.getState().qianfanKey });
 }
 
-/** 有千帆 key 即可出图（聊天与图像共用） */
+/** 可出图 = 本地有千帆 key（直连），或已登录（走服务端代理，D-057） */
 export function imageKeyReady(): boolean {
-  return Boolean(imageKey());
+  return Boolean(imageKey()) || proxyReadySync();
 }
 
 async function downloadTo(url: string, subdir: string, name: string): Promise<string> {
@@ -42,20 +43,22 @@ async function downloadTo(url: string, subdir: string, name: string): Promise<st
   return dl.uri;
 }
 
-/** 千帆同步文生图，下载到本机后返回本地 URI */
+/** 千帆同步文生图（本地 key 直连，无 key 走服务端代理），下载到本机后返回本地 URI */
 async function generateImage(prompt: string, subdir = 'portraits'): Promise<string> {
   const key = imageKey();
-  if (!key) throw new Error('no qianfan key');
-  const res = await fetch('https://qianfan.baidubce.com/v2/images/generations', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({ model: QIANFAN_IMAGE_MODEL, prompt, size: '1024x1024', n: 1 }),
-  });
-  if (!res.ok) throw new Error(`Qianfan image ${res.status}`);
-  const data = (await res.json()) as { data?: { url?: string }[] };
+  const body = { model: QIANFAN_IMAGE_MODEL, prompt, size: '1024x1024', n: 1 };
+  let data: { data?: { url?: string }[] };
+  if (key) {
+    const res = await fetch('https://qianfan.baidubce.com/v2/images/generations', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Qianfan image ${res.status}`);
+    data = await res.json();
+  } else {
+    data = await proxyJson('qianfan.images', body);
+  }
   const url = data.data?.[0]?.url;
   if (!url) throw new Error('no image url');
   return downloadTo(url, subdir, uid('img'));

@@ -7,6 +7,7 @@
 
 import { DARK_SIDE_PATTERN, DARK_SIDE_REPLY, scriptFor } from '@/content/characters';
 import { buildChatSystemPrompt, messageContextText, OPENING_STAGE_LINE } from '@/content/prompts';
+import { proxyAvailable, proxyJson } from '@/lib/proxy';
 import type { ChatMessage, EngineContext, EngineId, EngineReply } from '@/lib/types';
 
 // 全部 prompt 文本都在 content/prompts.ts（D-017）；这里只负责调用与组装历史。
@@ -160,26 +161,30 @@ async function mockReply(ctx: EngineContext): Promise<EngineReply> {
   return { texts };
 }
 
-async function anthropicReply(ctx: EngineContext, apiKey: string): Promise<EngineReply> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
-      max_tokens: 300,
-      system: buildChatSystemPrompt(ctx),
-      messages: buildTurns(ctx.history, ctx.userText),
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Anthropic API ${res.status}`);
+/** apiKey 为空 = 走服务端代理（D-057：key 收在服务端，客户端带登录态调用） */
+async function anthropicReply(ctx: EngineContext, apiKey: string | null): Promise<EngineReply> {
+  const body = {
+    model: ANTHROPIC_MODEL,
+    max_tokens: 300,
+    system: buildChatSystemPrompt(ctx),
+    messages: buildTurns(ctx.history, ctx.userText),
+  };
+  let data: { content: { type: string; text?: string }[] };
+  if (apiKey) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+    data = await res.json();
+  } else {
+    data = await proxyJson('anthropic.messages', body);
   }
-  const data = (await res.json()) as { content: { type: string; text?: string }[] };
   const text = data.content
     .filter((b) => b.type === 'text' && b.text)
     .map((b) => b.text)
@@ -190,29 +195,29 @@ async function anthropicReply(ctx: EngineContext, apiKey: string): Promise<Engin
   return { texts: ctx.mode === 'outing' ? bubbles : stripStageDirections(bubbles) };
 }
 
-/** 百度千帆 v2（OpenAI 兼容格式），模型由 QIANFAN_MODEL 决定 */
-async function qianfanReply(ctx: EngineContext, apiKey: string): Promise<EngineReply> {
-  const res = await fetch('https://qianfan.baidubce.com/v2/chat/completions', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: QIANFAN_MODEL,
-      // deepseek-v4-pro 是推理模型，思考 token 也算在 max_tokens 里；给足余量防止正文被截空
-      max_tokens: 1000,
-      messages: [
-        { role: 'system', content: buildChatSystemPrompt(ctx) },
-        ...buildTurns(ctx.history, ctx.userText),
-      ],
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Qianfan API ${res.status}`);
+/** 百度千帆 v2（OpenAI 兼容格式），模型由 QIANFAN_MODEL 决定；apiKey 为空 = 走服务端代理 */
+async function qianfanReply(ctx: EngineContext, apiKey: string | null): Promise<EngineReply> {
+  const body = {
+    model: QIANFAN_MODEL,
+    // deepseek-v4-pro 是推理模型，思考 token 也算在 max_tokens 里；给足余量防止正文被截空
+    max_tokens: 1000,
+    messages: [
+      { role: 'system', content: buildChatSystemPrompt(ctx) },
+      ...buildTurns(ctx.history, ctx.userText),
+    ],
+  };
+  let data: { choices?: { message?: { content?: string } }[] };
+  if (apiKey) {
+    const res = await fetch('https://qianfan.baidubce.com/v2/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Qianfan API ${res.status}`);
+    data = await res.json();
+  } else {
+    data = await proxyJson('qianfan.chat', body);
   }
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const text = data.choices?.[0]?.message?.content?.trim();
   if (!text) throw new Error('empty reply');
   const bubbles = splitBubbles(text, ctx.mode === 'bonded' ? 2 : 1, ctx.character.name);
@@ -230,46 +235,59 @@ export async function completeText(
   keys: EngineKeys,
   maxTokens = 1200
 ): Promise<string> {
-  const key = resolveKey(engine, keys);
-  if (!key || engine === 'mock') throw new Error('no engine for completion');
+  if (engine === 'mock') throw new Error('no engine for completion');
+  const key = resolveKey(engine, keys) || null;
+  if (!key && !(await proxyAvailable())) throw new Error('no engine for completion');
   if (engine === 'anthropic') {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: maxTokens,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-      }),
-    });
-    if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
-    const data = (await res.json()) as { content: { type: string; text?: string }[] };
+    const body = {
+      model: ANTHROPIC_MODEL,
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    };
+    let data: { content: { type: string; text?: string }[] };
+    if (key) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+      data = await res.json();
+    } else {
+      data = await proxyJson('anthropic.messages', body);
+    }
     return data.content
       .filter((b) => b.type === 'text' && b.text)
       .map((b) => b.text)
       .join('')
       .trim();
   }
-  const res = await fetch('https://qianfan.baidubce.com/v2/chat/completions', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model: QIANFAN_MODEL,
-      // 推理模型的思考 token 也算在内，给足余量
-      max_tokens: Math.max(maxTokens, 2000),
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`Qianfan API ${res.status}`);
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const body = {
+    model: QIANFAN_MODEL,
+    // 推理模型的思考 token 也算在内，给足余量
+    max_tokens: Math.max(maxTokens, 2000),
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+  };
+  let data: { choices?: { message?: { content?: string } }[] };
+  if (key) {
+    const res = await fetch('https://qianfan.baidubce.com/v2/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Qianfan API ${res.status}`);
+    data = await res.json();
+  } else {
+    data = await proxyJson('qianfan.chat', body);
+  }
   return (data.choices?.[0]?.message?.content ?? '').trim();
 }
 
@@ -284,17 +302,20 @@ export async function generateReply(
   const dark = darkSideCheck(ctx.userText);
   if (dark) return dark;
 
-  const key = resolveKey(engine, keys);
-  if (key) {
-    try {
-      if (engine === 'anthropic') return await anthropicReply(ctx, key);
-      if (engine === 'qianfan') return await qianfanReply(ctx, key);
-    } catch (e) {
-      console.warn(`[engine] ${engine} 调用失败，回落脚本引擎：`, e);
-      return mockReply(ctx);
+  const key = resolveKey(engine, keys) || null;
+  if (engine !== 'mock') {
+    // 直连优先（本地 key，开发自测）；没 key 但已登录 → 服务端代理（D-057）
+    const canProxy = !key && (await proxyAvailable());
+    if (key || canProxy) {
+      try {
+        if (engine === 'anthropic') return await anthropicReply(ctx, key);
+        return await qianfanReply(ctx, key);
+      } catch (e) {
+        console.warn(`[engine] ${engine}${key ? '' : '（代理）'} 调用失败，回落脚本引擎：`, e);
+        return mockReply(ctx);
+      }
     }
-  } else if (engine !== 'mock') {
-    console.warn(`[engine] ${engine} 没有 key（填 .env.local 后需重启 expo start），走脚本引擎`);
+    console.warn(`[engine] ${engine} 没有 key 也未登录（代理不可用），走脚本引擎`);
   }
   return mockReply(ctx);
 }

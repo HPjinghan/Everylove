@@ -518,3 +518,13 @@
 - 已完成：snapshots 表 + 4 条 RLS 策略（仅本人读写）；Apple 登录启用（授权 client = host.exp.Exponent，Expo Go 原生 id_token 流）；邮箱 provider 默认开启。
 - 已知限制：**免费层 + 默认邮件服务不能自定义邮件模板** → 邮箱 OTP 的邮件里只有魔法链接、没有 6 位验证码，且限流 2 封/小时。试装以 **Apple 登录为主**；要开邮箱验证码需在 Supabase 配自定义 SMTP（如 Resend 免费层）后把 Magic Link 模板加上 {{ .Token }}。设置页提示已同步。
 - SUPABASE_ACCESS_TOKEN 建议用完在 Dashboard → Access Tokens 里 Revoke。
+
+## D-057 · 2026-08-30 · 第一块自有服务端：AI 代理 Edge Function + 云端为主的同步（Harper 拍板）
+
+- **决策**：
+  1. **AI 服务端代理**（`supabase/functions/ai/index.ts`，已部署，verify_jwt 开）：唯一自有服务端组件。四个 service——qianfan.chat / qianfan.images / qianfan.tts / anthropic.messages，上游 key 收进 Supabase Secrets（QIANFAN_API_KEY / ANTHROPIC_API_KEY），客户端只带登录态 JWT 调用；按用户**每日限量**（ai_usage 表 + RLS，默认 500 次/天，AI_DAILY_LIMIT 可调——配额是防盗刷不是付费墙）。TTS 二进制流由函数包成 audio_base64。回应 OPEN_QUESTIONS #9 的试装解。
+  2. **客户端三层取路**（`lib/proxy.ts`）：本地有 key → 直连（开发自测优先）；无 key 且已登录 → 代理；都没有 → mock/占位。engine（对话+completeText）、imagegen（文生图）、tts（语音）全部接入；imageKeyReady/ttsReady 的口径从「有 key」扩为「有 key 或已登录」。**分发出去的包不再带任何上游 key**。
+  3. **同步升级为云端为主、本地缓存**（`lib/sync.ts`）：store 变化标脏 + 15s 防抖上传；App 退后台立即冲刷；启动/登录/回前台**对账**（reconcileNow）——云端更新且本地干净 → 静默拉云端；本地有未同步改动 → 本地覆盖云端（正在用的设备赢）；离线照常跑本地缓存，回线补同步。登录后的「恢复还是覆盖」弹窗取消（对账自动决定）。
+- **配套**：tsconfig 排除 supabase/（Deno 代码不进 RN 类型检查）；ai_usage 建表与函数部署经管理 API 远程完成并验证（未登录 401、匿名拒绝）。
+- **推翻**：修订 D-054 之「本地优先 + 手动/慢防抖备份」（升级为云端为主）；D-004/D-010 的「key 打包进客户端」自此有了下机通道（开发机直连仍可用）。
+- **影响文件**：`supabase/functions/ai/index.ts`（新）、`lib/proxy.ts`（新）、`lib/auth.ts`（URL/ANON 导出 + 会话缓存）、`lib/engine.ts`（代理回落）、`lib/imagegen.ts`、`lib/tts.ts`、`lib/sync.ts`（重写自动同步）、`app/_layout.tsx`、`app/apps/settings.tsx`、`tsconfig.json`。

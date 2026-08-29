@@ -10,7 +10,7 @@ import { applyThemeColors, Romance } from '@/constants/theme';
 import { authConfigured } from '@/lib/auth';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { deliverDuePosts } from '@/lib/posts';
-import { startAutoBackup } from '@/lib/sync';
+import { initCloudSync } from '@/lib/sync';
 import '@/lib/notifications';
 import { useAppStore, useHydrated } from '@/store/app-store';
 
@@ -45,10 +45,10 @@ export default function RootLayout() {
     SplashScreen.hideAsync();
   }, [hydrated]);
 
-  // 云备份（D-054）：登录态下 store 变化后防抖自动上传
+  // 云同步（D-054/D-057 云端为主）：标脏防抖上传、退后台冲刷、启动/登录/回线对账
   useEffect(() => {
     if (!hydrated || !authConfigured()) return;
-    return startAutoBackup();
+    return initCloudSync();
   }, [hydrated]);
 
   // 回前台补投心跳与帖子

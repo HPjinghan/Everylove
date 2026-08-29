@@ -26,7 +26,7 @@ import {
   signOut,
   verifyEmailOtp,
 } from '@/lib/auth';
-import { cloudSnapshotAt, deleteCloudData, restoreSnapshot, uploadSnapshot } from '@/lib/sync';
+import { deleteCloudData, reconcileNow, restoreSnapshot, uploadSnapshot } from '@/lib/sync';
 import { useAppStore } from '@/store/app-store';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -160,28 +160,15 @@ export default function MeScreen() {
     return onAuthChange(setSession);
   }, []);
 
-  /** 登录成功后：云端已有备份 → 问恢复还是覆盖；没有 → 静默上传第一份 */
+  /** 登录成功后：自动对账（云端为主，D-057）——云端较新拉云端，本地有改动推本地 */
   const afterLogin = async () => {
-    const at = await cloudSnapshotAt();
-    if (at) {
-      Alert.alert(
-        '云端已有一份备份',
-        `备份于 ${new Date(at).toLocaleString('zh-CN')}。要恢复到这台手机，还是用本机数据覆盖云端？`,
-        [
-          {
-            text: '恢复到本机',
-            onPress: async () => {
-              const ok = await restoreSnapshot();
-              Alert.alert(ok ? '已恢复' : '恢复失败', ok ? 'TA 们回来了。' : '稍后再试。');
-            },
-          },
-          { text: '用本机覆盖云端', onPress: () => void uploadSnapshot() },
-        ]
-      );
-    } else {
-      const r = await uploadSnapshot();
-      Alert.alert('云端已开通', r === 'ok' ? '当前数据已备份。之后会自动备份。' : '首次备份稍后自动重试。');
-    }
+    const r = await reconcileNow();
+    Alert.alert(
+      '云端已开通',
+      r === 'pulled'
+        ? '云端数据较新，已恢复到这台手机。'
+        : '当前数据已同步到云端。之后数据自动存云端，本机是缓存。'
+    );
   };
 
   const doApple = async () => {

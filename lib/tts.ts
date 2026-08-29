@@ -10,6 +10,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import { pronounFor } from '@/content/prompts';
 import { resolveKey } from '@/lib/engine';
+import { proxyJson, proxyReadySync } from '@/lib/proxy';
 import type { Character } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
@@ -20,9 +21,9 @@ function ttsKey(): string {
   return resolveKey('qianfan', { qianfan: useAppStore.getState().qianfanKey });
 }
 
-/** 有千帆 key 即可发声 */
+/** 可发声 = 本地有千帆 key（直连），或已登录（走服务端代理，D-057） */
 export function ttsReady(): boolean {
-  return Boolean(ttsKey());
+  return Boolean(ttsKey()) || proxyReadySync();
 }
 
 /** 音色：按人称给默认（qwen-tts 系列音色名），env 可全局覆盖 */
@@ -70,7 +71,7 @@ export async function synthesizeVoice(
   character: Character
 ): Promise<string | undefined> {
   const key = ttsKey();
-  if (!key || !text.trim()) return undefined;
+  if ((!key && !proxyReadySync()) || !text.trim()) return undefined;
   const voice = voiceFor(character);
   const cacheKey = hash(`${voice}|${text}`);
   const dir = `${FileSystem.documentDirectory}tts/`;
@@ -84,49 +85,50 @@ export async function synthesizeVoice(
   const job = (async (): Promise<string | undefined> => {
     try {
       await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => {});
-      const res = await fetch('https://qianfan.baidubce.com/v2/audio/speech', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${key}`,
-        },
-        body: JSON.stringify({
-          model: QIANFAN_TTS_MODEL,
-          input: text,
-          voice,
-          response_format: 'mp3',
-        }),
-      });
-      if (!res.ok) throw new Error(`Qianfan TTS ${res.status}`);
-      const contentType = res.headers.get('content-type') ?? '';
-      if (contentType.includes('application/json')) {
-        // JSON 形态：找音频 URL 或 base64
-        const data = (await res.json()) as {
-          data?: { url?: string; audio?: string }[];
-          audio?: { url?: string; data?: string };
-          url?: string;
-        };
-        const url = data.audio?.url ?? data.data?.[0]?.url ?? data.url;
-        const b64 = data.audio?.data ?? data.data?.[0]?.audio;
-        if (url) {
-          const dl = await FileSystem.downloadAsync(url.replace(/^http:/, 'https:'), local);
-          return dl.uri;
-        }
-        if (b64) {
-          await FileSystem.writeAsStringAsync(local, b64, {
+      const body = { model: QIANFAN_TTS_MODEL, input: text, voice, response_format: 'mp3' };
+      type TtsJson = {
+        data?: { url?: string; audio?: string }[];
+        audio?: { url?: string; data?: string };
+        url?: string;
+        /** 代理把二进制流包成 base64（supabase/functions/ai，D-057） */
+        audio_base64?: string;
+      };
+      let data: TtsJson;
+      if (key) {
+        const res = await fetch('https://qianfan.baidubce.com/v2/audio/speech', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`Qianfan TTS ${res.status}`);
+        const contentType = res.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/json')) {
+          // 二进制流（OpenAI 惯例）
+          const buf = await res.arrayBuffer();
+          if (!buf.byteLength) throw new Error('empty audio');
+          await FileSystem.writeAsStringAsync(local, toBase64(buf), {
             encoding: FileSystem.EncodingType.Base64,
           });
           return local;
         }
-        throw new Error('no audio in JSON response');
+        data = await res.json();
+      } else {
+        data = await proxyJson<TtsJson>('qianfan.tts', body);
       }
-      // 二进制流（OpenAI 惯例）
-      const buf = await res.arrayBuffer();
-      if (!buf.byteLength) throw new Error('empty audio');
-      await FileSystem.writeAsStringAsync(local, toBase64(buf), {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      return local;
+      // JSON 形态：base64 或音频 URL
+      const b64 = data.audio_base64 ?? data.audio?.data ?? data.data?.[0]?.audio;
+      if (b64) {
+        await FileSystem.writeAsStringAsync(local, b64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        return local;
+      }
+      const url = data.audio?.url ?? data.data?.[0]?.url ?? data.url;
+      if (url) {
+        const dl = await FileSystem.downloadAsync(url.replace(/^http:/, 'https:'), local);
+        return dl.uri;
+      }
+      throw new Error('no audio in JSON response');
     } catch (e) {
       console.warn('[tts] 语音合成失败，回落文字占位：', e);
       return undefined;

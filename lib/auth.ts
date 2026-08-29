@@ -9,8 +9,8 @@ import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
 /** env 里配好了 Supabase 才可用；没配时设置页显示引导，其他一切照旧 */
 export function authConfigured(): boolean {
@@ -18,6 +18,8 @@ export function authConfigured(): boolean {
 }
 
 let client: SupabaseClient | null = null;
+/** 会话缓存：给需要同步判断「已登录？」的地方（imageKeyReady 等）用 */
+let cachedSession: Session | null = null;
 
 export function getSupabase(): SupabaseClient | null {
   if (!authConfigured()) return null;
@@ -30,6 +32,9 @@ export function getSupabase(): SupabaseClient | null {
         detectSessionInUrl: false,
       },
     });
+    client.auth.onAuthStateChange((_event, session) => {
+      cachedSession = session;
+    });
   }
   return client;
 }
@@ -38,7 +43,13 @@ export async function currentSession(): Promise<Session | null> {
   const sb = getSupabase();
   if (!sb) return null;
   const { data } = await sb.auth.getSession();
-  return data.session ?? null;
+  cachedSession = data.session ?? null;
+  return cachedSession;
+}
+
+/** 同步版登录判断（可能落后一拍；准确判断用 currentSession） */
+export function hasSessionSync(): boolean {
+  return cachedSession !== null;
 }
 
 export function onAuthChange(cb: (session: Session | null) => void): () => void {
