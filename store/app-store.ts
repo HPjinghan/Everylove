@@ -94,8 +94,6 @@ interface AppState {
     name: string;
     nickname: string;
     birthday?: string;
-    /** 自创角色直接加好友（D-047）：仪式文案不同、不做搭话迁移 */
-    created?: boolean;
   }) => string;
   appendBond: (
     bondId: string,
@@ -210,10 +208,12 @@ export const useAppStore = create<AppState>()(
       },
 
       ensureSquareChat: (characterId) => {
-        const { squareChats } = get();
+        const { squareChats, customCharacters } = get();
         const now = Date.now();
         const existing = squareChats[characterId];
-        if (existing && now - existing.lastActiveAt > SQUARE_CHAT_TTL_MS) {
+        // 你创造的 TA 不会忘记你（D-052）：自创角色的暧昧期不过期，免费层天花板由初识分寸承担
+        const isOwnCreation = customCharacters.some((c) => c.id === characterId);
+        if (existing && !isOwnCreation && now - existing.lastActiveAt > SQUARE_CHAT_TTL_MS) {
           set({
             squareChats: {
               ...squareChats,
@@ -268,7 +268,7 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      createBond: ({ characterId, name, nickname, birthday, created }) => {
+      createBond: ({ characterId, name, nickname, birthday }) => {
         const state = get();
         const character =
           CHARACTERS.find((c) => c.id === characterId) ??
@@ -277,14 +277,14 @@ export const useAppStore = create<AppState>()(
         const script = scriptFor(character);
         const now = Date.now();
 
-        // 迁移仪式：搭话记录随关系升级并入羁绊（记忆从这里开始归他所有）
-        const squareMsgs = created ? [] : state.squareChats[characterId]?.messages ?? [];
+        // 迁移仪式：搭话/暧昧期记录随关系升级并入羁绊（记忆从这里开始归他所有）
+        const squareMsgs = state.squareChats[characterId]?.messages ?? [];
         const ceremony: ChatMessage = {
           id: uid('m'),
           from: 'system',
           kind: 'system',
-          text: created
-            ? `你创造了${name} · TA 已经在你的通讯录里`
+          text: character.custom
+            ? `你们确定了关系 · 这一次，是 TA 自己选择留下 · TA 开始叫你「${nickname}」`
             : `你们交换了联系方式 · 他开始叫你「${nickname}」`,
           at: now - 1,
         };
@@ -304,10 +304,9 @@ export const useAppStore = create<AppState>()(
           nickname,
           birthday,
           createdAt: now,
-          affinity: 0, // 羁绊 LV1 从零开始（心动值已在交友阶段满 100，D-029）
+          affinity: 0, // 羁绊 LV1 从零开始（心动值已在暧昧期满 100，D-029/D-052）
           messages: [...squareMsgs, ceremony, ...greeting],
-          // 自创直入通讯录时她人不在会话里，打招呼算未读；交友缔结后直接落进会话，算已读
-          unread: created ? greeting.length : 0,
+          unread: 0,
         };
 
         // 领养后帖物化进动态流

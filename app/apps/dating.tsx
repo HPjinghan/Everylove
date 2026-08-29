@@ -131,14 +131,15 @@ export default function DatingScreen() {
   const top = deck[0];
   const next = deck[1];
 
-  // 配对列表：配过对、还没加好友的（3 天不聊会过期）
+  // 配对列表：配过对、还没加好友的（3 天不聊会过期）。
+  // 自己创造的「心动中」不在这里——TA 们住在通讯录（D-052）。
   const matches = useMemo(
     () =>
       Object.values(squareChats)
         .filter((chat) => !bondedIds.has(chat.characterId))
         .sort((a, b) => b.lastActiveAt - a.lastActiveAt)
         .map((chat) => [...customs, ...CHARACTERS].find((c) => c.id === chat.characterId))
-        .filter((c): c is Character => Boolean(c)),
+        .filter((c): c is Character => Boolean(c) && !c!.custom),
     [squareChats, bondedIds, customs]
   );
 

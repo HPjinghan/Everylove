@@ -185,10 +185,7 @@ export default function MeScreen() {
       </Section>
 
       <Section title="订阅计划">
-        <Row
-          label="羁绊槽位"
-          value={`${bonds.filter((b) => !customs.some((c) => c.id === b.characterId)).length}/1 · 首个免费 · 自创不占槽`}
-        />
+        <Row label="羁绊槽位" value={`${bonds.length}/1 · 首个免费`} />
         <Row label="订阅「TA 在」" value="完整日常 + 语音 + 留言 · 敬请期待" dim />
         <Row label="Morning call" value="TA 叫你起床 · 敬请期待" dim />
         <Row label="错过回溯" value="错过的来电与聊天回听 · 敬请期待" dim />

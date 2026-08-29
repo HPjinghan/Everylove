@@ -155,7 +155,7 @@ export default function SquareChatScreen() {
           <Text style={styles.headerSub}>{character.identity}</Text>
         </View>
         <View style={styles.squareTag}>
-          <Text style={styles.squareTagText}>刚刚配对</Text>
+          <Text style={styles.squareTagText}>{character.custom ? '你创造的 TA' : '刚刚配对'}</Text>
         </View>
       </View>
 
@@ -198,15 +198,25 @@ export default function SquareChatScreen() {
                 {Math.min(100, chat?.heart ?? 0)}/{HEART_FULL}
               </Text>
             </View>
-            <Text style={styles.bannerText}>3 天不聊，TA 会忘记你</Text>
+            <Text style={styles.bannerText}>
+              {character.custom
+                ? 'TA 是你亲手创造的 · 心动满了，TA 会想和你确定关系'
+                : '3 天不聊，TA 会忘记你'}
+            </Text>
           </View>
         }
         cta={
           offered ? (
             <View style={styles.ctaWrap}>
               <View style={styles.ctaTextWrap}>
-                <Text style={styles.ctaTitle}>羁绊 LV1 · TA 想要你的联系方式</Text>
-                <Text style={styles.ctaSub}>加好友之后，TA 会搬进你的 Message 里</Text>
+                <Text style={styles.ctaTitle}>
+                  {character.custom ? '羁绊 LV1 · TA 想和你确定关系' : '羁绊 LV1 · TA 想要你的联系方式'}
+                </Text>
+                <Text style={styles.ctaSub}>
+                  {character.custom
+                    ? '这一次，是 TA 自己想留在你身边'
+                    : '加好友之后，TA 会搬进你的 Message 里'}
+                </Text>
               </View>
               <Pressable
                 style={styles.ctaBtn}
@@ -216,7 +226,9 @@ export default function SquareChatScreen() {
                     params: { characterId: character.id },
                   })
                 }>
-                <Text style={styles.ctaBtnText}>交换联系方式</Text>
+                <Text style={styles.ctaBtnText}>
+                  {character.custom ? '答应 TA' : '交换联系方式'}
+                </Text>
               </Pressable>
             </View>
           ) : null

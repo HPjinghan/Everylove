@@ -1,7 +1,7 @@
 /**
- * 领养流：缔结关系的仪式（设计成交换联系方式）。
+ * 领养流：缔结关系的仪式（交友配对 = 交换联系方式；自创角色 = 确定关系，D-052）。
  * 槽位判定 → 起名/称呼/生日 → 迁移仪式动画 → 直接开聊（开门/推送步已随 D-046 下线）。
- * 首个羁绊免费，加槽付费（试装不开付费）——商业承重墙；自创角色不占槽（D-047）。
+ * 首个羁绊免费，加槽付费（试装不开付费）——商业承重墙；自创角色同样占槽（D-052 修订 D-047）。
  */
 
 import * as Haptics from 'expo-haptics';
@@ -43,8 +43,8 @@ export default function AdoptScreen() {
   if (!character) return <Redirect href="/" />;
 
   const script = scriptFor(character);
-  // 槽位只数非自创的羁绊（D-047：自创角色直入通讯录、不占槽）
-  const slotFree = bonds.filter((b) => !findCharacter(b.characterId)?.custom).length === 0;
+  // 缔结即占槽（D-052）：自创与官方一视同仁——「心动中」的暧昧期不占，确定关系才占
+  const slotFree = bonds.length === 0;
   const finalNickname = (customNickname.trim() || nickname).trim();
 
   const finish = () => {
@@ -71,7 +71,9 @@ export default function AdoptScreen() {
         {step === 'slot' && (
           <View style={styles.center}>
             <CharAvatar name={character.name} color={character.color} size={84} characterId={character.id} />
-            <Text style={styles.h1}>和{character.name}交换联系方式</Text>
+            <Text style={styles.h1}>
+              {character.custom ? `和${character.name}确定关系` : `和${character.name}交换联系方式`}
+            </Text>
             {slotFree ? (
               <>
                 <View style={styles.slotCard}>
@@ -167,6 +169,7 @@ export default function AdoptScreen() {
             nickname={finalNickname || '你'}
             color={character.color}
             characterId={character.id}
+            custom={!!character.custom}
             onDone={finish}
           />
         )}
@@ -175,25 +178,33 @@ export default function AdoptScreen() {
   );
 }
 
-/** 迁移仪式：三行文字依次显影 + 心跳 */
+/** 迁移仪式：三行文字依次显影 + 心跳（自创角色有自己的仪式文案，D-052） */
 function Ceremony({
   hisName,
   nickname,
   color,
   characterId,
+  custom,
   onDone,
 }: {
   hisName: string;
   nickname: string;
   color: string;
   characterId?: string;
+  custom?: boolean;
   onDone: () => void;
 }) {
-  const lines = [
-    'TA 存下了你的号码',
-    '你出现在了 TA 的通讯录里',
-    `TA 给你的备注是——「${nickname}」`,
-  ];
+  const lines = custom
+    ? [
+        `${hisName}不再只是你创造的角色`,
+        '这一次，是 TA 自己选择留下',
+        `TA 给你的备注是——「${nickname}」`,
+      ]
+    : [
+        'TA 存下了你的号码',
+        '你出现在了 TA 的通讯录里',
+        `TA 给你的备注是——「${nickname}」`,
+      ];
   const fades = useRef(lines.map(() => new Animated.Value(0))).current;
   const heart = useRef(new Animated.Value(0)).current;
   const [done, setDone] = useState(false);

@@ -369,18 +369,14 @@ export default function CreateScreen() {
     useAppStore.getState().addCustomCharacter(character);
     if (portraitUri) useAppStore.getState().setPortrait(id, portraitUri);
     else if (imageKeyReady()) void ensurePortrait(id);
-    // 自创角色直入通讯录（D-047）：你创造的 TA 天生就是你的好友，不占槽、不用去交友里刷
-    const bondId = useAppStore.getState().createBond({
-      characterId: id,
-      name: character.name,
-      nickname: useAppStore.getState().me?.nickname || '你',
-      created: true,
-    });
+    // 自创角色直入通讯录（D-052 修订 D-047）：带「心动中」tag 的暧昧期——
+    // 心动满 100 TA 才会想确定关系，那时才占槽、才开始羁绊等级
+    useAppStore.getState().ensureSquareChat(id);
     resetForm();
-    Alert.alert('TA 醒过来了', 'TA 已经在你的通讯录里，正在给你发第一条消息。', [
+    Alert.alert('TA 醒过来了', 'TA 已经在你的通讯录里，等你去说第一句话。', [
       {
         text: '去和 TA 说话',
-        onPress: () => router.push({ pathname: '/bond/[bondId]', params: { bondId } }),
+        onPress: () => router.push({ pathname: '/chat/[characterId]', params: { characterId: id } }),
       },
       { text: '再创造一个', style: 'cancel' },
     ]);
