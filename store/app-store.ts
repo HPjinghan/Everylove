@@ -108,7 +108,8 @@ interface AppState {
   setBondMemory: (bondId: string, memory: BondMemory) => void;
   toggleLike: (postId: string) => void;
   addMyComment: (postId: string, text: string) => void;
-  addHisReply: (postId: string) => void;
+  /** TA 的回帖（D-053）：文本由调用方生成（模型或台词库回落），可多次回复 */
+  addHisReply: (postId: string, text: string) => void;
   addCustomCharacter: (c: Character) => void;
   /** 编辑已创建的角色（D-050）：原位更新；同名的羁绊备注跟着改 */
   updateCustomCharacter: (c: Character) => void;
@@ -436,15 +437,7 @@ export const useAppStore = create<AppState>()(
           ),
         }),
 
-      addHisReply: (postId) => {
-        const post = get().posts.find((p) => p.id === postId);
-        if (!post) return;
-        const character =
-          CHARACTERS.find((c) => c.id === post.characterId) ??
-          get().customCharacters.find((c) => c.id === post.characterId);
-        if (!character) return;
-        const reply = scriptFor(character).commentReply;
-        if (post.comments.some((c) => c.from === 'him')) return;
+      addHisReply: (postId, text) =>
         set({
           posts: get().posts.map((p) =>
             p.id === postId
@@ -452,13 +445,12 @@ export const useAppStore = create<AppState>()(
                   ...p,
                   comments: [
                     ...p.comments,
-                    { id: uid('c'), from: 'him' as const, text: reply, at: Date.now() },
+                    { id: uid('c'), from: 'him' as const, text, at: Date.now() },
                   ],
                 }
               : p
           ),
-        });
-      },
+        }),
 
       addCustomCharacter: (c) => set({ customCharacters: [...get().customCharacters, c] }),
       updateCustomCharacter: (c) => {

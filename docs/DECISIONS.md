@@ -476,3 +476,11 @@
 - **推翻**：D-047 之「自动加好友、不占槽」（入通讯录保留，形态改暧昧期）；SQUARE_CHAT_TTL 对自创豁免（修订 D-006 时代的过期口径）。
 - **已知残留**：D-047 版本里已自动成为羁绊的自创角色不回迁（祖父条款）；「心动中」的 TA 暂不参与外出偶遇。
 - **影响文件**：`store/app-store.ts`（createBond 去 created、仪式文案按 custom 分支、ensureSquareChat 自创不过期）、`app/apps/create.tsx`（发布→ensureSquareChat）、`app/apps/contacts.tsx`（心动中行 + tag）、`app/chat/[characterId].tsx`（标签/banner/CTA 自创文案）、`app/adopt/[characterId].tsx`（槽位恢复、确定关系文案、仪式专版）、`app/apps/dating.tsx`（配对条排除自创）、`app/apps/settings.tsx`、`content/prompts.ts`（自创暧昧期情境）。
+
+## D-053 · 2026-08-29 · 朋友圈改「X」（推特模式）；回帖实装模型（Harper 拍板）
+
+- **决策**：
+  1. **朋友圈 → X**：桌面图标改黑底白 ✕（拟真彩蛋，与 LINE 绿同一「世界内真 App」逻辑，D-027 精神）；界面改推特式时间线——行布局（头像 + 名字 + @handle + 相对时间）、正文、回复/喜欢操作行、细线分隔、推特光标蓝发送键；@handle 由角色 id 生成；回复线以缩进小头像呈现，她的回复显示「我的身份」昵称。转发键不做（供给纪律：点不动的按钮比没有更出戏）。内容口径不变：只看缔结契约的 TA（D-027），加好友前的公开帖只能看。
+  2. **回帖实装模型**：她评论 → TA 用当前引擎真的回一条（`buildPostReplySystem/UserPrompt`，prompts.ts §1-E：人设 + 追法 + 她的身份 + 共同记忆 + 羁绊记忆注入，回帖写法 = 短、口语、半公开分寸），生成期间显示「TA 正在回复…」；**可多次回复**（原「只回一次」的脚本限制取消）。暗面路由前置（红线 #3：评论区也不例外）；mock/无 key/失败回落台词库 commentReply。输出走 splitBubbles + stripStageDirections 保持打字感（D-039 口径延伸到评论区）。
+- **推翻**：D-020 之朋友圈命名与卡片样式；D-008 时代的脚本回帖（commentReply 降为回落）。
+- **影响文件**：`app/apps/moments.tsx`（重写）、`content/prompts.ts`（§1-E）、`store/app-store.ts`（addHisReply 改传文本、去只回一次限制）、`constants/apps.ts`（图标/标签）。

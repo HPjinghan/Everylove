@@ -22,7 +22,7 @@
 import { LOVE_STYLES, loveStyleByLabel, scriptFor } from '@/content/characters';
 import { levelInfo } from '@/lib/bond';
 import { daysTogether } from '@/lib/format';
-import type { BondMemory, Character, ChatMessage, EngineContext, UserProfile } from '@/lib/types';
+import type { Bond, BondMemory, Character, ChatMessage, EngineContext, UserProfile } from '@/lib/types';
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* §4 通用                                                                     */
@@ -681,6 +681,56 @@ export function buildMemoryExtractPrompt(input: {
       ? `已滑出对话窗口的更早对话（请并入 summary）：\n${transcript(aged, hisName)}`
       : '已滑出对话窗口的更早对话：无',
     `最近对话（请从中提取/更新 facts）：\n${transcript(recent, hisName)}`,
+  ].join('\n\n');
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* §1-E X 回帖模式（D-053）：她在 TA 的帖子下评论，TA 回一条真评论                  */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * X（原朋友圈）的评论回复实装模型：短、口语、带着发帖时的心情。
+ * 引擎走 completeText（mock/无 key 时调用方回落台词库的 commentReply）。
+ * 暗面路由由调用方前置（红线 #3：评论区也不例外）。
+ */
+export function buildPostReplySystem(
+  c: Character,
+  bond: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'memory'> | undefined,
+  me: UserProfile | undefined
+): string {
+  const script = scriptFor(c);
+  const who = bond
+    ? `你的恋人（你叫她「${bond.nickname}」，羁绊 LV${levelInfo(bond.affinity).level}）`
+    : '一个你有点在意的人';
+  return [
+    `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。你在一个类似 X（推特）的社交应用上发了帖子，${who}在下面评论了你。下面所有规则里，「她」指评论的用户。`,
+    `【你是谁】${script.persona}`,
+    `【你的追法】${pursuitLine(c)}`,
+    ...characterProfileBlock(c),
+    ...userProfileBlock(me, bond ? 'bonded' : 'square'),
+    ...sharedMemoryBlock(c),
+    ...(bond ? memoryBlockFor(bond.memory) : []),
+    '【回帖的写法】',
+    '- 像在社交软件上回评论：短、口语，带着你发这条帖子时的心情，接住她说的那件具体的事；1-2 句，不写小作文。',
+    '- 这是半公开的评论区：亲昵可以有，但克制成只有你们俩懂的程度。',
+    ...CHAT_HARD_RULES,
+    '【输出格式】只输出回复文本本身：不带名字前缀、不解释、不用 markdown、不写（）动作描写、不用 emoji。',
+  ].join('\n');
+}
+
+/** 喂给模型的内容：帖子 + 评论线，最后一条是她刚发的 */
+export function buildPostReplyUserPrompt(input: {
+  postText: string;
+  comments: { from: 'me' | 'him'; text: string }[];
+  hisName: string;
+}): string {
+  const thread = input.comments
+    .map((cm) => `${cm.from === 'me' ? '她' : input.hisName}：${cm.text}`)
+    .join('\n');
+  return [
+    `你的帖子：「${input.postText}」`,
+    thread ? `评论区：\n${thread}` : '评论区还是空的。',
+    '请回复她最新的那条评论。',
   ].join('\n\n');
 }
 

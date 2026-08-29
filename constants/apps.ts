@@ -24,7 +24,8 @@ export interface DesktopApp {
 export const DESKTOP_APPS: DesktopApp[] = [
   { id: 'messages', label: 'Message', icon: 'chat', bg: '#D9F5E1', fg: '#4BBF87', route: '/apps/messages', badge: 'unread' },
   { id: 'phone', label: '电话', icon: 'phone', bg: '#D5F2E3', fg: '#3EB489', route: '/apps/phone' },
-  { id: 'moments', label: '朋友圈', icon: 'flower', bg: '#E4ECFF', fg: '#7B96F2', route: '/apps/moments' },
+  // X（D-053）：拟真彩蛋——黑底白 ✕，与 LINE 绿同一「世界内真 App」逻辑
+  { id: 'moments', label: 'X', icon: 'close', bg: '#0F1419', fg: '#FFFFFF', route: '/apps/moments' },
   { id: 'dating', label: '交友', icon: 'heart', bg: '#FFDBE6', fg: '#F5749B', route: '/apps/dating' },
   { id: 'contacts', label: '通讯录', icon: 'contacts', bg: '#FFEDD6', fg: '#F2A65A', route: '/apps/contacts' },
   { id: 'album', label: '相册', icon: 'album', bg: '#F0E4FB', fg: '#B287E0', route: '/apps/album' },
