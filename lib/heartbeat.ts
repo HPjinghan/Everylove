@@ -46,7 +46,7 @@ const STAGE_KEY: Record<Stage, 'before' | 'day' | 'after'> = {
 export function deliverDueHeartbeats(now = Date.now()): number {
   const state = useAppStore.getState();
   const bond = state.bonds[0];
-  if (!bond || bond.away) return 0;
+  if (!bond) return 0;
 
   let delivered = 0;
   for (const event of state.userEvents) {

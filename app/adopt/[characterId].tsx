@@ -1,7 +1,7 @@
 /**
  * 领养流：缔结关系的仪式（设计成交换联系方式）。
- * 槽位判定 → 起名/称呼/生日 → 迁移仪式动画 → 推送授权（剧情语法）→ 他先走。
- * 首个羁绊免费，加槽付费（试装不开付费）——商业承重墙。
+ * 槽位判定 → 起名/称呼/生日 → 迁移仪式动画 → 直接开聊（开门/推送步已随 D-046 下线）。
+ * 首个羁绊免费，加槽付费（试装不开付费）——商业承重墙；自创角色不占槽（D-047）。
  */
 
 import * as Haptics from 'expo-haptics';
@@ -23,11 +23,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CharAvatar } from '@/components/char-avatar';
 import { scriptFor } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
-import { deliverAndSyncArrivals } from '@/lib/arrivals';
-import { requestNotificationPermission } from '@/lib/notifications';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
-type Step = 'slot' | 'names' | 'ceremony' | 'push';
+type Step = 'slot' | 'names' | 'ceremony';
 
 export default function AdoptScreen() {
   const { characterId } = useLocalSearchParams<{ characterId: string }>();
@@ -45,20 +43,17 @@ export default function AdoptScreen() {
   if (!character) return <Redirect href="/" />;
 
   const script = scriptFor(character);
-  const slotFree = bonds.length === 0;
+  // 槽位只数非自创的羁绊（D-047：自创角色直入通讯录、不占槽）
+  const slotFree = bonds.filter((b) => !findCharacter(b.characterId)?.custom).length === 0;
   const finalNickname = (customNickname.trim() || nickname).trim();
 
-  const finish = async (allowPush: boolean) => {
-    if (allowPush) {
-      await requestNotificationPermission();
-    }
+  const finish = () => {
     const bondId = useAppStore.getState().createBond({
       characterId: character.id,
       name: hisName.trim() || character.name,
       nickname: finalNickname || '你',
       birthday: birthday.trim() || undefined,
     });
-    deliverAndSyncArrivals();
     router.replace({ pathname: '/bond/[bondId]', params: { bondId } });
   };
 
@@ -82,8 +77,7 @@ export default function AdoptScreen() {
                 <View style={styles.slotCard}>
                   <Text style={styles.slotFree}>首个羁绊 · 免费</Text>
                   <Text style={styles.slotDesc}>
-                    交换之后 TA 会搬进你的消息里。{'\n'}
-                    TA 有自己的作息，会主动来找你，说到做到。
+                    交换之后 TA 会搬进你的消息里，{'\n'}随时都在，随时都回。
                   </Text>
                 </View>
                 <Pressable style={styles.primaryBtn} onPress={() => setStep('names')}>
@@ -173,22 +167,8 @@ export default function AdoptScreen() {
             nickname={finalNickname || '你'}
             color={character.color}
             characterId={character.id}
-            onDone={() => setStep('push')}
+            onDone={finish}
           />
-        )}
-
-        {step === 'push' && (
-          <View style={styles.center}>
-            <Text style={styles.pushClock}>20:00</Text>
-            <Text style={styles.h1}>TA 晚上八点来找你</Text>
-            <Text style={styles.pushSub}>要听得见吗？</Text>
-            <Pressable style={styles.primaryBtn} onPress={() => finish(true)}>
-              <Text style={styles.primaryBtnText}>要听得见</Text>
-            </Pressable>
-            <Pressable style={styles.cancelLink} onPress={() => finish(false)}>
-              <Text style={styles.cancelLinkText}>先不用，我自己来看</Text>
-            </Pressable>
-          </View>
         )}
       </ScrollView>
     </KeyboardAvoidingView>
@@ -257,7 +237,7 @@ function Ceremony({
       </Animated.Text>
       {done && (
         <Pressable style={styles.primaryBtn} onPress={onDone}>
-          <Text style={styles.primaryBtnText}>好</Text>
+          <Text style={styles.primaryBtnText}>去和 TA 说话</Text>
         </Pressable>
       )}
     </View>

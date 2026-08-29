@@ -135,6 +135,10 @@ function Chip({
 
 export default function CreateScreen() {
   const router = useRouter();
+  const customs = useAppStore((s) => s.customCharacters);
+
+  // ── 编辑已创建的（D-050） ──
+  const [editing, setEditing] = useState<Character | null>(null);
 
   // ── 描述导入（D-043） ──
   const [desc, setDesc] = useState('');
@@ -343,22 +347,93 @@ export default function CreateScreen() {
   const submit = () => {
     if (!name.trim()) return;
     if (!guard()) return;
+
+    // 编辑已创建的角色（D-050）：原位更新，不动热度与羁绊
+    if (editing) {
+      const character = draftCharacter(editing.id);
+      if (!character) return;
+      useAppStore.getState().updateCustomCharacter({
+        ...character,
+        adoptedCount: editing.adoptedCount,
+      });
+      if (portraitUri) useAppStore.getState().setPortrait(editing.id, portraitUri);
+      setEditing(null);
+      resetForm();
+      Alert.alert('已保存', 'TA 的设定更新了。');
+      return;
+    }
+
     const id = uid('c');
     const character = draftCharacter(id);
     if (!character) return;
     useAppStore.getState().addCustomCharacter(character);
     if (portraitUri) useAppStore.getState().setPortrait(id, portraitUri);
     else if (imageKeyReady()) void ensurePortrait(id);
-    // 重置表单
+    // 自创角色直入通讯录（D-047）：你创造的 TA 天生就是你的好友，不占槽、不用去交友里刷
+    const bondId = useAppStore.getState().createBond({
+      characterId: id,
+      name: character.name,
+      nickname: useAppStore.getState().me?.nickname || '你',
+      created: true,
+    });
+    resetForm();
+    Alert.alert('TA 醒过来了', 'TA 已经在你的通讯录里，正在给你发第一条消息。', [
+      {
+        text: '去和 TA 说话',
+        onPress: () => router.push({ pathname: '/bond/[bondId]', params: { bondId } }),
+      },
+      { text: '再创造一个', style: 'cancel' },
+    ]);
+  };
+
+  const resetForm = () => {
     setDesc(''); setName(''); setLook(''); setStory(''); setPortraitUri(undefined);
     setAgeStatus('adult'); setRace('人类'); setRaceCustom('');
     setBirthMonth(null); setBirthDay(null); setCatchphrase('');
     setLikes(''); setDislikes(''); setOfferTurns(4); setLoveStyle(undefined);
     setMbti(undefined); setInitiative('mid'); setPresetMemories(''); setTaboos(''); setSecrets('');
     setChatNotes(''); setSchedule(''); setAdvancedOpen(false);
-    Alert.alert('TA 醒过来了', '去「交友」里滑到 TA。', [
-      { text: '去交友看看', onPress: () => router.push('/apps/dating') },
-    ]);
+  };
+
+  /** 编辑已创建的角色（D-050）：全部字段回填进表单 */
+  const loadForEdit = (c: Character) => {
+    setEditing(c);
+    setDesc('');
+    setName(c.name);
+    setGender(c.gender ?? (c.loveTag === 'female' ? 'female' : c.loveTag === 'nonbinary' ? 'nonbinary' : 'male'));
+    setAgeStatus('adult'); // 已发布的都确认过成年
+    setLook(c.look ?? '');
+    setStory(c.story ?? '');
+    const pi = PALETTES.findIndex((p) => p.color === c.color);
+    setPalette(pi >= 0 ? pi : 0);
+    setPortraitUri(useAppStore.getState().portraits[c.id]);
+    if (!c.race) {
+      setRace('人类'); setRaceCustom('');
+    } else if (RACES.includes(c.race)) {
+      setRace(c.race); setRaceCustom('');
+    } else {
+      setRace('其他'); setRaceCustom(c.race);
+    }
+    if (c.birthday && /^\d{1,2}-\d{1,2}$/.test(c.birthday)) {
+      const [bm, bd] = c.birthday.split('-').map(Number);
+      setBirthMonth(bm); setBirthDay(bd);
+    } else {
+      setBirthMonth(null); setBirthDay(null);
+    }
+    setCatchphrase(c.catchphrase ?? '');
+    setLikes(c.likes ?? '');
+    setDislikes(c.dislikes ?? '');
+    setOfferTurns(c.offerAfterTurns ?? 4);
+    setLoveStyle(c.loveStyle);
+    setMbti(c.mbti);
+    setInitiative(c.initiative ?? 'mid');
+    setPresetMemories(c.presetMemories ?? '');
+    setTaboos(c.taboos ?? '');
+    setSecrets(c.secrets ?? '');
+    setChatNotes(c.chatNotes ?? '');
+    setSchedule(c.schedule ?? '');
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setAdvancedOpen(true);
   };
 
   const toggleAdvanced = () => {
@@ -376,6 +451,40 @@ export default function CreateScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled">
           <Text style={styles.subtitle}>创造一个只属于你的 TA</Text>
+
+          {/* ───────── 我创建的（D-050）：点编辑回填表单 ───────── */}
+          {customs.length > 0 && (
+            <View>
+              <Text style={styles.step}>我创建的（{customs.length}）</Text>
+              {customs.map((c) => (
+                <View key={c.id} style={styles.mineRow}>
+                  <CharAvatar name={c.name} color={c.color} size={40} characterId={c.id} />
+                  <View style={styles.mineText}>
+                    <Text style={styles.mineName}>{c.name}</Text>
+                    <Text style={styles.mineSub} numberOfLines={1}>
+                      {c.identity}
+                    </Text>
+                  </View>
+                  <Pressable style={styles.mineEditBtn} onPress={() => loadForEdit(c)}>
+                    <Text style={styles.mineEditText}>编辑</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          )}
+          {editing ? (
+            <View style={styles.editingBanner}>
+              <Text style={styles.editingText}>正在编辑「{editing.name}」——改完点底部保存</Text>
+              <Pressable
+                onPress={() => {
+                  setEditing(null);
+                  resetForm();
+                }}
+                hitSlop={8}>
+                <Text style={styles.editingCancel}>取消</Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           {/* ───────── 描述导入（D-043） ───────── */}
           <Text style={styles.step}>用一段话描述 TA（可选）</Text>
@@ -522,7 +631,7 @@ export default function CreateScreen() {
                   style={[styles.input, styles.raceCustomInput]}
                   value={raceCustom}
                   onChangeText={setRaceCustom}
-                  placeholder="自定义种族，如：半人马 / 図书馆精"
+                  placeholder="如：半人马"
                   placeholderTextColor={Romance.faint}
                   maxLength={10}
                 />
@@ -557,11 +666,12 @@ export default function CreateScreen() {
               <Text style={styles.afterHint}>会出现在你们的日历上。</Text>
 
               <Text style={styles.step}>口癖</Text>
+              <Text style={styles.stepHint}>TA 挂在嘴边的话。</Text>
               <TextInput
                 style={styles.input}
                 value={catchphrase}
                 onChangeText={setCatchphrase}
-                placeholder="TA 挂在嘴边的话，如「……真拿你没办法」"
+                placeholder="「……真拿你没办法」"
                 placeholderTextColor={Romance.faint}
                 maxLength={20}
               />
@@ -733,7 +843,7 @@ export default function CreateScreen() {
             disabled={!name.trim() || ageStatus === 'minor'}
             onPress={submit}>
             <Text style={styles.primaryBtnText}>
-              {ageStatus === 'minor' ? '未成年角色暂不能发布' : '让 TA 醒来'}
+              {ageStatus === 'minor' ? '未成年角色暂不能发布' : editing ? '保存修改' : '让 TA 醒来'}
             </Text>
           </Pressable>
           <Text style={styles.footnote}>不能创造真人与 IP 角色 · 发布即默认同意创作规范</Text>
@@ -878,6 +988,37 @@ const styles = themed(() =>
     pickerRowActive: { color: Romance.accent, fontWeight: '700' },
     portraitBtnRow: { flexDirection: 'row', gap: 10 },
     portraitBtn: { flex: 1 },
+    mineRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 18,
+      padding: 10,
+      marginBottom: 8,
+    },
+    mineText: { flex: 1 },
+    mineName: { fontSize: 14, fontWeight: '600', color: Romance.ink },
+    mineSub: { fontSize: 11, color: Romance.faint, marginTop: 1 },
+    mineEditBtn: {
+      backgroundColor: Romance.accentSoft,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+    },
+    mineEditText: { fontSize: 12, fontWeight: '700', color: Romance.accent },
+    editingBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: Romance.accentSoft,
+      borderRadius: 14,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      marginTop: 4,
+    },
+    editingText: { flex: 1, fontSize: 12, color: Romance.accent, fontWeight: '600' },
+    editingCancel: { fontSize: 12, color: Romance.sub },
     paletteRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
     swatch: { width: 32, height: 32, borderRadius: 16 },
     swatchActive: { borderWidth: 3, borderColor: Romance.ink },

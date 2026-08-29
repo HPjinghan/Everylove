@@ -432,3 +432,36 @@
   11. **描述解析同步扩展**（D-043 的 CHARACTER_PARSE_SYSTEM + 规则解析）：新增 initiative/taboos/presetMemories/secrets 四个字段的解析与回填。
 - **推翻**：无（D-025 表单的既有项不变，属扩展与修补）。
 - **影响文件**：`app/apps/create.tsx`、`lib/types.ts`（Character 五个新字段）、`content/prompts.ts`（sharedMemoryBlock/initiativeLine/secretsBlock/taboos 注入 + 解析字段）、`lib/engine.ts`（mock 追句概率）、`app/bond/[bondId].tsx`（秘密解锁进度行）。
+
+## D-046 · 2026-08-29 · 「开门」与离席态下线：加好友即在线（Harper 拍板）
+
+- **决策**：八点开门整条链路下线——缔结后 TA 直接开口打招呼（原开门台词转为见面第一句），不再排程本地通知、没有离席态（TA 随时在线随时回）；领养流的「推送授权」步骤（剧情语法「他晚上八点来找你」）随之移除，仪式结束直接进会话。心跳三段式（日历关怀）保留，不再受离席限制；外出偶遇不再跳过离席。测试项「让 TA 3 分钟后开门」移除；`lib/arrivals.ts` 删除；Bond 的 arrivalAt/notifId/away/awayNotified 标记退役（兼容旧存档）。
+- **推翻**：D-002/D-008 的八点开门与本地通知排程、D-012 离席态（他先走）、D-020「morning call/错过回溯与作息咬合」的作息前提。北极星指标「八点开门率」失去载体——**「他主动来找你」的替代节奏与新北极星待拍板（OPEN_QUESTIONS #20）**。
+- **影响文件**：`store/app-store.ts`（createBond 重写、deliverDueArrivals/devSetArrivalSoon/setBondNotif/markAwayNotified 移除）、`app/_layout.tsx`、`app/adopt/[characterId].tsx`（推送步移除）、`app/bond/[bondId].tsx`、`app/apps/settings.tsx`、`lib/heartbeat.ts`、`lib/types.ts`、`lib/arrivals.ts`（删）。
+
+## D-047 · 2026-08-29 · 自创角色直入通讯录，不占槽（Harper 拍板）
+
+- **决策**：「创造」发布后自动与该角色加好友（`createBond({created:true})`：仪式文案「你创造了TA · TA 已经在你的通讯录里」，TA 立即发来第一条消息计未读），不再需要去交友里刷到 TA；**自创角色不占羁绊槽**（创作者与自己的创作直接互通）——领养流槽位判定只数非自创羁绊，设置页槽位口径同步「自创不占槽」。交友牌堆本就排除已加好友的，自创角色自然不再出现在滑卡里。
+- **推翻**：修订 D-040 之「自创角色进牌堆」（自己的创作不再进自己的牌堆；他人上传的 UGC 未来照常进）。
+- **影响文件**：`store/app-store.ts`（createBond.created）、`app/apps/create.tsx`（submit 自动加好友）、`app/adopt/[characterId].tsx`（槽位判定）、`app/apps/settings.tsx`。
+
+## D-048 · 2026-08-29 · 语音接千帆 TTS：语音气泡真实发声（Harper 拍板）
+
+- **决策**：新增 `lib/tts.ts`——走千帆 v2 OpenAI 兼容语音接口（`/v2/audio/speech`，与聊天/生图共用一把 key），模型默认 **qwen-tts**（`EXPO_PUBLIC_QIANFAN_TTS_MODEL` 可换）；音色按角色人称选（他→Ethan / 她→Cherry / TA→Serena，`EXPO_PUBLIC_QIANFAN_TTS_VOICE` 可全局覆盖）；兼容二进制流与 JSON（URL/base64）两种返回；按（文本+音色）缓存本机，不重复扣费。`components/chat-thread.tsx` 的 TA 语音气泡：点按合成并播放（再点暂停），合成中有加载态；没配 key / 失败回落原「点开看文字」占位。**部分回应 OPEN_QUESTIONS #6**：语音合成供应已定（千帆）；来电形态与实时通话仍待拍板（电话 App 拨打仍为占位）。
+- **影响文件**：`lib/tts.ts`（新）、`components/chat-thread.tsx`、`.env.example`（待补注释）。
+
+## D-049 · 2026-08-29 · 交友：偏好设置 + 滑卡/瀑布流切换（Harper 拍板）
+
+- **决策**：① 交友页右上角「偏好」——底部弹层随时改口味（男生/女生/都可以/非人类，与 onboarding 第一问同一套，`store.setLovePref`）；口味从「排序加权」升级为**直接过滤牌池**（「都可以」看全部）。② 标题下方视图切换：**滑卡 / 列表**（双列瀑布流，D-031 形态回归为可选视图；`store.datingView` 持久化）；瀑布流里**点卡 = 心动**（TA 一定会同意，与右滑同效，弹配对成功层）。
+- **推翻**：修订 D-040 之「搜索与 chips 随滑卡移除」的瀑布流部分（瀑布流作为第二视图回归；搜索与 chips 仍不做）；修订 D-041 口味加权（改过滤，加权项在同口味池内自然失效）。
+- **影响文件**：`store/app-store.ts`（setLovePref/datingView）、`app/apps/dating.tsx`。
+
+## D-050 · 2026-08-29 · 创造：「我创建的」编辑入口 + 表单文案修补（Harper 拍板）
+
+- **决策**：创造页顶部新增**「我创建的（n）」**列表——点「编辑」把该角色全部字段（含头像/立绘、生日、隐藏设定等）回填进表单，底部按钮变「保存修改」，原位更新（热度保留；她没改过备注时通讯录名字跟着新设定走——`store.updateCustomCharacter`）；编辑态有横幅与「取消」。**自编辑即时生效于自己的羁绊**（创作者对自己的实例天然是最新版；他人领养的快照制 §5 不变）。顺手修补：单行输入的超长 placeholder 缩短（口癖/自定义种族），说明文字挪进 stepHint。
+- **影响文件**：`app/apps/create.tsx`、`store/app-store.ts`（updateCustomCharacter）。
+
+## D-051 · 2026-08-29 · 外出拍照：合影 / 拍TA（Harper 拍板）
+
+- **决策**：外出场景输入栏上方两个按钮——**📸 合影**与**📷 拍 TA**，点按生图（千帆文生图，`generateScenePhoto`；prompt = `buildOutingPhotoPrompt`）：拍TA = 她举手机随手拍的单人照（TA 刚注意到镜头的自然神态）；合影 = 自拍构图，TA 占主体、**她只入镜一点点（小半侧脸/发丝/比耶的手，绝不画清晰正脸——她的长相留给想象）**。场景/天气/最近对话都进 prompt。照片以 image 消息落在外出会话里；**结束外出时并入羁绊会话**（相册按 bond.messages 汇集，照片成为资产）；陌生人场次的照片随会话结束消失（无羁绊可归档，试装接受）。这是**她主动按快门**，不推翻 D-037 的「会话内自动生图下线」。
+- **影响文件**：`content/prompts.ts`（buildOutingPhotoPrompt）、`lib/imagegen.ts`（generateScenePhoto）、`app/outing/[placeId].tsx`、`store/app-store.ts`（endOuting 照片并入）。

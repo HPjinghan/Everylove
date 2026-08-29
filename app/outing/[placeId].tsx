@@ -9,17 +9,18 @@
 
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChatThread } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { OUTING_OPENERS } from '@/content/prompts';
+import { buildOutingPhotoPrompt, OUTING_OPENERS, transcript } from '@/content/prompts';
 import { placeById } from '@/content/places';
 import { Romance, themed } from '@/constants/theme';
 import { XP_PER_MESSAGE } from '@/lib/bond';
 import { generateReply } from '@/lib/engine';
 import { uid } from '@/lib/format';
+import { generateScenePhoto, imageKeyReady } from '@/lib/imagegen';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
@@ -34,6 +35,7 @@ export default function OutingSceneScreen() {
   const bonds = useAppStore((s) => s.bonds);
   const [typing, setTyping] = useState(false);
   const [noOne, setNoOne] = useState(false);
+  const [shooting, setShooting] = useState<null | 'solo' | 'together'>(null);
   const booted = useRef(false);
 
   const active = session && session.placeId === placeId ? session : null;
@@ -140,6 +142,44 @@ export default function OutingSceneScreen() {
   };
 
   const name = bond?.name ?? character.name;
+
+  /** 拍照（D-051）：合影 / 拍TA——她主动按快门；照片在结束外出时并入羁绊会话与相册 */
+  const shoot = async (kind: 'solo' | 'together') => {
+    if (shooting) return;
+    if (!imageKeyReady()) {
+      Alert.alert('未配置千帆 key', '拍照与聊天共用千帆 key：在 .env.local 或「设置 → 开发者」里填好即可。');
+      return;
+    }
+    setShooting(kind);
+    try {
+      const digest = transcript(active.messages.slice(-4), '主角');
+      const uri = await generateScenePhoto(
+        buildOutingPhotoPrompt(character, {
+          placeName: place.name,
+          scene: place.scene,
+          weatherLine: weatherLine(),
+          kind,
+          digest: digest || undefined,
+        })
+      );
+      useAppStore.getState().appendOuting([
+        {
+          id: uid('m'),
+          from: 'me',
+          kind: 'image',
+          text: kind === 'together' ? `和${name}在${place.name}的合影` : '',
+          imageUri: uri,
+          at: Date.now(),
+        },
+      ]);
+    } catch (e) {
+      console.warn('[outing] 拍照失败：', e);
+      Alert.alert('没拍成', '生图服务出了点问题，可以再试一次。');
+    } finally {
+      setShooting(null);
+    }
+  };
+
   const subtitle =
     active.kind === 'date'
       ? `和${name}的约会`
@@ -164,6 +204,24 @@ export default function OutingSceneScreen() {
         typingLabel="……"
         onSend={onSend}
         placeholder="说点什么，或用（）写下你的动作…"
+        cta={
+          <View style={styles.shootRow}>
+            <Pressable
+              style={[styles.shootBtn, shooting && styles.shootBtnDim]}
+              disabled={!!shooting}
+              onPress={() => shoot('together')}>
+              <Text style={styles.shootText}>
+                {shooting === 'together' ? '拍摄中…' : '📸 合影'}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.shootBtn, shooting && styles.shootBtnDim]}
+              disabled={!!shooting}
+              onPress={() => shoot('solo')}>
+              <Text style={styles.shootText}>{shooting === 'solo' ? '拍摄中…' : '📷 拍 TA'}</Text>
+            </Pressable>
+          </View>
+        }
         banner={
           <View style={styles.sceneBanner}>
             <Text style={styles.sceneBannerText}>
@@ -241,6 +299,25 @@ const styles = themed(() =>
       paddingVertical: 8,
     },
     sceneBannerText: { fontSize: 11, color: Romance.accent },
+    shootRow: {
+      flexDirection: 'row',
+      gap: 10,
+      paddingHorizontal: 14,
+      paddingBottom: 8,
+    },
+    shootBtn: {
+      flex: 1,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 18,
+      paddingVertical: 10,
+      alignItems: 'center',
+      shadowColor: '#3B2126',
+      shadowOpacity: 0.08,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+    },
+    shootBtnDim: { opacity: 0.5 },
+    shootText: { fontSize: 13, fontWeight: '600', color: Romance.ink },
     emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
     emptyEmoji: { fontSize: 52 },
     emptyText: {

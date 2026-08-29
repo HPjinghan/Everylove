@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
+  Modal,
   PanResponder,
   Pressable,
   ScrollView,
@@ -30,14 +31,22 @@ import { CHARACTERS } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
 import { heatLabel } from '@/lib/format';
 import { hasFreshSupply, rankDeck } from '@/lib/recommend';
-import type { Character } from '@/lib/types';
+import type { Character, LovePref } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = SCREEN_W - 48;
 
-/** 卡面：立绘铺满（无立绘用角色色渐变 + 大首字），底部渐变叠名字/身份/钩子/热度 */
-function DeckCard({ c }: { c: Character }) {
+/** 偏好选项（D-049）：与 onboarding 第一问同一套口味 */
+const PREFS: { key: LovePref; label: string }[] = [
+  { key: 'male', label: '男生' },
+  { key: 'female', label: '女生' },
+  { key: 'any', label: '都可以' },
+  { key: 'nonhuman', label: '非人类' },
+];
+
+/** 卡面：立绘铺满（无立绘用角色色渐变 + 大首字），底部渐变叠名字/身份/钩子/热度；compact = 瀑布流小卡 */
+function DeckCard({ c, compact }: { c: Character; compact?: boolean }) {
   const portrait = useAppStore((s) => s.portraits[c.id]);
   return (
     <View style={styles.cardImage}>
@@ -46,18 +55,24 @@ function DeckCard({ c }: { c: Character }) {
       ) : (
         <LinearGradient colors={[c.colorSoft, c.color]} style={styles.cardImageFill}>
           <View style={styles.placeholderCenter}>
-            <Text style={styles.placeholderLetter}>{c.name.slice(0, 1)}</Text>
+            <Text style={[styles.placeholderLetter, compact && { fontSize: 56 }]}>
+              {c.name.slice(0, 1)}
+            </Text>
           </View>
         </LinearGradient>
       )}
-      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={styles.cardOverlay}>
-        <Text style={styles.cardName}>{c.name}</Text>
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.7)']}
+        style={[styles.cardOverlay, compact && styles.cardOverlayCompact]}>
+        <Text style={[styles.cardName, compact && { fontSize: 17 }]}>{c.name}</Text>
         <Text style={styles.cardIdentity} numberOfLines={1}>
           {c.identity}
         </Text>
-        <Text style={styles.cardHook} numberOfLines={1}>
-          {c.hook}
-        </Text>
+        {!compact ? (
+          <Text style={styles.cardHook} numberOfLines={1}>
+            {c.hook}
+          </Text>
+        ) : null}
         <View style={styles.heatRow}>
           <MingCute name="fire" size={13} color="#FF9A5C" />
           <Text style={styles.heatText}>{heatLabel(c.adoptedCount)}</Text>
@@ -75,9 +90,11 @@ export default function DatingScreen() {
   const squareChats = useAppStore((s) => s.squareChats);
   const lovePref = useAppStore((s) => s.lovePref);
   const datingPasses = useAppStore((s) => s.datingPasses);
+  const view = useAppStore((s) => s.datingView);
 
   const [swipedIds, setSwipedIds] = useState<string[]>([]);
   const [match, setMatch] = useState<Character | null>(null);
+  const [prefOpen, setPrefOpen] = useState(false);
   const pan = useRef(new Animated.ValueXY()).current;
 
   const bondedIds = useMemo(() => new Set(bonds.map((b) => b.characterId)), [bonds]);
@@ -86,8 +103,13 @@ export default function DatingScreen() {
   // 顺序走推荐算法（D-041）：口味 / 热度 / 新面孔 / 自创 / 每日轮换 / 略过冷却。
   // 冷却只在供给充足时生效（D-042）：全池都被略过时忽略冷却直接回流，不用等 3 天。
   const { deck, poolCount } = useMemo(() => {
+    // 偏好过滤（D-049）：口味不再只是排序加权，而是直接筛（「都可以」看全部）
     const pool = [...customs, ...CHARACTERS].filter(
-      (c) => !c.teaser && !bondedIds.has(c.id) && !squareChats[c.id]
+      (c) =>
+        !c.teaser &&
+        !bondedIds.has(c.id) &&
+        !squareChats[c.id] &&
+        (!lovePref || lovePref === 'any' || c.loveTag === lovePref)
     );
     const available = pool.filter((c) => !swipedIds.includes(c.id));
     const ample = hasFreshSupply(pool, datingPasses);
@@ -185,8 +207,40 @@ export default function DatingScreen() {
     router.push({ pathname: '/chat/[characterId]', params: { characterId: c.id } });
   };
 
+  // 瀑布流模式（D-049）：点卡 = 心动（TA 一定会同意），与右滑同效
+  const tapMatch = (c: Character) => {
+    setSwipedIds((prev) => [...prev, c.id]);
+    useAppStore.getState().ensureSquareChat(c.id);
+    setMatch(c);
+  };
+
+  const gridColA = deck.filter((_, i) => i % 2 === 0);
+  const gridColB = deck.filter((_, i) => i % 2 === 1);
+
   return (
-    <AppScreen title="交友">
+    <AppScreen
+      title="交友"
+      right={
+        <Pressable onPress={() => setPrefOpen(true)} hitSlop={8}>
+          <Text style={styles.prefAction}>偏好</Text>
+        </Pressable>
+      }>
+      {/* 视图切换（D-049）：滑卡 / 瀑布流 */}
+      <View style={styles.viewToggle}>
+        {(
+          [
+            ['swipe', '滑卡'],
+            ['grid', '列表'],
+          ] as const
+        ).map(([v, label]) => (
+          <Pressable
+            key={v}
+            style={[styles.viewBtn, view === v && styles.viewBtnActive]}
+            onPress={() => useAppStore.getState().setDatingView(v)}>
+            <Text style={[styles.viewBtnText, view === v && styles.viewBtnTextActive]}>{label}</Text>
+          </Pressable>
+        ))}
+      </View>
       {/* 配对列表：滑到即配对；3 天不聊过期 */}
       {matches.length > 0 && (
         <View style={styles.matchesWrap}>
@@ -207,7 +261,35 @@ export default function DatingScreen() {
         </View>
       )}
 
-      {/* 牌堆 */}
+      {view === 'grid' ? (
+        /* 瀑布流（D-049）：双列人物卡，点卡即配对 */
+        <ScrollView contentContainerStyle={styles.gridFeed} showsVerticalScrollIndicator={false}>
+          <View style={styles.gridCols}>
+            <View style={styles.gridCol}>
+              {gridColA.map((c) => (
+                <Pressable key={c.id} style={styles.gridCard} onPress={() => tapMatch(c)}>
+                  <DeckCard c={c} compact />
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.gridCol}>
+              {gridColB.map((c) => (
+                <Pressable key={c.id} style={styles.gridCard} onPress={() => tapMatch(c)}>
+                  <DeckCard c={c} compact />
+                </Pressable>
+              ))}
+            </View>
+          </View>
+          {deck.length === 0 ? (
+            <View style={styles.emptyDeck}>
+              <Text style={styles.emptyEmoji}>🫧</Text>
+              <Text style={styles.emptyText}>这里的人都被你聊完了。</Text>
+            </View>
+          ) : (
+            <Text style={styles.gridHint}>点一下卡片 = 心动——TA 一定会同意</Text>
+          )}
+        </ScrollView>
+      ) : (
       <View style={styles.deckArea}>
         {top ? (
           <>
@@ -242,8 +324,9 @@ export default function DatingScreen() {
           </View>
         )}
       </View>
+      )}
 
-      {top ? (
+      {view === 'swipe' && top ? (
         <View style={styles.footArea}>
           <View style={styles.btnRow}>
             <Pressable style={styles.passBtn} onPress={() => flyOut(-1)}>
@@ -256,6 +339,36 @@ export default function DatingScreen() {
           <Text style={styles.footHint}>左滑略过 · 右滑心动——TA 一定会同意</Text>
         </View>
       ) : null}
+
+      {/* 偏好（D-049）：随时改口味，牌池直接按它筛 */}
+      <Modal
+        visible={prefOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPrefOpen(false)}>
+        <Pressable style={styles.prefMask} onPress={() => setPrefOpen(false)}>
+          <Pressable style={styles.prefSheet} onPress={() => {}}>
+            <Text style={styles.prefTitle}>你想遇到谁？</Text>
+            {PREFS.map((p) => {
+              const active = (lovePref ?? 'any') === p.key;
+              return (
+                <Pressable
+                  key={p.key}
+                  style={[styles.prefRow, active && styles.prefRowActive]}
+                  onPress={() => {
+                    useAppStore.getState().setLovePref(p.key);
+                    setPrefOpen(false);
+                  }}>
+                  <Text style={[styles.prefRowText, active && styles.prefRowTextActive]}>
+                    {p.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+            <Text style={styles.prefHint}>随时可以换着看 · 只影响这里出现的人</Text>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* 配对成功 */}
       {match ? (
@@ -278,6 +391,60 @@ export default function DatingScreen() {
 
 const styles = themed(() =>
   StyleSheet.create({
+    prefAction: { fontSize: 14, fontWeight: '700', color: Romance.accent },
+    viewToggle: {
+      flexDirection: 'row',
+      alignSelf: 'center',
+      backgroundColor: '#FFFFFF',
+      borderRadius: 18,
+      padding: 3,
+      marginTop: 10,
+      gap: 2,
+    },
+    viewBtn: { borderRadius: 15, paddingHorizontal: 18, paddingVertical: 6 },
+    viewBtnActive: { backgroundColor: Romance.accent },
+    viewBtnText: { fontSize: 12, fontWeight: '600', color: Romance.sub },
+    viewBtnTextActive: { color: '#FFFFFF' },
+    gridFeed: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 24 },
+    gridCols: { flexDirection: 'row', gap: 10 },
+    gridCol: { flex: 1, gap: 10 },
+    gridCard: {
+      aspectRatio: 3 / 4,
+      borderRadius: 20,
+      overflow: 'hidden',
+      backgroundColor: '#FFFFFF',
+      shadowColor: '#B96A82',
+      shadowOpacity: 0.18,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 3,
+    },
+    gridHint: { textAlign: 'center', fontSize: 11, color: Romance.faint, marginTop: 14 },
+    cardOverlayCompact: { paddingHorizontal: 12, paddingTop: 28, paddingBottom: 10 },
+    prefMask: {
+      flex: 1,
+      backgroundColor: 'rgba(59,33,38,0.4)',
+      justifyContent: 'flex-end',
+    },
+    prefSheet: {
+      backgroundColor: Romance.bg,
+      borderTopLeftRadius: 26,
+      borderTopRightRadius: 26,
+      padding: 20,
+      paddingBottom: 34,
+    },
+    prefTitle: { fontSize: 18, fontWeight: '700', color: Romance.ink, marginBottom: 14 },
+    prefRow: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 18,
+      paddingVertical: 14,
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    prefRowActive: { backgroundColor: Romance.accent },
+    prefRowText: { fontSize: 15, fontWeight: '600', color: Romance.ink },
+    prefRowTextActive: { color: '#FFFFFF' },
+    prefHint: { textAlign: 'center', fontSize: 11, color: Romance.faint, marginTop: 8 },
     matchesWrap: { paddingTop: 10 },
     matchesTitle: {
       fontSize: 11,

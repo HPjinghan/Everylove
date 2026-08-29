@@ -22,6 +22,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   KeyboardAvoidingView,
@@ -39,7 +40,9 @@ import { MingCute } from '@/components/mingcute';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Romance, themed } from '@/constants/theme';
 import { clockTime, voiceDuration } from '@/lib/format';
+import { synthesizeVoice, ttsReady } from '@/lib/tts';
 import type { ChatMessage } from '@/lib/types';
+import { findCharacter } from '@/store/app-store';
 
 /** LINE 拟真配色（variant='line'） */
 const LINE = {
@@ -61,13 +64,62 @@ const EMOJIS = [
   '🌙', '🌸', '🍓', '🐱', '🐶', '👍', '👋', '🎉',
 ];
 
-/** TA 的语音：占位形态（点开看文字） */
-function VoiceBubble({ text, color }: { text: string; color: string }) {
+/**
+ * TA 的语音（D-048）：点按走千帆 TTS 真实发声（按句缓存）；
+ * 没配 key 或合成失败时回落原来的占位形态（点开看文字）。
+ */
+function VoiceBubble({
+  text,
+  color,
+  characterId,
+}: {
+  text: string;
+  color: string;
+  characterId?: string;
+}) {
   const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
+  const [playing, setPlaying] = useState(false);
+  const player = useAudioPlayer(null);
+  const character = characterId ? findCharacter(characterId) : undefined;
+  const canSpeak = Boolean(character) && ttsReady();
+
+  const onPress = async () => {
+    if (!canSpeak || status === 'failed') {
+      setOpen((v) => !v);
+      return;
+    }
+    if (playing) {
+      player.pause();
+      setPlaying(false);
+      return;
+    }
+    if (status !== 'ready') {
+      setStatus('loading');
+      const uri = await synthesizeVoice(text, character!);
+      if (!uri) {
+        setStatus('failed');
+        setOpen(true);
+        return;
+      }
+      player.replace({ uri });
+      setStatus('ready');
+    }
+    player.seekTo(0);
+    player.play();
+    setPlaying(true);
+    const secs = Math.min(59, Math.max(2, Math.round(text.length / 4)));
+    setTimeout(() => setPlaying(false), secs * 1000 + 500);
+  };
+
   return (
-    <Pressable onPress={() => setOpen((v) => !v)}>
+    <Pressable onPress={onPress}>
       <View style={styles.voiceRow}>
-        <IconSymbol name="play.fill" size={14} color={color} />
+        {status === 'loading' ? (
+          <ActivityIndicator size="small" color={color} />
+        ) : (
+          <IconSymbol name={playing ? 'pause.fill' : 'play.fill'} size={14} color={color} />
+        )}
         {[10, 16, 8, 14, 6, 12, 9].map((h, i) => (
           <View key={i} style={[styles.voiceBar, { height: h, backgroundColor: color }]} />
         ))}
@@ -76,7 +128,17 @@ function VoiceBubble({ text, color }: { text: string; color: string }) {
       {open ? (
         <Text style={styles.voiceTranscript}>{text}</Text>
       ) : (
-        <Text style={styles.voiceHint}>轻点查看文字 · 语音占位</Text>
+        <Pressable onPress={() => setOpen(true)} hitSlop={6}>
+          <Text style={styles.voiceHint}>
+            {status === 'failed'
+              ? '语音暂时没接通 · 点这里看文字'
+              : canSpeak
+                ? status === 'loading'
+                  ? 'TA 在开嗓…'
+                  : '看文字'
+                : '轻点查看文字 · 语音占位'}
+          </Text>
+        </Pressable>
       )}
     </Pressable>
   );
@@ -184,7 +246,7 @@ function Bubble({
             tint={textDark ? Romance.ink : '#FFFFFF'}
           />
         ) : msg.kind === 'voice' ? (
-          <VoiceBubble text={msg.text} color={color} />
+          <VoiceBubble text={msg.text} color={color} characterId={characterId} />
         ) : msg.kind === 'image' && msg.imageUri ? (
           <View>
             <Image source={{ uri: msg.imageUri }} style={styles.comicImage} contentFit="cover" />

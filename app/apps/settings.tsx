@@ -12,11 +12,9 @@ import { WALLPAPERS } from '@/constants/apps';
 import { THEMES } from '@/constants/theme';
 import { Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
-import { deliverAndSyncArrivals } from '@/lib/arrivals';
 import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY, QIANFAN_MODEL } from '@/lib/engine';
 import { ensurePortrait, imageKeyReady } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
-import { cancelScheduled } from '@/lib/notifications';
 import { useAppStore } from '@/store/app-store';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -58,18 +56,6 @@ export default function MeScreen() {
   const qianfanKey = useAppStore((s) => s.qianfanKey);
   const wallpaper = useAppStore((s) => s.wallpaper);
   const themeId = useAppStore((s) => s.themeId);
-
-  const testArrival = async () => {
-    const bond = bonds[0];
-    if (!bond) {
-      Alert.alert('还没有羁绊', '先去交友里配对、加一个好友，再来测试开门。');
-      return;
-    }
-    await cancelScheduled(bond.notifId);
-    useAppStore.getState().devSetArrivalSoon(3);
-    await deliverAndSyncArrivals();
-    Alert.alert('已排好', `${bond.name}会在 3 分钟后来找你。\n把 App 收进后台，等他敲门。`);
-  };
 
   /** 立绘（D-019）：为种子角色逐个生成（默认不自动，见 OPEN_QUESTIONS #14），或重画首个羁绊角色 */
   const genSeedPortraits = () => {
@@ -199,7 +185,10 @@ export default function MeScreen() {
       </Section>
 
       <Section title="订阅计划">
-        <Row label="羁绊槽位" value={`${bonds.length}/1 · 首个免费`} />
+        <Row
+          label="羁绊槽位"
+          value={`${bonds.filter((b) => !customs.some((c) => c.id === b.characterId)).length}/1 · 首个免费 · 自创不占槽`}
+        />
         <Row label="订阅「TA 在」" value="完整日常 + 语音 + 留言 · 敬请期待" dim />
         <Row label="Morning call" value="TA 叫你起床 · 敬请期待" dim />
         <Row label="错过回溯" value="错过的来电与聊天回听 · 敬请期待" dim />
@@ -277,7 +266,6 @@ export default function MeScreen() {
             </Text>
           </>
         )}
-        <Row label="让 TA 3 分钟后来开门（测试）" onPress={testArrival} />
         <Row label="查看 TA 记住了什么（记忆库）" onPress={showMemory} />
         <Row label="为 6 位种子角色生成立绘（测试，后台逐个）" onPress={genSeedPortraits} />
         <Row label="重画首个羁绊角色的立绘（测试）" onPress={redrawBondPortrait} />

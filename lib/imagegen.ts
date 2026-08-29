@@ -9,6 +9,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { buildPortraitPrompt } from '@/content/prompts';
+// （外出拍照的 prompt 由调用方拼好传入，见 content/prompts.ts 的 buildOutingPhotoPrompt，D-051）
 import { resolveKey } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import type { Character } from '@/lib/types';
@@ -61,6 +62,11 @@ async function generateImage(prompt: string, subdir = 'portraits'): Promise<stri
 }
 
 // 立绘 prompt（画风 / 构图 / 红线）在 content/prompts.ts（D-017）
+
+/** 外出拍照（D-051）：她主动按快门的场景照——非会话自动投放（D-037 纪律不变） */
+export async function generateScenePhoto(prompt: string): Promise<string> {
+  return generateImage(prompt, 'photos');
+}
 
 /* ────────────────────────────── 立绘（D-019） ────────────────────────────── */
 

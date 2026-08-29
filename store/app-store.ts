@@ -15,7 +15,6 @@ import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { applyThemeColors } from '@/constants/theme';
 import { bondLevel, levelLabel } from '@/lib/bond';
-import { arrivalTimeLabel, nextEightPM } from '@/lib/notifications';
 import { DEFAULT_DOCK } from '@/constants/apps';
 import { placeById } from '@/content/places';
 import type {
@@ -63,6 +62,8 @@ interface AppState {
   userEvents: CalendarEvent[];
   /** 交友左滑略过记录（D-041）：characterId → 最近一次略过的时间戳（进推荐算法的冷却项） */
   datingPasses: Record<string, number>;
+  /** 交友视图（D-049）：滑卡 / 双列瀑布流 */
+  datingView: 'swipe' | 'grid';
   /** 外出约定（D-038）：每个角色最多一条 */
   outingPlans: OutingPlan[];
   /** 当前外出场景会话（同一时间只有一场；结束后清空） */
@@ -72,6 +73,9 @@ interface AppState {
   qianfanKey: string;
 
   completeOnboarding: (pref: LovePref) => void;
+  /** 交友偏好（D-049）：随时改口味（原只在 onboarding 定一次） */
+  setLovePref: (pref: LovePref) => void;
+  setDatingView: (v: 'swipe' | 'grid') => void;
   /** 交友左滑：记一笔略过（略过不是拉黑，冷却后回流牌堆，D-041） */
   markDatingPass: (characterId: string) => void;
   setMe: (p: UserProfile) => void;
@@ -90,26 +94,26 @@ interface AppState {
     name: string;
     nickname: string;
     birthday?: string;
+    /** 自创角色直接加好友（D-047）：仪式文案不同、不做搭话迁移 */
+    created?: boolean;
   }) => string;
-  setBondNotif: (bondId: string, notifId?: string) => void;
   appendBond: (
     bondId: string,
     msgs: ChatMessage[],
     opts?: { affinityDelta?: number; unreadDelta?: number }
   ) => void;
   markBondRead: (bondId: string) => void;
-  markAwayNotified: (bondId: string) => void;
   /** LINE 规则（D-030）：撤回=占位+清内容（仅自己的消息、24h 内，界面侧把关）；删除=本地移除任意消息 */
   recallMessage: (scope: { bondId?: string; characterId?: string }, msgId: string) => void;
   deleteMessage: (scope: { bondId?: string; characterId?: string }, msgId: string) => void;
   /** 写入羁绊记忆库（由 lib/memory.ts 后台提取后调用，D-016） */
   setBondMemory: (bondId: string, memory: BondMemory) => void;
-  /** 到点开门：把「他来了」投递进会话，并排下一天的门。返回投递过的 bondId。 */
-  deliverDueArrivals: () => string[];
   toggleLike: (postId: string) => void;
   addMyComment: (postId: string, text: string) => void;
   addHisReply: (postId: string) => void;
   addCustomCharacter: (c: Character) => void;
+  /** 编辑已创建的角色（D-050）：原位更新；同名的羁绊备注跟着改 */
+  updateCustomCharacter: (c: Character) => void;
   setPortrait: (characterId: string, uri: string) => void;
   setDesktopOrder: (order: string[]) => void;
   setDesktopSlots: (slots: Record<string, number>) => void;
@@ -135,8 +139,6 @@ interface AppState {
   setEngine: (e: EngineId) => void;
   setAnthropicKey: (k: string) => void;
   setQianfanKey: (k: string) => void;
-  /** 测试工具：把第一个羁绊的开门时间改到 n 分钟后 */
-  devSetArrivalSoon: (minutes: number) => string | null;
   resetAll: () => void;
 }
 
@@ -158,6 +160,7 @@ const initialData = {
   themeId: 'peach',
   userEvents: [] as CalendarEvent[],
   datingPasses: {} as Record<string, number>,
+  datingView: 'swipe' as 'swipe' | 'grid',
   outingPlans: [] as OutingPlan[],
   outingSession: null as OutingSession | null,
   // 工程配置里有 key 时默认走真模型（D-010）：Claude 优先，其次千帆；都没配则脚本引擎
@@ -172,6 +175,9 @@ export const useAppStore = create<AppState>()(
       ...initialData,
 
       completeOnboarding: (pref) => set({ onboarded: true, lovePref: pref }),
+
+      setLovePref: (pref) => set({ lovePref: pref }),
+      setDatingView: (v) => set({ datingView: v }),
 
       markDatingPass: (characterId) =>
         set({ datingPasses: { ...get().datingPasses, [characterId]: Date.now() } }),
@@ -262,7 +268,7 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      createBond: ({ characterId, name, nickname, birthday }) => {
+      createBond: ({ characterId, name, nickname, birthday, created }) => {
         const state = get();
         const character =
           CHARACTERS.find((c) => c.id === characterId) ??
@@ -270,25 +276,26 @@ export const useAppStore = create<AppState>()(
         if (!character) return '';
         const script = scriptFor(character);
         const now = Date.now();
-        const arrival = nextEightPM(new Date(now));
-        const timeLabel = arrivalTimeLabel(arrival.getTime(), new Date(now));
 
         // 迁移仪式：搭话记录随关系升级并入羁绊（记忆从这里开始归他所有）
-        const squareMsgs = state.squareChats[characterId]?.messages ?? [];
-        const farewell: ChatMessage[] = script.farewell.map((f, i) => ({
-          id: uid('m'),
-          from: 'him',
-          kind: f.kind ?? 'text',
-          text: f.text.replace('{time}', timeLabel),
-          at: now + i,
-        }));
+        const squareMsgs = created ? [] : state.squareChats[characterId]?.messages ?? [];
         const ceremony: ChatMessage = {
           id: uid('m'),
           from: 'system',
           kind: 'system',
-          text: `你们交换了联系方式 · 他开始叫你「${nickname}」`,
+          text: created
+            ? `你创造了${name} · TA 已经在你的通讯录里`
+            : `你们交换了联系方式 · 他开始叫你「${nickname}」`,
           at: now - 1,
         };
+        // 开门已下线（D-046）：加好友即在线——TA 直接开口打招呼（原开门台词转为见面第一句）
+        const greeting: ChatMessage[] = script.arrival.map((a, i) => ({
+          id: uid('m'),
+          from: 'him',
+          kind: a.kind ?? 'text',
+          text: a.text,
+          at: now + i,
+        }));
 
         const bond: Bond = {
           id: uid('b'),
@@ -297,12 +304,10 @@ export const useAppStore = create<AppState>()(
           nickname,
           birthday,
           createdAt: now,
-          affinity: 0, // 羁绊 LV1 从零开始（心动值已在缘分阶段满 100，D-029）
-          messages: [...squareMsgs, ceremony, ...farewell],
-          arrivalAt: arrival.getTime(),
-          unread: 0,
-          // 他先走：开门之前是离席态，不回消息（D-012）
-          away: true,
+          affinity: 0, // 羁绊 LV1 从零开始（心动值已在交友阶段满 100，D-029）
+          messages: [...squareMsgs, ceremony, ...greeting],
+          // 自创直入通讯录时她人不在会话里，打招呼算未读；交友缔结后直接落进会话，算已读
+          unread: created ? greeting.length : 0,
         };
 
         // 领养后帖物化进动态流
@@ -328,11 +333,6 @@ export const useAppStore = create<AppState>()(
         });
         return bond.id;
       },
-
-      setBondNotif: (bondId, notifId) =>
-        set({
-          bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, notifId } : b)),
-        }),
 
       appendBond: (bondId, msgs, opts) =>
         set({
@@ -364,11 +364,6 @@ export const useAppStore = create<AppState>()(
       markBondRead: (bondId) =>
         set({
           bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, unread: 0 } : b)),
-        }),
-
-      markAwayNotified: (bondId) =>
-        set({
-          bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, awayNotified: true } : b)),
         }),
 
       recallMessage: ({ bondId, characterId }, msgId) => {
@@ -417,39 +412,6 @@ export const useAppStore = create<AppState>()(
         set({
           bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, memory } : b)),
         }),
-
-      deliverDueArrivals: () => {
-        const now = Date.now();
-        const delivered: string[] = [];
-        const bonds = get().bonds.map((b) => {
-          if (!b.arrivalAt || b.arrivalAt > now) return b;
-          const character =
-            CHARACTERS.find((c) => c.id === b.characterId) ??
-            get().customCharacters.find((c) => c.id === b.characterId);
-          if (!character) return b;
-          const script = scriptFor(character);
-          const msgs: ChatMessage[] = script.arrival.map((a, i) => ({
-            id: uid('m'),
-            from: 'him',
-            kind: a.kind ?? 'text',
-            text: a.text,
-            at: b.arrivalAt! + i,
-          }));
-          delivered.push(b.id);
-          return {
-            ...b,
-            messages: [...b.messages, ...msgs],
-            affinity: b.affinity,
-            unread: b.unread + msgs.length,
-            arrivalAt: nextEightPM(new Date(now)).getTime(),
-            notifId: undefined,
-            away: false,
-            awayNotified: false,
-          };
-        });
-        if (delivered.length) set({ bonds });
-        return delivered;
-      },
 
       toggleLike: (postId) =>
         set({
@@ -500,6 +462,16 @@ export const useAppStore = create<AppState>()(
       },
 
       addCustomCharacter: (c) => set({ customCharacters: [...get().customCharacters, c] }),
+      updateCustomCharacter: (c) => {
+        const prev = get().customCharacters.find((x) => x.id === c.id);
+        set({
+          customCharacters: get().customCharacters.map((x) => (x.id === c.id ? c : x)),
+          // 她没改过备注的话，通讯录名字跟着新设定走
+          bonds: get().bonds.map((b) =>
+            b.characterId === c.id && prev && b.name === prev.name ? { ...b, name: c.name } : b
+          ),
+        });
+      },
       setPortrait: (characterId, uri) =>
         set({ portraits: { ...get().portraits, [characterId]: uri } }),
 
@@ -589,8 +561,8 @@ export const useAppStore = create<AppState>()(
           characterId = plan.characterId;
           kind = 'date';
         } else {
-          // 偶遇：通讯录里的人恰好也在（跳过离席中的——他去忙了是真的去忙了，D-012）
-          const candidates = state.bonds.filter((b) => !b.away);
+          // 偶遇：通讯录里的人恰好也在（离席态已随开门一起退役，D-046）
+          const candidates = state.bonds;
           if (!candidates.length) return null;
           const pickIdx = Math.floor(Math.random() * candidates.length);
           characterId = candidates[pickIdx].characterId;
@@ -622,17 +594,20 @@ export const useAppStore = create<AppState>()(
         if (!session) return;
         const place = placeById(session.placeId);
         const bond = state.bonds.find((b) => b.characterId === session.characterId);
-        const talked = session.messages.some((m) => m.from === 'me');
+        const talked = session.messages.some((m) => m.from === 'me' && m.kind === 'text');
+        // 外出拍的照片是资产（D-051）：并进羁绊会话——相册按 bond.messages 汇集
+        const photos = session.messages.filter((m) => m.kind === 'image' && m.imageUri);
         set({
           outingSession: null,
           bonds:
-            bond && place && talked
+            bond && place && (talked || photos.length)
               ? state.bonds.map((b) =>
                   b.id === bond.id
                     ? {
                         ...b,
                         messages: [
                           ...b.messages,
+                          ...photos.map((p) => ({ ...p, id: uid('m') })),
                           {
                             id: uid('m'),
                             from: 'system' as const,
@@ -651,18 +626,6 @@ export const useAppStore = create<AppState>()(
       setEngine: (e) => set({ engine: e }),
       setAnthropicKey: (k) => set({ anthropicKey: k }),
       setQianfanKey: (k) => set({ qianfanKey: k }),
-
-      devSetArrivalSoon: (minutes) => {
-        const bond = get().bonds[0];
-        if (!bond) return null;
-        const at = Date.now() + minutes * 60000;
-        set({
-          bonds: get().bonds.map((b) =>
-            b.id === bond.id ? { ...b, arrivalAt: at, notifId: undefined } : b
-          ),
-        });
-        return bond.id;
-      },
 
       resetAll: () => set({ ...initialData, firstOpenAt: Date.now() }),
     }),
