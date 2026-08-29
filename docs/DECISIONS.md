@@ -512,3 +512,9 @@
   1. **广场陌生人偶遇积累心动**（修订 D-040 的「纯逛」）：外出陌生人场景与交友试聊共用同一套心动值（记在 squareChats 上，两处进度互通——广场聊过再去交友里滑到 TA，心动是接着涨的）；她每开口一句按角色节奏上涨，头部实时显示「心动 n/100」。**满 100 = TA 当场开口想交换联系方式**（产品触发器不由模型决定，D-029 纪律；prompt 明示模型不要自己张罗这件事），场景内出现 CTA「交换」→ 领养流（面对面交换联系方式，叙事天然成立）→ 缔结后这场偶遇就地升格为熟人偶遇（kind 派生，prompt/界面同步切换）。陌生人模式仍无 XP（心动与羁绊值分层不变）。
   2. **拍立得**（生成照片的统一呈现，`components/polaroid.tsx`）：外出拍的合影/拍TA 不再走对话气泡（「像她自己发的话」出戏）——**白框相纸居中呈现**，下方一行手写字（「和X的合影 · 地点」），每张带确定性小倾角；点开进暗场大图，**可分享**（expo-sharing 系统分享面板）。相册整体改**拍立得墙**（网格同框 + 同一查看器）。旧图片消息（无 polaroid 标记）仍走气泡，用户相册发的图不受影响。
 - **影响文件**：`components/polaroid.tsx`（新）、`components/chat-thread.tsx`（居中渲染 + 查看器）、`app/apps/album.tsx`（拍立得墙）、`app/outing/[placeId].tsx`（心动累积/当场 offer/CTA/拍立得标记）、`lib/types.ts`（ChatMessage.polaroid）、`content/prompts.ts`（陌生人分寸改写）、`package.json`（+expo-sharing）。
+
+## D-054 补记 · 2026-08-30 · Supabase 远程配置完成（Claude 经管理 API 执行）
+
+- 已完成：snapshots 表 + 4 条 RLS 策略（仅本人读写）；Apple 登录启用（授权 client = host.exp.Exponent，Expo Go 原生 id_token 流）；邮箱 provider 默认开启。
+- 已知限制：**免费层 + 默认邮件服务不能自定义邮件模板** → 邮箱 OTP 的邮件里只有魔法链接、没有 6 位验证码，且限流 2 封/小时。试装以 **Apple 登录为主**；要开邮箱验证码需在 Supabase 配自定义 SMTP（如 Resend 免费层）后把 Magic Link 模板加上 {{ .Token }}。设置页提示已同步。
+- SUPABASE_ACCESS_TOKEN 建议用完在 Dashboard → Access Tokens 里 Revoke。

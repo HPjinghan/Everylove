@@ -320,6 +320,7 @@ export default function MeScreen() {
             />
             <Text style={styles.footHint}>
               开通云端：TA 和你们的故事存进云端，换手机也不会失去。不开通也能完整游玩（数据只在本机）。
+              推荐用 Apple 登录；邮箱验证码需要项目配好自定义 SMTP（免费层默认邮件只发链接不发码）。
             </Text>
           </>
         )}
