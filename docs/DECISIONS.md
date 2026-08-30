@@ -538,3 +538,9 @@
   4. **机制**：`store.introDone`（首次加好友或逃生门置真，门禁在桌面 Redirect）/ `introRevealSeen`（揭幕播一次）；persist v3 迁移——老存档两标记直接置真，不重走新手流；缔结后 `createBond` 打招呼计未读、领养流终点从羁绊会话改为桌面。
 - **推翻**：D-020 时代「新用户默认落桌面」的落点；D-046 后「缔结直接进会话」的终点（改落桌面揭幕）。§4 首十分钟随之改写。
 - **影响文件**：`store/app-store.ts`（introDone/introRevealSeen/v3 迁移/unread）、`app/index.tsx`（门禁 + IntroReveal）、`app/apps/dating.tsx`（逃生门）、`components/app-screen.tsx`（onBack）、`app/adopt/[characterId].tsx`（终点/按钮文案）。
+
+## D-059 · 2026-08-30 · 试装分发：EAS Update（Expo Go 免打包发朋友）（Harper 拍板）
+
+- **决策**：试装分发走 **EAS Update**（Expo 账号 harperz，项目 @harperz/everylove，channel/branch = preview，runtimeVersion 对齐 SDK 54 让 Expo Go 直开）。**发布纪律：AI key 必须剔除**（发布命令置空 EXPO_PUBLIC_ANTHROPIC/QIANFAN key 环境变量）——分发包只含 Supabase 公开配置，AI 走 D-057 服务端代理（朋友需 Apple 登录，享每人每日 500 次限流，消耗记 Harper 的千帆账单）。发新版 = 同一条命令重发；TestFlight 留作正式测试通道（需 Apple 开发者账号，D-058 讨论中已铺垫）。
+- **朋友安装**：App Store 装 Expo Go → 打开分发链接 `exp://u.expo.dev/3d090463-3b93-4904-8611-b42a4d3bd664?runtime-version=exposdk%3A54.0.0&channel-name=preview`（或扫 Dashboard 更新页的 Preview 二维码）。
+- **影响文件**：`app.json`（projectId/updates URL/runtimeVersion）。
