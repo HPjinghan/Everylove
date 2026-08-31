@@ -34,6 +34,7 @@ import { BLOCKED_NAME_PATTERN, LOVE_STYLES, loveStyleByLabel, RACES } from '@/co
 import { CHARACTER_PARSE_SYSTEM } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
 import { authConfigured, currentSession } from '@/lib/auth';
+import { t } from '@/lib/i18n';
 import { completeText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { ensurePortrait, generatePortraitFor, imageKeyReady } from '@/lib/imagegen';
@@ -130,7 +131,7 @@ function Chip({
 }) {
   return (
     <Pressable style={[styles.chip, active && styles.chipActive]} onPress={onPress}>
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(label)}</Text>
     </Pressable>
   );
 }
@@ -354,7 +355,7 @@ export default function CreateScreen() {
     if (character.visibility !== 'public') return character;
     const ok = await publishCharacter(character);
     if (!ok) {
-      Alert.alert('先按私密保存了', '公开到共享池需要登录账号（设置 → 账号 · 云端），登录后再编辑改公开即可。');
+      Alert.alert(t('先按私密保存了'), t('公开到共享池需要登录账号，登录后再编辑改公开即可。'));
       return { ...character, visibility: 'private' };
     }
     return character;
@@ -378,7 +379,7 @@ export default function CreateScreen() {
       if (portraitUri) useAppStore.getState().setPortrait(editing.id, portraitUri);
       setEditing(null);
       resetForm();
-      Alert.alert('已保存', 'TA 的设定更新了。');
+      Alert.alert(t('已保存'), t('TA 的设定更新了。'));
       return;
     }
 
@@ -401,12 +402,12 @@ export default function CreateScreen() {
       router.replace({ pathname: '/auth', params: { force: '1' } });
       return;
     }
-    Alert.alert('TA 醒过来了', 'TA 已经在你的通讯录里，等你去说第一句话。', [
+    Alert.alert(t('TA 醒过来了'), t('TA 已经在你的通讯录里，等你去说第一句话。'), [
       {
-        text: '去和 TA 说话',
+        text: t('去和 TA 说话'),
         onPress: () => router.push({ pathname: '/chat/[characterId]', params: { characterId: id } }),
       },
-      { text: '再创造一个', style: 'cancel' },
+      { text: t('再创造一个'), style: 'cancel' },
     ]);
   };
 
@@ -467,7 +468,7 @@ export default function CreateScreen() {
   };
 
   return (
-    <AppScreen title="创造">
+    <AppScreen title={t("创造")}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -475,23 +476,23 @@ export default function CreateScreen() {
           style={styles.screen}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled">
-          <Text style={styles.subtitle}>创造一个只属于你的 TA</Text>
+          <Text style={styles.subtitle}>{t('创造一个只属于你的 TA')}</Text>
 
           {/* ───────── 我创建的（D-050）：点编辑回填表单 ───────── */}
           {customs.filter((c) => !c.shared).length > 0 && (
             <View>
-              <Text style={styles.step}>我创建的（{customs.filter((c) => !c.shared).length}）</Text>
+              <Text style={styles.step}>{t('我创建的')}（{customs.filter((c) => !c.shared).length}）</Text>
               {customs.filter((c) => !c.shared).map((c) => (
                 <View key={c.id} style={styles.mineRow}>
                   <CharAvatar name={c.name} color={c.color} size={40} characterId={c.id} />
                   <View style={styles.mineText}>
                     <Text style={styles.mineName}>{c.name}</Text>
                     <Text style={styles.mineSub} numberOfLines={1}>
-                      {c.visibility === 'public' ? '公开' : '私密'} · {c.identity}
+                      {c.visibility === 'public' ? t('公开') : t('私密')} · {c.identity}
                     </Text>
                   </View>
                   <Pressable style={styles.mineEditBtn} onPress={() => loadForEdit(c)}>
-                    <Text style={styles.mineEditText}>编辑</Text>
+                    <Text style={styles.mineEditText}>{t('编辑')}</Text>
                   </Pressable>
                 </View>
               ))}
@@ -499,29 +500,28 @@ export default function CreateScreen() {
           )}
           {editing ? (
             <View style={styles.editingBanner}>
-              <Text style={styles.editingText}>正在编辑「{editing.name}」——改完点底部保存</Text>
+              <Text style={styles.editingText}>{t('正在编辑「{name}」——改完点底部保存', { name: editing.name })}</Text>
               <Pressable
                 onPress={() => {
                   setEditing(null);
                   resetForm();
                 }}
                 hitSlop={8}>
-                <Text style={styles.editingCancel}>取消</Text>
+                <Text style={styles.editingCancel}>{t('取消')}</Text>
               </Pressable>
             </View>
           ) : null}
 
           {/* ───────── 描述导入（D-043） ───────── */}
-          <Text style={styles.step}>用一段话描述 TA（可选）</Text>
+          <Text style={styles.step}>{t('用一段话描述 TA（可选）')}</Text>
           <Text style={styles.stepHint}>
-            写下或粘贴一段人设——小说片段、角色卡、脑子里的画面都行，最多 {DESC_MAX} 字。
-            点「自动解析」帮你填好下面的表单，每一项都还能改。
+            {t('写下或粘贴一段人设——小说片段、角色卡、脑子里的画面都行，最多 {n} 字。点「自动解析」帮你填好下面的表单，每一项都还能改。', { n: DESC_MAX })}
           </Text>
           <TextInput
             style={[styles.input, styles.inputDesc]}
             value={desc}
             onChangeText={setDesc}
-            placeholder="银灰色头发的年轻外科医生，毒舌但心软。父母常年在国外，一个人住在老城区……"
+            placeholder={t('银灰色头发的年轻外科医生，毒舌但心软。父母常年在国外，一个人住在老城区……')}
             placeholderTextColor={Romance.faint}
             multiline
             maxLength={DESC_MAX}
@@ -537,67 +537,67 @@ export default function CreateScreen() {
               {parsing ? (
                 <View style={styles.btnRow}>
                   <ActivityIndicator color="#FFFFFF" size="small" />
-                  <Text style={styles.parseBtnText}>解析中…</Text>
+                  <Text style={styles.parseBtnText}>{t('解析中…')}</Text>
                 </View>
               ) : (
-                <Text style={styles.parseBtnText}>自动解析</Text>
+                <Text style={styles.parseBtnText}>{t('自动解析')}</Text>
               )}
             </Pressable>
           </View>
 
           {/* ───────── 基础 ───────── */}
-          <Text style={styles.step}>① TA 叫什么</Text>
+          <Text style={styles.step}>{t('① TA 叫什么')}</Text>
           <TextInput
             style={styles.input}
             value={name}
             onChangeText={setName}
-            placeholder="给 TA 一个名字"
+            placeholder={t('给 TA 一个名字')}
             placeholderTextColor={Romance.faint}
             maxLength={12}
           />
 
-          <Text style={styles.step}>② TA 的性别</Text>
+          <Text style={styles.step}>{t('② TA 的性别')}</Text>
           <View style={styles.chipRow}>
             {GENDERS.map((g) => (
               <Chip key={g.key} label={g.label} active={gender === g.key} onPress={() => setGender(g.key)} />
             ))}
           </View>
 
-          <Text style={styles.step}>③ 年龄状态</Text>
+          <Text style={styles.step}>{t('③ 年龄状态')}</Text>
           <View style={styles.chipRow}>
-            <Chip label="确认成年" active={ageStatus === 'adult'} onPress={() => setAgeStatus('adult')} />
-            <Chip label="未成年" active={ageStatus === 'minor'} onPress={() => setAgeStatus('minor')} />
+            <Chip label={t("确认成年")} active={ageStatus === 'adult'} onPress={() => setAgeStatus('adult')} />
+            <Chip label={t("未成年")} active={ageStatus === 'minor'} onPress={() => setAgeStatus('minor')} />
           </View>
           {ageStatus === 'minor' ? (
             <Text style={styles.minorNotice}>
-              未成年角色进入加强审查通道，且不开放恋爱互动。试装还没接审查系统，暂时不能发布。
+              {t('未成年角色进入加强审查通道，且不开放恋爱互动。试装还没接审查系统，暂时不能发布。')}
             </Text>
           ) : (
-            <Text style={styles.afterHint}>发布即确认 TA 是成年人。</Text>
+            <Text style={styles.afterHint}>{t('发布即确认 TA 是成年人。')}</Text>
           )}
 
-          <Text style={styles.step}>④ 谁能遇到 TA</Text>
+          <Text style={styles.step}>{t('④ 谁能遇到 TA')}</Text>
           <View style={styles.chipRow}>
-            <Chip label="私密" active={visibility === 'private'} onPress={() => setVisibility('private')} />
-            <Chip label="公开" active={visibility === 'public'} onPress={() => setVisibility('public')} />
+            <Chip label={t("私密")} active={visibility === 'private'} onPress={() => setVisibility('private')} />
+            <Chip label={t("公开")} active={visibility === 'public'} onPress={() => setVisibility('public')} />
           </View>
           <Text style={styles.afterHint}>
             {visibility === 'public'
-              ? '公开：TA 会进入共享角色池，其他玩家也能在交友里滑到 TA（需要登录账号）。'
-              : '私密：只有你能遇到 TA。'}
+              ? t('公开：TA 会进入共享角色池，其他玩家也能在交友里滑到 TA（需要登录账号）。')
+              : t('私密：只有你能遇到 TA。')}
           </Text>
 
-          <Text style={styles.step}>⑤ TA 长什么样</Text>
+          <Text style={styles.step}>{t('⑤ TA 长什么样')}</Text>
           <TextInput
             style={[styles.input, styles.inputMultiline]}
             value={look}
             onChangeText={setLook}
-            placeholder="银灰色头发，眼下有一颗泪痣，笑起来很凶……"
+            placeholder={t('银灰色头发，眼下有一颗泪痣，笑起来很凶……')}
             placeholderTextColor={Romance.faint}
             multiline
             maxLength={60}
           />
-          <Text style={styles.afterHint}>TA 的主题色——没头像时的底色、界面点缀的颜色：</Text>
+          <Text style={styles.afterHint}>{t('TA 的主题色——没头像时的底色、界面点缀的颜色：')}</Text>
           <View style={styles.paletteRow}>
             {PALETTES.map((p, i) => (
               <Pressable
@@ -608,28 +608,27 @@ export default function CreateScreen() {
             ))}
           </View>
 
-          <Text style={styles.step}>⑥ TA 的背景故事</Text>
+          <Text style={styles.step}>{t('⑥ TA 的背景故事')}</Text>
           <TextInput
             style={[styles.input, styles.inputStory]}
             value={story}
             onChangeText={setStory}
-            placeholder="TA 是谁、从哪里来、身上背着什么故事……"
+            placeholder={t('TA 是谁、从哪里来、身上背着什么故事……')}
             placeholderTextColor={Romance.faint}
             multiline
             maxLength={300}
           />
 
-          <Text style={styles.step}>⑦ TA 的头像（可选）</Text>
+          <Text style={styles.step}>{t('⑦ TA 的头像（可选）')}</Text>
           <Text style={styles.stepHint}>
-            上传一张图，或按 ⑤ 的描述生成一张半身立绘（约 1 分钟）；交友卡面与会话头像都用它。
-            不能上传真人照片。
+            {t('上传一张图，或按 ⑤ 的描述生成一张半身立绘（约 1 分钟）；交友卡面与会话头像都用它。不能上传真人照片。')}
           </Text>
           {portraitUri ? (
             <Image source={{ uri: portraitUri }} style={styles.portrait} contentFit="cover" />
           ) : null}
           <View style={styles.portraitBtnRow}>
             <Pressable style={[styles.secondaryBtn, styles.portraitBtn]} onPress={uploadAvatar}>
-              <Text style={styles.secondaryBtnText}>{portraitUri ? '换一张' : '上传头像'}</Text>
+              <Text style={styles.secondaryBtnText}>{portraitUri ? t('换一张') : t('上传头像')}</Text>
             </Pressable>
             <Pressable
               style={[styles.secondaryBtn, styles.portraitBtn, (!name.trim() || generating) && styles.btnDisabled]}
@@ -638,11 +637,11 @@ export default function CreateScreen() {
               {generating ? (
                 <View style={styles.btnRow}>
                   <ActivityIndicator color={Romance.accent} />
-                  <Text style={styles.secondaryBtnText}>生成中…</Text>
+                  <Text style={styles.secondaryBtnText}>{t('生成中…')}</Text>
                 </View>
               ) : (
                 <Text style={styles.secondaryBtnText}>
-                  {imageKeyReady() ? '生成立绘' : '生成立绘（未配 key）'}
+                  {imageKeyReady() ? t('生成立绘') : t('生成立绘（未配 key）')}
                 </Text>
               )}
             </Pressable>
@@ -650,13 +649,13 @@ export default function CreateScreen() {
 
           {/* ───────── 高级选项（收起） ───────── */}
           <Pressable style={styles.advToggle} onPress={toggleAdvanced}>
-            <Text style={styles.advToggleText}>{advancedOpen ? '收起高级选项 ▴' : '高级选项 ▾'}</Text>
-            <Text style={styles.advToggleHint}>种族 · 生日 · 口癖 · 恋爱类型 · MBTI · 作息…</Text>
+            <Text style={styles.advToggleText}>{advancedOpen ? t('收起高级选项 ▴') : t('高级选项 ▾')}</Text>
+            <Text style={styles.advToggleHint}>{t('种族 · 生日 · 口癖 · 恋爱类型 · MBTI · 作息…')}</Text>
           </Pressable>
 
           {advancedOpen ? (
             <View>
-              <Text style={styles.step}>种族</Text>
+              <Text style={styles.step}>{t('种族')}</Text>
               <View style={styles.chipRow}>
                 {[...RACES, '其他'].map((r) => (
                   <Chip key={r} label={r} active={race === r} onPress={() => setRace(r)} />
@@ -667,17 +666,17 @@ export default function CreateScreen() {
                   style={[styles.input, styles.raceCustomInput]}
                   value={raceCustom}
                   onChangeText={setRaceCustom}
-                  placeholder="如：半人马"
+                  placeholder={t('如：半人马')}
                   placeholderTextColor={Romance.faint}
                   maxLength={10}
                 />
               ) : null}
 
-              <Text style={styles.step}>TA 的生日</Text>
+              <Text style={styles.step}>{t('TA 的生日')}</Text>
               <View style={styles.chipRow}>
                 <Pressable style={styles.ddBtn} onPress={() => setPickerOpen('month')}>
                   <Text style={[styles.ddText, !birthMonth && { color: Romance.faint }]}>
-                    {birthMonth ? `${birthMonth} 月` : '月份 ▾'}
+                    {birthMonth ? t('{n} 月', { n: birthMonth }) : t('月份 ▾')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -685,7 +684,7 @@ export default function CreateScreen() {
                   disabled={!birthMonth}
                   onPress={() => setPickerOpen('day')}>
                   <Text style={[styles.ddText, !birthDay && { color: Romance.faint }]}>
-                    {birthDay ? `${birthDay} 日` : '日期 ▾'}
+                    {birthDay ? t('{n} 日', { n: birthDay }) : t('日期 ▾')}
                   </Text>
                 </Pressable>
                 {birthMonth ? (
@@ -695,14 +694,14 @@ export default function CreateScreen() {
                       setBirthMonth(null);
                       setBirthDay(null);
                     }}>
-                    <Text style={styles.ddClearText}>清除</Text>
+                    <Text style={styles.ddClearText}>{t('清除')}</Text>
                   </Pressable>
                 ) : null}
               </View>
-              <Text style={styles.afterHint}>会出现在你们的日历上。</Text>
+              <Text style={styles.afterHint}>{t('会出现在你们的日历上。')}</Text>
 
-              <Text style={styles.step}>口癖</Text>
-              <Text style={styles.stepHint}>TA 挂在嘴边的话。</Text>
+              <Text style={styles.step}>{t('口癖')}</Text>
+              <Text style={styles.stepHint}>{t('TA 挂在嘴边的话。')}</Text>
               <TextInput
                 style={styles.input}
                 value={catchphrase}
@@ -712,28 +711,28 @@ export default function CreateScreen() {
                 maxLength={20}
               />
 
-              <Text style={styles.step}>喜欢</Text>
+              <Text style={styles.step}>{t('喜欢')}</Text>
               <TextInput
                 style={styles.input}
                 value={likes}
                 onChangeText={setLikes}
-                placeholder="黑咖啡、下雨天、猫……"
+                placeholder={t('黑咖啡、下雨天、猫……')}
                 placeholderTextColor={Romance.faint}
                 maxLength={40}
               />
 
-              <Text style={styles.step}>讨厌</Text>
+              <Text style={styles.step}>{t('讨厌')}</Text>
               <TextInput
                 style={styles.input}
                 value={dislikes}
                 onChangeText={setDislikes}
-                placeholder="香菜、迟到、被拍头……"
+                placeholder={t('香菜、迟到、被拍头……')}
                 placeholderTextColor={Romance.faint}
                 maxLength={40}
               />
 
-              <Text style={styles.step}>确定关系的节奏</Text>
-              <Text style={styles.stepHint}>TA 陷入心动、想和你确定关系的速度。</Text>
+              <Text style={styles.step}>{t('确定关系的节奏')}</Text>
+              <Text style={styles.stepHint}>{t('TA 陷入心动、想和你确定关系的速度。')}</Text>
               <View style={styles.chipRow}>
                 {OFFER_PACES.map((p) => (
                   <Pressable
@@ -741,16 +740,16 @@ export default function CreateScreen() {
                     style={[styles.paceCard, offerTurns === p.turns && styles.paceCardActive]}
                     onPress={() => setOfferTurns(p.turns)}>
                     <Text style={[styles.paceLabel, offerTurns === p.turns && { color: '#fff' }]}>
-                      {p.label}
+                      {t(p.label)}
                     </Text>
                     <Text style={[styles.paceHint, offerTurns === p.turns && { color: '#FFE3EC' }]}>
-                      {p.hint}
+                      {t(p.hint)}
                     </Text>
                   </Pressable>
                 ))}
               </View>
 
-              <Text style={styles.step}>TA 在恋爱中的类型</Text>
+              <Text style={styles.step}>{t('TA 在恋爱中的类型')}</Text>
               <View style={styles.chipRow}>
                 {LOVE_STYLES.map((l) => (
                   <Chip
@@ -775,8 +774,8 @@ export default function CreateScreen() {
                 ))}
               </View>
 
-              <Text style={styles.step}>主动联系强度</Text>
-              <Text style={styles.stepHint}>TA 平时有多主动来找你。</Text>
+              <Text style={styles.step}>{t('主动联系强度')}</Text>
+              <Text style={styles.stepHint}>{t('TA 平时有多主动来找你。')}</Text>
               <View style={styles.chipRow}>
                 {INITIATIVES.map((it) => (
                   <Pressable
@@ -784,18 +783,18 @@ export default function CreateScreen() {
                     style={[styles.paceCard, initiative === it.key && styles.paceCardActive]}
                     onPress={() => setInitiative(it.key)}>
                     <Text style={[styles.paceLabel, initiative === it.key && { color: '#fff' }]}>
-                      {it.label}
+                      {t(it.label)}
                     </Text>
                     <Text style={[styles.paceHint, initiative === it.key && { color: '#FFE3EC' }]}>
-                      {it.hint}
+                      {t(it.hint)}
                     </Text>
                   </Pressable>
                 ))}
               </View>
 
-              <Text style={styles.step}>预设共同记忆</Text>
+              <Text style={styles.step}>{t('预设共同记忆')}</Text>
               <Text style={styles.stepHint}>
-                你们「早就认识」的部分：一行一条，TA 会自然提起，初次配对也会像一场重逢。
+                {t('你们「早就认识」的部分：一行一条，TA 会自然提起，初次配对也会像一场重逢。')}
               </Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
@@ -807,8 +806,8 @@ export default function CreateScreen() {
                 maxLength={200}
               />
 
-              <Text style={styles.step}>禁忌 / 边界</Text>
-              <Text style={styles.stepHint}>TA 不做的事、回避的话题——涉及时 TA 会温和回避或直接拒绝。</Text>
+              <Text style={styles.step}>{t('禁忌 / 边界')}</Text>
+              <Text style={styles.stepHint}>{t('TA 不做的事、回避的话题——涉及时 TA 会温和回避或直接拒绝。')}</Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
                 value={taboos}
@@ -819,10 +818,9 @@ export default function CreateScreen() {
                 maxLength={120}
               />
 
-              <Text style={styles.step}>隐藏设定 / 剧情钩子</Text>
+              <Text style={styles.step}>{t('隐藏设定 / 剧情钩子')}</Text>
               <Text style={styles.stepHint}>
-                TA 藏着的事：一行一条、浅的在前。羁绊 LV3 起每亲近一级解锁一条，之后「查手机」也能翻到；
-                没解锁的 TA 绝不说漏。
+                {t('TA 藏着的事：一行一条、浅的在前。羁绊 LV3 起每亲近一级解锁一条；没解锁的 TA 绝不说漏。')}
               </Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
@@ -834,7 +832,7 @@ export default function CreateScreen() {
                 maxLength={300}
               />
 
-              <Text style={styles.step}>其他关于聊天的设定</Text>
+              <Text style={styles.step}>{t('其他关于聊天的设定')}</Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
                 value={chatNotes}
@@ -845,8 +843,8 @@ export default function CreateScreen() {
                 maxLength={120}
               />
 
-              <Text style={styles.step}>日常作息</Text>
-              <Text style={styles.stepHint}>TA 的一天怎么过——决定 TA 什么时候忙、什么时候来找你。</Text>
+              <Text style={styles.step}>{t('日常作息')}</Text>
+              <Text style={styles.stepHint}>{t('TA 的一天怎么过——决定 TA 什么时候忙、什么时候来找你。')}</Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
                 value={schedule}
@@ -879,10 +877,10 @@ export default function CreateScreen() {
             disabled={!name.trim() || ageStatus === 'minor'}
             onPress={submit}>
             <Text style={styles.primaryBtnText}>
-              {ageStatus === 'minor' ? '未成年角色暂不能发布' : editing ? '保存修改' : '让 TA 醒来'}
+              {ageStatus === 'minor' ? t('未成年角色暂不能发布') : editing ? t('保存修改') : t('让 TA 醒来')}
             </Text>
           </Pressable>
-          <Text style={styles.footnote}>不能创造真人与 IP 角色 · 发布即默认同意创作规范</Text>
+          <Text style={styles.footnote}>{t('不能创造真人与 IP 角色 · 发布即默认同意创作规范')}</Text>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -894,7 +892,7 @@ export default function CreateScreen() {
         onRequestClose={() => setPickerOpen(null)}>
         <Pressable style={styles.pickerMask} onPress={() => setPickerOpen(null)}>
           <Pressable style={styles.pickerSheet} onPress={() => {}}>
-            <Text style={styles.pickerTitle}>{pickerOpen === 'month' ? '选择月份' : '选择日期'}</Text>
+            <Text style={styles.pickerTitle}>{pickerOpen === 'month' ? t('选择月份') : t('选择日期')}</Text>
             <ScrollView style={styles.pickerList}>
               {(pickerOpen === 'month'
                 ? MONTH_OPTIONS
@@ -916,7 +914,7 @@ export default function CreateScreen() {
                       }
                     }}>
                     <Text style={[styles.pickerRowText, active && styles.pickerRowActive]}>
-                      {n} {pickerOpen === 'month' ? '月' : '日'}
+                      {pickerOpen === 'month' ? t('{n} 月', { n }) : t('{n} 日', { n })}
                     </Text>
                   </Pressable>
                 );

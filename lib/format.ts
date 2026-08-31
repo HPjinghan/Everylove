@@ -1,13 +1,17 @@
+import { stageName } from '@/lib/bond';
+import { getLang, t } from '@/lib/i18n';
+
 export function timeAgo(at: number, now = Date.now()): string {
   const s = Math.max(1, Math.floor((now - at) / 1000));
-  if (s < 60) return '刚刚';
+  if (s < 60) return t('刚刚');
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m} 分钟前`;
+  if (m < 60) return t('{n} 分钟前', { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} 小时前`;
+  if (h < 24) return t('{n} 小时前', { n: h });
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d} 天前`;
-  return new Date(at).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+  if (d < 7) return t('{n} 天前', { n: d });
+  const locale = getLang() === 'zh' ? 'zh-CN' : getLang() === 'ja' ? 'ja-JP' : 'en-US';
+  return new Date(at).toLocaleDateString(locale, { month: 'numeric', day: 'numeric' });
 }
 
 export function clockTime(at: number): string {
@@ -28,8 +32,6 @@ export function voiceDuration(text: string): string {
   const sec = Math.min(59, Math.max(2, Math.round(text.length / 4)));
   return `0:${sec.toString().padStart(2, '0')}`;
 }
-
-import { stageName } from '@/lib/bond';
 
 /** 亲密度阶段名（现由羁绊等级成长曲线推导，D-029；prompt 与界面共用） */
 export function affinityStage(affinity: number): string {

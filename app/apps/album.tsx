@@ -9,6 +9,7 @@ import { Dimensions, SectionList, StyleSheet, Text, View } from 'react-native';
 import { AppScreen } from '@/components/app-screen';
 import { PhotoViewer, Polaroid } from '@/components/polaroid';
 import { Romance, themed } from '@/constants/theme';
+import { t } from '@/lib/i18n';
 import { useAppStore } from '@/store/app-store';
 
 const COLS = 3;
@@ -57,7 +58,7 @@ export default function AlbumScreen() {
   const cell = (Dimensions.get('window').width - 14 * 2 - GAP * (COLS - 1)) / COLS;
 
   return (
-    <AppScreen title="相册">
+    <AppScreen title={t("相册")}>
       <SectionList
         sections={sections}
         keyExtractor={(row) => row[0].id}
@@ -82,7 +83,7 @@ export default function AlbumScreen() {
           <View style={styles.empty}>
             <Text style={styles.emptyHeart}>🖼️</Text>
             <Text style={styles.emptyText}>
-              你们的每一个瞬间都会存在这里。{'\n'}聊得越久，相册越厚。
+              {t('你们的每一个瞬间都会存在这里。')}{'\n'}{t('聊得越久，相册越厚。')}
             </Text>
           </View>
         }

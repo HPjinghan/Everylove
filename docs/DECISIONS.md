@@ -570,3 +570,20 @@
 
 - **决策**：① 交友底部与瀑布流提示删去「——TA 一定会同意」（机制不变，话不说破）；② Dock 默认从 4 个收窄为 **通讯录 + 设置**（上限仍 4，可拖入拖出不变）；persist v4 迁移：仍是旧默认的存档自动跟随新默认。
 - **影响文件**：`app/apps/dating.tsx`、`constants/apps.ts`（DEFAULT_DOCK）、`store/app-store.ts`（v4 迁移）。
+
+## D-065 · 2026-08-31 · 真实天气：Open-Meteo 接入（Harper 拍板）
+
+- **决策**：天气从「世界生成的假天气」升级为**真实天气**（Harper：「天气要真实的」）。数据源 **Open-Meteo**（免费、无 key、无注册）：当前温度/天气码 + 未来 7 天（forecast API），地区搜索走其 geocoding API。`lib/weather.ts` 重写：状态（城市/经纬度/实时/7 日）持久化 AsyncStorage（`everylove-weather-v2`），前台每 30 分钟节流刷新（`app/_layout.tsx`）；**同步接口不变**（todayWeather/tempNow/weatherFor/weatherLine），已设位置且拿到数据 → 真实天气，否则**回落原种子假天气**（离线/未设位置不空窗）。天气界面（D-061）改为：搜索出候选地点列表点选、「使用当前位置」（expo-location + 反地理编码）、真实 7 日预报。隐私口径不变：位置只存本机、不上传（Open-Meteo 请求只带经纬度，无任何标识）。WMO 天气码映射到原有 8 种天气条件，prompt 的 weatherLine 继续喂中文给引擎。
+- **推翻**：修订 D-036/D-061 的「试装假天气、正式版再接 API」——真实天气提前落地；假天气降级为回落层。OPEN_QUESTIONS #17 的天气半问就此了结（外出付费口径半问仍开放）。
+- **影响文件**：`lib/weather.ts`（重写）、`app/weather.tsx`（重写：搜索候选/定位/7 日）、`app/_layout.tsx`（initWeather + 前台刷新）。
+
+## D-066 · 2026-08-31 · 三语 UI（中/英/日）+ onboarding 语言步（Harper 拍板）
+
+- **决策**：全 UI 做三份（Harper：「onboarding 第一步要能选择语言，英语日语中文，同时你所有 UI 也都要做三份」）。方案：
+  - **`lib/i18n.ts`**：轻量词典式 i18n，**中文原文即键**——界面写 `t('中文', vars?)`，en/ja 词典查不到时回落中文（漏词不崩，只是没翻译）；不引第三方库（i18next 等对试装是杀鸡用牛刀）。
+  - **语言选择**：onboarding 新增**第 0 步**（中文 / English / 日本語，三语标题），存 `store.language`（persist）；设置内可随时改（Language · 语言 · 言語 区块）。切换即全局生效（`app/_layout.tsx` 以 `themeId-language` 作 remount key）。
+  - **覆盖面**：全部 app 界面（桌面/交友/聊天/羁绊/通讯录/缔结/外出/X/相册/日历/天气/电话/创造/身份/设置/登录/onboarding/拍立得/聊天组件/AppScreen 返回），含 Alert 弹窗与 `lib/format.ts` 的相对时间（刚刚/{n} 分钟前…）；日期格式化按语言选 locale（zh-CN/en-US/ja-JP）。
+  - **模型输出语言**：`content/prompts.ts` 硬规则加语言行（`CHAT_HARD_RULES_OF()` 按当前语言注入「用中文/英文/日文回复」），三种聊天模式 + 帖子回复 + 角色发帖全部生效。
+  - **边界（见 OPEN_QUESTIONS #23）**：**角色台词库（content/characters.ts 的 mock 脚本）与种子人设暂不三语**——真模型输出跟随语言行，mock 引擎仍中文；恋爱类型 14 种/MBTI 提示等纯内容 chips 暂中文。内容本地化是另一场战役（日语写手到岗，#4）。
+- **工程纪律**：新界面文案一律写 `t('中文')` 并同步补 en/ja 词典（`lib/i18n.ts` 尾部哨兵注释 `__EN_END__`/`__JA_END__` 前追加）；词典键 = 中文原文，改中文文案 = 改键，需同步改词典。
+- **影响文件**：`lib/i18n.ts`（新）、`store/app-store.ts`（language）、`app/_layout.tsx`（setLang + remount）、`app/onboarding.tsx`（语言步）、`content/prompts.ts`（语言行）、`lib/format.ts`，及全部 `app/**` 界面与 `components/`（t() 包裹）。

@@ -17,6 +17,7 @@ import { Romance, themed } from '@/constants/theme';
 import { generateReply } from '@/lib/engine';
 import { updateBondMemory } from '@/lib/memory';
 import { daysTogether, uid } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { levelInfo, XP_PER_MESSAGE } from '@/lib/bond';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
@@ -96,7 +97,7 @@ export default function BondScreen() {
           <View style={styles.headerText}>
             <Text style={styles.headerName}>{bond.name}</Text>
             <Text style={styles.headerSub}>
-              羁绊 LV{levelInfo(bond.affinity).level} · {levelInfo(bond.affinity).name}
+              {t('羁绊')} LV{levelInfo(bond.affinity).level} · {t(levelInfo(bond.affinity).name)}
             </Text>
           </View>
           <IconSymbol name="chevron.right" size={14} color={Romance.faint} />
@@ -127,7 +128,7 @@ export default function BondScreen() {
         }
         onRecall={(m) => useAppStore.getState().recallMessage({ bondId: bond.id }, m.id)}
         onDelete={(m) => useAppStore.getState().deleteMessage({ bondId: bond.id }, m.id)}
-        placeholder={`和${bond.name}说点什么…`}
+        placeholder={t('和{name}说点什么…', { name: bond.name })}
       />
 
       <Modal
@@ -148,7 +149,7 @@ export default function BondScreen() {
           <View style={styles.profileStats}>
             <View style={styles.stat}>
               <Text style={styles.statNum}>LV{levelInfo(bond.affinity).level}</Text>
-              <Text style={styles.statLabel}>{levelInfo(bond.affinity).name}</Text>
+              <Text style={styles.statLabel}>{t(levelInfo(bond.affinity).name)}</Text>
               <View style={styles.lvBarTrack}>
                 <View
                   style={[styles.lvBarFill, { width: `${levelInfo(bond.affinity).ratio * 100}%` }]}
@@ -162,43 +163,43 @@ export default function BondScreen() {
             </View>
             <View style={styles.stat}>
               <Text style={styles.statNum}>{daysTogether(bond.createdAt)}</Text>
-              <Text style={styles.statLabel}>在一起的天数</Text>
+              <Text style={styles.statLabel}>{t('在一起的天数')}</Text>
             </View>
           </View>
 
           <View style={styles.profileRows}>
             <View style={styles.profileRow}>
-              <Text style={styles.profileRowLabel}>TA 叫你</Text>
+              <Text style={styles.profileRowLabel}>{t('TA 叫你')}</Text>
               <Text style={styles.profileRowValue}>「{bond.nickname}」</Text>
             </View>
             <View style={styles.profileRow}>
-              <Text style={styles.profileRowLabel}>纪念日</Text>
+              <Text style={styles.profileRowLabel}>{t('纪念日')}</Text>
               <Text style={styles.profileRowValue}>
-                {new Date(bond.createdAt).toLocaleDateString('zh-CN')} 交换联系方式
+                {new Date(bond.createdAt).toLocaleDateString('zh-CN')} {t('交换联系方式')}
               </Text>
             </View>
             {bond.birthday && (
               <View style={styles.profileRow}>
-                <Text style={styles.profileRowLabel}>你的生日</Text>
+                <Text style={styles.profileRowLabel}>{t('你的生日')}</Text>
                 <Text style={styles.profileRowValue}>{bond.birthday}</Text>
               </View>
             )}
             {characterSecrets(character).length > 0 && (
               <View style={styles.profileRow}>
-                <Text style={styles.profileRowLabel}>TA 的秘密</Text>
+                <Text style={styles.profileRowLabel}>{t('TA 的秘密')}</Text>
                 <Text style={styles.profileRowValueDim}>
-                  已看见 {unlockedSecretCount(levelInfo(bond.affinity).level, characterSecrets(character).length)}/
-                  {characterSecrets(character).length} · 关系越近，看得越深
+                  {t('已看见')} {unlockedSecretCount(levelInfo(bond.affinity).level, characterSecrets(character).length)}/
+                  {characterSecrets(character).length} · {t('关系越近，看得越深')}
                 </Text>
               </View>
             )}
             <View style={styles.profileRow}>
-              <Text style={styles.profileRowLabel}>TA 的故事</Text>
-              <Text style={styles.profileRowValueDim}>主线连载 · 敬请期待</Text>
+              <Text style={styles.profileRowLabel}>{t('TA 的故事')}</Text>
+              <Text style={styles.profileRowValueDim}>{t('主线连载 · 敬请期待')}</Text>
             </View>
             <View style={styles.profileRow}>
-              <Text style={styles.profileRowLabel}>相册</Text>
-              <Text style={styles.profileRowValueDim}>正在慢慢变厚</Text>
+              <Text style={styles.profileRowLabel}>{t('相册')}</Text>
+              <Text style={styles.profileRowValueDim}>{t('正在慢慢变厚')}</Text>
             </View>
           </View>
         </View>

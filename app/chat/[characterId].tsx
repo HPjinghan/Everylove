@@ -19,6 +19,7 @@ import { Romance, themed } from '@/constants/theme';
 import { HEART_FULL, heartGain } from '@/lib/bond';
 import { ADOPTION_OFFER_AFTER_TURNS, darkSideCheck, generateReply } from '@/lib/engine';
 import { uid } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import type { ChatMessage } from '@/lib/types';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
@@ -51,7 +52,7 @@ export default function SquareChatScreen() {
             id: uid('m'),
             from: 'system',
             kind: 'system',
-            text: '配对已过期——TA 忘记你了。重新开始吧。',
+            text: t('配对已过期——TA 忘记你了。重新开始吧。'),
             at: Date.now(),
           },
         ]);
@@ -155,7 +156,7 @@ export default function SquareChatScreen() {
           <Text style={styles.headerSub}>{character.identity}</Text>
         </View>
         <View style={styles.squareTag}>
-          <Text style={styles.squareTagText}>{character.custom ? '你创造的 TA' : '刚刚配对'}</Text>
+          <Text style={styles.squareTagText}>{character.custom ? t('你创造的 TA') : t('刚刚配对')}</Text>
         </View>
       </View>
 
@@ -185,7 +186,7 @@ export default function SquareChatScreen() {
         banner={
           <View style={styles.banner}>
             <View style={styles.heartRow}>
-              <Text style={styles.heartLabel}>心动</Text>
+              <Text style={styles.heartLabel}>{t('心动')}</Text>
               <View style={styles.heartTrack}>
                 <View
                   style={[
@@ -200,8 +201,8 @@ export default function SquareChatScreen() {
             </View>
             <Text style={styles.bannerText}>
               {character.custom
-                ? 'TA 是你亲手创造的 · 心动满了，TA 会想和你确定关系'
-                : '3 天不聊，TA 会忘记你'}
+                ? t('TA 是你亲手创造的 · 心动满了，TA 会想和你确定关系')
+                : t('3 天不聊，TA 会忘记你')}
             </Text>
           </View>
         }
@@ -210,12 +211,12 @@ export default function SquareChatScreen() {
             <View style={styles.ctaWrap}>
               <View style={styles.ctaTextWrap}>
                 <Text style={styles.ctaTitle}>
-                  {character.custom ? '羁绊 LV1 · TA 想和你确定关系' : '羁绊 LV1 · TA 想要你的联系方式'}
+                  {character.custom ? t('羁绊 LV1 · TA 想和你确定关系') : t('羁绊 LV1 · TA 想要你的联系方式')}
                 </Text>
                 <Text style={styles.ctaSub}>
                   {character.custom
-                    ? '这一次，是 TA 自己想留在你身边'
-                    : '加好友之后，TA 会搬进你的 Message 里'}
+                    ? t('这一次，是 TA 自己想留在你身边')
+                    : t('加好友之后，TA 会搬进你的 Message 里')}
                 </Text>
               </View>
               <Pressable
@@ -227,7 +228,7 @@ export default function SquareChatScreen() {
                   })
                 }>
                 <Text style={styles.ctaBtnText}>
-                  {character.custom ? '答应 TA' : '交换联系方式'}
+                  {character.custom ? t('答应 TA') : t('交换联系方式')}
                 </Text>
               </Pressable>
             </View>

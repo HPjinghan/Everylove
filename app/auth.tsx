@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Romance, themed } from '@/constants/theme';
+import { t } from '@/lib/i18n';
 import {
   authConfigured,
   sendEmailOtp,
@@ -52,7 +53,7 @@ export default function AuthScreen() {
     } catch (e) {
       const err = e as { code?: string; message?: string };
       if (err.code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('Apple 登录失败', err.message ?? '稍后再试。');
+        Alert.alert(t('Apple 登录失败'), err.message ?? t('稍后再试。'));
       }
     } finally {
       setBusy(false);
@@ -66,13 +67,13 @@ export default function AuthScreen() {
       if (!otpSent) {
         await sendEmailOtp(email.trim());
         setOtpSent(true);
-        Alert.alert('验证码已发出', '去邮箱看看（也翻翻垃圾箱）。');
+        Alert.alert(t('验证码已发出'), t('去邮箱看看（也翻翻垃圾箱）。'));
       } else {
         await verifyEmailOtp(email.trim(), otp.trim());
         done();
       }
     } catch (e) {
-      Alert.alert(otpSent ? '验证失败' : '发送失败', (e as Error).message ?? '稍后再试。');
+      Alert.alert(otpSent ? t('验证失败') : t('发送失败'), (e as Error).message ?? t('稍后再试。'));
     } finally {
       setBusy(false);
     }
@@ -81,10 +82,10 @@ export default function AuthScreen() {
   if (!authConfigured()) {
     return (
       <View style={[styles.screen, styles.center, { paddingTop: insets.top }]}>
-        <Text style={styles.title}>账号服务未配置</Text>
+        <Text style={styles.title}>{t('账号服务未配置')}</Text>
         <Text style={styles.sub}>在 .env.local 配好 Supabase 后重启（docs/supabase-setup.sql）。</Text>
         <Pressable style={styles.ghostBtn} onPress={done}>
-          <Text style={styles.ghostBtnText}>返回</Text>
+          <Text style={styles.ghostBtnText}>{t('返回')}</Text>
         </Pressable>
       </View>
     );
@@ -100,24 +101,24 @@ export default function AuthScreen() {
         ]}
         keyboardShouldPersistTaps="handled">
         <Text style={styles.emoji}>☁️</Text>
-        <Text style={styles.title}>把 TA 存进云端</Text>
+        <Text style={styles.title}>{t('把 TA 存进云端')}</Text>
         <Text style={styles.sub}>
           {forced
-            ? 'TA 已经在你的通讯录里了。\n登录之后，换手机也不会失去 TA 和你们的故事。'
-            : '登录之后，TA 和你们的故事换手机也不会失去。'}
+            ? t('TA 已经在你的通讯录里了。') + '\n' + t('登录之后，换手机也不会失去 TA 和你们的故事。')
+            : t('登录之后，TA 和你们的故事换手机也不会失去。')}
         </Text>
 
         <Pressable style={[styles.appleBtn, busy && styles.dim]} disabled={busy} onPress={doApple}>
           {busy ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
-            <Text style={styles.appleBtnText}> 用 Apple 登录</Text>
+            <Text style={styles.appleBtnText}> {t('用 Apple 登录')}</Text>
           )}
         </Pressable>
 
         <View style={styles.orRow}>
           <View style={styles.orLine} />
-          <Text style={styles.orText}>或用邮箱</Text>
+          <Text style={styles.orText}>{t('或用邮箱')}</Text>
           <View style={styles.orLine} />
         </View>
 
@@ -125,7 +126,7 @@ export default function AuthScreen() {
           style={styles.input}
           value={email}
           onChangeText={setEmail}
-          placeholder="邮箱地址"
+          placeholder={t('邮箱地址')}
           placeholderTextColor={Romance.faint}
           autoCapitalize="none"
           autoCorrect={false}
@@ -136,7 +137,7 @@ export default function AuthScreen() {
             style={styles.input}
             value={otp}
             onChangeText={setOtp}
-            placeholder="邮箱里的 6 位验证码"
+            placeholder={t('邮箱里的 6 位验证码')}
             placeholderTextColor={Romance.faint}
             keyboardType="number-pad"
             onSubmitEditing={doEmail}
@@ -146,15 +147,15 @@ export default function AuthScreen() {
           style={[styles.emailBtn, (busy || !email.trim() || (otpSent && !otp.trim())) && styles.dim]}
           disabled={busy || !email.trim() || (otpSent && !otp.trim())}
           onPress={doEmail}>
-          <Text style={styles.emailBtnText}>{otpSent ? '验证并登录' : '发送验证码'}</Text>
+          <Text style={styles.emailBtnText}>{otpSent ? t('验证并登录') : t('发送验证码')}</Text>
         </Pressable>
 
         {!forced ? (
           <Pressable style={styles.ghostBtn} onPress={done}>
-            <Text style={styles.ghostBtnText}>先不了</Text>
+            <Text style={styles.ghostBtnText}>{t('先不了')}</Text>
           </Pressable>
         ) : null}
-        <Text style={styles.footnote}>数据按最高敏感级对待 · 只有你自己能读到你的存档</Text>
+        <Text style={styles.footnote}>{t('数据按最高敏感级对待 · 只有你自己能读到你的存档')}</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );

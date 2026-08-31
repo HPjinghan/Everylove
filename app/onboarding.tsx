@@ -20,8 +20,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Romance, themed } from '@/constants/theme';
+import { t, type Lang } from '@/lib/i18n';
 import type { LovePref, UserProfile } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
+
+const LANGS: { key: Lang; label: string }[] = [
+  { key: 'zh', label: '中文' },
+  { key: 'en', label: 'English' },
+  { key: 'ja', label: '日本語' },
+];
 
 const OPTIONS: { key: LovePref; label: string; sub: string }[] = [
   { key: 'male', label: '男生', sub: '他会先来找你' },
@@ -41,7 +48,8 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const [step, setStep] = useState<'pref' | 'me'>('pref');
+  const [step, setStep] = useState<'lang' | 'pref' | 'me'>('lang');
+  useAppStore((s2) => s2.language); // 语言切换即重渲染
   const [pref, setPref] = useState<LovePref>('male');
   const [nickname, setNickname] = useState('');
   const [gender, setGender] = useState<NonNullable<UserProfile['gender']>>('unspecified');
@@ -52,6 +60,27 @@ export default function OnboardingScreen() {
     setPref(p);
     setStep('me');
   };
+
+  if (step === 'lang') {
+    return (
+      <View style={[styles.screen, { paddingTop: insets.top + 80, paddingBottom: insets.bottom }]}>
+        <Text style={styles.question}>选择语言{'\n'}Language · 言語</Text>
+        <View style={styles.options}>
+          {LANGS.map((l) => (
+            <Pressable
+              key={l.key}
+              style={styles.option}
+              onPress={() => {
+                useAppStore.getState().setLanguage(l.key);
+                setStep('pref');
+              }}>
+              <Text style={styles.optionLabel}>{l.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    );
+  }
 
   const finish = () => {
     const name = nickname.trim();
@@ -69,17 +98,17 @@ export default function OnboardingScreen() {
   if (step === 'pref') {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 80, paddingBottom: insets.bottom }]}>
-        <Text style={styles.question}>你想被谁爱？</Text>
-        <Text style={styles.hint}>不用你主动。选好之后，等他来。</Text>
+        <Text style={styles.question}>{t('你想被谁爱？')}</Text>
+        <Text style={styles.hint}>{t('不用你主动。选好之后，等他来。')}</Text>
         <View style={styles.options}>
           {OPTIONS.map((o) => (
             <Pressable key={o.key} style={styles.option} onPress={() => choose(o.key)}>
-              <Text style={styles.optionLabel}>{o.label}</Text>
-              <Text style={styles.optionSub}>{o.sub}</Text>
+              <Text style={styles.optionLabel}>{t(o.label)}</Text>
+              <Text style={styles.optionSub}>{t(o.sub)}</Text>
             </Pressable>
           ))}
         </View>
-        <Text style={styles.footnote}>交友会记住你的口味 · 随时可以换着看</Text>
+        <Text style={styles.footnote}>{t('交友会记住你的口味 · 随时可以换着看')}</Text>
       </View>
     );
   }
@@ -93,24 +122,24 @@ export default function OnboardingScreen() {
           { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 24 },
         ]}
         keyboardShouldPersistTaps="handled">
-        <Text style={styles.question}>先让 TA 们认识你</Text>
-        <Text style={styles.hint}>只用填最基本的——除了名字，都可以跳过。</Text>
+        <Text style={styles.question}>{t('先让 TA 们认识你')}</Text>
+        <Text style={styles.hint}>{t('只用填最基本的——除了名字，都可以跳过。')}</Text>
 
         <View style={styles.meField}>
-          <Text style={styles.meLabel}>昵称 *</Text>
-          <Text style={styles.meHint}>角色看到的名字</Text>
+          <Text style={styles.meLabel}>{t('昵称 *')}</Text>
+          <Text style={styles.meHint}>{t('角色看到的名字')}</Text>
           <TextInput
             style={styles.meInput}
             value={nickname}
             onChangeText={setNickname}
-            placeholder="怎么称呼你？"
+            placeholder={t('怎么称呼你？')}
             placeholderTextColor={Romance.faint}
             maxLength={12}
           />
         </View>
 
         <View style={styles.meField}>
-          <Text style={styles.meLabel}>性别</Text>
+          <Text style={styles.meLabel}>{t('性别')}</Text>
           <View style={styles.chips}>
             {GENDERS.map((g) => {
               const active = gender === g.key;
@@ -119,7 +148,7 @@ export default function OnboardingScreen() {
                   key={g.key}
                   style={[styles.chip, active && styles.chipActive]}
                   onPress={() => setGender(g.key)}>
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{g.label}</Text>
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(g.label)}</Text>
                 </Pressable>
               );
             })}
@@ -127,24 +156,24 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.meField}>
-          <Text style={styles.meLabel}>称呼 / 代词</Text>
+          <Text style={styles.meLabel}>{t('称呼 / 代词')}</Text>
           <TextInput
             style={styles.meInput}
             value={pronoun}
             onChangeText={setPronoun}
-            placeholder="可不填"
+            placeholder={t('可不填')}
             placeholderTextColor={Romance.faint}
             maxLength={12}
           />
         </View>
 
         <View style={styles.meField}>
-          <Text style={styles.meLabel}>职业</Text>
+          <Text style={styles.meLabel}>{t('职业')}</Text>
           <TextInput
             style={styles.meInput}
             value={occupation}
             onChangeText={setOccupation}
-            placeholder="可不填 · TA 会稳定记住"
+            placeholder={t('可不填 · TA 会稳定记住')}
             placeholderTextColor={Romance.faint}
             maxLength={20}
           />
@@ -154,11 +183,11 @@ export default function OnboardingScreen() {
           style={[styles.primaryBtn, !nickname.trim() && styles.primaryBtnDisabled]}
           disabled={!nickname.trim()}
           onPress={finish}>
-          <Text style={styles.primaryBtnText}>进去看看</Text>
+          <Text style={styles.primaryBtnText}>{t('进去看看')}</Text>
         </Pressable>
 
         <Text style={styles.footnote}>
-          稍后可以在 设置 → 我的身份 里继续补充，{'\n'}也能为单个角色使用不同身份。
+          {t('稍后可以在 设置 → 我的身份 里继续补充，')}{'\n'}{t('也能为单个角色使用不同身份。')}
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>

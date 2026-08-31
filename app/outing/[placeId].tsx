@@ -22,6 +22,7 @@ import { HEART_FULL, heartGain, XP_PER_MESSAGE } from '@/lib/bond';
 import { ADOPTION_OFFER_AFTER_TURNS, generateReply } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { generateScenePhoto, imageKeyReady } from '@/lib/imagegen';
+import { t } from '@/lib/i18n';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
@@ -91,10 +92,10 @@ export default function OutingSceneScreen() {
           <Text style={styles.emptyEmoji}>{place.emoji}</Text>
           <Text style={styles.emptyText}>
             {place.stranger
-              ? '广场今天安安静静的——\n新面孔都被你认识完了。'
+              ? t('广场今天安安静静的——\n新面孔都被你认识完了。')
               : bonds.length
-                ? '认识的人这会儿都在忙。\n晚上八点之后再出来走走，说不定就遇到了。'
-                : '这里风景很好，但一个人逛有点安静。\n去广场碰碰运气，或先在「交友」里滑一滑。'}
+                ? t('认识的人这会儿都在忙。\n晚上八点之后再出来走走，说不定就遇到了。')
+                : t('这里风景很好，但一个人逛有点安静。\n去广场碰碰运气，或先在「交友」里滑一滑。')}
           </Text>
         </View>
       </View>
@@ -152,10 +153,10 @@ export default function OutingSceneScreen() {
     );
     await wait(700 + Math.min(1200, text.length * 40));
     setTyping(false);
-    for (const t of reply.texts) {
+    for (const line of reply.texts) {
       useAppStore
         .getState()
-        .appendOuting([{ id: uid('m'), from: 'him', kind: 'text', text: t, at: Date.now() }]);
+        .appendOuting([{ id: uid('m'), from: 'him', kind: 'text', text: line, at: Date.now() }]);
     }
 
     // 心动满 100（D-056）：TA 当场开口想交换联系方式（产品触发器，不由模型决定，D-029 纪律）
@@ -178,7 +179,7 @@ export default function OutingSceneScreen() {
   const shoot = async (kind: 'solo' | 'together') => {
     if (shooting) return;
     if (!imageKeyReady()) {
-      Alert.alert('未配置千帆 key', '拍照与聊天共用千帆 key：在 .env.local 或「设置 → 开发者」里填好即可。');
+      Alert.alert(t('未配置千帆 key'), t('拍照与聊天共用千帆 key：在 .env.local 或「设置 → 开发者」里填好即可。'));
       return;
     }
     setShooting(kind);
@@ -200,7 +201,9 @@ export default function OutingSceneScreen() {
           kind: 'image',
           // 拍立得手写字（D-056）
           text:
-            kind === 'together' ? `和${name}的合影 · ${place.name}` : `${name} · ${place.name}`,
+            kind === 'together'
+              ? t('和{name}的合影 · {place}', { name, place: t(place.name) })
+              : name + ' · ' + t(place.name),
           imageUri: uri,
           polaroid: true,
           at: Date.now(),
@@ -208,7 +211,7 @@ export default function OutingSceneScreen() {
       ]);
     } catch (e) {
       console.warn('[outing] 拍照失败：', e);
-      Alert.alert('没拍成', '生图服务出了点问题，可以再试一次。');
+      Alert.alert(t('没拍成'), t('生图服务出了点问题，可以再试一次。'));
     } finally {
       setShooting(null);
     }
@@ -218,10 +221,10 @@ export default function OutingSceneScreen() {
   const offered = !bond && !!squareChat?.adoptionOffered;
   const subtitle =
     kind === 'date'
-      ? `和${name}的约会`
+      ? t('和{name}的约会', { name })
       : kind === 'stranger'
-        ? `陌生人 · ${name} · 心动 ${heart}/${HEART_FULL}`
-        : `偶遇了${name}`;
+        ? t('陌生人 · {name} · 心动 {h}/{f}', { name, h: heart, f: HEART_FULL })
+        : t('偶遇了{name}', { name });
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -239,14 +242,14 @@ export default function OutingSceneScreen() {
         typing={typing}
         typingLabel="……"
         onSend={onSend}
-        placeholder="说点什么，或用（）写下你的动作…"
+        placeholder={t('说点什么，或用（）写下你的动作…')}
         cta={
           <View>
             {offered ? (
               <View style={styles.offerWrap}>
                 <View style={styles.offerText}>
-                  <Text style={styles.offerTitle}>羁绊 LV1 · TA 想和你交换联系方式</Text>
-                  <Text style={styles.offerSub}>就在这里、就是现在——面对面的那种</Text>
+                  <Text style={styles.offerTitle}>{t('羁绊 LV1 · TA 想和你交换联系方式')}</Text>
+                  <Text style={styles.offerSub}>{t('就在这里、就是现在——面对面的那种')}</Text>
                 </View>
                 <Pressable
                   style={styles.offerBtn}
@@ -256,7 +259,7 @@ export default function OutingSceneScreen() {
                       params: { characterId: character.id },
                     })
                   }>
-                  <Text style={styles.offerBtnText}>交换</Text>
+                  <Text style={styles.offerBtnText}>{t('交换')}</Text>
                 </Pressable>
               </View>
             ) : null}
@@ -266,14 +269,14 @@ export default function OutingSceneScreen() {
               disabled={!!shooting}
               onPress={() => shoot('together')}>
               <Text style={styles.shootText}>
-                {shooting === 'together' ? '拍摄中…' : '📸 合影'}
+                {shooting === 'together' ? t('拍摄中…') : t('📸 合影')}
               </Text>
             </Pressable>
             <Pressable
               style={[styles.shootBtn, shooting && styles.shootBtnDim]}
               disabled={!!shooting}
               onPress={() => shoot('solo')}>
-              <Text style={styles.shootText}>{shooting === 'solo' ? '拍摄中…' : '📷 拍 TA'}</Text>
+              <Text style={styles.shootText}>{shooting === 'solo' ? t('拍摄中…') : t('📷 拍 TA')}</Text>
             </Pressable>
             </View>
           </View>
@@ -282,8 +285,8 @@ export default function OutingSceneScreen() {
           <View style={styles.sceneBanner}>
             <Text style={styles.sceneBannerText}>
               {kind === 'stranger'
-                ? `${place.emoji} 你们还不认识 · 聊得来，TA 会想留下你的联系方式`
-                : `${place.emoji} ${place.hook} · 你们面对面`}
+                ? `${place.emoji} ${t('你们还不认识 · 聊得来，TA 会想留下你的联系方式')}`
+                : `${place.emoji} ${t(place.hook)} · ${t('你们面对面')}`}
             </Text>
           </View>
         }
@@ -310,7 +313,7 @@ function Header({
       </Pressable>
       <View style={styles.headerText}>
         <Text style={styles.headerName}>
-          {place.emoji} {place.name}
+          {place.emoji} {t(place.name)}
         </Text>
         <Text style={styles.headerSub} numberOfLines={1}>
           {subtitle}
@@ -318,7 +321,7 @@ function Header({
       </View>
       {onLeave ? (
         <Pressable style={styles.leaveBtn} onPress={onLeave} hitSlop={6}>
-          <Text style={styles.leaveText}>结束外出</Text>
+          <Text style={styles.leaveText}>{t('结束外出')}</Text>
         </Pressable>
       ) : null}
     </View>

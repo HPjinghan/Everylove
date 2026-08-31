@@ -10,7 +10,8 @@ import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
 import { Romance, themed } from '@/constants/theme';
-import { levelLabel } from '@/lib/bond';
+import { levelInfo } from '@/lib/bond';
+import { t } from '@/lib/i18n';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
 export default function PhoneScreen() {
@@ -18,18 +19,18 @@ export default function PhoneScreen() {
   const bonds = useAppStore((s) => s.bonds);
 
   const call = (name: string) => {
-    Alert.alert(`呼叫${name}…`, '电话还没接通这个世界。快了。');
+    Alert.alert(t('呼叫{name}…', { name }), t('电话还没接通这个世界。快了。'));
   };
 
   return (
-    <AppScreen title="电话">
+    <AppScreen title={t("电话")}>
       {bonds.length === 0 ? (
         <View style={styles.empty}>
           <View style={styles.emptyIcon}>
             <MingCute name="phone" size={34} color="#3EB489" />
           </View>
           <Text style={styles.emptyText}>
-            还没有可通话的人。{'\n'}先去「交友」认识、加上好友。
+            {t('还没有可通话的人。')}{'\n'}{t('先去「交友」认识、加上好友。')}
           </Text>
         </View>
       ) : (
@@ -54,7 +55,7 @@ export default function PhoneScreen() {
                   />
                   <View style={styles.rowText}>
                     <Text style={styles.rowName}>{item.name}</Text>
-                    <Text style={styles.rowSub}>{levelLabel(item.affinity)}</Text>
+                    <Text style={styles.rowSub}>{`${t('羁绊')} LV${levelInfo(item.affinity).level} · ${t(levelInfo(item.affinity).name)}`}</Text>
                   </View>
                 </Pressable>
                 <Pressable style={styles.callBtn} onPress={() => call(item.name)} hitSlop={6}>

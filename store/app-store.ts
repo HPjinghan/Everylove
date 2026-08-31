@@ -15,6 +15,7 @@ import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { applyThemeColors } from '@/constants/theme';
 import { bondLevel, levelLabel } from '@/lib/bond';
+import { setLang } from '@/lib/i18n';
 import { DEFAULT_DOCK } from '@/constants/apps';
 import { placeById } from '@/content/places';
 import type {
@@ -37,6 +38,8 @@ export const SQUARE_CHAT_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 
 interface AppState {
   onboarded: boolean;
+  /** 界面语言（D-066）：onboarding 第 0 步选择；真模型输出语言跟随（prompts 语言行） */
+  language: 'zh' | 'en' | 'ja';
   /** 新手流（D-058）：onboarding 后直接落交友滑卡；首次加好友或点「先逛逛」后才放行桌面 */
   introDone: boolean;
   /** 桌面揭幕 + 气泡标注是否已看过（首次加好友后播一次） */
@@ -84,6 +87,7 @@ interface AppState {
   qianfanKey: string;
 
   completeOnboarding: (pref: LovePref) => void;
+  setLanguage: (l: 'zh' | 'en' | 'ja') => void;
   /** 新手流逃生门 / 完成（D-058） */
   setIntroDone: () => void;
   setIntroRevealSeen: () => void;
@@ -162,6 +166,7 @@ interface AppState {
 
 const initialData = {
   onboarded: false,
+  language: 'zh' as 'zh' | 'en' | 'ja',
   introDone: false,
   introRevealSeen: false,
   lovePref: undefined as LovePref | undefined,
@@ -199,6 +204,11 @@ export const useAppStore = create<AppState>()(
       ...initialData,
 
       completeOnboarding: (pref) => set({ onboarded: true, lovePref: pref }),
+
+      setLanguage: (l) => {
+        setLang(l);
+        set({ language: l });
+      },
 
       setIntroDone: () => set({ introDone: true }),
       setIntroRevealSeen: () => set({ introRevealSeen: true }),

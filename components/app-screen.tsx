@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Romance, themed } from '@/constants/theme';
+import { t } from '@/lib/i18n';
 
 /**
  * 手机壳内 App 的通用外框（D-021）：顶部返回桌面 + App 名。
@@ -34,7 +35,7 @@ export function AppScreen({
           hitSlop={10}
           style={styles.back}>
           <IconSymbol name="chevron.left" size={20} color={Romance.ink} />
-          <Text style={styles.backText}>桌面</Text>
+          <Text style={styles.backText}>{t('桌面')}</Text>
         </Pressable>
         <Text style={styles.title}>{title}</Text>
         <View style={styles.right}>{right}</View>

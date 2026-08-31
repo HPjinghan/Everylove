@@ -24,6 +24,7 @@ import { dateKey, holidayFor, parseDateKey } from '@/content/calendar';
 import { scriptFor } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
 import { uid } from '@/lib/format';
+import { getLang, t } from '@/lib/i18n';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
@@ -53,17 +54,17 @@ export default function CalendarScreen() {
     };
     if (bond) {
       const created = new Date(bond.createdAt);
-      push(dateKey(created), `和${bond.name}交换联系方式`, 'relation');
+      push(dateKey(created), t('和{name}交换联系方式', { name: bond.name }), 'relation');
       const hundred = new Date(bond.createdAt);
       hundred.setDate(hundred.getDate() + 99);
-      push(dateKey(hundred), '一百天', 'relation');
+      push(dateKey(hundred), t('一百天'), 'relation');
       if (bond.birthday) {
         const [mm, dd] = bond.birthday.split('-').map(Number);
-        push(dateKey(new Date(ym.y, mm - 1, dd)), '你的生日', 'relation');
+        push(dateKey(new Date(ym.y, mm - 1, dd)), t('你的生日'), 'relation');
       }
       if (character?.birthday) {
         const [mm, dd] = character.birthday.split('-').map(Number);
-        if (mm && dd) push(dateKey(new Date(ym.y, mm - 1, dd)), `${bond.name}的生日`, 'relation');
+        if (mm && dd) push(dateKey(new Date(ym.y, mm - 1, dd)), t('{name}的生日', { name: bond.name }), 'relation');
       }
       // TA 自己也稀疏长几条日程（按角色台词风格取样，只做展示）
       if (character) {
@@ -105,7 +106,7 @@ export default function CalendarScreen() {
     const title = draft.trim();
     if (!title) return;
     if (parseDateKey(selected).getTime() < new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) {
-      Alert.alert('这天已经过去了', '选今天或以后的日子吧。');
+      Alert.alert(t('这天已经过去了'), t('选今天或以后的日子吧。'));
       return;
     }
     useAppStore.getState().addUserEvent({ id: uid('ev'), date: selected, title });
@@ -115,9 +116,9 @@ export default function CalendarScreen() {
   };
 
   const removeEvent = (id: string, title: string) => {
-    Alert.alert('删除日程', `「${title}」会从日历里消失。`, [
-      { text: '取消', style: 'cancel' },
-      { text: '删除', style: 'destructive', onPress: () => useAppStore.getState().removeUserEvent(id) },
+    Alert.alert(t('删除日程'), t('「{title}」会从日历里消失。', { title }), [
+      { text: t('取消'), style: 'cancel' },
+      { text: t('删除'), style: 'destructive', onPress: () => useAppStore.getState().removeUserEvent(id) },
     ]);
   };
 
@@ -126,7 +127,7 @@ export default function CalendarScreen() {
   const todayKey = dateKey(today);
 
   return (
-    <AppScreen title="日历">
+    <AppScreen title={t("日历")}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {/* 月切换 */}
@@ -135,7 +136,7 @@ export default function CalendarScreen() {
               <Text style={styles.monthArrow}>‹</Text>
             </Pressable>
             <Text style={styles.monthTitle}>
-              {ym.y} 年 {ym.m + 1} 月
+              {t('{y} 年 {m} 月', { y: ym.y, m: ym.m + 1 })}
             </Text>
             <Pressable hitSlop={12} onPress={() => setYm((v) => (v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 }))}>
               <Text style={styles.monthArrow}>›</Text>
@@ -146,7 +147,7 @@ export default function CalendarScreen() {
           <View style={styles.weekRow}>
             {WEEK.map((w) => (
               <Text key={w} style={styles.weekCell}>
-                {w}
+                {t(w)}
               </Text>
             ))}
           </View>
@@ -188,14 +189,14 @@ export default function CalendarScreen() {
           {/* 选中日详情 */}
           <View style={styles.detail}>
             <Text style={styles.detailTitle}>
-              {parseDateKey(selected).toLocaleDateString('zh-CN', {
+              {parseDateKey(selected).toLocaleDateString(getLang() === 'zh' ? 'zh-CN' : getLang() === 'ja' ? 'ja-JP' : 'en-US', {
                 month: 'long',
                 day: 'numeric',
                 weekday: 'long',
               })}
             </Text>
             {selectedMarks.length === 0 ? (
-              <Text style={styles.detailEmpty}>这天还是空白的。</Text>
+              <Text style={styles.detailEmpty}>{t('这天还是空白的。')}</Text>
             ) : (
               selectedMarks.map((m, i) => {
                 const userEvent = selectedUserEvents.find((e) => e.title === m.label);
@@ -210,7 +211,7 @@ export default function CalendarScreen() {
                     }>
                     <View style={[styles.dot, { backgroundColor: DOT[m.layer] }]} />
                     <Text style={styles.markText}>{m.label}</Text>
-                    <Text style={styles.markLayer}>{LAYER_LABEL[m.layer]}</Text>
+                    <Text style={styles.markLayer}>{t(LAYER_LABEL[m.layer])}</Text>
                   </Pressable>
                 );
               })
@@ -222,17 +223,17 @@ export default function CalendarScreen() {
                 style={styles.addInput}
                 value={draft}
                 onChangeText={setDraft}
-                placeholder="添加日程：考试 / 面试 / 出差…"
+                placeholder={t('添加日程：考试 / 面试 / 出差…')}
                 placeholderTextColor={Romance.faint}
                 maxLength={20}
                 returnKeyType="done"
                 onSubmitEditing={addEvent}
               />
               <Pressable style={[styles.addBtn, !draft.trim() && { opacity: 0.4 }]} onPress={addEvent} disabled={!draft.trim()}>
-                <Text style={styles.addBtnText}>添加</Text>
+                <Text style={styles.addBtnText}>{t('添加')}</Text>
               </Pressable>
             </View>
-            <Text style={styles.hint}>长按日程可删除。</Text>
+            <Text style={styles.hint}>{t('长按日程可删除。')}</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

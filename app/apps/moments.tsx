@@ -24,6 +24,7 @@ import { buildPostReplySystem, buildPostReplyUserPrompt } from '@/content/prompt
 import { Romance, themed } from '@/constants/theme';
 import { completeText, splitBubbles, stripStageDirections } from '@/lib/engine';
 import { timeAgo } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import type { Bond, Character, Post } from '@/lib/types';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
@@ -71,7 +72,7 @@ function PostRow({ post }: { post: Post }) {
   if (!character) return null;
   const displayName = bond?.name ?? character.name;
   const canComment = !!post.bondId;
-  const myName = me?.nickname || '你';
+  const myName = me?.nickname || t('你');
 
   const submitComment = async () => {
     const text = commentDraft.trim();
@@ -96,7 +97,7 @@ function PostRow({ post }: { post: Post }) {
             {handleFor(character)} · {timeAgo(post.at)}
           </Text>
         </View>
-        {!post.bondId ? <Text style={styles.lockedMeta}>加好友前的帖子</Text> : null}
+        {!post.bondId ? <Text style={styles.lockedMeta}>{t('加好友前的帖子')}</Text> : null}
         <Text style={styles.body}>{post.text}</Text>
 
         <View style={styles.actions}>
@@ -106,7 +107,7 @@ function PostRow({ post }: { post: Post }) {
             disabled={!canComment}>
             <IconSymbol name="bubble.right" size={16} color={Romance.faint} />
             <Text style={styles.actionText}>
-              {canComment ? post.comments.length || '' : '只能看看'}
+              {canComment ? post.comments.length || '' : t('只能看看')}
             </Text>
           </Pressable>
           <Pressable style={styles.action} onPress={() => useAppStore.getState().toggleLike(post.id)}>
@@ -156,7 +157,7 @@ function PostRow({ post }: { post: Post }) {
               size={26}
               characterId={character.id}
             />
-            <Text style={styles.replyTyping}>{displayName} 正在回复…</Text>
+            <Text style={styles.replyTyping}>{t('{name} 正在回复…', { name: displayName })}</Text>
           </View>
         ) : null}
 
@@ -166,7 +167,7 @@ function PostRow({ post }: { post: Post }) {
               style={styles.commentInput}
               value={commentDraft}
               onChangeText={setCommentDraft}
-              placeholder="发布你的回复"
+              placeholder={t('发布你的回复')}
               placeholderTextColor={Romance.faint}
               onSubmitEditing={submitComment}
               returnKeyType="send"
@@ -207,7 +208,7 @@ export default function FeedScreen() {
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>🕊️</Text>
             <Text style={styles.emptyText}>
-              时间线还是空的。{'\n'}和 TA 加好友，TA 的帖子就会出现在这里。
+              {t('时间线还是空的。\n和 TA 加好友，TA 的帖子就会出现在这里。')}
             </Text>
           </View>
         }

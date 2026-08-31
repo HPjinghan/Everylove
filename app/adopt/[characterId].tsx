@@ -25,6 +25,7 @@ import { scriptFor } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
 import { authConfigured, currentSession } from '@/lib/auth';
 import { slotLimit, slotLimitLabel } from '@/lib/bond';
+import { t } from '@/lib/i18n';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
 type Step = 'slot' | 'names' | 'ceremony';
@@ -83,53 +84,53 @@ export default function AdoptScreen() {
           <View style={styles.center}>
             <CharAvatar name={character.name} color={character.color} size={84} characterId={character.id} />
             <Text style={styles.h1}>
-              {character.custom ? `和${character.name}确定关系` : `和${character.name}交换联系方式`}
+              {character.custom ? t('和{name}确定关系', { name: character.name }) : t('和{name}交换联系方式', { name: character.name })}
             </Text>
             {slotFree ? (
               <>
                 <View style={styles.slotCard}>
                   <Text style={styles.slotFree}>
                     {bonds.length === 0
-                      ? '首个羁绊 · 免费'
-                      : `羁绊槽位 ${bonds.length + 1}/${slotLimitLabel(plan)}`}
+                      ? t('首个羁绊 · 免费')
+                      : `${t('羁绊槽位')} ${bonds.length + 1}/${slotLimitLabel(plan)}`}
                   </Text>
                   <Text style={styles.slotDesc}>
-                    交换之后 TA 会搬进你的消息里，{'\n'}随时都在，随时都回。
+                    {t('交换之后 TA 会搬进你的消息里，')}{'\n'}{t('随时都在，随时都回。')}
                   </Text>
                 </View>
                 <Pressable style={styles.primaryBtn} onPress={() => setStep('names')}>
-                  <Text style={styles.primaryBtnText}>开始缔结</Text>
+                  <Text style={styles.primaryBtnText}>{t('开始缔结')}</Text>
                 </Pressable>
               </>
             ) : (
               <>
                 <View style={styles.slotCard}>
                   <Text style={styles.slotFull}>
-                    羁绊槽位已满 · {bonds.length}/{slotLimitLabel(plan)}
+                    {t('羁绊槽位已满')} · {bonds.length}/{slotLimitLabel(plan)}
                   </Text>
                   <Text style={styles.slotDesc}>
-                    开通 Pro（5 个槽）或 Max（不限量）解锁更多羁绊{'\n'}设置 → 订阅计划
+                    {t('开通 Pro（5 个槽）或 Max（不限量）解锁更多羁绊')}{'\n'}{t('设置 → 订阅计划')}
                   </Text>
                 </View>
                 <Pressable
                   style={styles.primaryBtn}
                   onPress={() => router.push('/apps/settings')}>
-                  <Text style={styles.primaryBtnText}>去看订阅</Text>
+                  <Text style={styles.primaryBtnText}>{t('去看订阅')}</Text>
                 </Pressable>
                 <Pressable style={styles.secondaryBtn} onPress={() => router.back()}>
-                  <Text style={styles.secondaryBtnText}>先回去聊聊</Text>
+                  <Text style={styles.secondaryBtnText}>{t('先回去聊聊')}</Text>
                 </Pressable>
               </>
             )}
             <Pressable onPress={() => router.back()} style={styles.cancelLink}>
-              <Text style={styles.cancelLinkText}>再想想</Text>
+              <Text style={styles.cancelLinkText}>{t('再想想')}</Text>
             </Pressable>
           </View>
         )}
 
         {step === 'names' && (
           <View>
-            <Text style={styles.h1}>在你的通讯录里，TA 叫——</Text>
+            <Text style={styles.h1}>{t('在你的通讯录里，TA 叫——')}</Text>
             <TextInput
               style={styles.input}
               value={hisName}
@@ -138,7 +139,7 @@ export default function AdoptScreen() {
               placeholderTextColor={Romance.faint}
               maxLength={12}
             />
-            <Text style={styles.h2}>TA 会怎么叫你？</Text>
+            <Text style={styles.h2}>{t('TA 会怎么叫你？')}</Text>
             <View style={styles.presetRow}>
               {script.nicknamePresets.map((p) => (
                 <Pressable
@@ -162,16 +163,16 @@ export default function AdoptScreen() {
               style={styles.input}
               value={customNickname}
               onChangeText={setCustomNickname}
-              placeholder="或者，告诉他你想被怎么叫"
+              placeholder={t('或者，告诉他你想被怎么叫')}
               placeholderTextColor={Romance.faint}
               maxLength={8}
             />
-            <Text style={styles.h2}>你的生日（可以不说）</Text>
+            <Text style={styles.h2}>{t('你的生日（可以不说）')}</Text>
             <TextInput
               style={styles.input}
               value={birthday}
               onChangeText={setBirthday}
-              placeholder="比如 05-20"
+              placeholder={t('比如 05-20')}
               placeholderTextColor={Romance.faint}
               maxLength={5}
             />
@@ -182,7 +183,7 @@ export default function AdoptScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 setStep('ceremony');
               }}>
-              <Text style={styles.primaryBtnText}>交换</Text>
+              <Text style={styles.primaryBtnText}>{t('交换')}</Text>
             </Pressable>
           </View>
         )}
@@ -220,14 +221,14 @@ function Ceremony({
 }) {
   const lines = custom
     ? [
-        `${hisName}不再只是你创造的角色`,
-        '这一次，是 TA 自己选择留下',
-        `TA 给你的备注是——「${nickname}」`,
+        t('{name}不再只是你创造的角色', { name: hisName }),
+        t('这一次，是 TA 自己选择留下'),
+        t('TA 给你的备注是——「{nickname}」', { nickname }),
       ]
     : [
-        'TA 存下了你的号码',
-        '你出现在了 TA 的通讯录里',
-        `TA 给你的备注是——「${nickname}」`,
+        t('TA 存下了你的号码'),
+        t('你出现在了 TA 的通讯录里'),
+        t('TA 给你的备注是——「{nickname}」', { nickname }),
       ];
   const fades = useRef(lines.map(() => new Animated.Value(0))).current;
   const heart = useRef(new Animated.Value(0)).current;
@@ -272,7 +273,7 @@ function Ceremony({
       </Animated.Text>
       {done && (
         <Pressable style={styles.primaryBtn} onPress={onDone}>
-          <Text style={styles.primaryBtnText}>去看看你们的手机</Text>
+          <Text style={styles.primaryBtnText}>{t('去看看你们的手机')}</Text>
         </Pressable>
       )}
     </View>

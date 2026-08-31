@@ -30,6 +30,7 @@ import { MingCute } from '@/components/mingcute';
 import { CHARACTERS } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
 import { heatLabel } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { refreshSharedPool } from '@/lib/pool';
 import { hasFreshSupply, rankDeck } from '@/lib/recommend';
 import type { Character, LovePref } from '@/lib/types';
@@ -77,8 +78,8 @@ function DeckCard({ c, compact }: { c: Character; compact?: boolean }) {
         <View style={styles.heatRow}>
           <MingCute name="fire" size={13} color="#FF9A5C" />
           <Text style={styles.heatText}>{heatLabel(c.adoptedCount)}</Text>
-          {c.custom && !c.shared ? <Text style={styles.mineTag}>你的创作</Text> : null}
-          {c.shared ? <Text style={styles.mineTag}>来自其他玩家</Text> : null}
+          {c.custom && !c.shared ? <Text style={styles.mineTag}>{t('你的创作')}</Text> : null}
+          {c.shared ? <Text style={styles.mineTag}>{t('来自其他玩家')}</Text> : null}
         </View>
       </LinearGradient>
     </View>
@@ -243,13 +244,13 @@ export default function DatingScreen() {
       onBack={!introDone ? escapeIntro : undefined}
       right={
         <Pressable onPress={() => setPrefOpen(true)} hitSlop={8}>
-          <Text style={styles.prefAction}>偏好</Text>
+          <Text style={styles.prefAction}>{t('偏好')}</Text>
         </Pressable>
       }>
       {/* 新手流（D-058）：滑到心动就是入口；不想滑有逃生门 */}
       {!introDone ? (
         <Pressable onPress={escapeIntro} hitSlop={6}>
-          <Text style={styles.skipIntro}>先不滑了，随便逛逛 →</Text>
+          <Text style={styles.skipIntro}>{t('先不滑了，随便逛逛 →')}</Text>
         </Pressable>
       ) : null}
       {/* 视图切换（D-049）：滑卡 / 瀑布流 */}
@@ -264,14 +265,14 @@ export default function DatingScreen() {
             key={v}
             style={[styles.viewBtn, view === v && styles.viewBtnActive]}
             onPress={() => useAppStore.getState().setDatingView(v)}>
-            <Text style={[styles.viewBtnText, view === v && styles.viewBtnTextActive]}>{label}</Text>
+            <Text style={[styles.viewBtnText, view === v && styles.viewBtnTextActive]}>{t(label)}</Text>
           </Pressable>
         ))}
       </View>
       {/* 配对列表：滑到即配对；3 天不聊过期 */}
       {matches.length > 0 && (
         <View style={styles.matchesWrap}>
-          <Text style={styles.matchesTitle}>配对 · 3 天不聊会过期</Text>
+          <Text style={styles.matchesTitle}>{t('配对 · 3 天不聊会过期')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.matchesRow}>
             {matches.map((c) => (
               <Pressable
@@ -310,10 +311,10 @@ export default function DatingScreen() {
           {deck.length === 0 ? (
             <View style={styles.emptyDeck}>
               <Text style={styles.emptyEmoji}>🫧</Text>
-              <Text style={styles.emptyText}>这里的人都被你聊完了。</Text>
+              <Text style={styles.emptyText}>{t('这里的人都被你聊完了。')}</Text>
             </View>
           ) : (
-            <Text style={styles.gridHint}>点一下卡片 = 心动</Text>
+            <Text style={styles.gridHint}>{t('点一下卡片 = 心动')}</Text>
           )}
         </ScrollView>
       ) : (
@@ -334,19 +335,19 @@ export default function DatingScreen() {
               <DeckCard c={top} />
               {/* 印章跟手浮现：右 = 心动（必成），左 = 略过 */}
               <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeStamp }]}>
-                <Text style={styles.stampText}>心动 💘</Text>
+                <Text style={styles.stampText}>{t('心动')} 💘</Text>
               </Animated.View>
               <Animated.View style={[styles.stamp, styles.stampPass, { opacity: passStamp }]}>
-                <Text style={[styles.stampText, styles.stampPassText]}>略过</Text>
+                <Text style={[styles.stampText, styles.stampPassText]}>{t('略过')}</Text>
               </Animated.View>
             </Animated.View>
           </>
         ) : (
           <View style={styles.emptyDeck}>
             <Text style={styles.emptyEmoji}>🫧</Text>
-            <Text style={styles.emptyText}>这里的人都被你聊完了。</Text>
+            <Text style={styles.emptyText}>{t('这里的人都被你聊完了。')}</Text>
             <Pressable style={styles.emptyBtn} onPress={() => router.push('/apps/create')}>
-              <Text style={styles.emptyBtnText}>去创造一个新的 TA</Text>
+              <Text style={styles.emptyBtnText}>{t('去创造一个新的 TA')}</Text>
             </Pressable>
           </View>
         )}
@@ -363,7 +364,7 @@ export default function DatingScreen() {
               <MingCute name="heart" size={30} color="#FFFFFF" />
             </Pressable>
           </View>
-          <Text style={styles.footHint}>左滑略过 · 右滑心动</Text>
+          <Text style={styles.footHint}>{t('左滑略过 · 右滑心动')}</Text>
         </View>
       ) : null}
 
@@ -375,7 +376,7 @@ export default function DatingScreen() {
         onRequestClose={() => setPrefOpen(false)}>
         <Pressable style={styles.prefMask} onPress={() => setPrefOpen(false)}>
           <Pressable style={styles.prefSheet} onPress={() => {}}>
-            <Text style={styles.prefTitle}>你想遇到谁？</Text>
+            <Text style={styles.prefTitle}>{t('你想遇到谁？')}</Text>
             {PREFS.map((p) => {
               const active = (lovePref ?? 'any') === p.key;
               return (
@@ -387,12 +388,12 @@ export default function DatingScreen() {
                     setPrefOpen(false);
                   }}>
                   <Text style={[styles.prefRowText, active && styles.prefRowTextActive]}>
-                    {p.label}
+                    {t(p.label)}
                   </Text>
                 </Pressable>
               );
             })}
-            <Text style={styles.prefHint}>随时可以换着看 · 只影响这里出现的人</Text>
+            <Text style={styles.prefHint}>{t('随时可以换着看 · 只影响这里出现的人')}</Text>
           </Pressable>
         </Pressable>
       </Modal>
@@ -400,15 +401,15 @@ export default function DatingScreen() {
       {/* 配对成功 */}
       {match ? (
         <View style={styles.matchOverlay}>
-          <Text style={styles.matchBig}>配对成功</Text>
+          <Text style={styles.matchBig}>{t('配对成功')}</Text>
           <CharAvatar name={match.name} color={match.color} size={96} characterId={match.id} />
           <Text style={styles.matchCharName}>{match.name}</Text>
-          <Text style={styles.matchSub}>TA 同意了 · 在这个世界，你的心动不会落空</Text>
+          <Text style={styles.matchSub}>{t('TA 同意了 · 在这个世界，你的心动不会落空')}</Text>
           <Pressable style={styles.matchPrimary} onPress={() => sayHi(match)}>
-            <Text style={styles.matchPrimaryText}>去打招呼</Text>
+            <Text style={styles.matchPrimaryText}>{t('去打招呼')}</Text>
           </Pressable>
           <Pressable style={styles.matchSecondary} onPress={() => setMatch(null)}>
-            <Text style={styles.matchSecondaryText}>继续滑</Text>
+            <Text style={styles.matchSecondaryText}>{t('继续滑')}</Text>
           </Pressable>
         </View>
       ) : null}

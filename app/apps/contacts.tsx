@@ -9,7 +9,8 @@ import { SectionList, StyleSheet, Text, View, Pressable } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
-import { HEART_FULL, levelLabel as levelLabelOf } from '@/lib/bond';
+import { HEART_FULL, levelInfo } from '@/lib/bond';
+import { t } from '@/lib/i18n';
 import { CHARACTERS } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
 import { useAppStore } from '@/store/app-store';
@@ -31,7 +32,7 @@ export default function ContactsScreen() {
           key: b.id,
           characterId: b.characterId,
           name: b.name,
-          sub: levelLabelOf(b.affinity),
+          sub: `${t('羁绊')} LV${levelInfo(b.affinity).level} · ${t(levelInfo(b.affinity).name)}`,
           tag: undefined as string | undefined,
           onPress: () => router.push({ pathname: '/bond/[bondId]', params: { bondId: b.id } }),
         })),
@@ -39,7 +40,7 @@ export default function ContactsScreen() {
           key: c.id,
           characterId: c.id,
           name: c.name,
-          sub: `心动 ${Math.min(HEART_FULL, squareChats[c.id]?.heart ?? 0)}/${HEART_FULL} · 满了 TA 会想和你确定关系`,
+          sub: `${t('心动')} ${Math.min(HEART_FULL, squareChats[c.id]?.heart ?? 0)}/${HEART_FULL} · ${t('满了 TA 会想和你确定关系')}`,
           tag: '心动中' as string | undefined,
           onPress: () =>
             router.push({ pathname: '/chat/[characterId]', params: { characterId: c.id } }),
@@ -52,7 +53,7 @@ export default function ContactsScreen() {
     [...customs, ...CHARACTERS].find((c) => c.id === characterId)?.color ?? Romance.accent;
 
   return (
-    <AppScreen title="通讯录">
+    <AppScreen title={t("通讯录")}>
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.key}
@@ -70,7 +71,7 @@ export default function ContactsScreen() {
                 <Text style={styles.rowName}>{item.name}</Text>
                 {item.tag ? (
                   <View style={styles.tag}>
-                    <Text style={styles.tagText}>{item.tag}</Text>
+                    <Text style={styles.tagText}>{t(item.tag)}</Text>
                   </View>
                 ) : null}
               </View>
@@ -81,7 +82,7 @@ export default function ContactsScreen() {
           </Pressable>
         )}
         ListEmptyComponent={
-          <Text style={styles.empty}>这里还空着。{'\n'}去「交友」滑到心动，再和 TA 加好友。</Text>
+          <Text style={styles.empty}>{t('这里还空着。')}{'\n'}{t('去「交友」滑到心动，再和 TA 加好友。')}</Text>
         }
       />
     </AppScreen>

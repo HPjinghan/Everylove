@@ -9,6 +9,7 @@ import * as Sharing from 'expo-sharing';
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Romance, themed } from '@/constants/theme';
+import { t } from '@/lib/i18n';
 
 /** 每张照片一个稳定的小倾角（-2° ~ 2°），像随手贴在桌上 */
 export function tiltFor(key: string): number {
@@ -65,7 +66,7 @@ export function PhotoViewer({ shot, onClose }: { shot: ViewerShot | null; onClos
   const share = async () => {
     if (!shot) return;
     if (!(await Sharing.isAvailableAsync())) {
-      Alert.alert('这台设备不支持分享', '换真机试试。');
+      Alert.alert(t('这台设备不支持分享'), t('换真机试试。'));
       return;
     }
     await Sharing.shareAsync(shot.uri).catch(() => {});
@@ -80,10 +81,10 @@ export function PhotoViewer({ shot, onClose }: { shot: ViewerShot | null; onClos
             </Pressable>
             <View style={styles.viewerBtns}>
               <Pressable style={styles.viewerBtn} onPress={share}>
-                <Text style={styles.viewerBtnText}>分享</Text>
+                <Text style={styles.viewerBtnText}>{t('分享')}</Text>
               </Pressable>
               <Pressable style={[styles.viewerBtn, styles.viewerBtnDim]} onPress={onClose}>
-                <Text style={styles.viewerBtnText}>关闭</Text>
+                <Text style={styles.viewerBtnText}>{t('关闭')}</Text>
               </Pressable>
             </View>
           </>

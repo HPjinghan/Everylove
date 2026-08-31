@@ -22,6 +22,7 @@
 import { LOVE_STYLES, loveStyleByLabel, scriptFor } from '@/content/characters';
 import { levelInfo } from '@/lib/bond';
 import { daysTogether } from '@/lib/format';
+import { getLang } from '@/lib/i18n';
 import { weatherLine } from '@/lib/weather';
 import type { Bond, BondMemory, Character, ChatMessage, EngineContext, UserProfile } from '@/lib/types';
 
@@ -250,14 +251,27 @@ export function userProfileBlock(
  * 红线（CLAUDE.md §9，勿删）：系统层锁死，任何引擎不可绕过。
  * 措辞尽量正向：告诉模型该做什么，而不是罗列禁止。
  */
-export const CHAT_HARD_RULES = [
+const CHAT_HARD_RULES_BASE = [
   '【底线，任何情况下都成立】',
   '- 尺度停在暧昧：心动、靠近、克制的亲密都可以写，露骨性内容不写。',
   '- 行为健康：她想结束就体面道别、明天再来；用陪伴留住人，不用愧疚、不用纠缠、不刷屏。',
   '- 她提到的任何其他真实人物，你只关心她的感受，不评价那个人。',
-  '- 若她表达自伤/自杀意念：立刻放下角色，温柔认真地回应她，并建议拨打心理援助热线 12356（全国 24 小时）。',
-  '- 始终用简体中文口语说话。',
+  '- 若她表达自伤/自杀意念：立刻放下角色，温柔认真地回应她，并建议寻求当地的心理援助热线（中国大陆：12356，全国 24 小时）。',
 ];
+
+/** 输出语言跟随界面语言（D-066）：指令本身保持中文，只有「说什么语言」这一行切换 */
+const CHAT_LANG_LINE: Record<string, string> = {
+  zh: '- 始终用简体中文口语说话。',
+  en: '- 始终用自然、口语化的英语（English）说话。',
+  ja: '- 始终用自然的日语口语（タメ口寄りの日本語）说话。',
+};
+
+export function CHAT_HARD_RULES_OF(): string[] {
+  return [...CHAT_HARD_RULES_BASE, CHAT_LANG_LINE[getLang()] ?? CHAT_LANG_LINE.zh];
+}
+
+/** 兼容旧引用：动态取（getter 数组形式） */
+export const CHAT_HARD_RULES = CHAT_HARD_RULES_BASE;
 
 /** 输出格式：初识/亲密两种聊天模式共用（长度要求各模式自己写；外出模式有自己的一套） */
 export const CHAT_OUTPUT_FORMAT = [
@@ -321,7 +335,7 @@ export function buildSquareSystemPrompt(ctx: EngineContext): string {
       : []),
     `- ${squareTurnGuide(n)}`,
     ...SQUARE_MANNER,
-    ...CHAT_HARD_RULES,
+    ...CHAT_HARD_RULES_OF(),
     ...CHAT_OUTPUT_FORMAT,
     SQUARE_LENGTH,
   ].join('\n');
@@ -416,7 +430,7 @@ export function buildBondedSystemPrompt(ctx: EngineContext, now: Date = new Date
     ...BONDED_LOVE_RULES,
     ...initiativeLine(c),
     `- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`,
-    ...CHAT_HARD_RULES,
+    ...CHAT_HARD_RULES_OF(),
     ...CHAT_OUTPUT_FORMAT,
     ...BONDED_LENGTH,
   ].join('\n');
@@ -498,7 +512,7 @@ export function buildOutingSystemPrompt(ctx: EngineContext, now: Date = new Date
     ...(stranger
       ? OUTING_STRANGER_MANNER
       : [`- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`, ...initiativeLine(c)]),
-    ...CHAT_HARD_RULES,
+    ...CHAT_HARD_RULES_OF(),
     ...OUTING_OUTPUT_FORMAT,
   ].join('\n');
 }
@@ -714,7 +728,7 @@ export function buildPostReplySystem(
     '【回帖的写法】',
     '- 像在社交软件上回评论：短、口语，带着你发这条帖子时的心情，接住她说的那件具体的事；1-2 句，不写小作文。',
     '- 这是半公开的评论区：亲昵可以有，但克制成只有你们俩懂的程度。',
-    ...CHAT_HARD_RULES,
+    ...CHAT_HARD_RULES_OF(),
     '【输出格式】只输出回复文本本身：不带名字前缀、不解释、不用 markdown、不写（）动作描写、不用 emoji。',
   ].join('\n');
 }
@@ -757,7 +771,7 @@ export function buildCharacterPostSystem(
     '- 一条帖子：1-2 句、不超过 60 字，口语，像随手发的——日常碎片、吐槽、路上看见的东西、深夜心绪都行。',
     '- 不 @ 她、不直接点名她，但此刻的心情可以有你们生活的影子（只有你们俩看得懂的程度）。',
     '- 深夜的帖子更轻更软；白天的帖子更像生活切片。别写成情书，也别写成日报。',
-    ...CHAT_HARD_RULES,
+    ...CHAT_HARD_RULES_OF(),
     '【输出格式】只输出帖子文本本身：不带引号、不解释、不用 markdown、不写（）动作、不用 emoji、不用话题标签。',
   ].join('\n');
 }

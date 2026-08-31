@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MingCute } from '@/components/mingcute';
 import { appById, DEFAULT_DESKTOP_ORDER, wallpaperById, type DesktopApp } from '@/constants/apps';
 import { Fonts, Romance, themed } from '@/constants/theme';
+import { t } from '@/lib/i18n';
 import { tempNow, todayWeather, weatherCity } from '@/lib/weather';
 import { useAppStore, useHydrated } from '@/store/app-store';
 
@@ -75,7 +76,7 @@ function DesktopIcon({
       </View>
       {showLabel ? (
         <Text style={styles.iconLabel} numberOfLines={1}>
-          {app.label}
+          {t(app.label)}
         </Text>
       ) : null}
     </Animated.View>
@@ -91,12 +92,12 @@ function WeatherCard() {
       <Text style={styles.weatherEmoji}>{w.emoji}</Text>
       <Text style={styles.weatherTemp}>{tempNow(w)}°</Text>
       <View style={styles.weatherInfo}>
-        <Text style={styles.weatherLabel}>{w.label}</Text>
+        <Text style={styles.weatherLabel}>{t(w.label)}</Text>
         <Text style={styles.weatherRange}>
           {w.hi}° / {w.lo}°
         </Text>
         <Text style={styles.weatherLine} numberOfLines={1}>
-          {city ? `📍 ${city}` : w.line}
+          {city ? `📍 ${city}` : t(w.line)}
         </Text>
       </View>
     </Pressable>
@@ -301,7 +302,7 @@ export default function Desktop() {
             <View style={styles.notifBody}>
               <Text style={styles.notifTitle}>{topUnread.name}</Text>
               <Text style={styles.notifText} numberOfLines={1}>
-                {topUnread.unread} 条新消息 · 点开看看
+                {t('{n} 条新消息 · 点开看看', { n: topUnread.unread })}
               </Text>
             </View>
           </Pressable>
@@ -396,7 +397,7 @@ export default function Desktop() {
         <Pressable
           style={[styles.doneBtn, { bottom: insets.bottom + DOCK_H + 32 }]}
           onPress={() => setEditMode(false)}>
-          <Text style={styles.doneText}>完成</Text>
+          <Text style={styles.doneText}>{t('完成')}</Text>
         </Pressable>
       ) : null}
 
@@ -433,10 +434,10 @@ function IntroReveal() {
     <View style={styles.introMask}>
       {step === 'reveal' ? (
         <View style={styles.introCenter}>
-          <Text style={styles.introBig}>这部手机，{'\n'}现在是你们的了</Text>
-          <Text style={styles.introSub}>TA 的一切都会发生在这里</Text>
+          <Text style={styles.introBig}>{t('这部手机，')}{'\n'}{t('现在是你们的了')}</Text>
+          <Text style={styles.introSub}>{t('TA 的一切都会发生在这里')}</Text>
           <Pressable style={styles.introBtn} onPress={() => setStep(0)}>
-            <Text style={styles.introBtnText}>看看里面有什么</Text>
+            <Text style={styles.introBtnText}>{t('看看里面有什么')}</Text>
           </Pressable>
         </View>
       ) : card ? (
@@ -444,17 +445,17 @@ function IntroReveal() {
           <View style={[styles.introTile, { backgroundColor: card.bg }]}>
             <MingCute name={card.icon} size={38} color={card.fg} />
           </View>
-          <Text style={styles.introTitle}>{card.title}</Text>
-          <Text style={styles.introLine}>{card.line}</Text>
+          <Text style={styles.introTitle}>{t(card.title)}</Text>
+          <Text style={styles.introLine}>{t(card.line)}</Text>
           <Pressable
             style={styles.introBtn}
             onPress={() => (step + 1 < INTRO_CARDS.length ? setStep(step + 1) : finish())}>
             <Text style={styles.introBtnText}>
-              {step + 1 < INTRO_CARDS.length ? '下一个' : '开始吧'}
+              {step + 1 < INTRO_CARDS.length ? t('下一个') : t('开始吧')}
             </Text>
           </Pressable>
           <Pressable onPress={finish} hitSlop={8}>
-            <Text style={styles.introSkip}>跳过</Text>
+            <Text style={styles.introSkip}>{t('跳过')}</Text>
           </Pressable>
         </View>
       ) : null}

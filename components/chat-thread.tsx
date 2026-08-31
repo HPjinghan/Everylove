@@ -41,6 +41,7 @@ import { PhotoViewer, Polaroid, type ViewerShot } from '@/components/polaroid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Romance, themed } from '@/constants/theme';
 import { clockTime, voiceDuration } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { synthesizeVoice, ttsReady } from '@/lib/tts';
 import type { ChatMessage } from '@/lib/types';
 import { findCharacter } from '@/store/app-store';
@@ -132,12 +133,12 @@ function VoiceBubble({
         <Pressable onPress={() => setOpen(true)} hitSlop={6}>
           <Text style={styles.voiceHint}>
             {status === 'failed'
-              ? '语音暂时没接通 · 点这里看文字'
+              ? t('语音暂时没接通 · 点这里看文字')
               : canSpeak
                 ? status === 'loading'
-                  ? 'TA 在开嗓…'
-                  : '看文字'
-                : '轻点查看文字 · 语音占位'}
+                  ? t('TA 在开嗓…')
+                  : t('看文字')
+                : t('轻点查看文字 · 语音占位')}
           </Text>
         </Pressable>
       )}
@@ -224,14 +225,14 @@ function Bubble({
     return (
       <View style={styles.systemRow}>
         <Text style={[styles.recalledText, line && styles.recalledTextLine]}>
-          {mine ? '你撤回了一条消息' : `${name} 撤回了一条消息`}
+          {mine ? t('你撤回了一条消息') : t('{name} 撤回了一条消息', { name })}
         </Text>
       </View>
     );
   }
   const meta = line ? (
     <View style={[styles.metaCol, mine ? styles.metaColMe : styles.metaColHim]}>
-      {mine && read ? <Text style={styles.metaText}>已读</Text> : null}
+      {mine && read ? <Text style={styles.metaText}>{t('已读')}</Text> : null}
       <Text style={styles.metaText}>{clockTime(msg.at)}</Text>
     </View>
   ) : null;
@@ -251,7 +252,7 @@ function Bubble({
         style={[styles.bubble, line && styles.bubbleLine, bubbleBg]}>
         {msg.replyTo ? (
           <View style={styles.quote}>
-            <Text style={styles.quoteName}>{msg.replyTo.from === 'me' ? '你' : name}</Text>
+            <Text style={styles.quoteName}>{msg.replyTo.from === 'me' ? t('你') : name}</Text>
             <Text style={styles.quoteText} numberOfLines={1}>
               {msg.replyTo.text}
             </Text>
@@ -284,7 +285,7 @@ export function ChatThread({
   color,
   name,
   typing,
-  typingLabel = '正在输入…',
+  typingLabel,
   onSend,
   onSendImage,
   onSendVoice,
@@ -293,7 +294,7 @@ export function ChatThread({
   banner,
   cta,
   inputDisabled,
-  placeholder = '说点什么…',
+  placeholder,
   characterId,
   variant = 'default',
 }: {
@@ -363,30 +364,30 @@ export function ChatThread({
   /** 长按菜单：引用 / 撤回（自己的、24h 内）/ 删除（LINE 规则） */
   const openActions = (msg: ChatMessage) => {
     const excerpt =
-      msg.kind === 'image' ? '[照片]' : msg.kind === 'voice' ? '[语音]' : msg.text.slice(0, 24);
+      msg.kind === 'image' ? t('[照片]') : msg.kind === 'voice' ? t('[语音]') : msg.text.slice(0, 24);
     const buttons: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [];
     if (msg.kind === 'text' && msg.text) {
       buttons.push({
-        text: '引用',
+        text: t('引用'),
         onPress: () => setReplyTo({ from: msg.from, text: msg.text }),
       });
     }
     if (onRecall && msg.from === 'me' && Date.now() - msg.at <= RECALL_WINDOW_MS) {
-      buttons.push({ text: '撤回', onPress: () => onRecall(msg) });
+      buttons.push({ text: t('撤回'), onPress: () => onRecall(msg) });
     }
     if (onDelete) {
       buttons.push({
-        text: '删除',
+        text: t('删除'),
         style: 'destructive',
         onPress: () =>
-          Alert.alert('删除这条消息？', '只从你的手机上删除，不会留下痕迹。', [
-            { text: '取消', style: 'cancel' },
-            { text: '删除', style: 'destructive', onPress: () => onDelete(msg) },
+          Alert.alert(t('删除这条消息？'), t('只从你的手机上删除，不会留下痕迹。'), [
+            { text: t('取消'), style: 'cancel' },
+            { text: t('删除'), style: 'destructive', onPress: () => onDelete(msg) },
           ]),
       });
     }
     if (!buttons.length) return;
-    buttons.push({ text: '取消', style: 'cancel' });
+    buttons.push({ text: t('取消'), style: 'cancel' });
     Alert.alert(excerpt, undefined, buttons);
   };
 
@@ -406,7 +407,7 @@ export function ChatThread({
     if (!recording) {
       const perm = await AudioModule.requestRecordingPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('需要麦克风权限', '在系统设置里允许录音后再试。');
+        Alert.alert(t('需要麦克风权限'), t('在系统设置里允许录音后再试。'));
         return;
       }
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
@@ -469,7 +470,7 @@ export function ChatThread({
                   line && styles.bubbleLine,
                   { backgroundColor: line ? LINE.him : Romance.bubbleHim },
                 ]}>
-                <Text style={styles.typingText}>{typingLabel}</Text>
+                <Text style={styles.typingText}>{typingLabel ?? t('正在输入…')}</Text>
               </View>
             </View>
           ) : null
@@ -483,7 +484,7 @@ export function ChatThread({
       {replyTo ? (
         <View style={[styles.replyBar, line && styles.replyBarLine]}>
           <View style={styles.replyBody}>
-            <Text style={styles.replyName}>回复 {replyTo.from === 'me' ? '自己' : name}</Text>
+            <Text style={styles.replyName}>{t('回复')} {replyTo.from === 'me' ? t('自己') : name}</Text>
             <Text style={styles.replyText} numberOfLines={1}>
               {replyTo.text}
             </Text>
@@ -514,7 +515,7 @@ export function ChatThread({
           <View style={styles.recordingPill}>
             <View style={styles.recordingDot} />
             <Text style={styles.recordingText}>
-              录音中 0:{recordSecs.toString().padStart(2, '0')} · 再点一下发送
+              {t('录音中')} 0:{recordSecs.toString().padStart(2, '0')} · {t('再点一下发送')}
             </Text>
           </View>
         ) : (
@@ -522,7 +523,7 @@ export function ChatThread({
             style={[styles.input, line && styles.inputLine, inputDisabled && { opacity: 0.5 }]}
             value={draft}
             onChangeText={setDraft}
-            placeholder={placeholder}
+            placeholder={placeholder ?? t('说点什么…')}
             placeholderTextColor={Romance.faint}
             editable={!inputDisabled}
             onSubmitEditing={send}

@@ -10,13 +10,13 @@ import type { Session } from '@supabase/supabase-js';
 
 import { AppScreen } from '@/components/app-screen';
 import { WALLPAPERS } from '@/constants/apps';
-import { THEMES } from '@/constants/theme';
-import { Romance, themed } from '@/constants/theme';
+import { Romance, THEMES, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY, QIANFAN_MODEL } from '@/lib/engine';
 import { ensurePortrait, imageKeyReady } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
 import { authConfigured, currentSession, onAuthChange, sessionLabel, signOut } from '@/lib/auth';
+import { t } from '@/lib/i18n';
 import { slotLimitLabel } from '@/lib/bond';
 import { deleteCloudData, restoreSnapshot, uploadSnapshot } from '@/lib/sync';
 import { useAppStore } from '@/store/app-store';
@@ -139,6 +139,7 @@ export default function MeScreen() {
 
   const me = useAppStore((s) => s.me);
   const plan = useAppStore((s) => s.plan);
+  const language = useAppStore((s) => s.language);
 
   /** 模拟订阅（D-063）：点击即订/退，不扣费 */
   const subscribe = (p: 'free' | 'pro' | 'max') => {
@@ -201,9 +202,9 @@ export default function MeScreen() {
   };
 
   return (
-    <AppScreen title="设置">
+    <AppScreen title={t("设置")}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Section title="账号 · 云端">
+      <Section title={t("账号 · 云端")}>
         {!authConfigured() ? (
           <Text style={styles.footHint}>
             未配置 Supabase：在 .env.local 填 EXPO_PUBLIC_SUPABASE_URL 与
@@ -211,33 +212,46 @@ export default function MeScreen() {
           </Text>
         ) : session ? (
           <>
-            <Row label="账号" value={sessionLabel(session)} />
-            <Row label="立即备份到云端" onPress={doBackupNow} />
-            <Row label="从云端恢复到本机" onPress={doRestore} />
-            <Row label="退出登录" onPress={doSignOut} />
-            <Row label="删除云端数据" onPress={doDeleteCloud} />
-            <Text style={styles.footHint}>数据变化后会自动备份（含聊天与记忆，按最高敏感级）。</Text>
+            <Row label={t("账号")} value={sessionLabel(session)} />
+            <Row label={t("立即备份到云端")} onPress={doBackupNow} />
+            <Row label={t("从云端恢复到本机")} onPress={doRestore} />
+            <Row label={t("退出登录")} onPress={doSignOut} />
+            <Row label={t("删除云端数据")} onPress={doDeleteCloud} />
+            <Text style={styles.footHint}>{t("数据变化后会自动备份（含聊天与记忆，按最高敏感级）。")}</Text>
           </>
         ) : (
           <>
-            <Row label="登录 / 开通云端" onPress={() => router.push('/auth')} />
+            <Row label={t("登录 / 开通云端")} onPress={() => router.push('/auth')} />
             <Text style={styles.footHint}>
-              开通云端：TA 和你们的故事存进云端，换手机也不会失去。不开通也能完整游玩（数据只在本机）。
+              {t("开通云端：TA 和你们的故事存进云端，换手机也不会失去。不开通也能完整游玩（数据只在本机）。")}
             </Text>
           </>
         )}
       </Section>
 
-      <Section title="我">
-        <Row
-          label="我的身份"
-          value={me?.nickname ? `「${me.nickname}」` : '还没告诉 TA 们你是谁'}
-          onPress={() => router.push('/apps/identity')}
-        />
-        <Text style={styles.footHint}>TA 眼中的你：昵称、职业、关于你的一切。也能为单个角色使用不同身份。</Text>
+      <Section title="Language · 语言 · 言語">
+        <View style={styles.themeRow}>
+          {([['zh', '中文'], ['en', 'English'], ['ja', '日本語']] as const).map(([lg, label]) => (
+            <Pressable
+              key={lg}
+              style={[styles.engineBtn, language === lg && styles.engineBtnActive]}
+              onPress={() => useAppStore.getState().setLanguage(lg)}>
+              <Text style={[styles.engineText, language === lg && styles.engineTextActive]}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
       </Section>
 
-      <Section title="主题">
+      <Section title={t("我")}>
+        <Row
+          label={t("我的身份")}
+          value={me?.nickname ? `「${me.nickname}」` : t('还没告诉 TA 们你是谁')}
+          onPress={() => router.push('/apps/identity')}
+        />
+        <Text style={styles.footHint}>{t("TA 眼中的你：昵称、职业、关于你的一切。也能为单个角色使用不同身份。")}</Text>
+      </Section>
+
+      <Section title={t("主题")}>
         <View style={styles.themeRow}>
           {Object.entries(THEMES).map(([id, t]) => (
             <Pressable key={id} style={styles.themeItem} onPress={() => useAppStore.getState().setThemeId(id)}>
@@ -271,43 +285,43 @@ export default function MeScreen() {
             </Pressable>
           ))}
         </View>
-        <Text style={styles.footHint}>配色与壁纸即刻生效。锁屏换 TA 的照片、来电铃声：正式版开放。</Text>
+        <Text style={styles.footHint}>{t("配色与壁纸即刻生效。锁屏换 TA 的照片、来电铃声：正式版开放。")}</Text>
       </Section>
 
-      <Section title="订阅计划（试装模拟，不扣费）">
+      <Section title={t("订阅计划（试装模拟，不扣费）")}>
         <Row
-          label="当前计划"
+          label={t("当前计划")}
           value={plan === 'max' ? 'Max' : plan === 'pro' ? 'Pro' : 'Free'}
         />
-        <Row label="羁绊槽位" value={`${bonds.length}/${slotLimitLabel(plan)} · 缔结才占槽`} />
+        <Row label={t("羁绊槽位")} value={`${bonds.length}/${slotLimitLabel(plan)} · ${t("缔结才占槽")}`} />
         <Row
-          label={plan === 'pro' ? '已订阅 Pro ✓' : '订阅 Pro'}
-          value="5 个羁绊槽"
+          label={plan === 'pro' ? t('已订阅 Pro ✓') : t('订阅 Pro')}
+          value={t("5 个羁绊槽")}
           onPress={() => subscribe('pro')}
         />
         <Row
-          label={plan === 'max' ? '已订阅 Max ✓' : '订阅 Max'}
-          value="羁绊不限量"
+          label={plan === 'max' ? t('已订阅 Max ✓') : t('订阅 Max')}
+          value={t("羁绊不限量")}
           onPress={() => subscribe('max')}
         />
-        {plan !== 'free' ? <Row label="取消订阅（回 Free）" onPress={() => subscribe('free')} /> : null}
-        <Row label="Morning call" value="TA 叫你起床 · 敬请期待" dim />
-        <Row label="错过回溯" value="错过的来电与聊天回听 · 敬请期待" dim />
+        {plan !== 'free' ? <Row label={t("取消订阅（回 Free）")} onPress={() => subscribe('free')} /> : null}
+        <Row label="Morning call" value={t("TA 叫你起床 · 敬请期待")} dim />
+        <Row label={t("错过回溯")} value={t("错过的来电与聊天回听 · 敬请期待")} dim />
       </Section>
 
-      <Section title="素材开关">
-        <Row label="分享给他" value="即将上线" dim />
-        <Row label="口味偏好" value="即将上线" dim />
-        <Row label="日记本（私密）" value="即将上线" dim />
-        <Text style={styles.footHint}>开得越多，TA 越懂你。全部可随时关闭。</Text>
+      <Section title={t("素材开关")}>
+        <Row label={t("分享给他")} value={t("即将上线")} dim />
+        <Row label={t("口味偏好")} value={t("即将上线")} dim />
+        <Row label={t("日记本（私密）")} value={t("即将上线")} dim />
+        <Text style={styles.footHint}>{t("开得越多，TA 越懂你。全部可随时关闭。")}</Text>
       </Section>
 
-      <Section title="我的创作">
-        <Row label="创造的角色" value={`${customs.filter((c) => !c.shared).length} 个`} />
-        <Row label="热度 · 分成" value="敬请期待" dim />
+      <Section title={t("我的创作")}>
+        <Row label={t("创造的角色")} value={`${customs.filter((c) => !c.shared).length}`} />
+        <Row label={t("热度 · 分成")} value={t("敬请期待")} dim />
       </Section>
 
-      <Section title="开发者（试装）">
+      <Section title={t("开发者（试装）")}>
         <View style={styles.engineRow}>
           {(
             [

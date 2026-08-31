@@ -17,6 +17,7 @@ import { MingCute } from '@/components/mingcute';
 import { Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { PLACES, placeById, type Place } from '@/content/places';
+import { t } from '@/lib/i18n';
 import { todayWeather, tempNow } from '@/lib/weather';
 import { useAppStore } from '@/store/app-store';
 
@@ -46,11 +47,11 @@ export default function OutingScreen() {
 
   return (
     <AppScreen
-      title="外出"
+      title={t('外出')}
       right={
         bonds.length ? (
           <Pressable onPress={() => setPlanOpen(true)} hitSlop={8}>
-            <Text style={styles.planAction}>约 TA</Text>
+            <Text style={styles.planAction}>{t('约 TA')}</Text>
           </Pressable>
         ) : undefined
       }>
@@ -58,7 +59,7 @@ export default function OutingScreen() {
         <View style={styles.weatherStrip}>
           <Text style={styles.weatherEmoji}>{w.emoji}</Text>
           <Text style={styles.weatherText}>
-            {w.label} {tempNow(w)}° · {w.line}
+            {t(w.label)} {tempNow(w)}° · {t(w.line)}
           </Text>
         </View>
 
@@ -73,10 +74,10 @@ export default function OutingScreen() {
               style={styles.plazaBanner}>
               <Text style={styles.plazaEmoji}>{plaza.emoji}</Text>
               <View style={styles.plazaBody}>
-                <Text style={styles.plazaTitle}>{plaza.name}</Text>
-                <Text style={styles.plazaSub}>直接遇到陌生人 · {plaza.hook}</Text>
+                <Text style={styles.plazaTitle}>{t(plaza.name)}</Text>
+                <Text style={styles.plazaSub}>{t('直接遇到陌生人')} · {t(plaza.hook)}</Text>
               </View>
-              <Text style={styles.plazaGo}>去逛逛 ›</Text>
+              <Text style={styles.plazaGo}>{t('去逛逛 ›')}</Text>
             </LinearGradient>
           </Pressable>
         ) : null}
@@ -96,12 +97,12 @@ export default function OutingScreen() {
                     characterId={p.characterId}
                   />
                   <Text style={styles.planText}>
-                    和{bond.name}约在{place.emoji} {place.name}
+                    {place.emoji} {t('和{name}约在{place}', { name: bond.name, place: t(place.name) })}
                   </Text>
                   <Pressable
                     style={styles.planGo}
                     onPress={() => router.push({ pathname: '/outing/[placeId]', params: { placeId: place.id } })}>
-                    <Text style={styles.planGoText}>赴约</Text>
+                    <Text style={styles.planGoText}>{t('赴约')}</Text>
                   </Pressable>
                   <Pressable onPress={() => useAppStore.getState().removeOutingPlan(p.id)} hitSlop={8}>
                     <MingCute name="close" size={16} color={Romance.faint} />
@@ -125,13 +126,13 @@ export default function OutingScreen() {
                   <Text style={styles.cardEmoji}>{place.emoji}</Text>
                   {planBond ? (
                     <View style={styles.cardBadge}>
-                      <Text style={styles.cardBadgeText}>和{planBond.name}有约</Text>
+                      <Text style={styles.cardBadgeText}>{t('和{name}有约', { name: planBond.name })}</Text>
                     </View>
                   ) : null}
                 </LinearGradient>
-                <Text style={styles.cardName}>{place.name}</Text>
+                <Text style={styles.cardName}>{t(place.name)}</Text>
                 <Text style={styles.cardHook} numberOfLines={1}>
-                  {place.hook}
+                  {t(place.hook)}
                 </Text>
               </Pressable>
             );
@@ -140,8 +141,8 @@ export default function OutingScreen() {
 
         <Text style={styles.footHint}>
           {bonds.length
-            ? '出门走走，说不定会遇到通讯录里的人；广场上则全是新面孔。'
-            : '还没有好友也没关系——去广场碰碰运气，或先在「交友」里滑一滑。'}
+            ? t('出门走走，说不定会遇到通讯录里的人；广场上则全是新面孔。')
+            : t('还没有好友也没关系——去广场碰碰运气，或先在「交友」里滑一滑。')}
         </Text>
       </ScrollView>
 
@@ -162,7 +163,7 @@ export default function OutingScreen() {
           </Pressable>
           {!planCharacterId ? (
             <>
-              <Text style={styles.modalTitle}>约谁出来？</Text>
+              <Text style={styles.modalTitle}>{t('约谁出来？')}</Text>
               {bonds.map((b) => (
                 <Pressable
                   key={b.id}
@@ -180,13 +181,13 @@ export default function OutingScreen() {
             </>
           ) : (
             <>
-              <Text style={styles.modalTitle}>去哪儿见？</Text>
+              <Text style={styles.modalTitle}>{t('去哪儿见？')}</Text>
               {spots.map((place) => (
                 <Pressable key={place.id} style={styles.modalRow} onPress={() => makePlan(place.id)}>
                   <Text style={styles.modalRowEmoji}>{place.emoji}</Text>
                   <View style={styles.modalRowBody}>
-                    <Text style={styles.modalRowText}>{place.name}</Text>
-                    <Text style={styles.modalRowSub}>{place.hook}</Text>
+                    <Text style={styles.modalRowText}>{t(place.name)}</Text>
+                    <Text style={styles.modalRowSub}>{t(place.hook)}</Text>
                   </View>
                 </Pressable>
               ))}

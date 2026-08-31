@@ -10,17 +10,18 @@ import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { Romance, themed } from '@/constants/theme';
 import { clockTime, timeAgo } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import type { Bond } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
 function preview(b: Bond): string {
   const last = b.messages[b.messages.length - 1];
   if (!last) return '……';
-  if (last.recalled) return last.from === 'me' ? '你撤回了一条消息' : '对方撤回了一条消息';
-  if (last.kind === 'voice') return '▶ 语音消息';
-  if (last.kind === 'image') return '[照片]';
+  if (last.recalled) return last.from === 'me' ? t('你撤回了一条消息') : t('对方撤回了一条消息');
+  if (last.kind === 'voice') return t('▶ 语音消息');
+  if (last.kind === 'image') return t('[照片]');
   if (last.kind === 'system') return last.text;
-  return (last.from === 'me' ? '你：' : '') + last.text;
+  return (last.from === 'me' ? t('你：') : '') + last.text;
 }
 
 function timeLabel(b: Bond): string {
@@ -34,7 +35,7 @@ function arrivalPill(b: Bond): string | null {
   if (!b.arrivalAt || b.arrivalAt <= Date.now()) return null;
   const arrival = new Date(b.arrivalAt);
   const today = arrival.toDateString() === new Date().toDateString();
-  return today ? '今晚 20:00 来找你' : '明晚 20:00 来找你';
+  return today ? t('今晚 20:00 来找你') : t('明晚 20:00 来找你');
 }
 
 export default function MessagesScreen() {
@@ -47,10 +48,10 @@ export default function MessagesScreen() {
         <View style={styles.empty}>
           <Text style={styles.emptyHeart}>♡</Text>
           <Text style={styles.emptyText}>
-            交友里聊得来的人，{'\n'}交换联系方式后就会住进这里。
+            {t('交友里聊得来的人，\n交换联系方式后就会住进这里。')}
           </Text>
           <Pressable style={styles.emptyBtn} onPress={() => router.push('/apps/dating')}>
-            <Text style={styles.emptyBtnText}>去交友滑一滑</Text>
+            <Text style={styles.emptyBtnText}>{t('去交友滑一滑')}</Text>
           </Pressable>
         </View>
       ) : (

@@ -25,6 +25,7 @@ import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
+import { t } from '@/lib/i18n';
 import type { UserProfile } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
@@ -58,7 +59,7 @@ function Field({
         style={[styles.input, multiline && styles.inputMulti]}
         value={value}
         onChangeText={onChange}
-        placeholder={placeholder ?? '可不填'}
+        placeholder={placeholder ?? t('可不填')}
         placeholderTextColor={Romance.faint}
         multiline={multiline}
       />
@@ -94,7 +95,7 @@ export default function IdentityScreen() {
 
   const save = () => {
     if (!draft.nickname.trim()) {
-      Alert.alert('昵称不能为空', '这是角色看到的名字。');
+      Alert.alert(t('昵称不能为空'), t('这是角色看到的名字。'));
       return;
     }
     const clean: UserProfile = { ...draft, nickname: draft.nickname.trim() };
@@ -103,16 +104,16 @@ export default function IdentityScreen() {
     } else {
       useAppStore.getState().setMe(clean);
     }
-    Alert.alert('已保存', characterId ? `${forCharacter?.name ?? 'TA'}眼中的你已更新。` : 'TA 们眼中的你已更新。');
+    Alert.alert(t('已保存'), characterId ? t('{name}眼中的你已更新。', { name: forCharacter?.name ?? 'TA' }) : t('TA 们眼中的你已更新。'));
     router.back();
   };
 
   const restoreDefault = () => {
     if (!characterId) return;
-    Alert.alert('恢复默认身份', `${forCharacter?.name ?? '这个角色'}将改用你的默认身份。`, [
-      { text: '取消', style: 'cancel' },
+    Alert.alert(t('恢复默认身份'), t('{name}将改用你的默认身份。', { name: forCharacter?.name ?? t('这个角色') }), [
+      { text: t('取消'), style: 'cancel' },
       {
-        text: '恢复',
+        text: t('恢复'),
         onPress: () => {
           useAppStore.getState().setMeForCharacter(characterId, undefined);
           router.back();
@@ -125,12 +126,12 @@ export default function IdentityScreen() {
     [...customs, ...CHARACTERS].find((c) => c.id === cid)?.color ?? Romance.accent;
 
   return (
-    <AppScreen title={forCharacter ? `对${forCharacter.name}的身份` : '我的身份'}>
+    <AppScreen title={forCharacter ? t('对{name}的身份', { name: forCharacter.name }) : t('我的身份')}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {forCharacter ? (
             <Text style={styles.scopeHint}>
-              这份身份只有{forCharacter.name}看得到；其他角色仍用默认身份。
+              {t('这份身份只有{name}看得到；其他角色仍用默认身份。', { name: forCharacter.name })}
             </Text>
           ) : null}
 
@@ -139,22 +140,22 @@ export default function IdentityScreen() {
               <Image source={{ uri: draft.avatarUri }} style={styles.avatar} contentFit="cover" />
             ) : (
               <View style={[styles.avatar, styles.avatarEmpty]}>
-                <Text style={styles.avatarEmptyText}>{draft.nickname.trim().slice(0, 1) || '我'}</Text>
+                <Text style={styles.avatarEmptyText}>{draft.nickname.trim().slice(0, 1) || t('我')}</Text>
               </View>
             )}
-            <Text style={styles.avatarAction}>{draft.avatarUri ? '更换头像' : '选一张头像'}</Text>
+            <Text style={styles.avatarAction}>{draft.avatarUri ? t('更换头像') : t('选一张头像')}</Text>
           </Pressable>
 
           <Field
-            label="昵称 *"
-            hint="角色看到的名字"
+            label={t('昵称 *')}
+            hint={t('角色看到的名字')}
             value={draft.nickname}
             onChange={(t) => patch({ nickname: t })}
-            placeholder="必填"
+            placeholder={t('必填')}
           />
 
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>性别</Text>
+            <Text style={styles.fieldLabel}>{t('性别')}</Text>
             <View style={styles.chips}>
               {GENDERS.map((g) => {
                 const active = (draft.gender ?? 'unspecified') === g.key;
@@ -163,7 +164,7 @@ export default function IdentityScreen() {
                     key={g.key}
                     style={[styles.chip, active && styles.chipActive]}
                     onPress={() => patch({ gender: g.key })}>
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{g.label}</Text>
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(g.label)}</Text>
                   </Pressable>
                 );
               })}
@@ -171,67 +172,67 @@ export default function IdentityScreen() {
           </View>
 
           <Field
-            label="称呼 / 代词"
+            label={t('称呼 / 代词')}
             value={draft.pronoun ?? ''}
             onChange={(t) => patch({ pronoun: t })}
           />
           <Field
-            label="职业"
-            hint="角色必须稳定记住的职业"
+            label={t('职业')}
+            hint={t('角色必须稳定记住的职业')}
             value={draft.occupation ?? ''}
             onChange={(t) => patch({ occupation: t })}
           />
           <Field
-            label="情感取向"
-            hint="例如：喜欢女生"
+            label={t('情感取向')}
+            hint={t('例如：喜欢女生')}
             value={draft.orientation ?? ''}
             onChange={(t) => patch({ orientation: t })}
           />
           <Field
-            label="个性签名"
-            hint="一句现在的状态"
+            label={t('个性签名')}
+            hint={t('一句现在的状态')}
             value={draft.signature ?? ''}
             onChange={(t) => patch({ signature: t })}
           />
 
-          <Text style={styles.sectionTitle}>完整设定</Text>
+          <Text style={styles.sectionTitle}>{t('完整设定')}</Text>
           <Field
-            label="背景"
-            hint="成长背景、家庭或当前生活背景等稳定事实"
+            label={t('背景')}
+            hint={t('成长背景、家庭或当前生活背景等稳定事实')}
             value={draft.background ?? ''}
             onChange={(t) => patch({ background: t })}
             multiline
           />
           <Field
-            label="关于我"
-            hint="身份、经历、性格、兴趣，以及希望角色记住的事实"
+            label={t('关于我')}
+            hint={t('身份、经历、性格、兴趣，以及希望角色记住的事实')}
             value={draft.about ?? ''}
             onChange={(t) => patch({ about: t })}
             multiline
           />
           <Field
-            label="我的边界"
-            hint="不希望角色替你决定、猜测或触碰的内容"
+            label={t('我的边界')}
+            hint={t('不希望角色替你决定、猜测或触碰的内容')}
             value={draft.boundaries ?? ''}
             onChange={(t) => patch({ boundaries: t })}
             multiline
           />
 
           <Pressable style={styles.saveBtn} onPress={save}>
-            <Text style={styles.saveBtnText}>保存</Text>
+            <Text style={styles.saveBtnText}>{t('保存')}</Text>
           </Pressable>
 
           {characterId ? (
             meByCharacter[characterId] ? (
               <Pressable style={styles.restoreBtn} onPress={restoreDefault}>
-                <Text style={styles.restoreBtnText}>恢复使用默认身份</Text>
+                <Text style={styles.restoreBtnText}>{t('恢复使用默认身份')}</Text>
               </Pressable>
             ) : null
           ) : bonds.length ? (
             <View style={styles.perChar}>
-              <Text style={styles.sectionTitle}>为单个角色使用不同身份</Text>
+              <Text style={styles.sectionTitle}>{t('为单个角色使用不同身份')}</Text>
               <Text style={styles.fieldHint}>
-                想在某个 TA 面前换一种活法？给 TA 一份独立的身份。
+                {t('想在某个 TA 面前换一种活法？给 TA 一份独立的身份。')}
               </Text>
               {bonds.map((b) => (
                 <Pressable
@@ -250,8 +251,8 @@ export default function IdentityScreen() {
                     <Text style={styles.charRowName}>{b.name}</Text>
                     <Text style={styles.charRowSub}>
                       {meByCharacter[b.characterId]
-                        ? `独立身份 ·「${meByCharacter[b.characterId].nickname}」`
-                        : '使用默认身份'}
+                        ? t('独立身份 ·「{n}」', { n: meByCharacter[b.characterId].nickname })
+                        : t('使用默认身份')}
                     </Text>
                   </View>
                 </Pressable>

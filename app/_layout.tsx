@@ -8,10 +8,11 @@ import 'react-native-reanimated';
 
 import { applyThemeColors, Romance } from '@/constants/theme';
 import { authConfigured } from '@/lib/auth';
+import { setLang } from '@/lib/i18n';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { deliverDuePosts } from '@/lib/posts';
 import { initCloudSync } from '@/lib/sync';
-import { initWeather } from '@/lib/weather';
+import { initWeather, refreshWeather } from '@/lib/weather';
 import '@/lib/notifications';
 import { useAppStore, useHydrated } from '@/store/app-store';
 
@@ -23,9 +24,13 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const hydrated = useHydrated();
-  // 主题（D-030）：水合即应用；切换时导航主题按新 Romance 重建，key 重挂载全树让 themed() 样式生效
+  // 主题（D-030）与语言（D-066）：水合即应用；切换时 key 重挂载全树让 themed()/t() 生效
   const themeId = useAppStore((s) => s.themeId);
-  if (hydrated) applyThemeColors(themeId);
+  const language = useAppStore((s) => s.language);
+  if (hydrated) {
+    applyThemeColors(themeId);
+    setLang(language);
+  }
   const theme = {
     ...DefaultTheme,
     colors: {
@@ -59,13 +64,14 @@ export default function RootLayout() {
       if (s === 'active') {
         deliverDueHeartbeats();
         void deliverDuePosts();
+        void refreshWeather();
       }
     });
     return () => sub.remove();
   }, []);
 
   return (
-    <ThemeProvider key={themeId} value={theme}>
+    <ThemeProvider key={`${themeId}-${language}`} value={theme}>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Romance.bg } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: 'fade' }} />
