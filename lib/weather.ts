@@ -1,8 +1,31 @@
 /**
- * 世界天气（D-036）：无后端，按日期种子的确定性天气——同一天所有界面看到同一个天。
- * 用途：桌面大天气卡；外出模块的场景氛围（进外出模式 prompt）。
+ * 世界天气（D-036/D-061）：无后端，按「日期 + 城市」种子的确定性天气——同一天同一地，处处一致。
+ * 城市来自定位（反地理编码）或用户手输（app/weather.tsx），只作种子与展示，不外传。
+ * 用途：桌面大天气卡（可点开详情）；外出模块的场景氛围（进外出模式 prompt）。
  * 正式版可换成真实天气 API（接口保持 todayWeather() 不变）。
  */
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const CITY_KEY = 'everylove-weather-city';
+let citySeed = '';
+
+/** 当前城市（空 = 未设置） */
+export function weatherCity(): string {
+  return citySeed;
+}
+
+export function setWeatherCity(city: string): void {
+  citySeed = city.trim();
+  void AsyncStorage.setItem(CITY_KEY, citySeed).catch(() => {});
+}
+
+/** 启动时恢复城市设置（app/_layout.tsx 调一次） */
+export async function initWeather(): Promise<void> {
+  try {
+    citySeed = (await AsyncStorage.getItem(CITY_KEY)) ?? '';
+  } catch {}
+}
 
 export interface DayWeather {
   id: 'sunny' | 'cloudy' | 'overcast' | 'rain' | 'storm' | 'snow' | 'windy';
@@ -56,9 +79,9 @@ function hash(s: string): number {
   return Math.abs(h);
 }
 
-/** 某一天的天气（确定性：同一天怎么看都是同一个天） */
+/** 某一天的天气（确定性：同一天 + 同一城市，怎么看都是同一个天） */
 export function weatherFor(date: Date): DayWeather {
-  const key = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+  const key = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}-${citySeed}`;
   const m = MONTHS[date.getMonth()];
   const h = hash(key);
   const cond = m.pool[h % m.pool.length];

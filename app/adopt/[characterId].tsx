@@ -23,6 +23,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CharAvatar } from '@/components/char-avatar';
 import { scriptFor } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
+import { authConfigured, currentSession } from '@/lib/auth';
+import { slotLimit, slotLimitLabel } from '@/lib/bond';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
 type Step = 'slot' | 'names' | 'ceremony';
@@ -33,6 +35,7 @@ export default function AdoptScreen() {
   const router = useRouter();
   const character = findCharacter(characterId);
   const bonds = useAppStore((s) => s.bonds);
+  const plan = useAppStore((s) => s.plan);
 
   const [step, setStep] = useState<Step>('slot');
   const [hisName, setHisName] = useState(character?.name ?? '');
@@ -43,17 +46,24 @@ export default function AdoptScreen() {
   if (!character) return <Redirect href="/" />;
 
   const script = scriptFor(character);
-  // 缔结即占槽（D-052）：自创与官方一视同仁——「心动中」的暧昧期不占，确定关系才占
-  const slotFree = bonds.length === 0;
+  // 缔结即占槽（D-052）；槽位上限随订阅计划（D-063）：free 1 / pro 5 / max 不限
+  const slotFree = bonds.length < slotLimit(plan);
   const finalNickname = (customNickname.trim() || nickname).trim();
 
-  const finish = () => {
+  const finish = async () => {
+    // 强制登录判定（D-062）：这是不是第一次把人添加进通讯录
+    const s = useAppStore.getState();
+    const hadContacts = s.bonds.length > 0 || s.customCharacters.some((c) => !c.shared);
     useAppStore.getState().createBond({
       characterId: character.id,
       name: hisName.trim() || character.name,
       nickname: finalNickname || '你',
       birthday: birthday.trim() || undefined,
     });
+    if (!hadContacts && authConfigured() && !(await currentSession())) {
+      router.replace({ pathname: '/auth', params: { force: '1' } });
+      return;
+    }
     // 方案 B（D-058）：缔结后落桌面——首次会揭幕，TA 的第一句话在未读横幅里等她
     router.replace('/');
   };
@@ -78,7 +88,11 @@ export default function AdoptScreen() {
             {slotFree ? (
               <>
                 <View style={styles.slotCard}>
-                  <Text style={styles.slotFree}>首个羁绊 · 免费</Text>
+                  <Text style={styles.slotFree}>
+                    {bonds.length === 0
+                      ? '首个羁绊 · 免费'
+                      : `羁绊槽位 ${bonds.length + 1}/${slotLimitLabel(plan)}`}
+                  </Text>
                   <Text style={styles.slotDesc}>
                     交换之后 TA 会搬进你的消息里，{'\n'}随时都在，随时都回。
                   </Text>
@@ -90,9 +104,18 @@ export default function AdoptScreen() {
             ) : (
               <>
                 <View style={styles.slotCard}>
-                  <Text style={styles.slotFull}>羁绊槽位已满 · {bonds.length}/1</Text>
-                  <Text style={styles.slotDesc}>加槽将在正式版开放。</Text>
+                  <Text style={styles.slotFull}>
+                    羁绊槽位已满 · {bonds.length}/{slotLimitLabel(plan)}
+                  </Text>
+                  <Text style={styles.slotDesc}>
+                    开通 Pro（5 个槽）或 Max（不限量）解锁更多羁绊{'\n'}设置 → 订阅计划
+                  </Text>
                 </View>
+                <Pressable
+                  style={styles.primaryBtn}
+                  onPress={() => router.push('/apps/settings')}>
+                  <Text style={styles.primaryBtnText}>去看订阅</Text>
+                </Pressable>
                 <Pressable style={styles.secondaryBtn} onPress={() => router.back()}>
                   <Text style={styles.secondaryBtnText}>先回去聊聊</Text>
                 </Pressable>

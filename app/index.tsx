@@ -29,7 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MingCute } from '@/components/mingcute';
 import { appById, DEFAULT_DESKTOP_ORDER, wallpaperById, type DesktopApp } from '@/constants/apps';
 import { Fonts, Romance, themed } from '@/constants/theme';
-import { tempNow, todayWeather } from '@/lib/weather';
+import { tempNow, todayWeather, weatherCity } from '@/lib/weather';
 import { useAppStore, useHydrated } from '@/store/app-store';
 
 const COLS = 4;
@@ -83,9 +83,11 @@ function DesktopIcon({
 }
 
 function WeatherCard() {
+  const router = useRouter();
   const w = todayWeather();
+  const city = weatherCity();
   return (
-    <View style={styles.weather}>
+    <Pressable style={styles.weather} onPress={() => router.push('/weather')}>
       <Text style={styles.weatherEmoji}>{w.emoji}</Text>
       <Text style={styles.weatherTemp}>{tempNow(w)}°</Text>
       <View style={styles.weatherInfo}>
@@ -94,10 +96,10 @@ function WeatherCard() {
           {w.hi}° / {w.lo}°
         </Text>
         <Text style={styles.weatherLine} numberOfLines={1}>
-          {w.line}
+          {city ? `📍 ${city}` : w.line}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

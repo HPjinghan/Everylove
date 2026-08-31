@@ -37,8 +37,8 @@ export const DESKTOP_APPS: DesktopApp[] = [
 
 export const DEFAULT_DESKTOP_ORDER = DESKTOP_APPS.map((a) => a.id);
 
-/** 底部 Dock 默认的 4 个 App（D-044）：编辑模式可拖入拖出，最多 4 个，不随（未来的）翻页滑动 */
-export const DEFAULT_DOCK = ['messages', 'dating', 'outing', 'settings'];
+/** 底部 Dock 默认（D-044/D-064 收窄为两个）：编辑模式可拖入拖出，上限仍是 4 个 */
+export const DEFAULT_DOCK = ['contacts', 'settings'];
 
 export function appById(id: string): DesktopApp | undefined {
   return DESKTOP_APPS.find((a) => a.id === id);

@@ -50,6 +50,11 @@ interface AppState {
   squareChats: Record<string, SquareChat>;
   bonds: Bond[];
   customCharacters: Character[];
+  /** 共享角色池缓存（D-060）：别人公开的角色（本地缓存，lib/pool.ts 定时刷新） */
+  sharedPool: Character[];
+  sharedPoolAt: number;
+  /** 订阅计划（D-063 试装模拟）：free 1 槽 / pro 5 槽 / max 不限 */
+  plan: 'free' | 'pro' | 'max';
   posts: Post[];
   /** 角色立绘（本机文件 URI），按角色 id；作为后续所有生图的参考图（D-019） */
   portraits: Record<string, string>;
@@ -123,6 +128,8 @@ interface AppState {
   /** TA 的回帖（D-053）：文本由调用方生成（模型或台词库回落），可多次回复 */
   addHisReply: (postId: string, text: string) => void;
   addCustomCharacter: (c: Character) => void;
+  setSharedPool: (chars: Character[]) => void;
+  setPlan: (p: 'free' | 'pro' | 'max') => void;
   /** 编辑已创建的角色（D-050）：原位更新；同名的羁绊备注跟着改 */
   updateCustomCharacter: (c: Character) => void;
   setPortrait: (characterId: string, uri: string) => void;
@@ -164,6 +171,9 @@ const initialData = {
   squareChats: {} as Record<string, SquareChat>,
   bonds: [] as Bond[],
   customCharacters: [] as Character[],
+  sharedPool: [] as Character[],
+  sharedPoolAt: 0,
+  plan: 'free' as 'free' | 'pro' | 'max',
   posts: [] as Post[],
   portraits: {} as Record<string, string>,
   desktopOrder: [] as string[],
@@ -230,8 +240,8 @@ export const useAppStore = create<AppState>()(
         const { squareChats, customCharacters } = get();
         const now = Date.now();
         const existing = squareChats[characterId];
-        // 你创造的 TA 不会忘记你（D-052）：自创角色的暧昧期不过期，免费层天花板由初识分寸承担
-        const isOwnCreation = customCharacters.some((c) => c.id === characterId);
+        // 你创造的 TA 不会忘记你（D-052）：自创角色的暧昧期不过期（共享池领来的不算，照常过期）
+        const isOwnCreation = customCharacters.some((c) => c.id === characterId && !c.shared);
         if (existing && !isOwnCreation && now - existing.lastActiveAt > SQUARE_CHAT_TTL_MS) {
           set({
             squareChats: {
@@ -291,8 +301,13 @@ export const useAppStore = create<AppState>()(
         const state = get();
         const character =
           CHARACTERS.find((c) => c.id === characterId) ??
-          state.customCharacters.find((c) => c.id === characterId);
+          state.customCharacters.find((c) => c.id === characterId) ??
+          state.sharedPool.find((c) => c.id === characterId);
         if (!character) return '';
+        // 领养快照制（§5/D-060）：共享池角色缔结时快照进本地——创作者更新不改写已领养实例
+        if (character.shared && !state.customCharacters.some((c) => c.id === characterId)) {
+          set({ customCharacters: [...state.customCharacters, { ...character }] });
+        }
         const script = scriptFor(character);
         const now = Date.now();
 
@@ -495,6 +510,8 @@ export const useAppStore = create<AppState>()(
         }),
 
       addCustomCharacter: (c) => set({ customCharacters: [...get().customCharacters, c] }),
+      setSharedPool: (chars) => set({ sharedPool: chars, sharedPoolAt: Date.now() }),
+      setPlan: (p) => set({ plan: p }),
       updateCustomCharacter: (c) => {
         const prev = get().customCharacters.find((x) => x.id === c.id);
         set({
@@ -664,10 +681,11 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'everylove-store',
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => AsyncStorage),
       // v2：种子角色改版（陆隽行下架、人外上新），清掉指向已删除角色的数据
       // v3：新手流标记（D-058）——已有存档的老用户不重走新手流
+      // v4：Dock 默认收窄为通讯录+设置（D-064）——仍是旧默认的存档跟随新默认
       migrate: (persisted: unknown, version) => {
         const state = persisted as Partial<AppState> | undefined;
         if (!state) return state;
@@ -685,6 +703,12 @@ export const useAppStore = create<AppState>()(
           state.introDone = true;
           state.introRevealSeen = true;
         }
+        if (version < 4) {
+          const oldDefault = ['messages', 'dating', 'outing', 'settings'];
+          if (JSON.stringify(state.desktopDock ?? []) === JSON.stringify(oldDefault)) {
+            state.desktopDock = DEFAULT_DOCK;
+          }
+        }
         return state;
       },
     }
@@ -699,9 +723,11 @@ export function useHydrated() {
 }
 
 export function findCharacter(id: string): Character | undefined {
+  const s = useAppStore.getState();
   return (
     CHARACTERS.find((c) => c.id === id) ??
-    useAppStore.getState().customCharacters.find((c) => c.id === id)
+    s.customCharacters.find((c) => c.id === id) ??
+    s.sharedPool.find((c) => c.id === id)
   );
 }
 

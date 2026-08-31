@@ -69,6 +69,10 @@ export interface Character {
   teaser?: boolean;
   /** 用户在捏＋里创建的 */
   custom?: boolean;
+  /** 可见性（D-060）：public 会上传共享角色池，别人也能滑到；缺省 = private */
+  visibility?: 'private' | 'public';
+  /** 来自共享角色池（别人创建的，D-060）：不算「你的创作」，配对可过期；缔结时快照进本地 */
+  shared?: boolean;
 }
 
 /**

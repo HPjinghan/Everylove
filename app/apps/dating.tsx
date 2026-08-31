@@ -30,6 +30,7 @@ import { MingCute } from '@/components/mingcute';
 import { CHARACTERS } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
 import { heatLabel } from '@/lib/format';
+import { refreshSharedPool } from '@/lib/pool';
 import { hasFreshSupply, rankDeck } from '@/lib/recommend';
 import type { Character, LovePref } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
@@ -76,7 +77,8 @@ function DeckCard({ c, compact }: { c: Character; compact?: boolean }) {
         <View style={styles.heatRow}>
           <MingCute name="fire" size={13} color="#FF9A5C" />
           <Text style={styles.heatText}>{heatLabel(c.adoptedCount)}</Text>
-          {c.custom ? <Text style={styles.mineTag}>你的创作</Text> : null}
+          {c.custom && !c.shared ? <Text style={styles.mineTag}>你的创作</Text> : null}
+          {c.shared ? <Text style={styles.mineTag}>来自其他玩家</Text> : null}
         </View>
       </LinearGradient>
     </View>
@@ -92,6 +94,12 @@ export default function DatingScreen() {
   const datingPasses = useAppStore((s) => s.datingPasses);
   const view = useAppStore((s) => s.datingView);
   const introDone = useAppStore((s) => s.introDone);
+  const sharedPool = useAppStore((s) => s.sharedPool);
+
+  // 共享角色池（D-060）：进交友时刷新一次（5 分钟节流，离线用缓存）
+  useEffect(() => {
+    void refreshSharedPool();
+  }, []);
 
   // 新手流逃生门（D-058）：不想滑了也放行桌面
   const escapeIntro = () => {
@@ -110,8 +118,10 @@ export default function DatingScreen() {
   // 顺序走推荐算法（D-041）：口味 / 热度 / 新面孔 / 自创 / 每日轮换 / 略过冷却。
   // 冷却只在供给充足时生效（D-042）：全池都被略过时忽略冷却直接回流，不用等 3 天。
   const { deck, poolCount } = useMemo(() => {
-    // 偏好过滤（D-049）：口味不再只是排序加权，而是直接筛（「都可以」看全部）
-    const pool = [...customs, ...CHARACTERS].filter(
+    // 偏好过滤（D-049）：口味不再只是排序加权，而是直接筛（「都可以」看全部）；
+    // 共享池（D-060）：别人公开的角色合入同一池、同一套打分（本地已有同 id 的不重复）
+    const remote = sharedPool.filter((c) => !customs.some((x) => x.id === c.id));
+    const pool = [...customs, ...CHARACTERS, ...remote].filter(
       (c) =>
         !c.teaser &&
         !bondedIds.has(c.id) &&
@@ -128,7 +138,7 @@ export default function DatingScreen() {
       }),
       poolCount: pool.length,
     };
-  }, [customs, bondedIds, squareChats, swipedIds, lovePref, datingPasses]);
+  }, [customs, sharedPool, bondedIds, squareChats, swipedIds, lovePref, datingPasses]);
 
   // 全划完自动回流（D-042）：本次全滑过但池子还有人 → 重开一轮，不出空牌堆
   useEffect(() => {
@@ -139,15 +149,17 @@ export default function DatingScreen() {
   const next = deck[1];
 
   // 配对列表：配过对、还没加好友的（3 天不聊会过期）。
-  // 自己创造的「心动中」不在这里——TA 们住在通讯录（D-052）。
+  // 自己创造的「心动中」不在这里——TA 们住在通讯录（D-052）；共享池的配对正常显示（D-060）。
   const matches = useMemo(
     () =>
       Object.values(squareChats)
         .filter((chat) => !bondedIds.has(chat.characterId))
         .sort((a, b) => b.lastActiveAt - a.lastActiveAt)
-        .map((chat) => [...customs, ...CHARACTERS].find((c) => c.id === chat.characterId))
-        .filter((c): c is Character => Boolean(c) && !c!.custom),
-    [squareChats, bondedIds, customs]
+        .map((chat) =>
+          [...customs, ...CHARACTERS, ...sharedPool].find((c) => c.id === chat.characterId)
+        )
+        .filter((c): c is Character => Boolean(c) && !(c!.custom && !c!.shared)),
+    [squareChats, bondedIds, customs, sharedPool]
   );
 
   const completeSwipe = (c: Character, liked: boolean) => {
@@ -301,7 +313,7 @@ export default function DatingScreen() {
               <Text style={styles.emptyText}>这里的人都被你聊完了。</Text>
             </View>
           ) : (
-            <Text style={styles.gridHint}>点一下卡片 = 心动——TA 一定会同意</Text>
+            <Text style={styles.gridHint}>点一下卡片 = 心动</Text>
           )}
         </ScrollView>
       ) : (
@@ -351,7 +363,7 @@ export default function DatingScreen() {
               <MingCute name="heart" size={30} color="#FFFFFF" />
             </Pressable>
           </View>
-          <Text style={styles.footHint}>左滑略过 · 右滑心动——TA 一定会同意</Text>
+          <Text style={styles.footHint}>左滑略过 · 右滑心动</Text>
         </View>
       ) : null}
 

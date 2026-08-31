@@ -21,8 +21,8 @@ export default function ContactsScreen() {
   const squareChats = useAppStore((s) => s.squareChats);
 
   const bondedIds = new Set(bonds.map((b) => b.characterId));
-  // 心动中（D-052）：你创造的、还没确定关系的 TA
-  const crushes = customs.filter((c) => !bondedIds.has(c.id));
+  // 心动中（D-052）：你创造的、还没确定关系的 TA（共享池快照不算你的创作，D-060）
+  const crushes = customs.filter((c) => !bondedIds.has(c.id) && !c.shared);
 
   const sections = [
     {

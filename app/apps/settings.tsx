@@ -16,17 +16,9 @@ import { CHARACTERS } from '@/content/characters';
 import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY, QIANFAN_MODEL } from '@/lib/engine';
 import { ensurePortrait, imageKeyReady } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
-import {
-  authConfigured,
-  currentSession,
-  onAuthChange,
-  sendEmailOtp,
-  sessionLabel,
-  signInWithApple,
-  signOut,
-  verifyEmailOtp,
-} from '@/lib/auth';
-import { deleteCloudData, reconcileNow, restoreSnapshot, uploadSnapshot } from '@/lib/sync';
+import { authConfigured, currentSession, onAuthChange, sessionLabel, signOut } from '@/lib/auth';
+import { slotLimitLabel } from '@/lib/bond';
+import { deleteCloudData, restoreSnapshot, uploadSnapshot } from '@/lib/sync';
 import { useAppStore } from '@/store/app-store';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -146,77 +138,26 @@ export default function MeScreen() {
   };
 
   const me = useAppStore((s) => s.me);
+  const plan = useAppStore((s) => s.plan);
 
-  /* ── 账号 · 云端（D-054）：登录只为云备份，游客照玩 ── */
+  /** 模拟订阅（D-063）：点击即订/退，不扣费 */
+  const subscribe = (p: 'free' | 'pro' | 'max') => {
+    if (p === plan) return;
+    const label = p === 'max' ? 'Max：羁绊不限量' : p === 'pro' ? 'Pro：5 个羁绊槽' : 'Free：1 个羁绊槽';
+    Alert.alert(p === 'free' ? '取消订阅' : '订阅（试装模拟，不扣费）', label, [
+      { text: '取消', style: 'cancel' },
+      { text: p === 'free' ? '确认取消' : '订阅', onPress: () => useAppStore.getState().setPlan(p) },
+    ]);
+  };
+
+  /* ── 账号 · 云端（D-054/D-062）：登录在独立界面 /auth，这里只做入口与管理 ── */
   const [session, setSession] = useState<Session | null>(null);
-  const [authEmail, setAuthEmail] = useState('');
-  const [authOtp, setAuthOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [authBusy, setAuthBusy] = useState(false);
 
   useEffect(() => {
     if (!authConfigured()) return;
     currentSession().then(setSession);
     return onAuthChange(setSession);
   }, []);
-
-  /** 登录成功后：自动对账（云端为主，D-057）——云端较新拉云端，本地有改动推本地 */
-  const afterLogin = async () => {
-    const r = await reconcileNow();
-    Alert.alert(
-      '云端已开通',
-      r === 'pulled'
-        ? '云端数据较新，已恢复到这台手机。'
-        : '当前数据已同步到云端。之后数据自动存云端，本机是缓存。'
-    );
-  };
-
-  const doApple = async () => {
-    if (authBusy) return;
-    setAuthBusy(true);
-    try {
-      await signInWithApple();
-      await afterLogin();
-    } catch (e) {
-      const err = e as { code?: string; message?: string };
-      if (err.code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('Apple 登录失败', err.message ?? '稍后再试。');
-      }
-    } finally {
-      setAuthBusy(false);
-    }
-  };
-
-  const doSendOtp = async () => {
-    const email = authEmail.trim();
-    if (!email || authBusy) return;
-    setAuthBusy(true);
-    try {
-      await sendEmailOtp(email);
-      setOtpSent(true);
-      Alert.alert('验证码已发出', '去邮箱看看（也翻翻垃圾箱）。');
-    } catch (e) {
-      Alert.alert('发送失败', (e as Error).message ?? '稍后再试。');
-    } finally {
-      setAuthBusy(false);
-    }
-  };
-
-  const doVerifyOtp = async () => {
-    const code = authOtp.trim();
-    if (!code || authBusy) return;
-    setAuthBusy(true);
-    try {
-      await verifyEmailOtp(authEmail.trim(), code);
-      setOtpSent(false);
-      setAuthOtp('');
-      await afterLogin();
-    } catch (e) {
-      Alert.alert('验证失败', (e as Error).message ?? '检查验证码是否正确或已过期。');
-    } finally {
-      setAuthBusy(false);
-    }
-  };
 
   const doBackupNow = async () => {
     const r = await uploadSnapshot();
@@ -279,35 +220,9 @@ export default function MeScreen() {
           </>
         ) : (
           <>
-            <Row label={authBusy ? '连接中…' : ' 用 Apple 登录'} onPress={doApple} />
-            <TextInput
-              style={styles.keyInput}
-              value={authEmail}
-              onChangeText={setAuthEmail}
-              placeholder="或用邮箱：填邮箱收验证码"
-              placeholderTextColor={Romance.faint}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-            />
-            {otpSent ? (
-              <TextInput
-                style={styles.keyInput}
-                value={authOtp}
-                onChangeText={setAuthOtp}
-                placeholder="输入邮箱里的 6 位验证码"
-                placeholderTextColor={Romance.faint}
-                keyboardType="number-pad"
-                onSubmitEditing={doVerifyOtp}
-              />
-            ) : null}
-            <Row
-              label={otpSent ? '验证并登录' : '发送验证码'}
-              onPress={otpSent ? doVerifyOtp : doSendOtp}
-            />
+            <Row label="登录 / 开通云端" onPress={() => router.push('/auth')} />
             <Text style={styles.footHint}>
               开通云端：TA 和你们的故事存进云端，换手机也不会失去。不开通也能完整游玩（数据只在本机）。
-              推荐用 Apple 登录；邮箱验证码需要项目配好自定义 SMTP（免费层默认邮件只发链接不发码）。
             </Text>
           </>
         )}
@@ -359,12 +274,25 @@ export default function MeScreen() {
         <Text style={styles.footHint}>配色与壁纸即刻生效。锁屏换 TA 的照片、来电铃声：正式版开放。</Text>
       </Section>
 
-      <Section title="订阅计划">
-        <Row label="羁绊槽位" value={`${bonds.length}/1 · 首个免费`} />
-        <Row label="订阅「TA 在」" value="完整日常 + 语音 + 留言 · 敬请期待" dim />
+      <Section title="订阅计划（试装模拟，不扣费）">
+        <Row
+          label="当前计划"
+          value={plan === 'max' ? 'Max' : plan === 'pro' ? 'Pro' : 'Free'}
+        />
+        <Row label="羁绊槽位" value={`${bonds.length}/${slotLimitLabel(plan)} · 缔结才占槽`} />
+        <Row
+          label={plan === 'pro' ? '已订阅 Pro ✓' : '订阅 Pro'}
+          value="5 个羁绊槽"
+          onPress={() => subscribe('pro')}
+        />
+        <Row
+          label={plan === 'max' ? '已订阅 Max ✓' : '订阅 Max'}
+          value="羁绊不限量"
+          onPress={() => subscribe('max')}
+        />
+        {plan !== 'free' ? <Row label="取消订阅（回 Free）" onPress={() => subscribe('free')} /> : null}
         <Row label="Morning call" value="TA 叫你起床 · 敬请期待" dim />
         <Row label="错过回溯" value="错过的来电与聊天回听 · 敬请期待" dim />
-        <Row label="加槽" value="正式版开放" dim />
       </Section>
 
       <Section title="素材开关">
@@ -375,7 +303,7 @@ export default function MeScreen() {
       </Section>
 
       <Section title="我的创作">
-        <Row label="捏出的角色" value={`${customs.length} 个`} />
+        <Row label="创造的角色" value={`${customs.filter((c) => !c.shared).length} 个`} />
         <Row label="热度 · 分成" value="敬请期待" dim />
       </Section>
 

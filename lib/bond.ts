@@ -76,6 +76,21 @@ export function levelLabel(xp: number): string {
  * 数值体系另行专门设计。 */
 export const XP_PER_MESSAGE = 5; // 她发一条消息
 
+/* ── 订阅与槽位（D-063 试装模拟）：free 1 / pro 5 / max 不限 ── */
+export const PLAN_SLOTS: Record<'free' | 'pro' | 'max', number> = {
+  free: 1,
+  pro: 5,
+  max: Infinity,
+};
+
+export function slotLimit(plan: 'free' | 'pro' | 'max'): number {
+  return PLAN_SLOTS[plan] ?? 1;
+}
+
+export function slotLimitLabel(plan: 'free' | 'pro' | 'max'): string {
+  return plan === 'max' ? '∞' : String(slotLimit(plan));
+}
+
 /* ── 心动值（广场试聊） ── */
 export const HEART_FULL = 100;
 

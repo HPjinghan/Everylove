@@ -544,3 +544,29 @@
 - **决策**：试装分发走 **EAS Update**（Expo 账号 harperz，项目 @harperz/everylove，channel/branch = preview，runtimeVersion 对齐 SDK 54 让 Expo Go 直开）。**发布纪律：AI key 必须剔除**（发布命令置空 EXPO_PUBLIC_ANTHROPIC/QIANFAN key 环境变量）——分发包只含 Supabase 公开配置，AI 走 D-057 服务端代理（朋友需 Apple 登录，享每人每日 500 次限流，消耗记 Harper 的千帆账单）。发新版 = 同一条命令重发；TestFlight 留作正式测试通道（需 Apple 开发者账号，D-058 讨论中已铺垫）。
 - **朋友安装**：App Store 装 Expo Go → 打开分发链接 `exp://u.expo.dev/3d090463-3b93-4904-8611-b42a4d3bd664?runtime-version=exposdk%3A54.0.0&channel-name=preview`（或扫 Dashboard 更新页的 Preview 二维码）。
 - **影响文件**：`app.json`（projectId/updates URL/runtimeVersion）。
+
+## D-060 · 2026-08-31 · 共享角色池：公开的自创角色别人也能滑到（Harper 拍板）
+
+- **决策**：创作者经济的第一块服务端基石。Supabase 表 `shared_characters`（id/owner_id/data jsonb；RLS：所有人可读含 anon、只有本人可写删）。创造表单新增第 ④ 步**「谁能遇到 TA」：私密（默认）/ 公开**——公开发布即上传共享池（需登录，未登录回落私密并提示）；编辑改私密即撤下。所有玩家的交友牌堆合入共享池（`lib/pool.ts`，5 分钟节流刷新、离线用缓存、排除自己的），同一套推荐打分（D-041 预留接口零改动）；卡面标「来自其他玩家」。**领养快照制落地**（§5）：与共享角色缔结时快照进本地，创作者更新不改写已领养实例；共享角色的配对照常 3 天过期（D-052 的不过期豁免只属于自己的创作）。审核暂缺——Harper 后续接平台；发布仍过本地真人/IP 拦截（红线最低线）。
+- **影响文件**：`lib/pool.ts`（新）、`lib/types.ts`（visibility/shared）、`store/app-store.ts`（sharedPool/findCharacter/快照/TTL 豁免收窄）、`app/apps/create.tsx`（可见性步 + 发布/撤下）、`app/apps/dating.tsx`（合流/标签/配对条）、`app/apps/contacts.tsx`、`app/apps/settings.tsx`。
+
+## D-061 · 2026-08-31 · 天气可点开：定位/搜索地区（Harper 拍板）
+
+- **决策**：桌面天气卡可点 → `app/weather.tsx`：今日大天气 + 未来 7 天（确定性生成）；**位置**两条路——「使用当前位置」（expo-location 前台权限 + 反地理编码取城市名；被拒则引导搜索）或**手动搜索地区**（输入即设定）。城市只作天气种子与展示（`lib/weather.ts` 种子扩为「日期+城市」），**只存本机、不上传**（数据最小化）；界面注明试装天气由世界生成、正式版接真实气象（接口不变）。
+- **影响文件**：`app/weather.tsx`（新）、`lib/weather.ts`（citySeed/initWeather）、`app/index.tsx`（卡片可点+显示城市）、`app/_layout.tsx`、`package.json`（+expo-location）。
+
+## D-062 · 2026-08-31 · 登录独立界面；首次入册后强制登录（Harper 拍板）
+
+- **决策**：登录从设置内联块升格为独立界面 `app/auth.tsx`（Apple 主打 + 邮箱验证码；设置的账号区收敛为入口 Row）。**强制点 = 第一次把人添加进通讯录之后**（两条路都算：缔结加好友 / 创造发布入册）——此时跳转 `auth?force=1`，无「先不了」，文案「TA 已经在你的通讯录里了。登录之后，换手机也不会失去 TA 和你们的故事」；之后不再重复强制（会话失效只软引导）。未配置 Supabase 的环境自动跳过。
+- **推翻**：修订 D-054「无登录墙」（游客仍可滑卡/试聊到底，墙立在第一次拥有关系之后——注册的价值主张在情绪最高点兑现）。
+- **影响文件**：`app/auth.tsx`（新）、`app/apps/settings.tsx`（收敛）、`app/adopt/[characterId].tsx`、`app/apps/create.tsx`。
+
+## D-063 · 2026-08-31 · 模拟订阅 Pro/Max：槽位 1/5/∞（Harper 拍板）
+
+- **决策**：设置「订阅计划（试装模拟，不扣费）」——**Pro：5 个羁绊槽；Max：不限量**；点击即订/退（确认弹窗），`store.plan` 持久化；槽位判定统一走 `lib/bond.ts` 的 `slotLimit/slotLimitLabel`（free 1 / pro 5 / max ∞）。槽满的领养页改为升级引导（「去看订阅」→ 设置）。真实收费（IAP/价格）待正式版（OPEN_QUESTIONS #3）。
+- **影响文件**：`lib/bond.ts`（PLAN_SLOTS）、`store/app-store.ts`（plan）、`app/apps/settings.tsx`、`app/adopt/[characterId].tsx`。
+
+## D-064 · 2026-08-31 · 杂项：滑卡文案去「TA 一定会同意」；Dock 默认收窄（Harper 拍板）
+
+- **决策**：① 交友底部与瀑布流提示删去「——TA 一定会同意」（机制不变，话不说破）；② Dock 默认从 4 个收窄为 **通讯录 + 设置**（上限仍 4，可拖入拖出不变）；persist v4 迁移：仍是旧默认的存档自动跟随新默认。
+- **影响文件**：`app/apps/dating.tsx`、`constants/apps.ts`（DEFAULT_DOCK）、`store/app-store.ts`（v4 迁移）。

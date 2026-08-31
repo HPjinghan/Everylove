@@ -33,9 +33,11 @@ import { CharAvatar } from '@/components/char-avatar';
 import { BLOCKED_NAME_PATTERN, LOVE_STYLES, loveStyleByLabel, RACES } from '@/content/characters';
 import { CHARACTER_PARSE_SYSTEM } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
+import { authConfigured, currentSession } from '@/lib/auth';
 import { completeText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { ensurePortrait, generatePortraitFor, imageKeyReady } from '@/lib/imagegen';
+import { publishCharacter, unpublishCharacter } from '@/lib/pool';
 import type { Character } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
@@ -149,6 +151,8 @@ export default function CreateScreen() {
   const [gender, setGender] = useState<(typeof GENDERS)[number]['key']>('male');
   // 年龄状态（D-045）：发布必须确认成年；未成年走加强审查（试装不放行）
   const [ageStatus, setAgeStatus] = useState<'adult' | 'minor'>('adult');
+  // 可见性（D-060）：公开 = 进共享角色池，别人也能滑到；默认私密
+  const [visibility, setVisibility] = useState<'private' | 'public'>('private');
   const [look, setLook] = useState('');
   const [story, setStory] = useState('');
   const [palette, setPalette] = useState(0);
@@ -290,6 +294,7 @@ export default function CreateScreen() {
       chatNotes: chatNotes.trim() || undefined,
       schedule: schedule.trim() || undefined,
       adultConfirmed: ageStatus === 'adult' ? true : undefined,
+      visibility,
       initiative,
       presetMemories: presetMemories.trim() || undefined,
       taboos: taboos.trim() || undefined,
@@ -344,18 +349,32 @@ export default function CreateScreen() {
     }
   };
 
-  const submit = () => {
+  /** 公开角色上传共享池（D-060）；未登录/失败回落私密并提示 */
+  const publishIfPublic = async (character: Character): Promise<Character> => {
+    if (character.visibility !== 'public') return character;
+    const ok = await publishCharacter(character);
+    if (!ok) {
+      Alert.alert('先按私密保存了', '公开到共享池需要登录账号（设置 → 账号 · 云端），登录后再编辑改公开即可。');
+      return { ...character, visibility: 'private' };
+    }
+    return character;
+  };
+
+  const submit = async () => {
     if (!name.trim()) return;
     if (!guard()) return;
 
     // 编辑已创建的角色（D-050）：原位更新，不动热度与羁绊
     if (editing) {
-      const character = draftCharacter(editing.id);
+      let character = draftCharacter(editing.id);
       if (!character) return;
-      useAppStore.getState().updateCustomCharacter({
-        ...character,
-        adoptedCount: editing.adoptedCount,
-      });
+      character = { ...character, adoptedCount: editing.adoptedCount };
+      character = await publishIfPublic(character);
+      // 公开 → 私密：从共享池撤下（D-060）
+      if (editing.visibility === 'public' && character.visibility !== 'public') {
+        void unpublishCharacter(editing.id);
+      }
+      useAppStore.getState().updateCustomCharacter(character);
       if (portraitUri) useAppStore.getState().setPortrait(editing.id, portraitUri);
       setEditing(null);
       resetForm();
@@ -364,8 +383,12 @@ export default function CreateScreen() {
     }
 
     const id = uid('c');
-    const character = draftCharacter(id);
+    let character = draftCharacter(id);
     if (!character) return;
+    // 强制登录判定（D-062）：这是不是第一次把人添加进通讯录
+    const s = useAppStore.getState();
+    const hadContacts = s.bonds.length > 0 || s.customCharacters.some((c) => !c.shared);
+    character = await publishIfPublic(character);
     useAppStore.getState().addCustomCharacter(character);
     if (portraitUri) useAppStore.getState().setPortrait(id, portraitUri);
     else if (imageKeyReady()) void ensurePortrait(id);
@@ -373,6 +396,11 @@ export default function CreateScreen() {
     // 心动满 100 TA 才会想确定关系，那时才占槽、才开始羁绊等级
     useAppStore.getState().ensureSquareChat(id);
     resetForm();
+    if (!hadContacts && authConfigured() && !(await currentSession())) {
+      // 首次入册 → 强制登录（D-062）：TA 值得一个存得住的家
+      router.replace({ pathname: '/auth', params: { force: '1' } });
+      return;
+    }
     Alert.alert('TA 醒过来了', 'TA 已经在你的通讯录里，等你去说第一句话。', [
       {
         text: '去和 TA 说话',
@@ -384,7 +412,7 @@ export default function CreateScreen() {
 
   const resetForm = () => {
     setDesc(''); setName(''); setLook(''); setStory(''); setPortraitUri(undefined);
-    setAgeStatus('adult'); setRace('人类'); setRaceCustom('');
+    setAgeStatus('adult'); setVisibility('private'); setRace('人类'); setRaceCustom('');
     setBirthMonth(null); setBirthDay(null); setCatchphrase('');
     setLikes(''); setDislikes(''); setOfferTurns(4); setLoveStyle(undefined);
     setMbti(undefined); setInitiative('mid'); setPresetMemories(''); setTaboos(''); setSecrets('');
@@ -398,6 +426,7 @@ export default function CreateScreen() {
     setName(c.name);
     setGender(c.gender ?? (c.loveTag === 'female' ? 'female' : c.loveTag === 'nonbinary' ? 'nonbinary' : 'male'));
     setAgeStatus('adult'); // 已发布的都确认过成年
+    setVisibility(c.visibility ?? 'private');
     setLook(c.look ?? '');
     setStory(c.story ?? '');
     const pi = PALETTES.findIndex((p) => p.color === c.color);
@@ -449,16 +478,16 @@ export default function CreateScreen() {
           <Text style={styles.subtitle}>创造一个只属于你的 TA</Text>
 
           {/* ───────── 我创建的（D-050）：点编辑回填表单 ───────── */}
-          {customs.length > 0 && (
+          {customs.filter((c) => !c.shared).length > 0 && (
             <View>
-              <Text style={styles.step}>我创建的（{customs.length}）</Text>
-              {customs.map((c) => (
+              <Text style={styles.step}>我创建的（{customs.filter((c) => !c.shared).length}）</Text>
+              {customs.filter((c) => !c.shared).map((c) => (
                 <View key={c.id} style={styles.mineRow}>
                   <CharAvatar name={c.name} color={c.color} size={40} characterId={c.id} />
                   <View style={styles.mineText}>
                     <Text style={styles.mineName}>{c.name}</Text>
                     <Text style={styles.mineSub} numberOfLines={1}>
-                      {c.identity}
+                      {c.visibility === 'public' ? '公开' : '私密'} · {c.identity}
                     </Text>
                   </View>
                   <Pressable style={styles.mineEditBtn} onPress={() => loadForEdit(c)}>
@@ -547,7 +576,18 @@ export default function CreateScreen() {
             <Text style={styles.afterHint}>发布即确认 TA 是成年人。</Text>
           )}
 
-          <Text style={styles.step}>④ TA 长什么样</Text>
+          <Text style={styles.step}>④ 谁能遇到 TA</Text>
+          <View style={styles.chipRow}>
+            <Chip label="私密" active={visibility === 'private'} onPress={() => setVisibility('private')} />
+            <Chip label="公开" active={visibility === 'public'} onPress={() => setVisibility('public')} />
+          </View>
+          <Text style={styles.afterHint}>
+            {visibility === 'public'
+              ? '公开：TA 会进入共享角色池，其他玩家也能在交友里滑到 TA（需要登录账号）。'
+              : '私密：只有你能遇到 TA。'}
+          </Text>
+
+          <Text style={styles.step}>⑤ TA 长什么样</Text>
           <TextInput
             style={[styles.input, styles.inputMultiline]}
             value={look}
@@ -568,7 +608,7 @@ export default function CreateScreen() {
             ))}
           </View>
 
-          <Text style={styles.step}>⑤ TA 的背景故事</Text>
+          <Text style={styles.step}>⑥ TA 的背景故事</Text>
           <TextInput
             style={[styles.input, styles.inputStory]}
             value={story}
@@ -579,9 +619,9 @@ export default function CreateScreen() {
             maxLength={300}
           />
 
-          <Text style={styles.step}>⑥ TA 的头像（可选）</Text>
+          <Text style={styles.step}>⑦ TA 的头像（可选）</Text>
           <Text style={styles.stepHint}>
-            上传一张图，或按 ④ 的描述生成一张半身立绘（约 1 分钟）；交友卡面与会话头像都用它。
+            上传一张图，或按 ⑤ 的描述生成一张半身立绘（约 1 分钟）；交友卡面与会话头像都用它。
             不能上传真人照片。
           </Text>
           {portraitUri ? (

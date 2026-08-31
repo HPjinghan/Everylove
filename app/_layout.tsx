@@ -11,6 +11,7 @@ import { authConfigured } from '@/lib/auth';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { deliverDuePosts } from '@/lib/posts';
 import { initCloudSync } from '@/lib/sync';
+import { initWeather } from '@/lib/weather';
 import '@/lib/notifications';
 import { useAppStore, useHydrated } from '@/store/app-store';
 
@@ -40,6 +41,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (!hydrated) return;
     useAppStore.getState().ensureSeedPosts();
+    void initWeather();
     deliverDueHeartbeats();
     void deliverDuePosts();
     SplashScreen.hideAsync();
