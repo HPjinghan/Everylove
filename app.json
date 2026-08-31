@@ -36,15 +36,15 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "3d090463-3b93-4904-8611-b42a4d3bd664"
+        "projectId": "299908ab-dbbb-41aa-865f-5fd85152b9d1"
       }
     },
-    "owner": "harperz",
+    "owner": "harperzs-team",
     "runtimeVersion": {
       "policy": "sdkVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/3d090463-3b93-4904-8611-b42a4d3bd664"
+      "url": "https://u.expo.dev/299908ab-dbbb-41aa-865f-5fd85152b9d1"
     }
   }
 }
