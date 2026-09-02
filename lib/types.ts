@@ -249,6 +249,13 @@ export interface OutingPlan {
   characterId: string;
   placeId: string;
   createdAt: number;
+  /**
+   * 约定的时间（D-079）：有时间的约定只在赴约窗口（前 2 小时 ～ 后 3 小时，lib/appointments.ts）内算赴约，
+   * 过了窗口没去 = 爽约；没有时间 = 随时有效（外出页手动约的）
+   */
+  at?: number;
+  /** 来源：manual = 外出页「约 TA」；chat = 从 Message 对话里识别出来的（D-079） */
+  source?: 'manual' | 'chat';
 }
 
 /** 外出场景会话：同一时间只有一场（store.outingSession）；结束后在羁绊会话留一条系统记录 */
@@ -263,6 +270,23 @@ export interface OutingSession {
   kind: 'date' | 'encounter' | 'stranger';
   messages: ChatMessage[];
   startedAt: number;
+  /** 最近一次有人说话的时间（D-079）：一小时没说话再进来才刷新成新的一场 */
+  lastActiveAt?: number;
+  /** 赴约的约定时间（D-079）；TA 据此知道她准时 / 早到 / 迟到 */
+  planAt?: number;
+  /** 她相对约定时间晚到的分钟数（负数 = 早到） */
+  lateMinutes?: number;
+}
+
+/** 相册里的一张拍立得（D-079）：外出拍的照片按下快门就是资产，不再并入羁绊会话 */
+export interface AlbumShot {
+  id: string;
+  uri: string;
+  at: number;
+  characterId: string;
+  /** 拍立得手写字 */
+  caption?: string;
+  placeId?: string;
 }
 
 /** 对话引擎：Claude 或百度千帆（脚本引擎 mock 已删，D-069；选择走工程配置 EXPO_PUBLIC_AI_ENGINE） */
@@ -284,6 +308,8 @@ export interface EngineContext {
     kind: 'date' | 'encounter' | 'stranger';
     /** 今天的天气一句话（lib/weather.ts），进场景氛围 */
     weatherLine?: string;
+    /** 赴约的约定（D-079）：约的什么时候、她晚到了几分钟（负数 = 早到）——TA 据此反应 */
+    appointment?: { atLabel: string; lateMinutes: number };
   };
   history: ChatMessage[];
   userText: string;

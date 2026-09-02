@@ -479,6 +479,10 @@ const en: Record<string, string> = {
   '只用填最基本的——除了名字，都可以跳过。': 'Just the basics. Everything but your name can be skipped.',
   '怎么称呼你？': 'What should they call you?',
   '进去看看': 'Go in',
+  // 外出优化（D-079）
+  '和{name}在一起': 'With {name}',
+  '明天': 'Tomorrow',
+  '照片洗好了，已存进相册': 'Photo developed and saved to the album',
   // __EN_END__
 };
 
@@ -935,6 +939,10 @@ const ja: Record<string, string> = {
   '只用填最基本的——除了名字，都可以跳过。': '基本だけで大丈夫。名前以外はスキップできます。',
   '怎么称呼你？': 'なんて呼べばいい？',
   '进去看看': '入ってみる',
+  // 外出优化（D-079）
+  '和{name}在一起': '{name} と一緒',
+  '明天': '明日',
+  '照片洗好了，已存进相册': '写真ができました。アルバムに保存しました',
   // __JA_END__
 };
 

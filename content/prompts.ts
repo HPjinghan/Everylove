@@ -21,6 +21,8 @@
  */
 
 import { LOVE_STYLES, loveStyleByLabel, scriptFor } from '@/content/characters';
+import { PLACES } from '@/content/places';
+import { appointmentAtLabel, ON_TIME_TOLERANCE_MIN } from '@/lib/appointments';
 import { levelInfo } from '@/lib/bond';
 import { daysTogether } from '@/lib/format';
 import { getLang } from '@/lib/i18n';
@@ -524,10 +526,17 @@ export function buildOutingSystemPrompt(ctx: EngineContext, now: Date = new Date
   const relation = stranger
     ? '你们并不认识——这是一场陌生人之间的偶遇。'
     : `你们已经加了好友，你叫她「${nickname}」，羁绊 LV${lv.level}·${stage}。`;
+  const appt = o?.appointment;
   const moment = stranger
     ? '【此刻】你在这里过自己的日子，她恰好出现在附近，你们搭上了话。'
     : o?.kind === 'date'
-      ? '【此刻】你们约好了在这里见面，你提前到了一会儿——她来了。你说到做到。'
+      ? !appt
+        ? '【此刻】你们约好了在这里见面，你提前到了一会儿——她来了。你说到做到。'
+        : appt.lateMinutes > ON_TIME_TOLERANCE_MIN
+          ? `【此刻】你们约好了 ${appt.atLabel} 在这里见面，你早就到了；她比约定晚了 ${appt.lateMinutes} 分钟才出现。你等了这么久——按你的性格自然反应（可以在意、可以嘴硬、可以先问她路上怎么了，但不用愧疚绑架她），然后把这次见面好好过下去。`
+          : appt.lateMinutes < -ON_TIME_TOLERANCE_MIN
+            ? `【此刻】你们约好了 ${appt.atLabel} 在这里见面，她比约定早到了 ${-appt.lateMinutes} 分钟——你也刚到不久，有点意外她这么早。你说到做到。`
+            : `【此刻】你们约好了 ${appt.atLabel} 在这里见面，你提前到了一会儿——她准时来了。你说到做到。`
       : '【此刻】你没想到会在这里碰到她——你恰好也在，这是一场偶遇。先有一点藏不住的惊喜，再自然地邀她一起待一会儿。';
 
   return [
@@ -554,11 +563,16 @@ export function buildOutingSystemPrompt(ctx: EngineContext, now: Date = new Date
   ].join('\n');
 }
 
-/** 外出开场白（TA 先开口；离线模板，{place} 换地点名、{nickname} 换称呼） */
-export const OUTING_OPENERS: Record<'date' | 'encounter' | 'stranger', string[]> = {
+/** 外出开场白（TA 先开口；离线模板，{place} 换地点名、{nickname} 换称呼、{minutes} 换迟到分钟数） */
+export const OUTING_OPENERS: Record<'date' | 'dateLate' | 'encounter' | 'stranger', string[]> = {
   date: [
     '（比约定时间早到了一会儿，看到你，朝你挥手）这里，{nickname}。……嗯，我说过我会来的。',
     '（靠在{place}门口，看到你走近，站直了）来了？我刚到——才不是等了很久。',
+  ],
+  // 她迟到了（D-079）：TA 知道，按性格反应，但不愧疚绑架
+  dateLate: [
+    '（已经在{place}等了一会儿，看到你才把手机收起来）……来了。我还以为你不来了，{nickname}。',
+    '（靠在{place}门口，看你小跑过来，没说话，先把手里的东西递给你）晚了 {minutes} 分钟。……先喘口气，不急。',
   ],
   encounter: [
     '（在{place}转过身，愣了一下，随即笑了）……{nickname}？真的是你。今天是什么好日子。',
@@ -763,8 +777,10 @@ export function buildMemoryExtractPrompt(input: {
   recent: ChatMessage[];
   /** 今天：用于把相对时间换算成绝对日期 */
   today?: string;
+  /** 外出（D-079）：这段对话不是手机聊天而是一次见面的现场——说明它是什么、该怎么记（outingMemoryContext） */
+  context?: string;
 }): string {
-  const { hisName, nickname, memory, aged, recent } = input;
+  const { hisName, nickname, memory, aged, recent, context } = input;
   const today = input.today ?? todayLine();
   return [
     `今天是 ${today}。TA 叫「${hisName}」，TA 叫她「${nickname}」。`,
@@ -773,8 +789,35 @@ export function buildMemoryExtractPrompt(input: {
     aged.length
       ? `已滑出对话窗口的更早对话（请并入 summary）：\n${transcript(aged, hisName)}`
       : '已滑出对话窗口的更早对话：无',
-    `最近对话（请从中提取/更新 facts）：\n${transcript(recent, hisName)}`,
+    ...(context ? [context] : []),
+    context
+      ? `这次见面的现场对话（请从中提取/更新 facts，并把这次见面用一句话并进 summary）：\n${transcript(recent, hisName)}`
+      : `最近对话（请从中提取/更新 facts）：\n${transcript(recent, hisName)}`,
   ].join('\n\n');
+}
+
+/** 外出结束并进记忆时的说明段（D-079）：这是一次赴约 / 偶遇，在哪、什么时候、她准时还是迟到 */
+export function outingMemoryContext(o: {
+  placeName: string;
+  kind: 'date' | 'encounter';
+  startedAt: number;
+  planAt?: number;
+  lateMinutes?: number;
+}): string {
+  const d = new Date(o.startedAt);
+  const when = `${todayLine(d)} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  const late = o.lateMinutes ?? 0;
+  const punctual =
+    late > ON_TIME_TOLERANCE_MIN
+      ? `她晚到了 ${late} 分钟`
+      : late < -ON_TIME_TOLERANCE_MIN
+        ? `她早到了 ${-late} 分钟`
+        : '她准时到了';
+  const how =
+    o.kind === 'date'
+      ? `这是一次赴约${o.planAt ? `（约的是 ${appointmentAtLabel(o.planAt)}，${punctual}）` : ''}`
+      : '这是一次偶遇（没有事先约，恰好都在）';
+  return `下面不是手机聊天，而是 TA 和她 ${when} 一起在${o.placeName}的现场对话（（）里是动作与现场）。${how}。请把这次见面里发生的事、她说的重要的话、新冒出来的约定记进 facts（[节点] / [她] / [约定]；赴约要记下她准时还是迟到），并把「这次见面」用一句话并进 summary。`;
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -950,3 +993,56 @@ export const IMAGE_CAPTION_SYSTEM = [
 ].join('\n');
 
 export const IMAGE_CAPTION_USER = '描述这张照片。';
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* §7 约定（D-079）：Message 里聊定的见面 → 日程；爽约时 TA 的那一句                  */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/** 各地点在对话里常见的说法（识别时帮模型对号入座；没写的只给地点名） */
+const APPOINTMENT_PLACE_HINTS: Record<string, string> = {
+  cafe: '喝咖啡、下午茶、随便吃点东西',
+  park: '散步、遛弯、野餐',
+  bookstore: '逛书店、看书',
+  cinema: '看电影',
+  funfair: '游乐园、摩天轮',
+  seaside: '看海、海边吹风',
+};
+
+export function appointmentPlaceList(): string {
+  return PLACES.filter((p) => !p.stranger)
+    .map((p) => `${p.id} = ${p.name}${APPOINTMENT_PLACE_HINTS[p.id] ? `（${APPOINTMENT_PLACE_HINTS[p.id]}）` : ''}`)
+    .join('；');
+}
+
+/** 约定识别助手：只在对话里刚刚「明确约好」时输出一条；只输出 JSON */
+export const APPOINTMENT_EXTRACT_SYSTEM = [
+  '你是恋爱互动应用里的「约定识别助手」。给你 TA 和她最近几条聊天，判断他们是否刚刚明确约好了线下见面：时间、地点都说定，而且双方都同意。只输出 JSON。',
+  `可选地点（输出它的 id）：${appointmentPlaceList()}。`,
+  '规则：',
+  '- 必须是双方都答应了的（一方提议、另一方明确同意）才算；只是提议、犹豫、开玩笑、或还在商量时间地点 → null。',
+  '- 地点要能对应到上面某一个：按他们说的活动或场所对号入座；对应不上（比如去对方家、去外地）→ null。',
+  '- 时间要具体到日期：把相对时间换算成绝对时间（会告诉你现在的日期时间和星期）。只说了时段没说钟点时：早上→09:00，上午→10:00，中午→12:00，下午→15:00，傍晚→17:30，晚上→19:00，深夜→21:30。连日期都没有 → null。',
+  '- 对话里改了时间或地点，按最新的说法输出；明确取消了之前的约 → {"appointment": null, "cancel": true}。',
+  '只输出：{"appointment": {"placeId": "cafe", "at": "2026-09-03 15:00"}} 或 {"appointment": null}，不要任何其他文字。',
+].join('\n');
+
+/** 每次识别喂给模型的内容 */
+export function buildAppointmentExtractPrompt(input: {
+  hisName: string;
+  nickname: string;
+  recent: ChatMessage[];
+  now?: Date;
+}): string {
+  const now = input.now ?? new Date();
+  const hh = now.getHours().toString().padStart(2, '0');
+  const mm = now.getMinutes().toString().padStart(2, '0');
+  return [
+    `现在是 ${todayLine(now)} ${hh}:${mm}。TA 叫「${input.hisName}」，TA 叫她「${input.nickname}」。`,
+    `最近对话：\n${transcript(input.recent, input.hisName)}`,
+  ].join('\n\n');
+}
+
+/** 爽约：这条只作本轮 user 文本、不入会话，让 TA 主动给她发一条（红线：不愧疚绑架，CLAUDE.md §9） */
+export function missedDateUserLine(placeName: string, atLabel: string): string {
+  return `（你们约好了 ${atLabel} 在${placeName}见面。你到了，等了很久，她一直没来，也没有消息。现在你给她发一条消息——按你的性格：可以在意、可以失落、可以嘴硬，但不责备、不用愧疚绑架她。一两句就好。）`;
+}

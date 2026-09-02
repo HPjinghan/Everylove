@@ -1,6 +1,7 @@
 /**
- * 相册（D-020/D-024/D-056）：你们的拍立得墙——外出拍的照片结束时并入羁绊会话，在这里汇集。
+ * 相册（D-020/D-024/D-056/D-079）：你们的拍立得墙——外出拍的照片按下快门即入册（store.album）。
  * 按日分组、拍立得框网格；点开大图 + 分享（components/polaroid.tsx）。
+ * D-079 之前的存档照片并在羁绊会话里，仍从 bond.messages 兜底汇集。
  */
 
 import { useMemo, useState } from 'react';
@@ -10,7 +11,7 @@ import { AppScreen } from '@/components/app-screen';
 import { PhotoViewer, Polaroid } from '@/components/polaroid';
 import { Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
-import { useAppStore } from '@/store/app-store';
+import { findCharacter, useAppStore } from '@/store/app-store';
 
 const COLS = 3;
 const GAP = 4;
@@ -25,13 +26,21 @@ interface Shot {
 
 export default function AlbumScreen() {
   const bonds = useAppStore((s) => s.bonds);
+  const album = useAppStore((s) => s.album);
   const [viewing, setViewing] = useState<Shot | null>(null);
 
   const sections = useMemo(() => {
     const shots: Shot[] = [];
+    const seen = new Set<string>();
+    for (const p of album) {
+      const name =
+        bonds.find((b) => b.characterId === p.characterId)?.name ?? findCharacter(p.characterId)?.name ?? '';
+      shots.push({ id: p.id, uri: p.uri, at: p.at, from: name, caption: p.caption });
+      seen.add(p.uri);
+    }
     for (const b of bonds) {
       for (const m of b.messages) {
-        if (m.kind === 'image' && m.imageUri) {
+        if (m.kind === 'image' && m.imageUri && !seen.has(m.imageUri)) {
           shots.push({ id: m.id, uri: m.imageUri, at: m.at, from: b.name, caption: m.text || m.spoken });
         }
       }
@@ -53,7 +62,7 @@ export default function AlbumScreen() {
       for (let i = 0; i < items.length; i += COLS) rows.push(items.slice(i, i + COLS));
       return { title, data: rows };
     });
-  }, [bonds]);
+  }, [bonds, album]);
 
   const cell = (Dimensions.get('window').width - 14 * 2 - GAP * (COLS - 1)) / COLS;
 

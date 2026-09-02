@@ -17,15 +17,20 @@ import { MingCute } from '@/components/mingcute';
 import { Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { PLACES, placeById, type Place } from '@/content/places';
+import { planTimeLabel } from '@/lib/appointments';
 import { t } from '@/lib/i18n';
+import { sessionExpired } from '@/lib/outing';
 import { todayWeather, tempNow } from '@/lib/weather';
-import { useAppStore } from '@/store/app-store';
+import { findCharacter, useAppStore } from '@/store/app-store';
 
 export default function OutingScreen() {
   const router = useRouter();
   const bonds = useAppStore((s) => s.bonds);
   const customs = useAppStore((s) => s.customCharacters);
   const plans = useAppStore((s) => s.outingPlans);
+  const session = useAppStore((s) => s.outingSession);
+  // 进行中的一场（D-079）：没点结束、一小时内说过话——卡片上标出 TA 还在那儿
+  const live = session && !sessionExpired(session) ? session : null;
 
   const [planOpen, setPlanOpen] = useState(false);
   const [planCharacterId, setPlanCharacterId] = useState<string | null>(null);
@@ -98,6 +103,7 @@ export default function OutingScreen() {
                   />
                   <Text style={styles.planText}>
                     {place.emoji} {t('和{name}约在{place}', { name: bond.name, place: t(place.name) })}
+                    {p.at ? ` · ${planTimeLabel(p.at)}` : ''}
                   </Text>
                   <Pressable
                     style={styles.planGo}
@@ -117,6 +123,10 @@ export default function OutingScreen() {
           {spots.map((place) => {
             const plan = plans.find((p) => p.placeId === place.id);
             const planBond = plan ? bondOf(plan.characterId) : undefined;
+            const liveName =
+              live?.placeId === place.id
+                ? (bondOf(live.characterId)?.name ?? findCharacter(live.characterId)?.name)
+                : undefined;
             return (
               <Pressable
                 key={place.id}
@@ -124,7 +134,11 @@ export default function OutingScreen() {
                 onPress={() => router.push({ pathname: '/outing/[placeId]', params: { placeId: place.id } })}>
                 <LinearGradient colors={place.colors} style={styles.cardBg}>
                   <Text style={styles.cardEmoji}>{place.emoji}</Text>
-                  {planBond ? (
+                  {liveName ? (
+                    <View style={styles.cardBadge}>
+                      <Text style={styles.cardBadgeText}>{t('和{name}在一起', { name: liveName })}</Text>
+                    </View>
+                  ) : planBond ? (
                     <View style={styles.cardBadge}>
                       <Text style={styles.cardBadgeText}>{t('和{name}有约', { name: planBond.name })}</Text>
                     </View>

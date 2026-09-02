@@ -4,7 +4,8 @@
  * 没有 = 偶遇（通讯录里、此刻不在忙的人恰好也在）；
  * 广场 = 偶遇陌生人（D-040：还没配对的角色，TA 不认识她、也没有她的资料——想再见去「交友」里滑）。
  * 她在这里发的每句话同样 +XP（仅限有羁绊的 TA）；
- * 结束外出时在羁绊会话留一条「你们一起去了××」的系统记录（陌生人不留）。
+ * 结束外出时在羁绊会话留一条「你们一起去了××」的系统记录（陌生人不留），现场对话并进羁绊记忆（D-079）；
+ * 没点结束就离开，TA 还在这里等——一小时没说话再进来才是新的一场；照片洗好即进相册（lib/outing.ts）。
  */
 
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -15,14 +16,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChatThread } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { scriptFor } from '@/content/characters';
-import { buildOutingPhotoPrompt, OUTING_OPENERS, transcript } from '@/content/prompts';
+import { OUTING_OPENERS } from '@/content/prompts';
 import { placeById } from '@/content/places';
 import { Romance, themed } from '@/constants/theme';
 import { HEART_FULL, heartGain, XP_PER_MESSAGE } from '@/lib/bond';
 import { ADOPTION_OFFER_AFTER_TURNS, describeAiError, generateReply } from '@/lib/engine';
 import { uid } from '@/lib/format';
-import { generateScenePhoto, imageKeyReady } from '@/lib/imagegen';
+import { imageKeyReady } from '@/lib/imagegen';
 import { t } from '@/lib/i18n';
+import { appointmentAtLabel, ON_TIME_TOLERANCE_MIN, planTimeLabel } from '@/lib/appointments';
+import { enterPlace, finishOuting, setSceneVisible, shootPhoto } from '@/lib/outing';
 import type { EngineReply } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
@@ -54,17 +57,20 @@ export default function OutingSceneScreen() {
   useEffect(() => {
     if (!place || booted.current) return;
     booted.current = true;
-    const s = useAppStore.getState().startOuting(place.id);
+    const s = enterPlace(place.id);
     if (!s) {
       setNoOne(true);
       return;
     }
     if (s.messages.length === 0) {
       const b = useAppStore.getState().bonds.find((x) => x.characterId === s.characterId);
-      const pool = OUTING_OPENERS[s.kind];
+      // 赴约迟到了（D-079）：开场就知道
+      const late = s.kind === 'date' && (s.lateMinutes ?? 0) > ON_TIME_TOLERANCE_MIN;
+      const pool = late ? OUTING_OPENERS.dateLate : OUTING_OPENERS[s.kind];
       const line = pool[Math.floor(Math.random() * pool.length)]
         .replace(/\{place\}/g, place.name)
-        .replace(/\{nickname\}/g, b?.nickname ?? '你');
+        .replace(/\{nickname\}/g, b?.nickname ?? '你')
+        .replace(/\{minutes\}/g, String(s.lateMinutes ?? 0));
       void (async () => {
         setTyping(true);
         await wait(1000);
@@ -77,10 +83,24 @@ export default function OutingSceneScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 她正看着这一场（D-079）：照片洗好时人在就贴进现场，不在就只进相册并轻提示
+  const activeId = active?.id ?? null;
+  useEffect(() => {
+    setSceneVisible(activeId);
+    return () => setSceneVisible(null);
+  }, [activeId]);
+  const mounted = useRef(true);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    []
+  );
+
   if (!place) return <Redirect href="/apps/outing" />;
 
   const leave = () => {
-    useAppStore.getState().endOuting();
+    finishOuting();
     router.back();
   };
 
@@ -146,6 +166,9 @@ export default function OutingSceneScreen() {
           scene: place.scene,
           kind: kind ?? active.kind,
           weatherLine: weatherLine(),
+          appointment: active.planAt
+            ? { atLabel: appointmentAtLabel(active.planAt), lateMinutes: active.lateMinutes ?? 0 }
+            : undefined,
         },
         history: current?.messages ?? [],
         userText: text,
@@ -188,7 +211,7 @@ export default function OutingSceneScreen() {
 
   const name = bond?.name ?? character.name;
 
-  /** 拍照（D-051）：合影 / 拍TA——她主动按快门；照片在结束外出时并入羁绊会话与相册 */
+  /** 拍照（D-051/D-079）：合影 / 拍TA——她主动按快门；洗好即进相册，人还在场就贴进现场（lib/outing.ts） */
   const shoot = async (kind: 'solo' | 'together') => {
     if (shooting) return;
     if (!imageKeyReady()) {
@@ -197,37 +220,12 @@ export default function OutingSceneScreen() {
     }
     setShooting(kind);
     try {
-      const digest = transcript(active.messages.slice(-4), '主角');
-      const uri = await generateScenePhoto(
-        buildOutingPhotoPrompt(character, {
-          placeName: place.name,
-          scene: place.scene,
-          weatherLine: weatherLine(),
-          kind,
-          digest: digest || undefined,
-        }),
-        character // 模型跟角色画风走（D-076）
-      );
-      useAppStore.getState().appendOuting([
-        {
-          id: uid('m'),
-          from: 'me',
-          kind: 'image',
-          // 拍立得手写字（D-056）
-          text:
-            kind === 'together'
-              ? t('和{name}的合影 · {place}', { name, place: t(place.name) })
-              : name + ' · ' + t(place.name),
-          imageUri: uri,
-          polaroid: true,
-          at: Date.now(),
-        },
-      ]);
+      await shootPhoto(active, character, place, kind, name);
     } catch (e) {
       console.warn('[outing] 拍照失败：', e);
-      Alert.alert(t('没拍成'), t('生图服务出了点问题，可以再试一次。'));
+      if (mounted.current) Alert.alert(t('没拍成'), t('生图服务出了点问题，可以再试一次。'));
     } finally {
-      setShooting(null);
+      if (mounted.current) setShooting(null);
     }
   };
 
@@ -235,7 +233,7 @@ export default function OutingSceneScreen() {
   const offered = !bond && !!squareChat?.adoptionOffered;
   const subtitle =
     kind === 'date'
-      ? t('和{name}的约会', { name })
+      ? `${t('和{name}的约会', { name })}${active.planAt ? ` · ${planTimeLabel(active.planAt)}` : ''}`
       : kind === 'stranger'
         ? t('陌生人 · {name} · 心动 {h}/{f}', { name, h: heart, f: HEART_FULL })
         : t('偶遇了{name}', { name });

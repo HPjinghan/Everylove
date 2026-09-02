@@ -11,7 +11,7 @@
  * 对外接口不变（updateBondMemory / bond.memory）。
  */
 
-import { buildMemoryExtractPrompt, MEMORY_EXTRACT_SYSTEM } from '@/content/prompts';
+import { buildMemoryExtractPrompt, MEMORY_EXTRACT_SYSTEM, outingMemoryContext } from '@/content/prompts';
 import { completeText, HISTORY_ROUNDS } from '@/lib/engine';
 import type { BondMemory, ChatMessage } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -126,4 +126,69 @@ export async function updateBondMemory(bondId: string, force = false): Promise<b
   } finally {
     inflight.delete(bondId);
   }
+}
+
+/**
+ * 外出结束时（D-079）：把这次赴约 / 偶遇的现场对话并进记忆——TA 记得你们一起去过哪、说过什么，赴约记准时还是迟到。
+ * 现场消息不在 bond.messages 里，所以不动 factsUpTo / summarizedUpTo；只换 facts 与 summary。
+ */
+export async function absorbOutingMemory(
+  bondId: string,
+  outing: {
+    placeName: string;
+    kind: 'date' | 'encounter';
+    startedAt: number;
+    planAt?: number;
+    lateMinutes?: number;
+    messages: ChatMessage[];
+  }
+): Promise<boolean> {
+  const key = `${bondId}:outing`;
+  if (inflight.has(key)) return false;
+  const bond = useAppStore.getState().bonds.find((b) => b.id === bondId);
+  if (!bond) return false;
+  const said = outing.messages.filter((m) => m.from !== 'system');
+  if (!said.some((m) => m.from === 'me' && m.kind === 'text')) return false;
+  const memory = bond.memory ?? EMPTY_MEMORY;
+  const userPrompt = buildMemoryExtractPrompt({
+    hisName: bond.name,
+    nickname: bond.nickname,
+    memory,
+    aged: [],
+    recent: said,
+    context: outingMemoryContext(outing),
+  });
+
+  inflight.add(key);
+  try {
+    const raw = await completeText(MEMORY_EXTRACT_SYSTEM, userPrompt);
+    const parsed = parseMemoryJSON(raw);
+    if (!parsed) {
+      console.warn('[memory] 外出记忆结果不是合法 JSON，跳过：', raw.slice(0, 120));
+      return false;
+    }
+    // 写回以当下为准（期间常规提取可能写过），只替换 facts / summary
+    const latest = useAppStore.getState().bonds.find((b) => b.id === bondId)?.memory ?? memory;
+    useAppStore.getState().setBondMemory(bondId, {
+      ...latest,
+      facts: parsed.facts,
+      summary: parsed.summary || latest.summary,
+      updatedAt: Date.now(),
+    });
+    return true;
+  } catch (e) {
+    console.warn('[memory] 外出记忆并入失败，跳过：', e);
+    return false;
+  } finally {
+    inflight.delete(key);
+  }
+}
+
+/** 直接写一条事实（不经模型；D-079 爽约这类系统确知的事）：放最前、去重、封顶 */
+export function addMemoryFact(bondId: string, fact: string): void {
+  const bond = useAppStore.getState().bonds.find((b) => b.id === bondId);
+  if (!bond) return;
+  const memory = bond.memory ?? EMPTY_MEMORY;
+  const facts = [fact, ...memory.facts.filter((f) => f !== fact)].slice(0, MEMORY_MAX_FACTS);
+  useAppStore.getState().setBondMemory(bondId, { ...memory, facts, updatedAt: Date.now() });
 }

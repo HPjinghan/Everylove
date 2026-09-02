@@ -18,6 +18,7 @@ import { Romance, themed } from '@/constants/theme';
 import { callReady } from '@/lib/call';
 import { describeAiError, generateReply, messageContextText } from '@/lib/engine';
 import { updateBondMemory } from '@/lib/memory';
+import { detectAppointment } from '@/lib/outing';
 import { daysTogether, uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { levelInfo, XP_PER_MESSAGE } from '@/lib/bond';
@@ -175,6 +176,8 @@ export default function BondScreen() {
     // 记忆库后台更新：每隔几轮提取长期事实 + 滚动摘要，失败静默（D-016）
     // （升级出画面已下线：聊天回归纯文本，D-037；升级系统提示仍在 store.appendBond）
     void updateBondMemory(bond.id);
+    // 约定识别（D-079）：刚聊定了什么时候在哪见 → 记进日程（先关键词粗筛，命中才问模型）
+    void detectAppointment(bond.id);
   };
 
   return (

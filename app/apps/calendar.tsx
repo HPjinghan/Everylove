@@ -22,8 +22,9 @@ import {
 import { AppScreen } from '@/components/app-screen';
 import { dateKey, holidayFor, parseDateKey } from '@/content/calendar';
 import { scriptFor } from '@/content/characters';
+import { placeById } from '@/content/places';
 import { Romance, themed } from '@/constants/theme';
-import { uid } from '@/lib/format';
+import { clockTime, uid } from '@/lib/format';
 import { getLang, t } from '@/lib/i18n';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -37,7 +38,9 @@ interface DayMark {
 
 export default function CalendarScreen() {
   const userEvents = useAppStore((s) => s.userEvents);
-  const bond = useAppStore((s) => s.bonds[0]);
+  const bonds = useAppStore((s) => s.bonds);
+  const plans = useAppStore((s) => s.outingPlans);
+  const bond = bonds[0];
   const character = bond ? findCharacter(bond.characterId) : undefined;
 
   const today = new Date();
@@ -86,6 +89,17 @@ export default function CalendarScreen() {
     const holiday = holidayFor(key);
     if (holiday) out.push({ label: holiday, layer: 'world' });
     out.push(...(relationMarks.get(key) ?? []));
+    // 约定（D-079）：对话里聊定的 / 外出页约的，带时间的落在日历上
+    for (const p of plans) {
+      if (!p.at || dateKey(new Date(p.at)) !== key) continue;
+      const place = placeById(p.placeId);
+      const name = bonds.find((b) => b.characterId === p.characterId)?.name;
+      if (!place || !name) continue;
+      out.push({
+        label: `${clockTime(p.at)} ${t('和{name}约在{place}', { name, place: t(place.name) })}`,
+        layer: 'relation',
+      });
+    }
     for (const e of userEvents.filter((e) => e.date === key)) {
       out.push({ label: e.title, layer: 'user' });
     }

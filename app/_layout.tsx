@@ -6,10 +6,12 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import 'react-native-reanimated';
 
+import { ToastHost } from '@/components/toast';
 import { applyThemeColors, Romance } from '@/constants/theme';
 import { authConfigured } from '@/lib/auth';
 import { setLang } from '@/lib/i18n';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
+import { checkMissedPlans } from '@/lib/outing';
 import { deliverDuePosts } from '@/lib/posts';
 import { initCloudSync } from '@/lib/sync';
 import { initWeather, refreshWeather } from '@/lib/weather';
@@ -49,6 +51,7 @@ export default function RootLayout() {
     void initWeather();
     deliverDueHeartbeats();
     void deliverDuePosts();
+    void checkMissedPlans();
     SplashScreen.hideAsync();
   }, [hydrated]);
 
@@ -64,6 +67,7 @@ export default function RootLayout() {
       if (s === 'active') {
         deliverDueHeartbeats();
         void deliverDuePosts();
+        void checkMissedPlans();
         void refreshWeather();
       }
     });
@@ -84,6 +88,7 @@ export default function RootLayout() {
           options={{ presentation: 'fullScreenModal', gestureEnabled: false, animation: 'fade' }}
         />
       </Stack>
+      <ToastHost />
       <StatusBar style="dark" />
     </ThemeProvider>
   );

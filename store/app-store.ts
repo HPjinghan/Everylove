@@ -17,7 +17,9 @@ import { bondLevel, levelLabel } from '@/lib/bond';
 import { setLang } from '@/lib/i18n';
 import { DEFAULT_DOCK } from '@/constants/apps';
 import { placeById } from '@/content/places';
+import { appointmentAtLabel, minutesLate, planIsOpen } from '@/lib/appointments';
 import type {
+  AlbumShot,
   Bond,
   BondMemory,
   CalendarEvent,
@@ -80,6 +82,8 @@ interface AppState {
   outingPlans: OutingPlan[];
   /** 当前外出场景会话（同一时间只有一场；结束后清空） */
   outingSession: OutingSession | null;
+  /** 相册（D-079）：外出拍的照片按下快门即入册，不再并入羁绊会话 */
+  album: AlbumShot[];
 
   completeOnboarding: (pref: LovePref) => void;
   setLanguage: (l: 'zh' | 'en' | 'ja') => void;
@@ -147,9 +151,14 @@ interface AppState {
   removeUserEvent: (id: string) => void;
   /** 心跳三段式：标记某段已投递（lib/heartbeat.ts） */
   markEventStage: (id: string, stage: 'caredBefore' | 'caredDay' | 'caredAfter') => void;
-  /** 外出（D-038）：立一个约定（同角色只保留最新一条），并在羁绊会话留系统记录 */
-  addOutingPlan: (characterId: string, placeId: string) => void;
+  /** 外出（D-038）：立一个约定（同角色只保留最新一条），并在羁绊会话留系统记录；带时间的约定只在赴约窗口内算数（D-079） */
+  addOutingPlan: (
+    characterId: string,
+    placeId: string,
+    opts?: { at?: number; source?: 'manual' | 'chat' }
+  ) => void;
   removeOutingPlan: (id: string) => void;
+  addAlbumShot: (shot: AlbumShot) => void;
   /**
    * 进入地点开一场外出：该地点有约定 → 赴约（消耗约定）；没有 → 偶遇一位通讯录里的 TA
    * （跳过离席中的；赴约不跳过——TA 说到做到）。没有可遇的人返回 null。
@@ -190,6 +199,7 @@ const initialData = {
   datingView: 'swipe' as 'swipe' | 'grid',
   outingPlans: [] as OutingPlan[],
   outingSession: null as OutingSession | null,
+  album: [] as AlbumShot[],
 };
 
 export const useAppStore = create<AppState>()(
@@ -567,11 +577,18 @@ export const useAppStore = create<AppState>()(
           userEvents: get().userEvents.map((e) => (e.id === id ? { ...e, [stage]: true } : e)),
         }),
 
-      addOutingPlan: (characterId, placeId) => {
+      addOutingPlan: (characterId, placeId, opts) => {
         const state = get();
         const place = placeById(placeId);
         if (!place) return;
-        const plan: OutingPlan = { id: uid('op'), characterId, placeId, createdAt: Date.now() };
+        const plan: OutingPlan = {
+          id: uid('op'),
+          characterId,
+          placeId,
+          createdAt: Date.now(),
+          at: opts?.at,
+          source: opts?.source ?? 'manual',
+        };
         // 羁绊会话里留下这条约定（可感知；也给记忆提取一个钩子之外的人肉锚点）
         const bond = state.bonds.find((b) => b.characterId === characterId);
         set({
@@ -587,7 +604,9 @@ export const useAppStore = create<AppState>()(
                           id: uid('m'),
                           from: 'system' as const,
                           kind: 'system' as const,
-                          text: `你们约好了去${place.name}见面`,
+                          text: opts?.at
+                            ? `你们约好了 ${appointmentAtLabel(opts.at)} 在${place.name}见面`
+                            : `你们约好了去${place.name}见面`,
                           at: Date.now(),
                         },
                       ],
@@ -601,6 +620,8 @@ export const useAppStore = create<AppState>()(
       removeOutingPlan: (id) =>
         set({ outingPlans: get().outingPlans.filter((p) => p.id !== id) }),
 
+      addAlbumShot: (shot) => set({ album: [...get().album, shot] }),
+
       startOuting: (placeId) => {
         // 同地点的进行中会话：续上（离开再进来 TA 还在）；换了地点则先体面结束上一场
         if (get().outingSession?.placeId === placeId) {
@@ -608,8 +629,10 @@ export const useAppStore = create<AppState>()(
         }
         if (get().outingSession) get().endOuting();
         const state = get();
+        const now = Date.now();
         const place = placeById(placeId);
-        const plan = state.outingPlans.find((p) => p.placeId === placeId);
+        // 有时间的约定只在赴约窗口内算数（D-079）；没时间的随时有效
+        const plan = state.outingPlans.find((p) => p.placeId === placeId && planIsOpen(p, now));
         let characterId: string | undefined;
         let kind: OutingSession['kind'] = 'encounter';
         if (place?.stranger) {
@@ -635,8 +658,12 @@ export const useAppStore = create<AppState>()(
           characterId = plan.characterId;
           kind = 'date';
         } else {
-          // 偶遇：通讯录里的人恰好也在（离席态已随开门一起退役，D-046）
-          const candidates = state.bonds;
+          // 偶遇：通讯录里的人恰好也在（离席态已随开门一起退役，D-046）；
+          // 和她在这里另有约、还没到时候的人不会「恰好」在这（D-079）
+          const planned = new Set(
+            state.outingPlans.filter((p) => p.placeId === placeId).map((p) => p.characterId)
+          );
+          const candidates = state.bonds.filter((b) => !planned.has(b.characterId));
           if (!candidates.length) return null;
           const pickIdx = Math.floor(Math.random() * candidates.length);
           characterId = candidates[pickIdx].characterId;
@@ -647,7 +674,10 @@ export const useAppStore = create<AppState>()(
           characterId,
           kind,
           messages: [],
-          startedAt: Date.now(),
+          startedAt: now,
+          lastActiveAt: now,
+          planAt: plan?.at,
+          lateMinutes: plan?.at ? minutesLate(plan.at, now) : undefined,
         };
         set({
           outingSession: session,
@@ -659,7 +689,15 @@ export const useAppStore = create<AppState>()(
       appendOuting: (msgs) => {
         const session = get().outingSession;
         if (!session) return;
-        set({ outingSession: { ...session, messages: [...session.messages, ...msgs] } });
+        // 有人说话才算活跃（照片洗好贴进来不算，D-079 冷却按说话算）
+        const spoke = msgs.some((m) => m.from !== 'system' && m.kind !== 'image');
+        set({
+          outingSession: {
+            ...session,
+            messages: [...session.messages, ...msgs],
+            lastActiveAt: spoke ? Date.now() : session.lastActiveAt,
+          },
+        });
       },
 
       endOuting: () => {
@@ -669,7 +707,8 @@ export const useAppStore = create<AppState>()(
         const place = placeById(session.placeId);
         const bond = state.bonds.find((b) => b.characterId === session.characterId);
         const talked = session.messages.some((m) => m.from === 'me' && m.kind === 'text');
-        // 外出拍的照片是资产（D-051）：并进羁绊会话——相册按 bond.messages 汇集
+        // 照片不再跨会话并入羁绊会话（D-079）：按下快门时已进相册（store.album）。
+        // 现场对话并进记忆由 lib/outing.ts finishOuting 负责（store 不调模型）。
         const photos = session.messages.filter((m) => m.kind === 'image' && m.imageUri);
         set({
           outingSession: null,
@@ -681,12 +720,14 @@ export const useAppStore = create<AppState>()(
                         ...b,
                         messages: [
                           ...b.messages,
-                          ...photos.map((p) => ({ ...p, id: uid('m') })),
                           {
                             id: uid('m'),
                             from: 'system' as const,
                             kind: 'system' as const,
-                            text: `你们一起去了${place.name}`,
+                            text:
+                              session.kind === 'date'
+                                ? `你们在${place.name}见了面`
+                                : `你们一起去了${place.name}`,
                             at: Date.now(),
                           },
                         ],

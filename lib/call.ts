@@ -13,6 +13,7 @@ import { CALL_PICKUP_USER } from '@/content/prompts';
 import { XP_PER_MESSAGE } from '@/lib/bond';
 import { aiRouteSync, generateReply } from '@/lib/engine';
 import { uid } from '@/lib/format';
+import { detectAppointment } from '@/lib/outing';
 import { ttsReady } from '@/lib/tts';
 import type { Bond, Character, ChatMessage, EngineContext } from '@/lib/types';
 import { meForCharacter, useAppStore } from '@/store/app-store';
@@ -87,9 +88,10 @@ export async function callReply(character: Character, bondId: string, herText: s
   return text;
 }
 
-/** 挂断：会话里留一条通话记录（像 LINE 的「通话时间」） */
+/** 挂断：会话里留一条通话记录（像 LINE 的「通话时间」）；电话里约好的见面也记进日程（D-079） */
 export function logCall(bondId: string, ms: number): void {
   useAppStore.getState().appendBond(bondId, [
     { id: uid('m'), from: 'system', kind: 'system', text: `📞 ${formatCallDuration(ms)}`, at: Date.now() },
   ]);
+  void detectAppointment(bondId);
 }
