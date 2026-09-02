@@ -13,28 +13,43 @@
     --line: #ece4e6;
     --rose: #e56b8a;
     --rose-soft: #fbe9ee;
+    --sys: #6b7fb3;
+    --sys-soft: #eef1f9;
     --ok: #3d9a6a;
     --err: #c8434f;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", "Hiragino Sans", system-ui, sans-serif; }
-  .app { display: grid; grid-template-columns: 400px 1fr; min-height: 100vh; }
-  @media (max-width: 900px) { .app { grid-template-columns: 1fr; } .side { position: static !important; height: auto !important; } }
+  .app { display: grid; grid-template-columns: 460px 1fr; min-height: 100vh; }
+  @media (max-width: 960px) { .app { grid-template-columns: 1fr; } .side { position: static !important; height: auto !important; } }
 
-  .side { position: sticky; top: 0; height: 100vh; overflow: auto; padding: 20px; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px; }
+  .side { position: sticky; top: 0; height: 100vh; overflow: auto; padding: 18px 20px 28px; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px; }
   h1 { font-size: 16px; margin: 0; display: flex; align-items: baseline; gap: 10px; }
   h1 small { color: var(--muted); font-weight: normal; font-size: 12px; }
-  label.lbl { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  textarea { width: 100%; min-height: 180px; resize: vertical; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; line-height: 1.6; background: #fffdfd; outline: none; }
+  .lbl { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--muted); margin-bottom: 4px; gap: 8px; }
+  .lbl b { font-weight: 600; font-size: 12.5px; }
+  .lbl .cnt { font-variant-numeric: tabular-nums; }
+  .lbl .cnt.over { color: var(--err); font-weight: 600; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; margin-right: 6px; vertical-align: 1px; }
+  .tag.sys { background: var(--sys-soft); color: var(--sys); }
+  .tag.usr { background: var(--rose-soft); color: var(--rose); }
+  textarea { width: 100%; resize: vertical; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; line-height: 1.6; background: #fffdfd; outline: none; }
+  textarea.sys { min-height: 150px; border-left: 3px solid var(--sys); }
+  textarea.usr { min-height: 110px; border-left: 3px solid var(--rose); }
+  textarea.neg { min-height: 52px; }
   textarea:focus, input:focus, select:focus { border-color: var(--rose); box-shadow: 0 0 0 3px var(--rose-soft); }
+  textarea.sys:focus { border-color: var(--sys); box-shadow: 0 0 0 3px var(--sys-soft); }
   input, select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #fff; outline: none; width: 100%; }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .chips button, .acts button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
+  .chips button:hover, .acts button:hover { border-color: var(--rose); color: var(--rose); }
   .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
   .seg label { flex: 1; text-align: center; padding: 7px 4px; cursor: pointer; font-size: 13px; color: var(--muted); border-right: 1px solid var(--line); user-select: none; }
   .seg label:last-child { border-right: 0; }
   .seg input { display: none; }
-  .seg input:checked + span { color: var(--rose); font-weight: 600; }
-  .seg label:has(input:checked) { background: var(--rose-soft); }
+  .seg label:has(input:checked) { background: var(--rose-soft); color: var(--rose); font-weight: 600; }
   button.go { padding: 12px; border: 0; border-radius: 12px; background: var(--rose); color: #fff; font: inherit; font-weight: 600; font-size: 15px; cursor: pointer; }
   button.go:disabled { opacity: .55; cursor: wait; }
   .hint { font-size: 12px; color: var(--muted); }
@@ -43,7 +58,10 @@
   .status.ok { color: var(--ok); }
   details { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; background: #fffdfd; }
   summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+  details .body { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
   pre.full { white-space: pre-wrap; word-break: break-word; font: 12px/1.6 ui-monospace, Consolas, monospace; margin: 8px 0 0; color: #5a4f53; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .check input { width: auto; }
 
   .main { padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; }
   .main h2 { font-size: 13px; color: var(--muted); font-weight: normal; margin: 0; letter-spacing: .04em; }
@@ -57,12 +75,16 @@
   .imgs img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .meta { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
   .meta .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
-  .meta .p { font-size: 12.5px; line-height: 1.55; color: #4c4246; white-space: pre-wrap; word-break: break-word; max-height: 4.6em; overflow: hidden; position: relative; }
-  .meta .p.open { max-height: none; }
-  .meta .p:not(.open)::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1.6em; background: linear-gradient(transparent, #fff); }
+  .blk { font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; padding: 6px 8px; border-radius: 8px; }
+  .blk.usr { background: var(--rose-soft); color: #4c4246; }
+  .blk.sys { background: var(--sys-soft); color: #4c5570; }
+  .blk.raw { background: #f5f1f2; color: #4c4246; }
+  .blk.neg { background: #f5f1f2; color: #6b5f63; }
+  .blk .t { font-size: 11px; font-weight: 600; opacity: .7; display: block; margin-bottom: 2px; }
+  .card:not(.open) .blk.sys, .card:not(.open) .blk.neg { display: none; }
+  .card:not(.open) .blk { max-height: 4.6em; overflow: hidden; }
+  .extra { font-size: 11px; color: var(--muted); }
   .acts { display: flex; gap: 6px; flex-wrap: wrap; }
-  .acts button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
-  .acts button:hover { border-color: var(--rose); color: var(--rose); }
   .pending { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; color: var(--muted); font-size: 13px; flex-direction: column; gap: 8px; background: #f7f2f4; }
   .spin { width: 22px; height: 22px; border: 3px solid var(--rose-soft); border-top-color: var(--rose); border-radius: 50%; animation: r 1s linear infinite; }
   @keyframes r { to { transform: rotate(360deg); } }
@@ -75,31 +97,57 @@
     <h1>生图调 prompt <small>同 lib/imagegen.ts 接口 · 千帆</small></h1>
 
     <div>
-      <label class="lbl" for="prompt">你的文字（Ctrl+Enter 生成）</label>
-      <textarea id="prompt" placeholder="例：一个二十出头的男生，黑色微卷短发，戴细框眼镜，白衬衫" spellcheck="false"></textarea>
-    </div>
-
-    <div>
-      <label class="lbl">尾部追加（实时读 content/prompts.ts）</label>
-      <div class="seg" id="tail">
-        <label><input type="radio" name="tail" value="none" /><span>不追加</span></label>
-        <label><input type="radio" name="tail" value="style" /><span>画风尾巴</span></label>
-        <label><input type="radio" name="tail" value="portrait" checked /><span>立绘尾巴</span></label>
+      <div class="lbl"><b><span class="tag sys">system</span>每张都带的部分：画风 / 构图 / 红线</b><span class="cnt" id="sysCnt"></span></div>
+      <textarea id="system" class="sys" spellcheck="false" placeholder="留空也行。可以先载入工程当前的常量再改："></textarea>
+      <div class="chips">
+        <button data-preset="portrait">载入 立绘（工程当前）</button>
+        <button data-preset="style">载入 画风（工程当前）</button>
+        <button data-preset="">清空</button>
       </div>
     </div>
 
-    <div class="row">
-      <div><label class="lbl" for="size">size</label><input id="size" value="1024x1024" /></div>
-      <div><label class="lbl" for="n">张数</label>
-        <select id="n"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+    <div>
+      <div class="lbl"><b><span class="tag usr">user</span>这一张画什么（Ctrl+Enter 生成）</b><span class="cnt" id="usrCnt"></span></div>
+      <textarea id="user" class="usr" spellcheck="false" placeholder="例：一个二十出头的男生，黑色微卷短发，戴细框眼镜，白衬衫"></textarea>
     </div>
-    <div><label class="lbl" for="model">model</label><input id="model" /></div>
+
+    <div>
+      <div class="lbl"><span>拼接顺序（接口只有一条 prompt，两段拼起来发）</span></div>
+      <div class="seg" id="order">
+        <label><input type="radio" name="order" value="system-first" checked /><span>system 在前</span></label>
+        <label><input type="radio" name="order" value="user-first" /><span>user 在前（工程立绘顺序）</span></label>
+      </div>
+    </div>
+
+    <div>
+      <div class="lbl"><span>negative · 不想出现的（可空）</span><span class="cnt" id="negCnt"></span></div>
+      <textarea id="negative" class="neg" spellcheck="false" placeholder="例：文字，水印，多人，写实照片"></textarea>
+    </div>
+
+    <div class="row">
+      <div><div class="lbl"><span>size</span></div><input id="size" list="sizes" value="1024x1024" /><datalist id="sizes"><option value="1024x1024" /><option value="768x1024" /><option value="1024x768" /><option value="1328x1328" /><option value="1536x1536" /></datalist></div>
+      <div><div class="lbl"><span>model</span></div><input id="model" /></div>
+    </div>
+
+    <details id="adv">
+      <summary>高级参数（不填 = 平台默认 = 和工程一样）</summary>
+      <div class="body">
+        <div class="row3">
+          <div><div class="lbl"><span>seed</span></div><input id="seed" type="number" min="0" max="4294967295" placeholder="随机" /></div>
+          <div><div class="lbl"><span>steps 1–50</span></div><input id="steps" type="number" min="1" max="50" placeholder="默认" /></div>
+          <div><div class="lbl"><span>guidance 0–20</span></div><input id="guidance" type="number" min="0" max="20" step="0.5" placeholder="默认 4" /></div>
+        </div>
+        <div class="chips"><button id="seedBtn">随机一个 seed 并固定住</button><button id="seedClear">清掉 seed</button><span class="hint" style="align-self:center">固定 seed，改 prompt 才是公平比较</span></div>
+        <label class="check"><input type="checkbox" id="extend" checked /> prompt_extend：让平台先把 prompt 改写一遍再画（平台默认开；关掉才是所写即所画）</label>
+        <div class="row"><div><div class="lbl"><span>张数</span></div><select id="n"><option>1</option><option>2</option><option>3</option><option>4</option></select></div><div class="hint" style="align-self:end;padding-bottom:8px">qwen-image 只支持 1</div></div>
+      </div>
+    </details>
 
     <button class="go" id="go">生成</button>
     <div class="status" id="status"></div>
 
     <details>
-      <summary>实际发出的完整 prompt</summary>
+      <summary>实际发出的请求体 <span id="fullCnt"></span></summary>
       <pre class="full" id="full"></pre>
     </details>
 
@@ -107,7 +155,7 @@
   </aside>
 
   <main class="main">
-    <h2 id="title">历史（scripts/out，最新在前）</h2>
+    <h2>历史（scripts/out，最新在前）</h2>
     <div class="grid" id="grid"></div>
     <div class="empty" id="empty" hidden>还没有图。左边写字，点生成。</div>
   </main>
@@ -115,81 +163,140 @@
 
 <script>
   const $ = (id) => document.getElementById(id);
-  const promptEl = $('prompt'), sizeEl = $('size'), nEl = $('n'), modelEl = $('model'), goEl = $('go'), statusEl = $('status'), fullEl = $('full'), gridEl = $('grid'), emptyEl = $('empty'), hintEl = $('hint');
-  let tails = { style: '', portrait: '' };
+  const F = {
+    system: $('system'), user: $('user'), negative: $('negative'), size: $('size'), model: $('model'),
+    seed: $('seed'), steps: $('steps'), guidance: $('guidance'), extend: $('extend'), n: $('n'),
+  };
+  const goEl = $('go'), statusEl = $('status'), fullEl = $('full'), fullCnt = $('fullCnt'), gridEl = $('grid'), emptyEl = $('empty'), hintEl = $('hint');
+  let presets = { style: '', portrait: '' };
+  let limits = { prompt: 800, negative: 500 };
 
-  const tail = () => document.querySelector('input[name=tail]:checked').value;
-  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const order = () => document.querySelector('input[name=order]:checked').value;
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const numOrEmpty = (el) => (el.value.trim() === '' ? '' : Number(el.value));
 
-  function renderFull() {
-    const t = tail();
-    const extra = t === 'none' ? '' : '\n' + tails[t];
-    fullEl.textContent = promptEl.value.trim() + extra;
+  function compose() {
+    const s = F.system.value.trim(), u = F.user.value.trim();
+    if (!s) return u; if (!u) return s;
+    return order() === 'user-first' ? `${u}\n\n${s}` : `${s}\n\n${u}`;
+  }
+  function request() {
+    return {
+      system: F.system.value, user: F.user.value, order: order(), negative: F.negative.value,
+      size: F.size.value.trim(), model: F.model.value.trim(), n: Number(F.n.value),
+      seed: numOrEmpty(F.seed), steps: numOrEmpty(F.steps), guidance: numOrEmpty(F.guidance),
+      promptExtend: F.extend.checked ? undefined : false,
+    };
+  }
+  function bodyPreview() {
+    const r = request();
+    const b = { model: r.model, prompt: compose(), size: r.size, n: r.n };
+    if (r.negative.trim()) b.negative_prompt = r.negative.trim();
+    if (r.seed !== '') b.seed = r.seed;
+    if (r.steps !== '') b.steps = r.steps;
+    if (r.guidance !== '') b.guidance = r.guidance;
+    if (r.promptExtend === false) b.prompt_extend = false;
+    return b;
+  }
+  function setCnt(el, len, max) { el.textContent = `${len} / ${max}`; el.classList.toggle('over', len > max); }
+  function render() {
+    const b = bodyPreview();
+    fullEl.textContent = JSON.stringify(b, null, 2);
+    setCnt($('sysCnt'), F.system.value.trim().length, limits.prompt);
+    setCnt($('usrCnt'), F.user.value.trim().length, limits.prompt);
+    setCnt($('negCnt'), F.negative.value.trim().length, limits.negative);
+    const total = b.prompt.length;
+    fullCnt.textContent = `· prompt ${total} / ${limits.prompt}`;
+    fullCnt.style.color = total > limits.prompt ? 'var(--err)' : '';
   }
 
   // 记住上次写的
   try {
-    const saved = JSON.parse(localStorage.getItem('gen-image-form') || '{}');
-    if (saved.prompt) promptEl.value = saved.prompt;
-    if (saved.tail) { const r = document.querySelector(`input[name=tail][value=${saved.tail}]`); if (r) r.checked = true; }
-    if (saved.size) sizeEl.value = saved.size;
-    if (saved.n) nEl.value = saved.n;
+    const saved = JSON.parse(localStorage.getItem('gen-image-form-v2') || '{}');
+    for (const k of ['system', 'user', 'negative', 'size', 'model', 'seed', 'steps', 'guidance', 'n']) if (saved[k] != null && saved[k] !== '') F[k].value = saved[k];
+    if (saved.extend === false) F.extend.checked = false;
+    if (saved.order) { const r = document.querySelector(`input[name=order][value=${saved.order}]`); if (r) r.checked = true; }
   } catch {}
   function persist() {
-    try { localStorage.setItem('gen-image-form', JSON.stringify({ prompt: promptEl.value, tail: tail(), size: sizeEl.value, n: nEl.value })); } catch {}
-    renderFull();
+    try {
+      const o = {}; for (const k of ['system', 'user', 'negative', 'size', 'model', 'seed', 'steps', 'guidance', 'n']) o[k] = F[k].value;
+      o.extend = F.extend.checked; o.order = order();
+      localStorage.setItem('gen-image-form-v2', JSON.stringify(o));
+    } catch {}
+    render();
   }
-  promptEl.addEventListener('input', persist);
-  $('tail').addEventListener('change', persist);
-  sizeEl.addEventListener('input', persist);
-  nEl.addEventListener('change', persist);
-  promptEl.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); go(); } });
+  for (const el of Object.values(F)) { el.addEventListener('input', persist); el.addEventListener('change', persist); }
+  $('order').addEventListener('change', persist);
+  for (const el of [F.user, F.system, F.negative]) el.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); go(); } });
+  document.querySelectorAll('[data-preset]').forEach((b) => (b.onclick = () => { F.system.value = b.dataset.preset ? presets[b.dataset.preset] : ''; persist(); }));
+  $('seedBtn').onclick = () => { F.seed.value = Math.floor(Math.random() * 4294967295); persist(); };
+  $('seedClear').onclick = () => { F.seed.value = ''; persist(); };
 
   function card(h, fresh) {
     const el = document.createElement('div');
     el.className = 'card' + (fresh ? ' fresh' : '');
+    const p = h.params || {};
+    const structured = p.system != null || p.user != null;
     const imgs = h.images.map((src) => `<a href="${src}" target="_blank" title="新标签打开原图"><img src="${src}" loading="lazy" /></a>`).join('');
+    const extras = [];
+    if (p.seed != null) extras.push(`seed ${p.seed}`);
+    if (p.steps != null) extras.push(`steps ${p.steps}`);
+    if (p.guidance != null) extras.push(`guidance ${p.guidance}`);
+    if (p.prompt_extend === false) extras.push('不改写');
+    if (structured) extras.push(p.order === 'user-first' ? 'user 在前' : 'system 在前');
+    const blocks = structured
+      ? `${p.user ? `<div class="blk usr"><span class="t">user</span>${esc(p.user)}</div>` : ''}${p.system ? `<div class="blk sys"><span class="t">system</span>${esc(p.system)}</div>` : ''}`
+      : `<div class="blk raw">${esc(h.prompt)}</div>`;
+    const neg = p.negative_prompt ? `<div class="blk neg"><span class="t">negative</span>${esc(p.negative_prompt)}</div>` : '';
     el.innerHTML = `
       <div class="imgs n${h.images.length}">${imgs}</div>
       <div class="meta">
-        <div class="top"><span>${esc(h.time || '')}</span><span>${esc(h.params?.model || '')} · ${esc(h.params?.size || '')}${h.elapsed ? ` · ${h.elapsed.toFixed(0)}s` : ''}</span></div>
-        <div class="p">${esc(h.prompt || '')}</div>
+        <div class="top"><span>${esc(h.time || '')}</span><span>${esc(p.model || '')} · ${esc(p.size || '')}${h.elapsed ? ` · ${h.elapsed.toFixed(0)}s` : ''}</span></div>
+        ${blocks}${neg}
+        ${extras.length ? `<div class="extra">${esc(extras.join(' · '))}</div>` : ''}
         <div class="acts">
-          <button data-act="toggle">展开 prompt</button>
+          <button data-act="toggle">展开</button>
           <button data-act="reuse">回填到左边</button>
-          <button data-act="copy">复制 prompt</button>
+          <button data-act="copy">复制完整 prompt</button>
         </div>
       </div>`;
-    const p = el.querySelector('.p');
-    el.querySelector('[data-act=toggle]').onclick = (e) => { p.classList.toggle('open'); e.target.textContent = p.classList.contains('open') ? '收起' : '展开 prompt'; };
+    el.querySelector('[data-act=toggle]').onclick = (e) => { el.classList.toggle('open'); e.target.textContent = el.classList.contains('open') ? '收起' : '展开'; };
     el.querySelector('[data-act=reuse]').onclick = () => {
-      // 回填时把当前所选尾巴从末尾剥掉，只留她自己写的那段
-      let body = h.prompt || '';
-      for (const t of ['portrait', 'style']) if (tails[t] && body.endsWith(tails[t])) { body = body.slice(0, -tails[t].length).trimEnd(); const r = document.querySelector(`input[name=tail][value=${t}]`); if (r) r.checked = true; break; }
-      promptEl.value = body;
-      if (h.params?.size) sizeEl.value = h.params.size;
-      if (h.params?.model) modelEl.value = h.params.model;
-      persist(); promptEl.focus(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (structured) {
+        F.system.value = p.system || ''; F.user.value = p.user || '';
+        const r = document.querySelector(`input[name=order][value=${p.order === 'user-first' ? 'user-first' : 'system-first'}]`); if (r) r.checked = true;
+      } else {
+        // 老格式：只有整条 prompt——试着把工程预设从末尾剥出来当 system
+        let body = h.prompt || '', sys = '';
+        for (const t of ['portrait', 'style']) if (presets[t] && body.endsWith(presets[t])) { sys = presets[t]; body = body.slice(0, -presets[t].length).trimEnd(); break; }
+        F.system.value = sys; F.user.value = body;
+        const r = document.querySelector('input[name=order][value=user-first]'); if (r) r.checked = true;
+      }
+      F.negative.value = p.negative_prompt || '';
+      F.seed.value = p.seed ?? ''; F.steps.value = p.steps ?? ''; F.guidance.value = p.guidance ?? '';
+      F.extend.checked = p.prompt_extend !== false;
+      if (p.size) F.size.value = p.size;
+      if (p.model) F.model.value = p.model;
+      persist(); F.user.focus(); window.scrollTo({ top: 0, behavior: 'smooth' });
     };
-    el.querySelector('[data-act=copy]').onclick = (e) => { navigator.clipboard?.writeText(h.prompt || ''); e.target.textContent = '已复制'; setTimeout(() => (e.target.textContent = '复制 prompt'), 1200); };
+    el.querySelector('[data-act=copy]').onclick = (e) => { navigator.clipboard?.writeText(h.prompt || ''); e.target.textContent = '已复制'; setTimeout(() => (e.target.textContent = '复制完整 prompt'), 1200); };
     return el;
   }
 
   function pendingCard(prompt) {
     const el = document.createElement('div');
     el.className = 'card fresh';
-    el.innerHTML = `<div class="pending"><div class="spin"></div><div>生成中 <span class="t">0</span>s（一般 40–90s）</div></div><div class="meta"><div class="p">${esc(prompt)}</div></div>`;
+    el.innerHTML = `<div class="pending"><div class="spin"></div><div>生成中 <span class="t">0</span>s（一般 40–90s）</div></div><div class="meta"><div class="blk raw">${esc(prompt)}</div></div>`;
     const t0 = Date.now(); const tEl = el.querySelector('.t');
     el._timer = setInterval(() => (tEl.textContent = Math.round((Date.now() - t0) / 1000)), 1000);
     return el;
   }
 
   async function go() {
-    const body = promptEl.value.trim();
-    if (!body) { statusEl.className = 'status err'; statusEl.textContent = '先写点什么。'; promptEl.focus(); return; }
-    const req = { prompt: body, tail: tail(), size: sizeEl.value.trim(), n: Number(nEl.value), model: modelEl.value.trim() };
-    const shown = fullEl.textContent;
-    const pend = pendingCard(shown);
+    const prompt = compose();
+    if (!prompt) { statusEl.className = 'status err'; statusEl.textContent = 'system 和 user 都是空的。'; F.user.focus(); return; }
+    const req = request();
+    const pend = pendingCard(prompt);
     gridEl.prepend(pend); emptyEl.hidden = true;
     statusEl.className = 'status'; statusEl.textContent = '已发出，等千帆…';
     goEl.disabled = true;
@@ -212,11 +319,11 @@
 
   async function init() {
     const cfg = await (await fetch('/api/config')).json();
-    tails = cfg.tails;
-    if (!modelEl.value) modelEl.value = cfg.model;
-    if (!sizeEl.value) sizeEl.value = cfg.size;
-    hintEl.textContent = (cfg.hasKey ? '' : '⚠ 没找到千帆 key：.env.local 里填 EXPO_PUBLIC_QIANFAN_API_KEY。 ') + '图片和当时的 prompt 都落在 ' + cfg.outDir + '（不进 git）。';
-    renderFull();
+    presets = cfg.presets; limits = cfg.limits || limits;
+    if (!F.model.value) F.model.value = cfg.model;
+    if (!F.size.value) F.size.value = cfg.size;
+    hintEl.textContent = (cfg.hasKey ? '' : '⚠ 没找到千帆 key：.env.local 里填 EXPO_PUBLIC_QIANFAN_API_KEY。 ') + '图片和当时的 system / user / 参数都落在 ' + cfg.outDir + '（不进 git）。';
+    render();
     const hist = await (await fetch('/api/history')).json();
     gridEl.replaceChildren(...hist.map((h) => card(h)));
     emptyEl.hidden = hist.length > 0;

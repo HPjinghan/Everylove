@@ -6,9 +6,10 @@
  *
  * 接口：
  *   GET  /                → 页面
- *   GET  /api/config      → { model, size, hasKey, tails: { style, portrait } }
- *   GET  /api/history     → scripts/out 里的历史（最新在前，含当时 prompt）
- *   POST /api/generate    → { prompt, tail, size, model, n } → { base, images, prompt, params, elapsed }
+ *   GET  /api/config      → { model, size, hasKey, limits, presets: { style, portrait } }
+ *   GET  /api/history     → scripts/out 里的历史（最新在前，含当时 system/user/参数）
+ *   POST /api/generate    → { system, user, order, negative, size, model, n, seed, steps, guidance, promptExtend }
+ *                         → { base, images, prompt, params, elapsed }
  *   GET  /out/<file>      → 生成的图片
  */
 
@@ -21,13 +22,14 @@ import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_OUT,
   DEFAULT_SIZE,
+  LIMITS,
   QianfanError,
   apiKey,
   composePrompt,
   defaultModel,
   generate,
   history,
-  styleTail,
+  preset,
 } from './gen-image-core.mjs';
 
 const PORT = Number(process.env.PORT || process.argv[2]) || 3939;
@@ -37,9 +39,8 @@ const UI = resolve(fileURLToPath(import.meta.url), '../gen-image-ui.html');
 const MIME = { '.jpg': 'image/jpeg', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8', '.html': 'text/html; charset=utf-8' };
 
 function json(res, status, obj) {
-  const body = JSON.stringify(obj);
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-  res.end(body);
+  res.end(JSON.stringify(obj));
 }
 
 function readBody(req) {
@@ -62,6 +63,8 @@ function sendFile(res, file) {
   createReadStream(file).pipe(res);
 }
 
+const num = (v) => (v === '' || v === null || v === undefined ? undefined : Number(v));
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${HOST}`);
   try {
@@ -76,27 +79,42 @@ const server = createServer(async (req, res) => {
         size: DEFAULT_SIZE,
         hasKey: Boolean(apiKey()),
         outDir: DEFAULT_OUT,
-        tails: { style: styleTail('style').join('\n'), portrait: styleTail('portrait').join('\n') },
+        limits: LIMITS,
+        presets: { style: preset('style'), portrait: preset('portrait') },
       });
     }
     if (req.method === 'GET' && url.pathname === '/api/history') {
       return json(res, 200, history().map((h) => ({ ...h, images: h.images.map((n) => `/out/${n}`) })));
     }
     if (req.method === 'POST' && url.pathname === '/api/generate') {
-      let body;
+      let b;
       try {
-        body = JSON.parse((await readBody(req)) || '{}');
+        b = JSON.parse((await readBody(req)) || '{}');
       } catch {
         return json(res, 400, { error: '请求体不是 JSON' });
       }
-      const text = String(body.prompt ?? '').trim();
-      if (!text) return json(res, 400, { error: 'prompt 为空' });
-      const prompt = composePrompt(text, body.tail || 'none');
-      const model = String(body.model || defaultModel()).trim();
-      const size = String(body.size || DEFAULT_SIZE).trim();
-      const n = Math.min(4, Math.max(1, Number(body.n) || 1));
-      console.log(`[gen] ${new Date().toLocaleTimeString()} model=${model} size=${size} n=${n}\n${prompt}\n`);
-      const r = await generate({ prompt, model, size, n });
+      const system = String(b.system ?? '').trim();
+      const user = String(b.user ?? '').trim();
+      const order = b.order === 'user-first' ? 'user-first' : 'system-first';
+      const prompt = composePrompt({ system, user, order });
+      if (!prompt) return json(res, 400, { error: 'system 和 user 都是空的' });
+      const model = String(b.model || defaultModel()).trim();
+      const size = String(b.size || DEFAULT_SIZE).trim();
+      const n = Math.min(4, Math.max(1, Number(b.n) || 1));
+      const opts = {
+        prompt,
+        model,
+        size,
+        n,
+        negative: b.negative,
+        seed: num(b.seed),
+        steps: num(b.steps),
+        guidance: num(b.guidance),
+        promptExtend: typeof b.promptExtend === 'boolean' ? b.promptExtend : undefined,
+        meta: { system, user, order },
+      };
+      console.log(`[gen] ${new Date().toLocaleTimeString()} model=${model} size=${size} n=${n} prompt=${prompt.length}字\n${prompt}\n`);
+      const r = await generate(opts);
       console.log(`[gen] 完成 ${r.elapsed.toFixed(1)}s → ${r.files.map((f) => basename(f)).join(', ')}`);
       return json(res, 200, { ...r, images: r.files.map((f) => `/out/${basename(f)}`), files: undefined });
     }

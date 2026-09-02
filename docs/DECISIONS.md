@@ -612,3 +612,9 @@
 - **推翻**：D-010「开发者面板手填可覆盖」「无 key 或调用失败回落 mock」；D-053「失败回落台词库」；D-057 取路第三层「都没有 → mock/占位」改为「都没有 → 抛错露出」。
 - **影响文件**：`lib/engine.ts`、`lib/types.ts`、`store/app-store.ts`（persist v5）、`lib/memory.ts`、`lib/posts.ts`、`lib/imagegen.ts`、`lib/tts.ts`、`app/chat/[characterId].tsx`、`app/bond/[bondId].tsx`、`app/outing/[placeId].tsx`、`app/apps/moments.tsx`、`app/apps/create.tsx`、`app/apps/settings.tsx`、`content/prompts.ts`（注释）、`lib/i18n.ts`、`.env.example`。
 - **遗留**：云端快照里现存的 `engine: "mock"` 会在下次水合经 v5 迁移清掉；preview 分发包需重发一次 EAS Update 才带上本次改动（分发包无本地 key → 登录即走代理，D-057 本意至此才真正生效）。
+
+## D-070 · 2026-09-02 · 生图调 prompt 工具：system / user 两段结构 + 千帆生图全参数（Harper 提出）
+
+- **决策**：调 prompt 网页与 CLI 的输入改为 **system / user 两段**（Harper：「结构上我会有 system 和 user 两个部分」）。千帆 `/v2/images/generations` **没有 system 字段**（只有一条 `prompt`，qwen-image ≤800 字符），所以两段在发出前由 `composePrompt` 拼成一条，顺序可选：**system 在前**（默认）/ **user 在前**（= 工程 `buildPortraitPrompt` 的主体在前、画风在后）。system 框可一键载入工程当前常量（立绘 = PORTRAIT_COMPOSITION+画风三条；画风 = COMIC_STYLE/QUALITY/RULES，实时读 prompts.ts）后再改；每段与拼接后的总长都有 800 计数。同时把文档里对调 prompt 有用的接口参数露出来（不填即平台默认 = 与工程一致）：`negative_prompt`（≤500）、`seed`（固定种子才是公平比较，页面有「随机一个并固定」）、`steps`（1–50）、`guidance`（0–20，默认 4）、`prompt_extend`（**平台默认 true，会先改写 prompt 再画**；关掉才是所写即所画）；qwen-image 的 `n` 只支持 1（页面注明）。历史旁档 `.txt` 的参数 JSON 记录 system / user / order / 各参数，历史卡分色显示 user（玫瑰）与 system（蓝灰），回填时两段各回各框；老格式（整条 prompt）回填时从末尾剥工程预设作 system。**英文 prompt 已验证可出图**（qwen-image 中英皆可）。
+- **影响文件**：`scripts/gen-image-core.mjs`（composePrompt/preset/buildBody/LIMITS）、`scripts/gen-image-server.mjs`、`scripts/gen-image-ui.html`、`scripts/gen-image.mjs`（--system/--system-file/--user-first/--negative/--seed/--steps/--guidance/--no-extend）。
+- **备注**：D-069 为并行进行中的引擎改造（脚本引擎下线），本条编号顺延。

@@ -3,6 +3,11 @@
  * 与工程 lib/imagegen.ts 完全同一条 API：POST /v2/images/generations，同 model / size / n，
  * 返回的 http BOS 地址换 https 下载落盘（图片 URL 24 小时过期）。
  * key 读 .env.local 的 EXPO_PUBLIC_QIANFAN_API_KEY（环境变量 QIANFAN_API_KEY 可覆盖）。
+ *
+ * 接口没有 system 字段——只有一条 prompt（qwen-image ≤800 字符）+ negative_prompt（≤500）。
+ * 「system / user」是本工具的结构：两段各写各的，发出前拼成一条（composePrompt）。
+ * 千帆文档（qwen-image）：n 只支持 1；size 512x512～2048x2048；seed / steps(1-50) / guidance(0-20，默认 4)；
+ * prompt_extend 默认 true（平台先改写 prompt 再画）。不传即平台默认 = 与工程一致。
  */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -13,6 +18,7 @@ export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const ENDPOINT = 'https://qianfan.baidubce.com/v2/images/generations';
 export const DEFAULT_OUT = resolve(ROOT, 'scripts/out');
 export const DEFAULT_SIZE = '1024x1024';
+export const LIMITS = { prompt: 800, negative: 500 };
 
 /* ─────────────── .env.local ─────────────── */
 
@@ -48,7 +54,7 @@ export function defaultModel() {
   return process.env.EXPO_PUBLIC_QIANFAN_IMAGE_MODEL || env.EXPO_PUBLIC_QIANFAN_IMAGE_MODEL || 'qwen-image';
 }
 
-/* ─────────────── 工程画风尾巴（实时读 content/prompts.ts，D-017 单一来源） ─────────────── */
+/* ─────────────── 工程画风常量（实时读 content/prompts.ts，D-017 单一来源） ─────────────── */
 
 export function promptConst(name) {
   const src = readFileSync(resolve(ROOT, 'content/prompts.ts'), 'utf8');
@@ -58,18 +64,26 @@ export function promptConst(name) {
   return new Function(`return (${m[1]})`)();
 }
 
-/** tail: 'none' | 'style' | 'portrait' */
-export function styleTail(tail) {
+/** 可载入 system 框的预设：'style' = 画风三条；'portrait' = 立绘构图 + 画风三条（buildPortraitPrompt 的后半段） */
+export function preset(name) {
   const parts = [];
-  if (tail === 'portrait') parts.push(promptConst('PORTRAIT_COMPOSITION'));
-  if (tail === 'portrait' || tail === 'style') {
+  if (name === 'portrait') parts.push(promptConst('PORTRAIT_COMPOSITION'));
+  if (name === 'portrait' || name === 'style') {
     parts.push(promptConst('COMIC_STYLE'), promptConst('COMIC_QUALITY'), promptConst('COMIC_RULES'));
   }
-  return parts;
+  return parts.join('\n');
 }
 
-export function composePrompt(body, tail) {
-  return [body.trim(), ...styleTail(tail)].join('\n');
+/**
+ * system + user 拼成一条 prompt。order: 'system-first'（默认）| 'user-first'
+ * （工程 buildPortraitPrompt 是主体在前、画风在后，即 user-first）
+ */
+export function composePrompt({ system = '', user = '', order = 'system-first' }) {
+  const s = String(system).trim();
+  const u = String(user).trim();
+  if (!s) return u;
+  if (!u) return s;
+  return order === 'user-first' ? `${u}\n\n${s}` : `${s}\n\n${u}`;
 }
 
 /* ─────────────── 生成 ─────────────── */
@@ -87,19 +101,32 @@ export class QianfanError extends Error {
   }
 }
 
+/** 请求体：只带用户真的填了的字段，其余交给平台默认（= 工程行为） */
+export function buildBody({ prompt, model = defaultModel(), size = DEFAULT_SIZE, n = 1, negative, seed, steps, guidance, promptExtend }) {
+  const body = { model, prompt, size, n };
+  if (negative && String(negative).trim()) body.negative_prompt = String(negative).trim();
+  if (Number.isFinite(seed)) body.seed = Math.floor(seed);
+  if (Number.isFinite(steps)) body.steps = Math.floor(steps);
+  if (Number.isFinite(guidance)) body.guidance = guidance;
+  if (typeof promptExtend === 'boolean') body.prompt_extend = promptExtend;
+  return body;
+}
+
 /**
  * 调千帆出图并落盘。返回 { base, files, prompt, params, elapsed }。
- * files 是绝对路径；旁边同名 .txt 记录参数与完整 prompt（历史回看用）。
+ * files 是绝对路径；旁边同名 .txt = 参数 JSON（含 meta，如 system/user/order）+ 空行 + 完整 prompt（历史回看用）。
  */
-export async function generate({ prompt, model = defaultModel(), size = DEFAULT_SIZE, n = 1, outDir = DEFAULT_OUT }) {
+export async function generate({ outDir = DEFAULT_OUT, meta = {}, ...opts }) {
   const key = apiKey();
   if (!key) throw new QianfanError('缺 key：.env.local 里填 EXPO_PUBLIC_QIANFAN_API_KEY，或环境变量 QIANFAN_API_KEY', 0);
-  const params = { model, size, n };
+  const body = buildBody(opts);
+  const { prompt, ...rest } = body;
+  const params = { ...rest, ...meta };
   const t0 = Date.now();
   const res = await fetch(ENDPOINT, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-    body: JSON.stringify({ ...params, prompt }),
+    body: JSON.stringify(body),
   });
   const text = await res.text();
   if (!res.ok) throw new QianfanError(`千帆返回 ${res.status}`, res.status, text);
