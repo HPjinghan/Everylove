@@ -1,13 +1,13 @@
 /**
  * 生图调 prompt 工具的共用核心（CLI gen-image.mjs 与本地网页 gen-image-server.mjs 都用它）。
- * 与工程 lib/imagegen.ts 完全同一条 API：POST /v2/images/generations，同 model / size / n，
+ * 与工程 lib/imagegen.ts 同一条 API：POST /v2/images/generations（蒸汽机走专用端点），
  * 返回的 http BOS 地址换 https 下载落盘（图片 URL 24 小时过期）。
  * key 读 .env.local 的 EXPO_PUBLIC_QIANFAN_API_KEY（环境变量 QIANFAN_API_KEY 可覆盖）。
  *
- * 接口没有 system 字段——只有一条 prompt（qwen-image ≤800 字符）+ negative_prompt（≤500）。
- * 「system / user」是本工具的结构：两段各写各的，发出前拼成一条（composePrompt）。
- * 千帆文档（qwen-image）：n 只支持 1；size 512x512～2048x2048；seed / steps(1-50) / guidance(0-20，默认 4)；
- * prompt_extend 默认 true（平台先改写 prompt 再画）。不传即平台默认 = 与工程一致。
+ * prompt 结构（Harper 2026-09-02，D-075）：**画风行 → user → system** 三段拼成一条发出
+ * （接口没有 system 字段，qwen-image ≤800 字符 / 蒸汽机 ≤1000）。
+ * 画风选「动漫」自动走蒸汽机（它基本只有一种画风），其余走 qwen-image（多样）。
+ * 千帆文档（qwen-image）：n 只支持 1；seed / steps(1-50) / guidance(0-20，默认 4)；prompt_extend 默认 true。
  */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -22,6 +22,8 @@ export const DEFAULT_OUT = resolve(ROOT, 'scripts/out');
 export const DEFAULT_SIZE = '1024x1024';
 export const LIMITS = { prompt: 800, negative: 500 };
 
+/* ─────────────── 模型 ─────────────── */
+
 /**
  * 千帆上目前能打通的文生图模型（2026-09-02 实测；ernie-image-turbo 本账号 invalid_model，flux.1-schnell 已 offline，
  * qwen-image-2.0/3.0 千帆未上）。params = 该模型接受的可选参数，其余不发。
@@ -32,14 +34,14 @@ export const MODELS = {
     price: '0.25 元/张',
     promptMax: 800,
     params: ['negative', 'seed', 'steps', 'guidance', 'prompt_extend'],
-    note: '约 60s/张；中英皆可；n 只支持 1',
+    note: '约 60s/张；中英皆可；n 只支持 1；画风多样',
   },
   'musesteamer-air-image': {
     label: '蒸汽机 Air-Image（百度）',
     price: '0.05 元/张',
     promptMax: 1000,
     params: ['seed', 'prompt_extend'],
-    note: '约 8s/张；不支持 negative / steps / guidance / n',
+    note: '约 8s/张；不支持 negative / steps / guidance / n；基本只出动漫一种画风',
   },
 };
 
@@ -51,6 +53,43 @@ export function endpointFor(model) {
 }
 export function promptLimit(model) {
   return modelInfo(model)?.promptMax ?? LIMITS.prompt;
+}
+
+/* ─────────────── 画风（prompt 第一行）与默认 system ─────────────── */
+
+/**
+ * 画风选项：line 注入为 prompt 第一行；model = 自动选的模型（页面上仍可手改）。
+ * 措辞是初稿，页面上每条可直接改（改动存浏览器本地），定稿后再搬进 content/prompts.ts。
+ */
+export const STYLES = [
+  { id: 'anime', label: '动漫', model: 'musesteamer-air-image', line: '日系动漫插画风格：精致的线稿与赛璐璐上色，色彩明亮通透，光影干净利落。' },
+  { id: 'shojo', label: '少女漫·水彩（工程当前）', model: 'qwen-image', line: '女性向少女漫画单格插画，日系条漫风格，柔和干净的线条，浅色水彩质感，米白底、玫瑰粉点缀。' },
+  { id: 'korean', label: '韩系清透', model: 'qwen-image', line: '韩系网漫插画风格：清透的皮肤质感与柔光，线条细腻，色调干净明亮。' },
+  { id: 'painterly', label: '厚涂', model: 'qwen-image', line: '厚涂插画风格：油画质感的笔触与光影，色彩沉稳有体积感，边缘柔和。' },
+  { id: 'ink', label: '国风水墨', model: 'qwen-image', line: '国风水墨插画：墨线为主、淡彩点缀，留白与晕染，气质古典清雅。' },
+  { id: 'realistic', label: '写实插画', model: 'qwen-image', line: '写实插画风格：接近真实的光影与皮肤质感，但保持绘画感，不是照片。' },
+  { id: 'lineart', label: '线稿', model: 'qwen-image', line: '铅笔线稿风格：黑白素描，干净的排线与轻微阴影，不上色。' },
+  { id: 'none', label: '不加画风行', model: 'qwen-image', line: '' },
+];
+
+/** system 默认文案（Harper 2026-09-02 给定；放 prompt 最后，「以上要求」指画风行与 user） */
+export const DEFAULT_SYSTEM =
+  '根据以上要求生成角色立绘：人类（如果要求为非人类，则生成半人类）半身构图，正面脸，轻微侧身，直视镜头；背景简单，无前景遮挡，画面内没有任何文字\n' +
+  '干净的线条，线条颜色和整体画面和谐，单幅画格、单人构图；细节干净，高清。';
+
+export function styleById(id) {
+  return STYLES.find((s) => s.id === id);
+}
+export function modelForStyle(id) {
+  return styleById(id)?.model || defaultModel();
+}
+
+/** 三段拼一条：画风行 → user → system（空段跳过） */
+export function composePrompt({ styleLine = '', user = '', system = '' }) {
+  return [styleLine, user, system]
+    .map((s) => String(s ?? '').trim())
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 /* ─────────────── .env.local ─────────────── */
@@ -97,7 +136,7 @@ export function promptConst(name) {
   return new Function(`return (${m[1]})`)();
 }
 
-/** 可载入 system 框的预设：'style' = 画风三条；'portrait' = 立绘构图 + 画风三条（buildPortraitPrompt 的后半段） */
+/** 可载入 system 框的工程预设：'style' = 画风三条；'portrait' = 立绘构图 + 画风三条（buildPortraitPrompt 的后半段） */
 export function preset(name) {
   const parts = [];
   if (name === 'portrait') parts.push(promptConst('PORTRAIT_COMPOSITION'));
@@ -105,18 +144,6 @@ export function preset(name) {
     parts.push(promptConst('COMIC_STYLE'), promptConst('COMIC_QUALITY'), promptConst('COMIC_RULES'));
   }
   return parts.join('\n');
-}
-
-/**
- * system + user 拼成一条 prompt。order: 'system-first'（默认）| 'user-first'
- * （工程 buildPortraitPrompt 是主体在前、画风在后，即 user-first）
- */
-export function composePrompt({ system = '', user = '', order = 'system-first' }) {
-  const s = String(system).trim();
-  const u = String(user).trim();
-  if (!s) return u;
-  if (!u) return s;
-  return order === 'user-first' ? `${u}\n\n${s}` : `${s}\n\n${u}`;
 }
 
 /* ─────────────── 生成 ─────────────── */
@@ -134,7 +161,7 @@ export class QianfanError extends Error {
   }
 }
 
-/** 请求体：只带用户真的填了的字段，其余交给平台默认（= 工程行为） */
+/** 请求体：只带该模型接受、且用户真的填了的字段，其余交给平台默认（= 工程行为） */
 export function buildBody({ prompt, model = defaultModel(), size = DEFAULT_SIZE, n = 1, negative, seed, steps, guidance, promptExtend }) {
   const info = modelInfo(model);
   const ok = (p) => !info || info.params.includes(p);
@@ -151,7 +178,7 @@ export function buildBody({ prompt, model = defaultModel(), size = DEFAULT_SIZE,
 
 /**
  * 调千帆出图并落盘。返回 { base, files, prompt, params, elapsed }。
- * files 是绝对路径；旁边同名 .txt = 参数 JSON（含 meta，如 system/user/order）+ 空行 + 完整 prompt（历史回看用）。
+ * files 是绝对路径；旁边同名 .txt = 参数 JSON（含 meta：style/styleLine/user/system）+ 空行 + 完整 prompt（历史回看用）。
  */
 export async function generate({ outDir = DEFAULT_OUT, meta = {}, ...opts }) {
   const key = apiKey();

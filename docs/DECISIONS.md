@@ -660,3 +660,10 @@
 - **未验证**：本机没有任何 OpenAI 兼容 key，Whisper 协议这两条通道按官方接口写、**未实测**；Harper 配上 key 后第一次发语音即验收（失败会在会话里露出原因）。
 - **推翻**：D-073 的「日语暂按普通话识别」——现在日语走 Whisper 通道；D-048/D-073 的「TTS 只有百度」。
 - **影响文件**：`lib/media.ts`（SPEECH_* 配置 + Whisper 直连/代理 + 通道顺序）、`lib/tts.ts`（重写：三通道 + `ttsSpeaksLang` + `shouldSendVoice`）、`app/bond/[bondId].tsx`（TA 偶尔发语音）、`supabase/functions/ai/index.ts`（speech.* + audioOrJson）、`.env.example`、`docs/OPEN_QUESTIONS.md`（#25 补记）。
+
+## D-075 · 2026-09-02 · 调 prompt 工具：画风选项（prompt 第一行）+ 按画风自动选模型 + 新 system 文案（Harper 拍板）
+
+- **背景**：Harper 实测「Qwen 比较多样化，蒸汽机基本只有一种画风」。
+- **决策**：① 页面与 CLI 增加**画风**选项，注入为 **prompt 第一行**；选「**动漫**」自动走蒸汽机 Air-Image，其余走 qwen-image（model 框仍可手改）。② 拼接顺序固定为 **画风行 → user → system**（推翻 D-070 的「system 在前 / user 在前」可选，order 开关移除）。③ system 默认文案改为 Harper 给定：「根据以上要求生成角色立绘：人类（如果要求为非人类，则生成半人类）半身构图，正面脸，轻微侧身，直视镜头；背景简单，无前景遮挡，画面内没有任何文字 / 干净的线条，线条颜色和整体画面和谐，单幅画格、单人构图；细节干净，高清。」（`DEFAULT_SYSTEM`；「恢复默认」按钮回到它，工程立绘/画风常量仍可一键载入对比）。④ 画风初稿八条（Claude 拟）：动漫（蒸汽机）/ 少女漫·水彩（= 工程当前 COMIC_STYLE）/ 韩系清透 / 厚涂 / 国风水墨 / 写实插画 / 线稿 / 不加画风行；每条措辞页面上可直接改、按画风各自记在浏览器本地，「恢复这条画风的初稿」可还原。历史旁档 `.txt` 记 style / styleLine / user / system，历史卡多一块「画风」（琥珀色）。
+- **边界**：只改调 prompt 工具，**工程 `content/prompts.ts` / `lib/imagegen.ts` 不动**——画风表与新 system 文案在 `scripts/gen-image-core.mjs`（STYLES / DEFAULT_SYSTEM），画风定稿、决定进产品时再搬进 prompts.ts（D-017 单一来源）并接进创造表单。注意新 system 文案**没有**原 COMIC_RULES 的「氛围暧昧克制、无露骨；不模仿任何真实人物长相」一句（红线 #1/#5 的 prompt 侧实现）——进产品前需补回或另行注入。
+- **影响文件**：`scripts/gen-image-core.mjs`（STYLES / DEFAULT_SYSTEM / styleById / modelForStyle / composePrompt 改三段）、`scripts/gen-image-server.mjs`（config 带 styles/defaultSystem，generate 收 style/styleLine）、`scripts/gen-image-ui.html`（画风区块、order 开关移除、v3 本地存储）、`scripts/gen-image.mjs`（--art / --art-line / --list，--user-first 移除）。

@@ -22,15 +22,19 @@ import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_OUT,
   DEFAULT_SIZE,
+  DEFAULT_SYSTEM,
   LIMITS,
   MODELS,
   QianfanError,
+  STYLES,
   apiKey,
   composePrompt,
   defaultModel,
   generate,
   history,
+  modelForStyle,
   preset,
+  styleById,
 } from './gen-image-core.mjs';
 
 const PORT = Number(process.env.PORT || process.argv[2]) || 3939;
@@ -82,6 +86,8 @@ const server = createServer(async (req, res) => {
         outDir: DEFAULT_OUT,
         limits: LIMITS,
         models: MODELS,
+        styles: STYLES,
+        defaultSystem: DEFAULT_SYSTEM,
         presets: { style: preset('style'), portrait: preset('portrait') },
       });
     }
@@ -95,12 +101,14 @@ const server = createServer(async (req, res) => {
       } catch {
         return json(res, 400, { error: '请求体不是 JSON' });
       }
-      const system = String(b.system ?? '').trim();
+      // 画风行 → user → system（D-075）；system 不传 = 默认文案；画风决定默认模型，显式传 model 可覆盖
+      const style = styleById(b.style) ? b.style : 'none';
+      const styleLine = b.styleLine != null ? String(b.styleLine).trim() : styleById(style)?.line ?? '';
       const user = String(b.user ?? '').trim();
-      const order = b.order === 'user-first' ? 'user-first' : 'system-first';
-      const prompt = composePrompt({ system, user, order });
-      if (!prompt) return json(res, 400, { error: 'system 和 user 都是空的' });
-      const model = String(b.model || defaultModel()).trim();
+      const system = b.system != null ? String(b.system).trim() : DEFAULT_SYSTEM;
+      const prompt = composePrompt({ styleLine, user, system });
+      if (!prompt) return json(res, 400, { error: '画风 / user / system 都是空的' });
+      const model = String(b.model || modelForStyle(style) || defaultModel()).trim();
       const size = String(b.size || DEFAULT_SIZE).trim();
       const n = Math.min(4, Math.max(1, Number(b.n) || 1));
       const opts = {
@@ -113,7 +121,7 @@ const server = createServer(async (req, res) => {
         steps: num(b.steps),
         guidance: num(b.guidance),
         promptExtend: typeof b.promptExtend === 'boolean' ? b.promptExtend : undefined,
-        meta: { system, user, order },
+        meta: { style, styleLine, user, system },
       };
       console.log(`[gen] ${new Date().toLocaleTimeString()} model=${model} size=${size} n=${n} prompt=${prompt.length}字\n${prompt}\n`);
       const r = await generate(opts);
