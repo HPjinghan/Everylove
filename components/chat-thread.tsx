@@ -4,7 +4,8 @@
  * 浅绿发信气泡（深色文字）、气泡旁小字时间与「已读」、深色半透明系统胶囊、绿色发送键。
  *
  * LINE 对齐的消息能力（D-030）：
- * - 文本 / 图片（相册选图）/ 语音（录音发送、点按播放）/ 表情（快捷面板）
+ * - 文本 / 图片（相册选图）/ 语音（录音发送、点按播放）/「+」面板（D-081：调用方给项目——外出邀请 / 查手机 / 红包 / 位置）
+ * - 卡片消息（kind 'card'，D-081）：邀请 / 红包 / 位置 以卡片气泡呈现
  * - 引用：长按 → 引用，气泡上方带被引摘要
  * - 撤回：长按自己的消息（24h 内）→ 双方可见「你撤回了一条消息」占位，内容清空
  * - 删除：长按任意消息 → 仅本地移除、无占位（LINE 的「删除只对自己生效」）
@@ -19,7 +20,7 @@ import {
 } from 'expo-audio';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -43,7 +44,7 @@ import { clockTime, voiceDuration } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { ASR_MAX_SECONDS, ASR_RECORDING } from '@/lib/media';
 import { synthesizeVoice, ttsReady } from '@/lib/tts';
-import type { ChatMessage } from '@/lib/types';
+import type { ChatCard, ChatMessage } from '@/lib/types';
 import { findCharacter } from '@/store/app-store';
 
 /** LINE 拟真配色（variant='line'） */
@@ -56,15 +57,42 @@ const LINE = {
 
 export type ChatVariant = 'default' | 'line';
 export type ReplyRef = { from: ChatMessage['from']; text: string };
+/** 「+」面板的一项（D-081）：调用方决定有哪些 */
+export type ChatExtra = {
+  key: string;
+  label: string;
+  icon: ComponentProps<typeof IconSymbol>['name'];
+  onPress: () => void;
+};
 
 /** 撤回时限（LINE：24 小时内可撤回） */
 export const RECALL_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-const EMOJIS = [
-  '😊', '😂', '🥰', '😳', '🥺', '😤', '😭', '🤔',
-  '😴', '🙃', '😮', '🤭', '💕', '💖', '💔', '✨',
-  '🌙', '🌸', '🍓', '🐱', '🐶', '👍', '👋', '🎉',
-];
+/** 卡片气泡（D-081）：邀请 / 位置走浅色卡；红包整个气泡染红 */
+function CardBody({ card, dark }: { card: ChatCard; dark: boolean }) {
+  if (card.type === 'redpacket') {
+    return (
+      <View style={styles.cardRed}>
+        <Text style={styles.cardRedKicker}>🧧 {t('红包')}</Text>
+        <Text style={styles.cardRedAmount}>{card.title}</Text>
+        {card.subtitle ? <Text style={styles.cardRedNote}>{card.subtitle}</Text> : null}
+        <Text style={styles.cardRedState}>{card.claimed ? t('已领取') : t('等 TA 拆开')}</Text>
+      </View>
+    );
+  }
+  const kicker = card.type === 'invite' ? t('外出邀请') : t('位置');
+  return (
+    <View style={styles.card}>
+      <Text style={[styles.cardKicker, !dark && styles.cardKickerLight]}>
+        {card.type === 'invite' ? '🚶' : '📍'} {kicker}
+      </Text>
+      <Text style={[styles.cardTitle, !dark && { color: '#FFFFFF' }]}>{card.title}</Text>
+      {card.subtitle ? (
+        <Text style={[styles.cardSub, !dark && styles.cardKickerLight]}>{card.subtitle}</Text>
+      ) : null}
+    </View>
+  );
+}
 
 /**
  * TA 的语音（D-048）：点按走千帆 TTS 真实发声（按句缓存）；
@@ -240,6 +268,7 @@ function Bubble({
     ? { backgroundColor: line ? LINE.me : Romance.bubbleMe, borderBottomRightRadius: 4 }
     : { backgroundColor: line ? LINE.him : Romance.bubbleHim, borderBottomLeftRadius: 4 };
   const textDark = !mine || line;
+  const redPacket = msg.kind === 'card' && msg.card?.type === 'redpacket';
   return (
     <View style={[styles.msgRow, mine ? styles.msgRowMe : styles.msgRowHim]}>
       {!mine && (
@@ -249,7 +278,7 @@ function Bubble({
       <Pressable
         onLongPress={onLongPress ? () => onLongPress(msg) : undefined}
         delayLongPress={350}
-        style={[styles.bubble, line && styles.bubbleLine, bubbleBg]}>
+        style={[styles.bubble, line && styles.bubbleLine, bubbleBg, redPacket && styles.bubbleRed]}>
         {msg.replyTo ? (
           <View style={styles.quote}>
             <Text style={styles.quoteName}>{msg.replyTo.from === 'me' ? t('你') : name}</Text>
@@ -289,6 +318,8 @@ function Bubble({
               <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>{t('TA 没看清这张')}</Text>
             ) : null}
           </View>
+        ) : msg.kind === 'card' && msg.card ? (
+          <CardBody card={msg.card} dark={textDark} />
         ) : (
           <Text style={[styles.bubbleText, !textDark && { color: '#FFFFFF' }]}>{msg.text}</Text>
         )}
@@ -315,6 +346,7 @@ export function ChatThread({
   placeholder,
   characterId,
   variant = 'default',
+  extras,
 }: {
   messages: ChatMessage[];
   color: string;
@@ -338,12 +370,14 @@ export function ChatThread({
   characterId?: string;
   /** 'line'：羁绊会话的 LINE 拟真样式（D-027） */
   variant?: ChatVariant;
+  /** 「+」面板的项目（D-081）；不传则没有「+」 */
+  extras?: ChatExtra[];
 }) {
   const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState<ReplyRef | null>(null);
   const [viewingShot, setViewingShot] = useState<ViewerShot | null>(null);
-  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [extrasOpen, setExtrasOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordSecs, setRecordSecs] = useState(0);
   // 录音格式按百度 ASR 要求：16k 单声道 wav（D-073）
@@ -376,14 +410,20 @@ export function ChatThread({
     setDraft('');
     const ref = replyTo ?? undefined;
     setReplyTo(null);
-    setEmojiOpen(false);
+    setExtrasOpen(false);
     onSend(text, ref);
   };
 
   /** 长按菜单：引用 / 撤回（自己的、24h 内）/ 删除（LINE 规则） */
   const openActions = (msg: ChatMessage) => {
     const excerpt =
-      msg.kind === 'image' ? t('[照片]') : msg.kind === 'voice' ? t('[语音]') : msg.text.slice(0, 24);
+      msg.kind === 'image'
+        ? t('[照片]')
+        : msg.kind === 'voice'
+          ? t('[语音]')
+          : msg.kind === 'card'
+            ? (msg.card?.title ?? '')
+            : msg.text.slice(0, 24);
     const buttons: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [];
     if (msg.kind === 'text' && msg.text) {
       buttons.push({
@@ -542,8 +582,8 @@ export function ChatThread({
         {recording ? (
           <View style={styles.recordingPill}>
             <View style={styles.recordingDot} />
-            <Text style={styles.recordingText}>
-              {t('录音中')} 0:{recordSecs.toString().padStart(2, '0')} · {t('再点一下发送')}
+            <Text style={styles.recordingText} numberOfLines={1} ellipsizeMode="clip">
+              0:{recordSecs.toString().padStart(2, '0')} · {t('再点一下发送')}
             </Text>
           </View>
         ) : (
@@ -559,13 +599,15 @@ export function ChatThread({
             submitBehavior="submit"
           />
         )}
-        <Pressable onPress={() => setEmojiOpen((v) => !v)} hitSlop={6} disabled={inputDisabled}>
-          <MingCute
-            name="emoji"
-            size={24}
-            color={emojiOpen ? (line ? LINE.brand : Romance.accent) : line ? '#8E97A3' : Romance.sub}
-          />
-        </Pressable>
+        {extras?.length ? (
+          <Pressable onPress={() => setExtrasOpen((v) => !v)} hitSlop={6} disabled={inputDisabled}>
+            <IconSymbol
+              name={extrasOpen ? 'xmark.circle' : 'plus.circle'}
+              size={26}
+              color={extrasOpen ? (line ? LINE.brand : Romance.accent) : line ? '#8E97A3' : Romance.sub}
+            />
+          </Pressable>
+        ) : null}
         <Pressable onPress={send} hitSlop={8} disabled={inputDisabled}>
           <IconSymbol
             name="arrow.up.circle.fill"
@@ -577,12 +619,23 @@ export function ChatThread({
         </Pressable>
       </View>
 
-      {/* 表情快捷面板 */}
-      {emojiOpen ? (
-        <View style={[styles.emojiPanel, line && styles.inputBarLine, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-          {EMOJIS.map((e) => (
-            <Pressable key={e} onPress={() => setDraft((d) => d + e)} style={styles.emojiCell}>
-              <Text style={styles.emojiChar}>{e}</Text>
+      {/* 「+」面板（D-081） */}
+      {extrasOpen && extras?.length ? (
+        <View style={[styles.extrasPanel, line && styles.inputBarLine, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          {extras.map((x) => (
+            <Pressable
+              key={x.key}
+              style={styles.extraTile}
+              onPress={() => {
+                setExtrasOpen(false);
+                x.onPress();
+              }}>
+              <View style={[styles.extraIcon, line && styles.extraIconLine]}>
+                <IconSymbol name={x.icon} size={26} color={line ? '#3C4653' : Romance.ink} />
+              </View>
+              <Text style={styles.extraLabel} numberOfLines={1}>
+                {x.label}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -689,6 +742,7 @@ const styles = themed(() =>
     },
     recordingPill: {
       flex: 1,
+      minWidth: 0,
       height: 40,
       borderRadius: 24,
       backgroundColor: '#FDEBEA',
@@ -696,17 +750,39 @@ const styles = themed(() =>
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
+      paddingHorizontal: 12,
+      overflow: 'hidden',
     },
     recordingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0433C' },
-    recordingText: { fontSize: 13, color: '#C43A34', fontWeight: '600' },
-    emojiPanel: {
+    recordingText: { fontSize: 13, color: '#C43A34', fontWeight: '600', flexShrink: 1 },
+    extrasPanel: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      paddingHorizontal: 10,
-      paddingTop: 6,
+      paddingHorizontal: 14,
+      paddingTop: 12,
       backgroundColor: Romance.bg,
     },
-    emojiCell: { width: '12.5%', alignItems: 'center', paddingVertical: 8 },
-    emojiChar: { fontSize: 26 },
+    extraTile: { width: '25%', alignItems: 'center', paddingVertical: 8 },
+    extraIcon: {
+      width: 58,
+      height: 58,
+      borderRadius: 18,
+      backgroundColor: '#FFFFFF',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    extraIconLine: { backgroundColor: '#F1F3F6' },
+    extraLabel: { fontSize: 11, color: Romance.sub, marginTop: 6 },
+    card: { minWidth: 190, maxWidth: 240 },
+    cardKicker: { fontSize: 10, color: 'rgba(0,0,0,0.45)', letterSpacing: 0.5 },
+    cardKickerLight: { color: 'rgba(255,255,255,0.8)' },
+    cardTitle: { fontSize: 16, fontWeight: '700', color: Romance.ink, marginTop: 4 },
+    cardSub: { fontSize: 12, color: 'rgba(0,0,0,0.55)', marginTop: 3, lineHeight: 17 },
+    bubbleRed: { backgroundColor: '#E5533D' },
+    cardRed: { minWidth: 190, maxWidth: 240 },
+    cardRedKicker: { fontSize: 10, color: 'rgba(255,255,255,0.85)', letterSpacing: 0.5 },
+    cardRedAmount: { fontSize: 24, fontWeight: '800', color: '#FFE9B8', marginTop: 4 },
+    cardRedNote: { fontSize: 12, color: '#FFF3E0', marginTop: 4, lineHeight: 17 },
+    cardRedState: { fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 8 },
   })
 );

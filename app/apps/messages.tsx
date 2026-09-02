@@ -20,6 +20,7 @@ function preview(b: Bond): string {
   if (last.recalled) return last.from === 'me' ? t('你撤回了一条消息') : t('对方撤回了一条消息');
   if (last.kind === 'voice') return t('▶ 语音消息');
   if (last.kind === 'image') return t('[照片]');
+  if (last.kind === 'card') return (last.from === 'me' ? t('你：') : '') + (last.card?.title ?? '');
   if (last.kind === 'system') return last.text;
   return (last.from === 'me' ? t('你：') : '') + last.text;
 }

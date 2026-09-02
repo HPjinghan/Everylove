@@ -40,6 +40,13 @@ import type { Bond, BondMemory, Character, ChatMessage, EngineContext, UserProfi
 export function messageContextText(m: ChatMessage): string {
   if (m.from === 'system') return '';
   if (m.recalled) return ''; // 撤回的消息不进上下文（LINE 规则，D-030）
+  // 「+」面板的卡片（D-081）：TA 看到的是「她做了什么」
+  if (m.kind === 'card' && m.card) {
+    const c = m.card;
+    if (c.type === 'invite') return `（她发来一张外出邀请：约你去${c.title}）`;
+    if (c.type === 'redpacket') return `（她给你发了一个 ${c.title} 的红包${c.subtitle ? `，留言「${c.subtitle}」` : ''}）`;
+    return `（她发来了自己的位置：${c.title}${c.subtitle ? `，${c.subtitle}` : ''}）`;
+  }
   let body = (m.text || m.spoken || '').trim();
   // 她的语音 / 照片（D-073）：识别文字与看图描述就是 TA「听到 / 看到」的东西；还没有结果的不进上下文
   if (m.from === 'me' && m.kind === 'voice') {

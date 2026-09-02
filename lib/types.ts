@@ -117,7 +117,20 @@ export interface UserProfile {
 }
 
 export type MessageFrom = 'him' | 'me' | 'system';
-export type MessageKind = 'text' | 'voice' | 'system' | 'image';
+export type MessageKind = 'text' | 'voice' | 'system' | 'image' | 'card';
+
+/** 「+」面板发出的卡片消息（D-081）：外出邀请 / 红包 / 位置 */
+export interface ChatCard {
+  type: 'invite' | 'redpacket' | 'location';
+  title: string;
+  subtitle?: string;
+  /** 红包金额（试装游戏币） */
+  amount?: number;
+  /** 外出邀请对应的地点 */
+  placeId?: string;
+  /** 红包：TA 已领取 */
+  claimed?: boolean;
+}
 
 export interface ChatMessage {
   id: string;
@@ -149,6 +162,8 @@ export interface ChatMessage {
   mediaStatus?: 'pending' | 'failed';
   /** 通话里说的话（D-077）：电话转写进会话，TA 记得电话里说过什么；气泡带小听筒标记 */
   viaCall?: boolean;
+  /** kind === 'card' 时的卡片内容（D-081） */
+  card?: ChatCard;
 }
 
 /** 广场搭话记录：不入消息 tab，会过期（免费层商业承重墙） */

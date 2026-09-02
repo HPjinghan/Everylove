@@ -127,7 +127,7 @@ const en: Record<string, string> = {
   '只从你的手机上删除，不会留下痕迹。': 'Removed only from your phone, without a trace.',
   '需要麦克风权限': 'Microphone access needed',
   '在系统设置里允许录音后再试。': 'Allow recording in system settings and retry.',
-  '录音中': 'Recording', '再点一下发送': 'tap again to send',
+'再点一下发送': 'tap again to send',
   '说点什么…': 'Say something…',
   '回复': 'Reply to', '自己': 'yourself',
   '语音暂时没接通 · 点这里看文字': 'Voice unavailable · tap to read text',
@@ -486,6 +486,23 @@ const en: Record<string, string> = {
   // onboarding 并成一步（D-080）
   '更倾向于和什么样的人建立关系？': 'Who are you more drawn to?',
   '只用填最基本的，其余都可以跳过。': 'Just the basics. Everything else can be skipped.',
+    // 会话「+」面板（D-081）
+  '外出邀请': 'Invite out',
+  '查 TA 的手机': 'Peek at their phone',
+  '红包': 'Red packet',
+  '约 TA 去哪儿？': 'Where to?',
+  '或者自己填个数': 'Or type an amount',
+  '留一句话': 'Leave a note',
+  '给你的': 'For you',
+  '塞进红包': 'Send',
+  '我在{place}': 'I\'m at {place}',
+  '{name} 的手机': '{name}\'s phone',
+  '备忘录': 'Notes',
+  '（还是空的）': '(still empty)',
+  '加密日记': 'Locked diary',
+  '已领取': 'Opened',
+  '等 TA 拆开': 'Waiting to be opened',
+  '你看了 TA 的手机': 'You looked at their phone',
   // __EN_END__
 };
 
@@ -590,7 +607,7 @@ const ja: Record<string, string> = {
   '只从你的手机上删除，不会留下痕迹。': 'あなたのスマホからだけ消える。跡は残らない。',
   '需要麦克风权限': 'マイクの許可が必要',
   '在系统设置里允许录音后再试。': '設定で録音を許可してからもう一度。',
-  '录音中': '録音中', '再点一下发送': 'もう一度タップで送信',
+'再点一下发送': 'もう一度タップで送信',
   '说点什么…': '何か言ってみて…',
   '回复': '返信先', '自己': '自分',
   '语音暂时没接通 · 点这里看文字': 'ボイス未接続 · タップで文字を見る',
@@ -949,6 +966,23 @@ const ja: Record<string, string> = {
   // onboarding 并成一步（D-080）
   '更倾向于和什么样的人建立关系？': 'どんな人と関係を築きたい？',
   '只用填最基本的，其余都可以跳过。': '基本だけで大丈夫。ほかはスキップできます。',
+    // 会话「+」面板（D-081）
+  '外出邀请': 'おでかけに誘う',
+  '查 TA 的手机': 'スマホをのぞく',
+  '红包': 'お年玉',
+  '约 TA 去哪儿？': 'どこに誘う？',
+  '或者自己填个数': '自分で金額を入力',
+  '留一句话': 'ひとこと添える',
+  '给你的': 'あなたに',
+  '塞进红包': '包む',
+  '我在{place}': '{place}にいます',
+  '{name} 的手机': '{name} のスマホ',
+  '备忘录': 'メモ',
+  '（还是空的）': '（まだ空です）',
+  '加密日记': '鍵付き日記',
+  '已领取': '受け取り済み',
+  '等 TA 拆开': '開けるのを待っています',
+  '你看了 TA 的手机': 'スマホをのぞきました',
   // __JA_END__
 };
 

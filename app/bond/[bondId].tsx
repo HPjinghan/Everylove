@@ -9,6 +9,7 @@ import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharAvatar } from '@/components/char-avatar';
+import { InviteSheet, LocationSheet, PhoneSheet, RedPacketSheet, type ExtraSheet } from '@/components/chat-extras';
 import { ChatThread, type ReplyRef } from '@/components/chat-thread';
 import { MingCute } from '@/components/mingcute';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -24,7 +25,8 @@ import { t } from '@/lib/i18n';
 import { levelInfo, XP_PER_MESSAGE } from '@/lib/bond';
 import { describeImage, transcribeVoice } from '@/lib/media';
 import { shouldSendVoice, synthesizeVoice } from '@/lib/tts';
-import type { ChatMessage, EngineReply } from '@/lib/types';
+import type { ChatCard, ChatMessage, EngineReply } from '@/lib/types';
+import type { Place } from '@/content/places';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -40,6 +42,7 @@ export default function BondScreen() {
   const bond = useAppStore((s) => s.bonds.find((b) => b.id === bondId));
   const [typing, setTyping] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [sheet, setSheet] = useState<ExtraSheet>(null);
 
   const messageCount = bond?.messages.length ?? 0;
   useEffect(() => {
@@ -64,6 +67,46 @@ export default function BondScreen() {
         { affinityDelta: XP_PER_MESSAGE }
       );
     await respond(text);
+  };
+
+  /** 「+」面板的卡片消息（D-081）：先上屏并计 XP（一次开口），再让 TA 按卡片内容回应；返回消息 id */
+  const sendCard = async (card: ChatCard, prompt: string): Promise<string> => {
+    const msg: ChatMessage = { id: uid('m'), from: 'me', kind: 'card', text: card.title, card, at: Date.now() };
+    useAppStore.getState().appendBond(bond.id, [msg], { affinityDelta: XP_PER_MESSAGE });
+    await respond(prompt);
+    return msg.id;
+  };
+
+  /** 外出邀请：卡片 → 立即成为一条约定（TA 一定答应；时间可在接下来的对话里定，D-079 会识别） */
+  const invite = (place: Place) => {
+    setSheet(null);
+    const pending = sendCard(
+      { type: 'invite', title: t(place.name), subtitle: t(place.hook), placeId: place.id },
+      `（她发来一张外出邀请：约你去${place.name}。你答应下来，用你的口吻回她，可以顺口问问或定个时间。）`
+    );
+    useAppStore.getState().addOutingPlan(character.id, place.id, { source: 'manual' });
+    void pending;
+  };
+
+  /** 红包：TA 回完话就算拆开了 */
+  const sendRedPacket = (amount: number, note: string) => {
+    setSheet(null);
+    const card: ChatCard = { type: 'redpacket', title: `¥${amount.toFixed(2)}`, subtitle: note, amount };
+    void (async () => {
+      const id = await sendCard(
+        card,
+        `（她给你发了一个 ¥${amount.toFixed(2)} 的红包，留言「${note}」。你收下了——按你的性格回她，一两句。）`
+      );
+      useAppStore.getState().patchMessage({ bondId: bond.id }, id, { card: { ...card, claimed: true } });
+    })();
+  };
+
+  const sendLocation = (label: string, sub?: string) => {
+    setSheet(null);
+    void sendCard(
+      { type: 'location', title: label, subtitle: sub },
+      `（她发来了自己的位置：${label}${sub ? `，${sub}` : ''}。）`
+    );
   };
 
   /** 她的语音（D-073）：先上屏，识别成文字后回填、计 XP，再让 TA 回应识别出的内容 */
@@ -224,7 +267,26 @@ export default function BondScreen() {
         onRecall={(m) => useAppStore.getState().recallMessage({ bondId: bond.id }, m.id)}
         onDelete={(m) => useAppStore.getState().deleteMessage({ bondId: bond.id }, m.id)}
         placeholder={t('和{name}说点什么…', { name: bond.name })}
+        extras={[
+          { key: 'invite', label: t('外出邀请'), icon: 'figure.walk', onPress: () => setSheet('invite') },
+          {
+            key: 'phone',
+            label: t('查 TA 的手机'),
+            icon: 'iphone',
+            onPress: () => {
+              useAppStore.getState().appendBond(bond.id, [sysMsg(t('你看了 TA 的手机'))]);
+              setSheet('phone');
+            },
+          },
+          { key: 'redpacket', label: t('红包'), icon: 'gift.fill', onPress: () => setSheet('redpacket') },
+          { key: 'location', label: t('位置'), icon: 'mappin.and.ellipse', onPress: () => setSheet('location') },
+        ]}
       />
+
+      <InviteSheet visible={sheet === 'invite'} onClose={() => setSheet(null)} onPick={invite} />
+      <RedPacketSheet visible={sheet === 'redpacket'} onClose={() => setSheet(null)} onSend={sendRedPacket} />
+      <LocationSheet visible={sheet === 'location'} onClose={() => setSheet(null)} onSend={sendLocation} />
+      <PhoneSheet visible={sheet === 'phone'} onClose={() => setSheet(null)} bond={bond} character={character} />
 
       <Modal
         visible={profileOpen}
