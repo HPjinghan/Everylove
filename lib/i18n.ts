@@ -503,6 +503,10 @@ const en: Record<string, string> = {
   '已领取': 'Opened',
   '等 TA 拆开': 'Waiting to be opened',
   '你看了 TA 的手机': 'You looked at their phone',
+  // 查手机密码（D-082）
+  'TA 同意让你看手机了': 'They agreed to let you see their phone',
+  '密码': 'Passcode',
+  '密码不对': 'Wrong passcode',
   // __EN_END__
 };
 
@@ -983,6 +987,10 @@ const ja: Record<string, string> = {
   '已领取': '受け取り済み',
   '等 TA 拆开': '開けるのを待っています',
   '你看了 TA 的手机': 'スマホをのぞきました',
+  // 查手机密码（D-082）
+  'TA 同意让你看手机了': 'スマホを見せてくれることになりました',
+  '密码': 'パスコード',
+  '密码不对': 'パスコードが違います',
   // __JA_END__
 };
 

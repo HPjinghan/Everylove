@@ -222,6 +222,10 @@ export interface Bond {
   awayNotified?: boolean;
   /** 记忆库：他记得关于她的事 + 更早相处的摘要（D-016） */
   memory?: BondMemory;
+  /** TA 的手机密码（D-082）：随机四位，第一次需要时生成并记在这里（store.ensurePhoneCode） */
+  phoneCode?: string;
+  /** 查手机（D-082）：她已经拿到密码（聊天里 TA 答应了，或她猜对了）；之后随时能看 */
+  phoneUnlocked?: boolean;
 }
 
 export interface PostComment {
@@ -312,7 +316,10 @@ export interface EngineContext {
   /** square 初识 / bonded 亲密 / outing 外出（亲身互动故事模式，D-038）/ call 通话（亲密背景 + 电话口吻，D-077） */
   mode: 'square' | 'bonded' | 'outing' | 'call';
   /** bonded/outing 模式下的关系信息（含记忆库、缔结时间，注入系统 prompt） */
-  bond?: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'birthday' | 'memory' | 'createdAt'>;
+  bond?: Pick<
+    Bond,
+    'name' | 'nickname' | 'affinity' | 'birthday' | 'memory' | 'createdAt' | 'phoneCode' | 'phoneUnlocked'
+  >;
   /** 「我」的身份（D-035）：注入系统 prompt，TA 借此认识她 */
   me?: UserProfile;
   /** outing 模式的场景信息（D-038/D-040） */
@@ -335,4 +342,6 @@ export interface EngineReply {
   texts: string[];
   /** 命中情绪暗面路由（系统层，绕过角色扮演） */
   darkSide?: boolean;
+  /** 查手机（D-082）：TA 在这轮答应让她看手机（回复里的解锁标记已剥掉） */
+  unlockPhone?: boolean;
 }

@@ -418,6 +418,24 @@ export function memoryBlockFor(memory: BondMemory | undefined): string[] {
   return lines;
 }
 
+/**
+ * 查手机（D-082）：TA 知道自己的密码；她要看手机 / 问密码时由 TA 自己决定给不给（性格 × 亲密度），
+ * 答应了就在回复末尾单独一行写标记——引擎剥掉标记并解锁（lib/engine.ts applyPhoneUnlock），她看不到标记。
+ */
+export const PHONE_UNLOCK_MARK = '[解锁手机]';
+
+export function phoneBlock(ctx: EngineContext): string[] {
+  const code = ctx.bond?.phoneCode;
+  if (!code) return [];
+  if (ctx.bond?.phoneUnlocked) {
+    return [`【你的手机】她知道你的手机密码（${code}），你同意过让她看你的手机。`];
+  }
+  return [
+    `【你的手机】你的手机密码是 ${code}（你随手设的四位数）。她可能想看你的手机、或问你密码：按你的性格和你们现在的亲密程度决定——可以爽快给、可以逗她一下再给、也可以暂时不给或只给提示。`,
+    `- 一旦你决定让她看（说出密码，或明确答应给她看），在回复的最后单独一行写 ${PHONE_UNLOCK_MARK}；没答应就绝不要写。这个标记她看不到。`,
+  ];
+}
+
 /** 亲密模式的关系背景（人设 / 追法 / 时间感 / 她的身份 / 记忆 / 秘密 / 恋爱规则）；通话模式复用（D-077） */
 function bondedContextLines(ctx: EngineContext, now: Date): string[] {
   const c = ctx.character;
@@ -444,6 +462,7 @@ function bondedContextLines(ctx: EngineContext, now: Date): string[] {
     ...sharedMemoryBlock(c),
     ...memoryBlockFor(bond?.memory),
     ...secretsBlock(c, lv.level),
+    ...phoneBlock(ctx),
     ...BONDED_LOVE_RULES,
     ...initiativeLine(c),
     `- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`,

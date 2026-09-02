@@ -51,6 +51,8 @@ function ctxFor(character: Character, bond: Bond, userText: string): EngineConte
       birthday: bond.birthday,
       createdAt: bond.createdAt,
       memory: bond.memory,
+      phoneCode: useAppStore.getState().ensurePhoneCode(bond.id),
+      phoneUnlocked: bond.phoneUnlocked,
     },
     me: meForCharacter(character.id),
     history: bond.messages,
@@ -85,6 +87,13 @@ export async function callReply(character: Character, bondId: string, herText: s
   const reply = await generateReply(ctxFor(character, bond, herText));
   const text = reply.texts.join(' ').trim();
   useAppStore.getState().appendBond(bondId, [himMsg(text)]);
+  // 电话里答应让她看手机（D-082）
+  if (reply.unlockPhone && !bond.phoneUnlocked) {
+    useAppStore.getState().setPhoneUnlocked(bondId);
+    useAppStore.getState().appendBond(bondId, [
+      { id: uid('m'), from: 'system', kind: 'system', text: 'TA 同意让你看手机了', at: Date.now() },
+    ]);
+  }
   return text;
 }
 

@@ -18,6 +18,7 @@ import { setLang } from '@/lib/i18n';
 import { DEFAULT_DOCK } from '@/constants/apps';
 import { placeById } from '@/content/places';
 import { appointmentAtLabel, minutesLate, planIsOpen } from '@/lib/appointments';
+import { randomPasscode } from '@/lib/phone';
 import type {
   AlbumShot,
   Bond,
@@ -118,6 +119,10 @@ interface AppState {
     opts?: { affinityDelta?: number; unreadDelta?: number }
   ) => void;
   markBondRead: (bondId: string) => void;
+  /** 查手机（D-082）：TA 的手机密码——没有就随机生成一把记下（第一次需要时），返回它 */
+  ensurePhoneCode: (bondId: string) => string;
+  /** 查手机（D-082）：拿到密码后解锁，之后随时能看 */
+  setPhoneUnlocked: (bondId: string) => void;
   /** LINE 规则（D-030）：撤回=占位+清内容（仅自己的消息、24h 内，界面侧把关）；删除=本地移除任意消息 */
   recallMessage: (scope: { bondId?: string; characterId?: string }, msgId: string) => void;
   /** 就地更新一条消息（D-073：语音识别 / 看图结果回填） */
@@ -414,6 +419,20 @@ export const useAppStore = create<AppState>()(
       markBondRead: (bondId) =>
         set({
           bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, unread: 0 } : b)),
+        }),
+
+      ensurePhoneCode: (bondId) => {
+        const bond = get().bonds.find((b) => b.id === bondId);
+        if (!bond) return '';
+        if (bond.phoneCode) return bond.phoneCode;
+        const code = randomPasscode();
+        set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, phoneCode: code } : b)) });
+        return code;
+      },
+
+      setPhoneUnlocked: (bondId) =>
+        set({
+          bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, phoneUnlocked: true } : b)),
         }),
 
       recallMessage: ({ bondId, characterId }, msgId) => {

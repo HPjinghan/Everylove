@@ -1,12 +1,13 @@
 /**
  * 会话「+」面板的四个玩法（D-081）：外出邀请 / 查 TA 的手机 / 红包 / 位置。
  * 每个都是一张 pageSheet；选定后由调用方（羁绊会话）落成卡片消息（kind 'card'）并让 TA 回应。
- * 「查 TA 的手机」试装形态：备忘录（TA 记着关于她的事）/ 相册 / 加密日记（隐藏设定：看得见已解锁的，锁着的只见轮廓）——
+ * 「查 TA 的手机」：第一次要先拿到密码（D-082）——聊天里问 TA（TA 答应就解锁），或在锁屏上自己猜（猜对就开）；
+ * 进去后是备忘录（TA 记着关于她的事）/ 相册 / 加密日记（隐藏设定：看得见已解锁的，锁着的只见轮廓）——
  * 正式形态与「被发现」的修罗场见 OPEN_QUESTIONS #19。
  */
 
 import { Image } from 'expo-image';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { CharAvatar } from '@/components/char-avatar';
@@ -16,6 +17,7 @@ import { characterSecrets, unlockedSecretCount } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
 import { levelInfo } from '@/lib/bond';
 import { t } from '@/lib/i18n';
+import { PHONE_PASSCODE_LENGTH } from '@/lib/phone';
 import type { Bond, Character } from '@/lib/types';
 import { weatherCity } from '@/lib/weather';
 import { useAppStore } from '@/store/app-store';
@@ -197,14 +199,72 @@ export function PhoneSheet({
   onClose,
   bond,
   character,
+  onViewed,
 }: {
   visible: boolean;
   onClose: () => void;
   bond: Bond;
   character: Character;
+  /** 内容真的展开给她看时（打开即已解锁，或刚猜对） */
+  onViewed?: () => void;
 }) {
   const album = useAppStore((s) => s.album);
   const portrait = useAppStore((s) => s.portraits[character.id]);
+  const unlocked = !!bond.phoneUnlocked;
+  const [code, setCode] = useState('');
+  const [wrong, setWrong] = useState(false);
+  const viewed = useRef(false);
+  useEffect(() => {
+    if (!visible) {
+      viewed.current = false;
+      setCode('');
+      setWrong(false);
+      return;
+    }
+    // 第一次点开锁屏就把密码定下来（随机，记在羁绊上）——她猜的和 TA 会说的是同一把
+    if (!unlocked) useAppStore.getState().ensurePhoneCode(bond.id);
+    if (unlocked && !viewed.current) {
+      viewed.current = true;
+      onViewed?.();
+    }
+  }, [visible, unlocked, onViewed, bond.id]);
+
+  const tryCode = (v: string) => {
+    const digits = v.replace(/\D/g, '').slice(0, PHONE_PASSCODE_LENGTH);
+    setCode(digits);
+    setWrong(false);
+    if (digits.length < PHONE_PASSCODE_LENGTH) return;
+    if (digits === useAppStore.getState().ensurePhoneCode(bond.id)) {
+      useAppStore.getState().setPhoneUnlocked(bond.id);
+    } else {
+      setWrong(true);
+      setTimeout(() => setCode(''), 350);
+    }
+  };
+
+  if (!unlocked) {
+    return (
+      <Sheet visible={visible} title={t('{name} 的手机', { name: bond.name })} onClose={onClose}>
+        <View style={[styles.lock, styles.lockScreen, { backgroundColor: character.colorSoft ?? Romance.accentSoft }]}>
+          <CharAvatar name={bond.name} color={character.color} size={64} characterId={character.id} />
+          <Text style={styles.lockName}>{bond.name}</Text>
+          <TextInput
+            style={[styles.codeInput, wrong && styles.codeInputWrong]}
+            value={code}
+            onChangeText={tryCode}
+            keyboardType="number-pad"
+            maxLength={PHONE_PASSCODE_LENGTH}
+            secureTextEntry
+            autoFocus
+            placeholder={t('密码')}
+            placeholderTextColor={Romance.faint}
+          />
+          <Text style={styles.lockHint}>{wrong ? t('密码不对') : ' '}</Text>
+        </View>
+      </Sheet>
+    );
+  }
+
   const notes = (bond.memory?.facts ?? []).map((raw) => {
     const m = raw.match(/^\[(她|约定|答应|节点)\]\s*(.+)$/);
     return m ? `${NOTE_PREFIX[m[1]] ?? ''}${m[2]}` : raw;
@@ -214,7 +274,7 @@ export function PhoneSheet({
     ...album.filter((p) => p.characterId === character.id).map((p) => ({ id: p.id, uri: p.uri })),
   ];
   const secrets = characterSecrets(character);
-  const unlocked = unlockedSecretCount(levelInfo(bond.affinity).level, secrets.length);
+  const unlockedSecrets = unlockedSecretCount(levelInfo(bond.affinity).level, secrets.length);
 
   return (
     <Sheet visible={visible} title={t('{name} 的手机', { name: bond.name })} onClose={onClose}>
@@ -254,7 +314,7 @@ export function PhoneSheet({
           <Text style={styles.section}>{t('加密日记')}</Text>
           <View style={styles.note}>
             {secrets.map((s, i) =>
-              i < unlocked ? (
+              i < unlockedSecrets ? (
                 <Text key={i} style={styles.noteLine}>
                   · {s}
                 </Text>
@@ -328,7 +388,21 @@ const styles = themed(() =>
     primaryBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
     btnDisabled: { opacity: 0.4 },
     lock: { borderRadius: 24, paddingVertical: 26, alignItems: 'center', gap: 8 },
+    lockScreen: { paddingVertical: 48, marginTop: 10 },
     lockName: { fontSize: 15, fontWeight: '600', color: Romance.ink },
+    codeInput: {
+      marginTop: 18,
+      width: 168,
+      backgroundColor: 'rgba(255,255,255,0.85)',
+      borderRadius: 16,
+      paddingVertical: 12,
+      fontSize: 26,
+      letterSpacing: 14,
+      textAlign: 'center',
+      color: Romance.ink,
+    },
+    codeInputWrong: { backgroundColor: '#FDEBEA' },
+    lockHint: { fontSize: 12, color: '#C43A34', marginTop: 8, height: 16 },
     section: { fontSize: 12, fontWeight: '700', color: Romance.sub, marginTop: 8, marginLeft: 4 },
     note: { backgroundColor: '#FFFBEA', borderRadius: 16, padding: 14, gap: 6 },
     noteLine: { fontSize: 13, color: '#5B4A2E', lineHeight: 19 },

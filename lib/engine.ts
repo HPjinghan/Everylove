@@ -8,7 +8,7 @@
  */
 
 import { DARK_SIDE_PATTERN, DARK_SIDE_REPLY } from '@/content/characters';
-import { buildChatSystemPrompt, messageContextText, OPENING_STAGE_LINE } from '@/content/prompts';
+import { buildChatSystemPrompt, messageContextText, OPENING_STAGE_LINE, PHONE_UNLOCK_MARK } from '@/content/prompts';
 import { t } from '@/lib/i18n';
 import { proxyAvailable, proxyJson, proxyReadySync } from '@/lib/proxy';
 import type { ChatMessage, EngineContext, EngineId, EngineReply } from '@/lib/types';
@@ -312,12 +312,19 @@ export async function generateReply(ctx: EngineContext, engine: EngineId = ENGIN
   if (route === 'none') throw new AiUnavailableError();
   const key = route === 'direct' ? envKey(engine) : null;
   try {
-    if (engine === 'anthropic') return await anthropicReply(ctx, key);
-    return await qianfanReply(ctx, key);
+    const reply = engine === 'anthropic' ? await anthropicReply(ctx, key) : await qianfanReply(ctx, key);
+    return applyPhoneUnlock(reply);
   } catch (e) {
     console.warn(`[engine] ${engine}${key ? '' : '（代理）'} 调用失败：`, e);
     throw e;
   }
+}
+
+/** 查手机（D-082）：TA 在回复里放了解锁标记 → 剥掉并置位（标记她看不到；全剥空则留一个省略号） */
+export function applyPhoneUnlock(reply: EngineReply): EngineReply {
+  if (!reply.texts.some((t) => t.includes(PHONE_UNLOCK_MARK))) return reply;
+  const texts = reply.texts.map((t) => t.split(PHONE_UNLOCK_MARK).join('').trim()).filter(Boolean);
+  return { ...reply, texts: texts.length ? texts : ['……'], unlockPhone: true };
 }
 
 /** 领养触发器：广场会话中用户第 4 次发言后，他开口要联系方式 */

@@ -735,3 +735,13 @@
   6. **查 TA 的手机（试装形态，OPEN_QUESTIONS #19 待正式拍板）**：pageSheet 里是 TA 的手机——**备忘录**（TA 记着关于她的事 = 羁绊记忆 facts，去前缀显示）、**相册**（立绘 + 相册里这个 TA 的照片）、**加密日记**（隐藏设定：已解锁的看得见，锁着的只显示 🔒 与轮廓，不写等级）。打开时会话留一条「你看了 TA 的手机」（她自己看得见这个痕迹；TA 不知道——「被发现」的修罗场留给 #19）。
   7. **录音条修复**：文案去掉「录音中」前缀（红点已表意），`numberOfLines={1}` + `ellipsizeMode="clip"`，pill 加 `minWidth: 0 / overflow: hidden`、文字 `flexShrink: 1`——任何语言都不再换行撑破。
 - **影响文件**：`components/chat-thread.tsx`、`components/chat-extras.tsx`（新）、`app/bond/[bondId].tsx`、`app/apps/messages.tsx`、`lib/types.ts`、`content/prompts.ts`（messageContextText）、`lib/i18n.ts`（删「录音中」、补 16 组 en/ja）。
+
+## D-082 · 2026-09-02 · 查手机的密码规则：第一次要拿到 TA 的密码——聊天里问（TA 答应就解锁）或自己猜；密码随机、第一次需要时生成并记在角色实例上（Harper 拍板）
+
+- **背景**：Harper「查手机的设定：第一次需要找他要密码；可以在聊天中问出来，也可以自己猜，只要他同意你就能看」「随机就可以，第一次问的时候生成，记录在角色信息里」。
+- **决策**：
+  1. **密码**：四位随机数字（`lib/phone.ts randomPasscode`），**第一次需要时**生成——她第一次开口和 TA 聊（亲密模式 / 通话每轮前 `ensurePhoneCode`）或第一次点开锁屏——记在这段羁绊上（`Bond.phoneCode`，即 TA 这个实例的信息；不写进静态角色内容，种子角色也能各有各的）。之后 TA 的 prompt 与锁屏共用同一把。
+  2. **问出来**：亲密模式 / 通话 prompt 注入 `phoneBlock`——TA 知道自己的密码，「她想看手机或问密码时按性格 × 亲密度决定：爽快给 / 逗一下再给 / 暂时不给或只给提示」；**TA 一旦决定让她看（说出密码，或明确答应），在回复末尾单独一行写 `[解锁手机]`**。引擎 `applyPhoneUnlock` 剥掉标记并置 `EngineReply.unlockPhone`，会话层 `setPhoneUnlocked` + 系统消息「TA 同意让你看手机了」。标记她看不到；没答应绝不写。
+  3. **自己猜**：「查 TA 的手机」未解锁时是锁屏（头像 + 四位密码框，无提示文案），输满四位即校验：对 → 解锁并展开；错 → 红框「密码不对」清空重试，次数不限、TA 不知道（偷看的负罪感与「被发现」留 #19）。
+  4. **解锁后**：`Bond.phoneUnlocked = true`，之后随时能看；内容展开时会话留「你看了 TA 的手机」（她自己的痕迹）。prompt 改为「她知道你的密码，你同意过让她看」。
+- **影响文件**：`lib/phone.ts`（新）、`lib/types.ts`（Bond.phoneCode / phoneUnlocked、EngineReply.unlockPhone、EngineContext.bond Pick）、`content/prompts.ts`（PHONE_UNLOCK_MARK / phoneBlock 进 bondedContextLines）、`lib/engine.ts`（applyPhoneUnlock）、`store/app-store.ts`（ensurePhoneCode / setPhoneUnlocked）、`app/bond/[bondId].tsx`、`lib/call.ts`、`components/chat-extras.tsx`（锁屏）、`lib/i18n.ts`。

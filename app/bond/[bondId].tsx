@@ -173,6 +173,8 @@ export default function BondScreen() {
   /** TA 的回合：引擎回复 + 记忆后台更新。text 已是模型视角的文字（语音 / 照片经 messageContextText 包装） */
   const respond = async (text: string) => {
     setTyping(true);
+    // 查手机（D-082）：TA 的手机密码第一次需要时才生成，记在这段羁绊上
+    const phoneCode = useAppStore.getState().ensurePhoneCode(bond.id);
     const current = useAppStore.getState().bonds.find((b) => b.id === bond.id);
     let reply: EngineReply;
     try {
@@ -186,6 +188,8 @@ export default function BondScreen() {
           birthday: bond.birthday,
           createdAt: bond.createdAt,
           memory: current?.memory,
+          phoneCode,
+          phoneUnlocked: current?.phoneUnlocked,
         },
         me: meForCharacter(character.id),
         history: current?.messages ?? [],
@@ -214,6 +218,12 @@ export default function BondScreen() {
           { id: uid('m'), from: 'him', kind: asVoice ? 'voice' : 'text', text: t, at: Date.now() },
         ]);
       if (asVoice) void synthesizeVoice(t, character);
+    }
+
+    // 查手机（D-082）：TA 这轮答应让她看 → 解锁，会话留一条
+    if (reply.unlockPhone && !current?.phoneUnlocked) {
+      useAppStore.getState().setPhoneUnlocked(bond.id);
+      useAppStore.getState().appendBond(bond.id, [sysMsg(t('TA 同意让你看手机了'))]);
     }
 
     // 记忆库后台更新：每隔几轮提取长期事实 + 滚动摘要，失败静默（D-016）
@@ -269,15 +279,7 @@ export default function BondScreen() {
         placeholder={t('和{name}说点什么…', { name: bond.name })}
         extras={[
           { key: 'invite', label: t('外出邀请'), icon: 'figure.walk', onPress: () => setSheet('invite') },
-          {
-            key: 'phone',
-            label: t('查 TA 的手机'),
-            icon: 'iphone',
-            onPress: () => {
-              useAppStore.getState().appendBond(bond.id, [sysMsg(t('你看了 TA 的手机'))]);
-              setSheet('phone');
-            },
-          },
+          { key: 'phone', label: t('查 TA 的手机'), icon: 'iphone', onPress: () => setSheet('phone') },
           { key: 'redpacket', label: t('红包'), icon: 'gift.fill', onPress: () => setSheet('redpacket') },
           { key: 'location', label: t('位置'), icon: 'mappin.and.ellipse', onPress: () => setSheet('location') },
         ]}
@@ -286,7 +288,13 @@ export default function BondScreen() {
       <InviteSheet visible={sheet === 'invite'} onClose={() => setSheet(null)} onPick={invite} />
       <RedPacketSheet visible={sheet === 'redpacket'} onClose={() => setSheet(null)} onSend={sendRedPacket} />
       <LocationSheet visible={sheet === 'location'} onClose={() => setSheet(null)} onSend={sendLocation} />
-      <PhoneSheet visible={sheet === 'phone'} onClose={() => setSheet(null)} bond={bond} character={character} />
+      <PhoneSheet
+        visible={sheet === 'phone'}
+        onClose={() => setSheet(null)}
+        bond={bond}
+        character={character}
+        onViewed={() => useAppStore.getState().appendBond(bond.id, [sysMsg(t('你看了 TA 的手机'))])}
+      />
 
       <Modal
         visible={profileOpen}
