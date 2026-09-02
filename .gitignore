@@ -41,3 +41,6 @@ app-example
 # generated native folders
 /ios
 /android
+
+# 生图脚本产物（scripts/gen-image.mjs）
+scripts/out/

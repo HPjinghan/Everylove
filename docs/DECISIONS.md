@@ -587,3 +587,9 @@
   - **边界（见 OPEN_QUESTIONS #23）**：**角色台词库（content/characters.ts 的 mock 脚本）与种子人设暂不三语**——真模型输出跟随语言行，mock 引擎仍中文；恋爱类型 14 种/MBTI 提示等纯内容 chips 暂中文。内容本地化是另一场战役（日语写手到岗，#4）。
 - **工程纪律**：新界面文案一律写 `t('中文')` 并同步补 en/ja 词典（`lib/i18n.ts` 尾部哨兵注释 `__EN_END__`/`__JA_END__` 前追加）；词典键 = 中文原文，改中文文案 = 改键，需同步改词典。
 - **影响文件**：`lib/i18n.ts`（新）、`store/app-store.ts`（language）、`app/_layout.tsx`（setLang + remount）、`app/onboarding.tsx`（语言步）、`content/prompts.ts`（语言行）、`lib/format.ts`，及全部 `app/**` 界面与 `components/`（t() 包裹）。
+
+## D-067 · 2026-09-02 · 生图调 prompt 脚本 `scripts/gen-image.mjs`（Harper 提出）
+
+- **决策**：加一个零依赖 Node 脚本，输入文字 → 千帆文生图 → 图落 `scripts/out/`（已 gitignore），供在工程外快速迭代生图 prompt。**与 `lib/imagegen.ts` 同一条 API**（`POST /v2/images/generations`，同 model / size / n，同样 http→https 落盘），key 读 `.env.local` 的 `EXPO_PUBLIC_QIANFAN_API_KEY`（环境变量 `QIANFAN_API_KEY` 可覆盖），不走服务端代理。`--style` / `--portrait` 从 `content/prompts.ts` **实时读** COMIC_STYLE / COMIC_QUALITY / COMIC_RULES / PORTRAIT_COMPOSITION 追加到 prompt 尾部——改 prompts.ts 即刻反映，不另存一份副本（D-017「prompt 只在一个文件」纪律不破）。每张图旁存同名 `.txt` 记录当次 prompt 与参数。npm 入口 `npm run gen-image -- "..."`。
+- **理由**：Expo Go 里调 prompt 一轮要走捏＋表单，太慢；脚本一行出图，且保证和线上同接口同参数，看到的就是用户会看到的。
+- **影响文件**：`scripts/gen-image.mjs`（新）、`package.json`（gen-image）、`.gitignore`（scripts/out/）。
