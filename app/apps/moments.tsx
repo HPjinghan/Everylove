@@ -2,12 +2,13 @@
  * X（原朋友圈，D-053 推特模式改版）：缔结契约（领养）的 TA 们的时间线（D-027 口径不变）。
  * - 推特式行布局：头像 + 名字 + @handle + 相对时间，正文，回复/喜欢操作行，细线分隔
  * - 回复实装模型（D-053）：她评论 → TA 用当前引擎真的回一条（带人设/关系/记忆），
- *   暗面路由前置（红线 #3：评论区也不例外）；mock/无 key/失败回落台词库 commentReply
+ *   暗面路由前置（红线 #3：评论区也不例外）；AI 不可用/失败不回帖、弹窗露出原因（D-069 起没有脚本回落）
  * - 加好友前的公开帖只能看（免费层口径不变）
  */
 
 import { useState } from 'react';
 import {
+  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -19,10 +20,10 @@ import {
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { DARK_SIDE_PATTERN, DARK_SIDE_REPLY, scriptFor } from '@/content/characters';
+import { DARK_SIDE_PATTERN, DARK_SIDE_REPLY } from '@/content/characters';
 import { buildPostReplySystem, buildPostReplyUserPrompt } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
-import { completeText, splitBubbles, stripStageDirections } from '@/lib/engine';
+import { completeText, describeAiError, splitBubbles, stripStageDirections } from '@/lib/engine';
 import { timeAgo } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import type { Bond, Character, Post } from '@/lib/types';
@@ -33,7 +34,7 @@ function handleFor(c: Character): string {
   return `@${c.id.replace(/[^a-zA-Z0-9_]/g, '_')}`;
 }
 
-/** TA 的回帖：模型实装（D-053），暗面前置，失败回落台词库 */
+/** TA 的回帖：模型实装（D-053），暗面前置；失败抛错由调用方露出原因（D-069：不再回落台词库） */
 async function generatePostReply(
   post: Post,
   character: Character,
@@ -41,25 +42,18 @@ async function generatePostReply(
   userComment: string
 ): Promise<string> {
   if (DARK_SIDE_PATTERN.test(userComment)) return DARK_SIDE_REPLY;
-  const { engine, anthropicKey, qianfanKey } = useAppStore.getState();
-  try {
-    const raw = await completeText(
-      buildPostReplySystem(character, bond, meForCharacter(character.id)),
-      buildPostReplyUserPrompt({
-        postText: post.text,
-        comments: [...post.comments, { from: 'me', text: userComment }],
-        hisName: bond?.name ?? character.name,
-      }),
-      engine,
-      { anthropic: anthropicKey, qianfan: qianfanKey },
-      300
-    );
-    const cleaned = stripStageDirections(splitBubbles(raw, 1, character.name));
-    if (cleaned[0]) return cleaned[0];
-  } catch (e) {
-    console.warn('[x] 回帖生成失败，回落台词库：', e);
-  }
-  return scriptFor(character).commentReply;
+  const raw = await completeText(
+    buildPostReplySystem(character, bond, meForCharacter(character.id)),
+    buildPostReplyUserPrompt({
+      postText: post.text,
+      comments: [...post.comments, { from: 'me', text: userComment }],
+      hisName: bond?.name ?? character.name,
+    }),
+    300
+  );
+  const cleaned = stripStageDirections(splitBubbles(raw, 1, character.name));
+  if (!cleaned[0]) throw new Error('empty reply');
+  return cleaned[0];
 }
 
 function PostRow({ post }: { post: Post }) {
@@ -80,9 +74,15 @@ function PostRow({ post }: { post: Post }) {
     setCommentDraft('');
     useAppStore.getState().addMyComment(post.id, text);
     setReplying(true);
-    const reply = await generatePostReply(post, character, bond, text);
-    useAppStore.getState().addHisReply(post.id, reply);
-    setReplying(false);
+    try {
+      const reply = await generatePostReply(post, character, bond, text);
+      useAppStore.getState().addHisReply(post.id, reply);
+    } catch (e) {
+      console.warn('[x] 回帖生成失败：', e);
+      Alert.alert(t('TA 这条没回上'), t('模型调用失败：{reason}', { reason: describeAiError(e) }));
+    } finally {
+      setReplying(false);
+    }
   };
 
   return (

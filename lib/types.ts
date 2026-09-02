@@ -51,7 +51,7 @@ export interface Character {
   adultConfirmed?: boolean;
   /** 预设共同记忆：你们都记得的过去，每行一条；三种对话模式都注入（创作层设定，不受广场无记忆墙约束） */
   presetMemories?: string;
-  /** 主动联系强度：注入亲密/外出 prompt 的主动性口径；脚本引擎的加句概率也随之变 */
+  /** 主动联系强度：注入亲密/外出 prompt 的主动性口径 */
   initiative?: 'high' | 'mid' | 'low';
   /** 禁忌/边界：TA 不做的事、回避的话题（三种模式都注入，涉及时回避或拒绝） */
   taboos?: string;
@@ -244,7 +244,8 @@ export interface OutingSession {
   startedAt: number;
 }
 
-export type EngineId = 'mock' | 'anthropic' | 'qianfan';
+/** 对话引擎：Claude 或百度千帆（脚本引擎 mock 已删，D-069；选择走工程配置 EXPO_PUBLIC_AI_ENGINE） */
+export type EngineId = 'anthropic' | 'qianfan';
 
 export interface EngineContext {
   character: Character;

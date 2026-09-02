@@ -19,10 +19,11 @@ import { buildOutingPhotoPrompt, OUTING_OPENERS, transcript } from '@/content/pr
 import { placeById } from '@/content/places';
 import { Romance, themed } from '@/constants/theme';
 import { HEART_FULL, heartGain, XP_PER_MESSAGE } from '@/lib/bond';
-import { ADOPTION_OFFER_AFTER_TURNS, generateReply } from '@/lib/engine';
+import { ADOPTION_OFFER_AFTER_TURNS, describeAiError, generateReply } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { generateScenePhoto, imageKeyReady } from '@/lib/imagegen';
 import { t } from '@/lib/i18n';
+import type { EngineReply } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
@@ -105,7 +106,7 @@ export default function OutingSceneScreen() {
   if (!active || !character) return null;
 
   const onSend = async (text: string) => {
-    const { appendOuting, appendBond, engine, anthropicKey, qianfanKey } = useAppStore.getState();
+    const { appendOuting, appendBond } = useAppStore.getState();
     appendOuting([{ id: uid('m'), from: 'me', kind: 'text', text, at: Date.now() }]);
     // 她开口 = +XP（升级系统提示会出现在羁绊会话里）
     if (bond) appendBond(bond.id, [], { affinityDelta: XP_PER_MESSAGE });
@@ -124,8 +125,9 @@ export default function OutingSceneScreen() {
 
     setTyping(true);
     const current = useAppStore.getState().outingSession;
-    const reply = await generateReply(
-      {
+    let reply: EngineReply;
+    try {
+      reply = await generateReply({
         character,
         mode: 'outing',
         bond: bond
@@ -147,10 +149,21 @@ export default function OutingSceneScreen() {
         },
         history: current?.messages ?? [],
         userText: text,
-      },
-      engine,
-      { anthropic: anthropicKey, qianfan: qianfanKey }
-    );
+      });
+    } catch (e) {
+      // 模型调用失败：在场景里露出原因（D-069：没有脚本回落，错误要看得见）
+      setTyping(false);
+      useAppStore.getState().appendOuting([
+        {
+          id: uid('m'),
+          from: 'system',
+          kind: 'system',
+          text: t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) }),
+          at: Date.now(),
+        },
+      ]);
+      return;
+    }
     await wait(700 + Math.min(1200, text.length * 40));
     setTyping(false);
     for (const line of reply.texts) {
@@ -179,7 +192,7 @@ export default function OutingSceneScreen() {
   const shoot = async (kind: 'solo' | 'together') => {
     if (shooting) return;
     if (!imageKeyReady()) {
-      Alert.alert(t('未配置千帆 key'), t('拍照与聊天共用千帆 key：在 .env.local 或「设置 → 开发者」里填好即可。'));
+      Alert.alert(t('AI 不可用'), t('拍照与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。'));
       return;
     }
     setShooting(kind);

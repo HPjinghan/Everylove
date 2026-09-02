@@ -599,3 +599,16 @@
 - **决策**：D-067 的命令行之外，加**本地网页版**——根目录 `gen-image.bat` 双击即起（或 `npm run gen-image:web`），`scripts/gen-image-server.mjs` 零依赖 Node http 服务，**只绑 127.0.0.1:3939**（key 在本机，不对外），自动开浏览器；页面 `scripts/gen-image-ui.html`（无 CDN、离线可用）：左栏写字 + 尾巴三选（不追加 / 画风尾巴 / 立绘尾巴，实时读 prompts.ts）+ size / 张数 / model + 「实际发出的完整 prompt」预览，Ctrl+Enter 生成；右栏是 `scripts/out/` 的历史墙（最新在前，含当时 prompt、耗时），每张可「回填到左边」（自动剥掉尾巴只留她写的那段）/ 复制 prompt / 点开原图。表单内容存 localStorage。CLI 与网页共用 `scripts/gen-image-core.mjs`（env 读取、prompts.ts 常量求值、调用与落盘、历史解析）；`.txt` 旁档格式（参数 JSON + 空行 + prompt）是历史墙的数据源，CLI 与网页出的图互相可见。
 - **理由**：Harper 不想开 IDE 改脚本参数；网页能并排看历史图与 prompt 差异，才是「调 prompt」的工作台。
 - **影响文件**：`gen-image.bat`（新，根目录）、`scripts/gen-image-server.mjs`（新）、`scripts/gen-image-ui.html`（新）、`scripts/gen-image-core.mjs`（新，从 gen-image.mjs 抽出）、`scripts/gen-image.mjs`（改用核心）、`package.json`（gen-image:web）。
+
+## D-069 · 2026-09-02 · 删脚本引擎（mock）与 key 手填：AI 只走工程配置，失败直接露出（Harper 拍板）
+
+- **背景**：Harper 扫码开 Metro 后发现聊天全是脚本占位。排查：`.env.local` 的千帆 key 直连正常（curl 200）；根因是 `engine` 作为用户数据被持久化并随云端快照同步——preview 分发包（D-059 刻意无 key）默认 `engine: 'mock'`，写进同一账号的云端快照（Supabase `snapshots` 表实测 `state.engine = "mock"`），dev 端启动时 `reconcileNow` 「云端较新、本地干净」静默拉回，之后 `generateReply` 见 `mock` 直接走脚本、连代理都不试。顺带发现：D-057「无 key 且已登录 → 代理」在分发包上从未生效（无 key 时默认引擎就是 mock，测试的朋友一直在聊脚本）；开发者面板手填的 key 也在同步快照里、会上云。Harper：「把所有的 mock 都删了吧现在不需要了还妨碍判断，然后把设置里的 key 输入也删了，我们都走工程配置」。
+- **决策**：
+  1. **脚本引擎整体下线**：`lib/engine.ts` 删 `mockReply` 与一切「失败回落脚本」链路（聊天/羁绊/外出的回落、X 回帖的 `commentReply` 回落）；`EngineId = 'anthropic' | 'qianfan'`。**角色台词库（`scriptFor`）保留**——开场白 / offer / 仪式台词 / prompt 里的风格示例仍在用，它们是产品触发器与人设内容，不是 mock。
+  2. **引擎与 key 只读工程配置**：`.env.local` 的 `EXPO_PUBLIC_ANTHROPIC_API_KEY` / `EXPO_PUBLIC_QIANFAN_API_KEY`；新增可选 `EXPO_PUBLIC_AI_ENGINE=anthropic|qianfan`（不填：有 Claude key 用 Claude，否则千帆）。取路 `aiRoute()`：本地 key 直连 > 已登录走服务端代理（D-057）> 不可用（抛 `AiUnavailableError`「未配置 AI：.env.local 没有 key，也未登录」）。store 删 `engine / anthropicKey / qianfanKey` 与三个 setter，persist 升 **v5**，迁移时清掉旧存档与云端快照里的这三个字段——设备级配置与 key 不再是用户数据、不上云。
+  3. **失败要看得见**：`generateReply` / `completeText` 失败原样抛错。聊天/羁绊/外出会话插一条系统消息「模型调用失败，TA 这条没回上：{原因}」（她的消息与心动/XP 照常记录；该回合不触发心动满的 offer，下一回合成功时再触发）；X 回帖失败弹窗露原因、不回帖；创造描述解析失败仍回落规则解析，但弹窗改为「模型解析失败，已用规则解析 + 原因」；发帖调度器与记忆提取失败照旧静默记 warn（后台任务，不打扰）。
+  4. **设置 → 开发者**：删引擎切换与两个 key 输入框，改为只读两行「AI 引擎」「AI 取路（直连 .env.local / 服务端代理（已登录）/ 不可用）」+ 一句说明。
+- **理由**：试装阶段假回复只会掩盖故障（这次就是藏了两天才被发现）；key 与引擎是设备/构建级配置，不该进用户存档更不该上云；「他一定会回」应由真模型与代理保证，而不是由脚本兜底。
+- **推翻**：D-010「开发者面板手填可覆盖」「无 key 或调用失败回落 mock」；D-053「失败回落台词库」；D-057 取路第三层「都没有 → mock/占位」改为「都没有 → 抛错露出」。
+- **影响文件**：`lib/engine.ts`、`lib/types.ts`、`store/app-store.ts`（persist v5）、`lib/memory.ts`、`lib/posts.ts`、`lib/imagegen.ts`、`lib/tts.ts`、`app/chat/[characterId].tsx`、`app/bond/[bondId].tsx`、`app/outing/[placeId].tsx`、`app/apps/moments.tsx`、`app/apps/create.tsx`、`app/apps/settings.tsx`、`content/prompts.ts`（注释）、`lib/i18n.ts`、`.env.example`。
+- **遗留**：云端快照里现存的 `engine: "mock"` 会在下次水合经 v5 迁移清掉；preview 分发包需重发一次 EAS Update 才带上本次改动（分发包无本地 key → 登录即走代理，D-057 本意至此才真正生效）。

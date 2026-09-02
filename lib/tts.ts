@@ -9,16 +9,16 @@
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { pronounFor } from '@/content/prompts';
-import { resolveKey } from '@/lib/engine';
+import { ENV_QIANFAN_KEY } from '@/lib/engine';
 import { proxyJson, proxyReadySync } from '@/lib/proxy';
 import type { Character } from '@/lib/types';
-import { useAppStore } from '@/store/app-store';
 
 export const QIANFAN_TTS_MODEL = process.env.EXPO_PUBLIC_QIANFAN_TTS_MODEL || 'qwen-tts';
 const ENV_VOICE = process.env.EXPO_PUBLIC_QIANFAN_TTS_VOICE || '';
 
+/** 只读工程配置（开发者面板手填已下线，D-069） */
 function ttsKey(): string {
-  return resolveKey('qianfan', { qianfan: useAppStore.getState().qianfanKey });
+  return ENV_QIANFAN_KEY;
 }
 
 /** 可发声 = 本地有千帆 key（直连），或已登录（走服务端代理，D-057） */

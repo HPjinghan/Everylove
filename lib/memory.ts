@@ -85,7 +85,6 @@ export async function updateBondMemory(bondId: string, force = false): Promise<b
   const bond = state.bonds.find((b) => b.id === bondId);
   const character = bond && findCharacter(bond.characterId);
   if (!bond || !character) return false;
-  if (state.engine === 'mock') return false;
 
   const memory = bond.memory ?? EMPTY_MEMORY;
   const msgs = bond.messages;
@@ -106,10 +105,7 @@ export async function updateBondMemory(bondId: string, force = false): Promise<b
 
   inflight.add(bondId);
   try {
-    const raw = await completeText(MEMORY_EXTRACT_SYSTEM, userPrompt, state.engine, {
-      anthropic: state.anthropicKey,
-      qianfan: state.qianfanKey,
-    });
+    const raw = await completeText(MEMORY_EXTRACT_SYSTEM, userPrompt);
     const parsed = parseMemoryJSON(raw);
     if (!parsed) {
       console.warn('[memory] 提取结果不是合法 JSON，跳过：', raw.slice(0, 120));

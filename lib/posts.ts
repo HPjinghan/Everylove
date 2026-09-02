@@ -3,7 +3,7 @@
  * - 频率遵循 MBTI（MBTI_POSTS_PER_DAY 映射：E 比 I 话多、P 比 J 随性；无 MBTI 默认 1 条/天），间隔 ±35% 抖动
  * - 与心跳同机制：App 启动 / 回前台补投（deliverDuePosts）；错过再久也只补 1 条（时间线不炸屏）
  * - 内容由当前引擎生成（人设 + 追法 + 时段 + 天气 + 羁绊记忆；prompt 见 content/prompts.ts §1-F），
- *   mock / 无 key / 失败 = 这一条不发（静默，下个周期再试）
+ *   AI 不可用 / 失败 = 这一条不发（记 warn，下个周期再试；D-069 起没有脚本回落）
  * - 只有缔结的 TA 发帖（X 只看羁绊层的时间线，D-027）
  */
 
@@ -61,14 +61,12 @@ export async function deliverDuePosts(now = Date.now()): Promise<number> {
 
 /** 引擎生成一条帖子文本；不可用/失败返回 null（这次不发） */
 async function generatePostText(character: Character, bondId: string): Promise<string | null> {
-  const { engine, anthropicKey, qianfanKey, bonds } = useAppStore.getState();
+  const { bonds } = useAppStore.getState();
   const bond = bonds.find((b) => b.id === bondId);
   try {
     const raw = await completeText(
       buildCharacterPostSystem(character, bond),
       buildCharacterPostUserPrompt(),
-      engine,
-      { anthropic: anthropicKey, qianfan: qianfanKey },
       200
     );
     const line = stripStageDirections(splitBubbles(raw, 1, character.name))[0];

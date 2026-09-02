@@ -2,8 +2,8 @@
  * i18n（D-066）：三语（中/英/日）。
  * 约定：**中文原文即键**——界面写 t('中文')，en/ja 词典查不到时回落中文（漏词不崩，只是没翻译）。
  * 插值：t('和{name}的约会', { name })。语言存 store.language，onboarding 第 0 步选择，设置可改。
- * 注意：角色台词库（content/characters.ts 的脚本）暂未三语——真模型输出语言由 prompts 的语言行控制，
- * mock 脚本引擎仍是中文（内容本地化是另一场战役，见 OPEN_QUESTIONS #23）。
+ * 注意：角色台词库（content/characters.ts 的开场白/offer/仪式台词）暂未三语——真模型输出语言由 prompts 的语言行控制
+ * （内容本地化是另一场战役，见 OPEN_QUESTIONS #23；脚本引擎已删，D-069）。
  */
 
 export type Lang = 'zh' | 'en' | 'ja';
@@ -184,7 +184,7 @@ const en: Record<string, string> = {
   '⑦ TA 的头像（可选）': '⑦ Their avatar (optional)',
   '上传一张图，或按 ⑤ 的描述生成一张半身立绘（约 1 分钟）；交友卡面与会话头像都用它。不能上传真人照片。': 'Upload an image, or generate a portrait from ⑤ (~1 min); used on cards and in chat. No photos of real people.',
   '换一张': 'Change', '上传头像': 'Upload avatar', '生成中…': 'Generating…',
-  '生成立绘': 'Generate portrait', '生成立绘（未配 key）': 'Generate portrait (no key)',
+  '生成立绘': 'Generate portrait', '生成立绘（AI 不可用）': 'Generate portrait (AI unavailable)',
   '收起高级选项 ▴': 'Hide advanced ▴', '高级选项 ▾': 'Advanced ▾',
   '种族 · 生日 · 口癖 · 恋爱类型 · MBTI · 作息…': 'Species · birthday · verbal tics · love style · MBTI · routine…',
   '种族': 'Species', '如：半人马': 'e.g. centaur',
@@ -277,8 +277,8 @@ const en: Record<string, string> = {
   '广场今天安安静静的——\n新面孔都被你认识完了。': 'The plaza is quiet today —\nyou have met all the new faces.',
   '认识的人这会儿都在忙。\n晚上八点之后再出来走走，说不定就遇到了。': 'Everyone you know is busy right now.\nCome out again after 8pm — you might run into someone.',
   '这里风景很好，但一个人逛有点安静。\n去广场碰碰运气，或先在「交友」里滑一滑。': 'Nice view, but a little quiet alone.\nTry the plaza, or swipe in Matching first.',
-  '未配置千帆 key': 'Qianfan key not set',
-  '拍照与聊天共用千帆 key：在 .env.local 或「设置 → 开发者」里填好即可。': 'Photos share the chat key: set it in .env.local or Settings → Developer.',
+  'AI 不可用': 'AI unavailable',
+  '拍照与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。': 'Photos share the chat key: set it in .env.local, or sign in to use the server proxy.',
   '没拍成': "Didn't come out",
   '生图服务出了点问题，可以再试一次。': 'The image service hiccuped — try again.',
   '和{name}的合影 · {place}': 'With {name} · {place}',
@@ -376,6 +376,16 @@ const en: Record<string, string> = {
   '{n} 分钟前': '{n}m ago',
   '{n} 小时前': '{n}h ago',
   '{n} 天前': '{n}d ago',
+  // AI 取路与失败露出（D-069）
+  '未配置 AI：.env.local 没有 key，也未登录（服务端代理不可用）': 'AI not configured: no key in .env.local and not signed in (server proxy unavailable)',
+  '模型调用失败，TA 这条没回上：{reason}': 'Model call failed, no reply to this one: {reason}',
+  'TA 这条没回上': 'No reply this time',
+  '模型调用失败：{reason}': 'Model call failed: {reason}',
+  'AI 引擎': 'AI engine', 'AI 取路': 'AI route',
+  '直连（.env.local）': 'Direct (.env.local)',
+  '服务端代理（已登录）': 'Server proxy (signed in)',
+  '不可用：无 key 且未登录': 'Unavailable: no key and not signed in',
+  '引擎与 key 只读工程配置 .env.local（改后重启 Metro）；没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。': 'Engine and keys come only from .env.local (restart Metro after changes); without a key, signing in routes through the server proxy. Failures show up right in the conversation.',
   // __EN_END__
 };
 
@@ -537,7 +547,7 @@ const ja: Record<string, string> = {
   '⑦ TA 的头像（可选）': '⑦ アバター（任意）',
   '上传一张图，或按 ⑤ 的描述生成一张半身立绘（约 1 分钟）；交友卡面与会话头像都用它。不能上传真人照片。': '画像をアップ、または⑤から立ち絵を生成（約1分）。実在人物の写真は不可。',
   '换一张': '変更', '上传头像': 'アバターをアップ', '生成中…': '生成中…',
-  '生成立绘': '立ち絵を生成', '生成立绘（未配 key）': '立ち絵を生成（key未設定）',
+  '生成立绘': '立ち絵を生成', '生成立绘（AI 不可用）': '立ち絵を生成（AI利用不可）',
   '收起高级选项 ▴': '詳細を閉じる ▴', '高级选项 ▾': '詳細設定 ▾',
   '种族 · 生日 · 口癖 · 恋爱类型 · MBTI · 作息…': '種族 · 誕生日 · 口癖 · 恋愛タイプ · MBTI · 生活リズム…',
   '种族': '種族', '如：半人马': '例：ケンタウロス',
@@ -630,8 +640,8 @@ const ja: Record<string, string> = {
   '广场今天安安静静的——\n新面孔都被你认识完了。': '今日の広場は静か——\n新しい顔はもう全員知り合いだ。',
   '认识的人这会儿都在忙。\n晚上八点之后再出来走走，说不定就遇到了。': '知り合いはいま忙しいみたい。\n夜8時すぎにまた出てみて。',
   '这里风景很好，但一个人逛有点安静。\n去广场碰碰运气，或先在「交友」里滑一滑。': '景色はいいけど、一人だと少し静か。\n広場へ行くか、まずマッチングでスワイプを。',
-  '未配置千帆 key': 'Qianfan key未設定',
-  '拍照与聊天共用千帆 key：在 .env.local 或「设置 → 开发者」里填好即可。': '撮影はチャットと同じkeyを使用：.env.localか「設定→開発者」で設定を。',
+  'AI 不可用': 'AIが利用できません',
+  '拍照与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。': '撮影はチャットと同じkeyを使用：.env.localで設定するか、ログインしてサーバー経由で。',
   '没拍成': '撮れなかった',
   '生图服务出了点问题，可以再试一次。': '画像サービスの調子が悪いみたい。もう一度どうぞ。',
   '和{name}的合影 · {place}': '{name}とのツーショット · {place}',
@@ -729,6 +739,16 @@ const ja: Record<string, string> = {
   '{n} 分钟前': '{n}分前',
   '{n} 小时前': '{n}時間前',
   '{n} 天前': '{n}日前',
+  // AI 取路与失败露出（D-069）
+  '未配置 AI：.env.local 没有 key，也未登录（服务端代理不可用）': 'AI未設定：.env.localにkeyがなく、ログインもしていません（サーバー経由は利用不可）',
+  '模型调用失败，TA 这条没回上：{reason}': 'モデル呼び出しに失敗、この返事は届きませんでした：{reason}',
+  'TA 这条没回上': '返事が届きませんでした',
+  '模型调用失败：{reason}': 'モデル呼び出しに失敗：{reason}',
+  'AI 引擎': 'AIエンジン', 'AI 取路': 'AI経路',
+  '直连（.env.local）': '直接接続（.env.local）',
+  '服务端代理（已登录）': 'サーバー経由（ログイン中）',
+  '不可用：无 key 且未登录': '利用不可：keyなし・未ログイン',
+  '引擎与 key 只读工程配置 .env.local（改后重启 Metro）；没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。': 'エンジンとkeyは.env.localのみ（変更後はMetro再起動）。keyがない場合はログインでサーバー経由。失敗は会話内にそのまま表示されます。',
   // __JA_END__
 };
 

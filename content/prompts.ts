@@ -705,7 +705,7 @@ export function buildMemoryExtractPrompt(input: {
 
 /**
  * X（原朋友圈）的评论回复实装模型：短、口语、带着发帖时的心情。
- * 引擎走 completeText（mock/无 key 时调用方回落台词库的 commentReply）。
+ * 引擎走 completeText（AI 不可用/失败时调用方弹窗露出原因，不回落台词库——D-069）。
  * 暗面路由由调用方前置（红线 #3：评论区也不例外）。
  */
 export function buildPostReplySystem(

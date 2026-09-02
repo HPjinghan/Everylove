@@ -17,16 +17,27 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { scriptFor } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
 import { HEART_FULL, heartGain } from '@/lib/bond';
-import { ADOPTION_OFFER_AFTER_TURNS, darkSideCheck, generateReply } from '@/lib/engine';
+import { ADOPTION_OFFER_AFTER_TURNS, darkSideCheck, describeAiError, generateReply } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
-import type { ChatMessage } from '@/lib/types';
+import type { ChatMessage, EngineReply } from '@/lib/types';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function himMsg(text: string, kind: 'text' | 'voice' = 'text'): ChatMessage {
   return { id: uid('m'), from: 'him', kind, text, at: Date.now() };
+}
+
+/** 模型调用失败：在会话里露出原因（D-069：没有脚本回落，错误要看得见） */
+function failMsg(e: unknown): ChatMessage {
+  return {
+    id: uid('m'),
+    from: 'system',
+    kind: 'system',
+    text: t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) }),
+    at: Date.now(),
+  };
 }
 
 export default function SquareChatScreen() {
@@ -79,7 +90,7 @@ export default function SquareChatScreen() {
   }
 
   const onSend = async (text: string, replyTo?: ReplyRef) => {
-    const { appendSquare, engine, anthropicKey, qianfanKey } = useAppStore.getState();
+    const { appendSquare } = useAppStore.getState();
     const pace = character.offerAfterTurns ?? ADOPTION_OFFER_AFTER_TURNS;
     const turnsSoFar = useAppStore.getState().squareChats[character.id]?.userTurns ?? 0;
     appendSquare(
@@ -107,17 +118,20 @@ export default function SquareChatScreen() {
     } else {
       // 纯文本回复（D-037：初见回归纯文本，会话内生图已下线）
       setTyping(true);
-      const reply = await generateReply(
-        {
+      let reply: EngineReply;
+      try {
+        reply = await generateReply({
           character,
           mode: 'square',
           me: meForCharacter(character.id),
           history: current?.messages ?? [],
           userText: text,
-        },
-        engine,
-        { anthropic: anthropicKey, qianfan: qianfanKey }
-      );
+        });
+      } catch (e) {
+        setTyping(false);
+        useAppStore.getState().appendSquare(character.id, [failMsg(e)]);
+        return;
+      }
       await wait(700 + Math.min(1200, text.length * 40));
       setTyping(false);
       for (const [i, t] of reply.texts.entries()) {

@@ -1,13 +1,16 @@
 /**
- * ChatEngine：对话引擎抽象。
+ * ChatEngine：对话引擎抽象（anthropic / qianfan，D-069 起没有脚本引擎）。
  * 系统层规则（情绪暗面路由、尺度、无 PUA）在入口处执行，任何引擎不可绕过——
  * 对应行为树「系统层锁死」。领养触发（他开口要联系方式）是产品触发器，
  * 由会话轮数决定，不交给模型（见 DECISIONS D-008）。
+ * 引擎与 key 全部来自工程配置 .env.local（或登录后的服务端代理）；调用失败直接抛错，
+ * 由界面把原因露出来——假回复只会妨碍判断（D-069）。
  */
 
-import { DARK_SIDE_PATTERN, DARK_SIDE_REPLY, scriptFor } from '@/content/characters';
+import { DARK_SIDE_PATTERN, DARK_SIDE_REPLY } from '@/content/characters';
 import { buildChatSystemPrompt, messageContextText, OPENING_STAGE_LINE } from '@/content/prompts';
-import { proxyAvailable, proxyJson } from '@/lib/proxy';
+import { t } from '@/lib/i18n';
+import { proxyAvailable, proxyJson, proxyReadySync } from '@/lib/proxy';
 import type { ChatMessage, EngineContext, EngineId, EngineReply } from '@/lib/types';
 
 // 全部 prompt 文本都在 content/prompts.ts（D-017）；这里只负责调用与组装历史。
@@ -24,16 +27,55 @@ export const ENV_QIANFAN_KEY = process.env.EXPO_PUBLIC_QIANFAN_API_KEY ?? '';
 /** 千帆平台上挂着多家模型，具体用哪个由配置决定，默认 DeepSeek V4（千帆模型 ID：deepseek-v4-pro） */
 export const QIANFAN_MODEL = process.env.EXPO_PUBLIC_QIANFAN_MODEL || 'deepseek-v4-pro';
 
-export interface EngineKeys {
-  anthropic?: string;
-  qianfan?: string;
+/**
+ * 引擎选择也是工程配置（D-069）：EXPO_PUBLIC_AI_ENGINE=anthropic|qianfan；
+ * 不填则有 Claude key 用 Claude，否则千帆（服务端代理两家都通，默认千帆）。
+ */
+const ENV_ENGINE = process.env.EXPO_PUBLIC_AI_ENGINE;
+export const ENGINE: EngineId =
+  ENV_ENGINE === 'anthropic' || ENV_ENGINE === 'qianfan'
+    ? ENV_ENGINE
+    : ENV_ANTHROPIC_KEY
+      ? 'anthropic'
+      : 'qianfan';
+
+/** 本地直连用的 key：只读工程配置（开发者面板手填已下线，D-069） */
+export function envKey(engine: EngineId = ENGINE): string {
+  return engine === 'anthropic' ? ENV_ANTHROPIC_KEY : ENV_QIANFAN_KEY;
 }
 
-/** key 解析：开发者面板手填的优先，其次读工程配置 */
-export function resolveKey(engine: EngineId, keys: EngineKeys): string {
-  if (engine === 'anthropic') return keys.anthropic || ENV_ANTHROPIC_KEY;
-  if (engine === 'qianfan') return keys.qianfan || ENV_QIANFAN_KEY;
-  return '';
+/** 界面用的引擎名 */
+export function engineLabel(engine: EngineId = ENGINE): string {
+  return engine === 'anthropic' ? `Claude · ${ANTHROPIC_MODEL}` : `千帆 · ${QIANFAN_MODEL}`;
+}
+
+/** AI 取路（D-057/D-069）：direct 本地 key 直连 > proxy 登录走服务端代理 > none 不可用（不再有 mock） */
+export type AiRoute = 'direct' | 'proxy' | 'none';
+
+/** 同步近似（UI 显示用） */
+export function aiRouteSync(engine: EngineId = ENGINE): AiRoute {
+  if (envKey(engine)) return 'direct';
+  return proxyReadySync() ? 'proxy' : 'none';
+}
+
+/** 准确判断（发请求前用） */
+export async function aiRoute(engine: EngineId = ENGINE): Promise<AiRoute> {
+  if (envKey(engine)) return 'direct';
+  return (await proxyAvailable()) ? 'proxy' : 'none';
+}
+
+/** 没有任何可用取路时抛出：界面直接把原因露出来，不再用脚本假装回复（D-069） */
+export class AiUnavailableError extends Error {
+  constructor() {
+    super(t('未配置 AI：.env.local 没有 key，也未登录（服务端代理不可用）'));
+    this.name = 'AiUnavailableError';
+  }
+}
+
+/** 把调用错误压成一行给界面看（试装口径：错误要看得见） */
+export function describeAiError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  return msg.replace(/\s+/g, ' ').trim().slice(0, 160);
 }
 
 /**
@@ -117,48 +159,12 @@ export function stripStageDirections(texts: string[]): string[] {
   return cleaned.length ? cleaned : texts;
 }
 
-function pick<T>(arr: T[], salt = 0): T {
-  return arr[Math.floor(Math.random() * 977 + salt) % arr.length];
-}
-
 /** 系统层前置检查：命中暗面路由则绕过一切角色扮演 */
 export function darkSideCheck(userText: string): EngineReply | null {
   if (DARK_SIDE_PATTERN.test(userText)) {
     return { texts: [DARK_SIDE_REPLY], darkSide: true };
   }
   return null;
-}
-
-async function mockReply(ctx: EngineContext): Promise<EngineReply> {
-  const script = scriptFor(ctx.character);
-  const salt = ctx.history.length + ctx.userText.length;
-
-  for (const t of script.triggers) {
-    if (t.pattern.test(ctx.userText)) {
-      const reply = pick(t.replies, salt);
-      // 广场模式只回一条：他有点兴趣，但不太主动（免费层商业承重墙）
-      return { texts: [reply] };
-    }
-  }
-
-  if (ctx.mode === 'square') {
-    return { texts: [pick(script.square, salt)] };
-  }
-
-  // 外出（D-038）：脚本引擎给台词配一点现场动作，模拟亲身互动
-  if (ctx.mode === 'outing') {
-    const actions = ['（朝你走近了一步）', '（侧过头看你）', '（笑了一下，放慢脚步）'];
-    return { texts: [pick(actions, salt) + pick(script.bonded, salt)] };
-  }
-
-  const main = pick(script.bonded, salt);
-  const texts = [main];
-  // 羁绊模式的主动性：偶尔追一句称呼，体现「被爱」；频率随主动联系强度变（D-045）
-  const chattiness = ctx.character.initiative === 'high' ? 2 : ctx.character.initiative === 'low' ? 5 : 3;
-  if (ctx.bond && salt % chattiness === 0) {
-    texts.push(`${ctx.bond.nickname}，在想什么？说来听听。`);
-  }
-  return { texts };
 }
 
 /** apiKey 为空 = 走服务端代理（D-057：key 收在服务端，客户端带登录态调用） */
@@ -225,19 +231,18 @@ async function qianfanReply(ctx: EngineContext, apiKey: string | null): Promise<
 }
 
 /**
- * 通用文本补全（不带角色人设）：供记忆提取/摘要等后台任务用，走当前引擎与 key。
- * mock 引擎或没 key 时抛错，由调用方决定是否静默放弃。
+ * 通用文本补全（不带角色人设）：供记忆提取/摘要/发帖/回帖/描述解析用，走工程配置的引擎。
+ * 没有可用取路抛 AiUnavailableError，调用失败原样抛出——由调用方决定露出还是静默（D-069：不再回落脚本）。
  */
 export async function completeText(
   systemPrompt: string,
   userPrompt: string,
-  engine: EngineId,
-  keys: EngineKeys,
-  maxTokens = 1200
+  maxTokens = 1200,
+  engine: EngineId = ENGINE
 ): Promise<string> {
-  if (engine === 'mock') throw new Error('no engine for completion');
-  const key = resolveKey(engine, keys) || null;
-  if (!key && !(await proxyAvailable())) throw new Error('no engine for completion');
+  const route = await aiRoute(engine);
+  if (route === 'none') throw new AiUnavailableError();
+  const key = route === 'direct' ? envKey(engine) : null;
   if (engine === 'anthropic') {
     const body = {
       model: ANTHROPIC_MODEL,
@@ -292,32 +297,24 @@ export async function completeText(
 }
 
 /**
- * 统一入口：暗面路由 → 所选引擎；API 引擎失败或没 key 时回落 Mock，保证「他一定会回」。
+ * 统一入口：暗面路由 → 工程配置的引擎（本地 key 直连 / 登录走服务端代理，D-057）。
+ * 调用失败或没有取路时**抛错**，界面在会话里露出原因（D-069：脚本引擎与回落链路已删——
+ * 「他一定会回」改由真模型保证，假回复只会妨碍判断）。
  */
-export async function generateReply(
-  ctx: EngineContext,
-  engine: EngineId,
-  keys: EngineKeys
-): Promise<EngineReply> {
+export async function generateReply(ctx: EngineContext, engine: EngineId = ENGINE): Promise<EngineReply> {
   const dark = darkSideCheck(ctx.userText);
   if (dark) return dark;
 
-  const key = resolveKey(engine, keys) || null;
-  if (engine !== 'mock') {
-    // 直连优先（本地 key，开发自测）；没 key 但已登录 → 服务端代理（D-057）
-    const canProxy = !key && (await proxyAvailable());
-    if (key || canProxy) {
-      try {
-        if (engine === 'anthropic') return await anthropicReply(ctx, key);
-        return await qianfanReply(ctx, key);
-      } catch (e) {
-        console.warn(`[engine] ${engine}${key ? '' : '（代理）'} 调用失败，回落脚本引擎：`, e);
-        return mockReply(ctx);
-      }
-    }
-    console.warn(`[engine] ${engine} 没有 key 也未登录（代理不可用），走脚本引擎`);
+  const route = await aiRoute(engine);
+  if (route === 'none') throw new AiUnavailableError();
+  const key = route === 'direct' ? envKey(engine) : null;
+  try {
+    if (engine === 'anthropic') return await anthropicReply(ctx, key);
+    return await qianfanReply(ctx, key);
+  } catch (e) {
+    console.warn(`[engine] ${engine}${key ? '' : '（代理）'} 调用失败：`, e);
+    throw e;
   }
-  return mockReply(ctx);
 }
 
 /** 领养触发器：广场会话中用户第 4 次发言后，他开口要联系方式 */

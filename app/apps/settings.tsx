@@ -1,18 +1,19 @@
 /**
  * 我的：槽位与订阅（占位）、素材开关（占位）、我的创作、开发者与测试工具。
+ * 开发者区只读显示 AI 引擎与取路（D-069：引擎/key 全走工程配置 .env.local，手填与脚本引擎已下线）。
  */
 
 import * as Notifications from 'expo-notifications';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
 import { AppScreen } from '@/components/app-screen';
 import { WALLPAPERS } from '@/constants/apps';
 import { Romance, THEMES, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
-import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY, QIANFAN_MODEL } from '@/lib/engine';
+import { aiRouteSync, engineLabel } from '@/lib/engine';
 import { ensurePortrait, imageKeyReady } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
 import { authConfigured, currentSession, onAuthChange, sessionLabel, signOut } from '@/lib/auth';
@@ -55,16 +56,14 @@ export default function MeScreen() {
   const router = useRouter();
   const bonds = useAppStore((s) => s.bonds);
   const customs = useAppStore((s) => s.customCharacters);
-  const engine = useAppStore((s) => s.engine);
-  const anthropicKey = useAppStore((s) => s.anthropicKey);
-  const qianfanKey = useAppStore((s) => s.qianfanKey);
   const wallpaper = useAppStore((s) => s.wallpaper);
+  const aiRoute = aiRouteSync();
   const themeId = useAppStore((s) => s.themeId);
 
   /** 立绘（D-019）：为种子角色逐个生成（默认不自动，见 OPEN_QUESTIONS #14），或重画首个羁绊角色 */
   const genSeedPortraits = () => {
     if (!imageKeyReady()) {
-      Alert.alert('未配置千帆 key', '立绘与聊天共用千帆 key。');
+      Alert.alert('AI 不可用', '立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。');
       return;
     }
     const missing = CHARACTERS.filter((c) => !useAppStore.getState().portraits[c.id]);
@@ -85,7 +84,7 @@ export default function MeScreen() {
       return;
     }
     if (!imageKeyReady()) {
-      Alert.alert('未配置千帆 key', '立绘与聊天共用千帆 key。');
+      Alert.alert('AI 不可用', '立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。');
       return;
     }
     Alert.alert('重画中', `约 1 分钟，${bond.name}之后的画面都会以新立绘为参考。`);
@@ -108,14 +107,10 @@ export default function MeScreen() {
       {
         text: '现在提取一次',
         onPress: async () => {
-          if (useAppStore.getState().engine === 'mock') {
-            Alert.alert('脚本引擎没有记忆', '切到 Claude 或千帆并配好 key 后再试。');
-            return;
-          }
           const ok = await updateBondMemory(bond.id, true);
           Alert.alert(
             ok ? '已更新' : '没有可提取的新内容或提取失败',
-            ok ? '再点一次「查看」看结果。' : '看 Metro 终端的 [memory] 日志。'
+            ok ? '再点一次「查看」看结果。' : '看 Metro 终端的 [memory] 日志（AI 不可用时也会记在那里）。'
           );
         },
       },
@@ -322,64 +317,21 @@ export default function MeScreen() {
       </Section>
 
       <Section title={t("开发者（试装）")}>
-        <View style={styles.engineRow}>
-          {(
-            [
-              ['mock', '脚本引擎'],
-              ['anthropic', 'Claude'],
-              ['qianfan', `千帆·${QIANFAN_MODEL}`],
-            ] as const
-          ).map(([id, label]) => (
-            <Pressable
-              key={id}
-              style={[styles.engineBtn, engine === id && styles.engineBtnActive]}
-              onPress={() => useAppStore.getState().setEngine(id)}>
-              <Text style={[styles.engineText, engine === id && styles.engineTextActive]}>
-                {label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        {engine === 'anthropic' && (
-          <>
-            <TextInput
-              style={styles.keyInput}
-              value={anthropicKey}
-              onChangeText={(t) => useAppStore.getState().setAnthropicKey(t.trim())}
-              placeholder={
-                ENV_ANTHROPIC_KEY
-                  ? '已读取工程配置 .env.local，此处填写可覆盖'
-                  : 'sk-ant-…（推荐填在 .env.local，仅存本机）'
-              }
-              placeholderTextColor={Romance.faint}
-              autoCapitalize="none"
-              autoCorrect={false}
-              secureTextEntry
-            />
-            <Text style={styles.footHint}>没有 key 或调用失败时，自动回落脚本引擎。</Text>
-          </>
-        )}
-        {engine === 'qianfan' && (
-          <>
-            <TextInput
-              style={styles.keyInput}
-              value={qianfanKey}
-              onChangeText={(t) => useAppStore.getState().setQianfanKey(t.trim())}
-              placeholder={
-                ENV_QIANFAN_KEY
-                  ? '已读取工程配置 .env.local，此处填写可覆盖'
-                  : '千帆 API Key（推荐填在 .env.local，仅存本机）'
-              }
-              placeholderTextColor={Romance.faint}
-              autoCapitalize="none"
-              autoCorrect={false}
-              secureTextEntry
-            />
-            <Text style={styles.footHint}>
-              模型 {QIANFAN_MODEL}，可在 .env.local 用 EXPO_PUBLIC_QIANFAN_MODEL 换；失败回落脚本引擎。
-            </Text>
-          </>
-        )}
+        <Row label={t('AI 引擎')} value={engineLabel()} />
+        <Row
+          label={t('AI 取路')}
+          value={
+            aiRoute === 'direct'
+              ? t('直连（.env.local）')
+              : aiRoute === 'proxy'
+                ? t('服务端代理（已登录）')
+                : t('不可用：无 key 且未登录')
+          }
+          dim={aiRoute === 'none'}
+        />
+        <Text style={styles.footHint}>
+          {t('引擎与 key 只读工程配置 .env.local（改后重启 Metro）；没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。')}
+        </Text>
         <Row label="查看 TA 记住了什么（记忆库）" onPress={showMemory} />
         <Row label="为 6 位种子角色生成立绘（测试，后台逐个）" onPress={genSeedPortraits} />
         <Row label="重画首个羁绊角色的立绘（测试）" onPress={redrawBondPortrait} />
@@ -440,15 +392,6 @@ const styles = themed(() =>
     engineBtnActive: { backgroundColor: Romance.accent },
     engineText: { fontSize: 13, color: Romance.sub, fontWeight: '500' },
     engineTextActive: { color: '#fff' },
-    keyInput: {
-      marginHorizontal: 12,
-      backgroundColor: Romance.bg,
-      borderRadius: 16,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      fontSize: 13,
-      color: Romance.ink,
-    },
     about: {
       textAlign: 'center',
       fontSize: 11,

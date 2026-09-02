@@ -35,7 +35,7 @@ import { CHARACTER_PARSE_SYSTEM } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
 import { authConfigured, currentSession } from '@/lib/auth';
 import { t } from '@/lib/i18n';
-import { completeText } from '@/lib/engine';
+import { completeText, describeAiError } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { ensurePortrait, generatePortraitFor, imageKeyReady } from '@/lib/imagegen';
 import { publishCharacter, unpublishCharacter } from '@/lib/pool';
@@ -239,7 +239,7 @@ export default function CreateScreen() {
     return n;
   };
 
-  /** 自动解析：当前引擎整理成 JSON（prompt 见 content/prompts.ts）；无 key/失败回落规则解析 */
+  /** 自动解析：引擎整理成 JSON（prompt 见 content/prompts.ts）；AI 不可用/失败回落规则解析并说明原因（D-069） */
   const parseDesc = async () => {
     const text = desc.trim();
     if (!text || parsing) return;
@@ -249,23 +249,22 @@ export default function CreateScreen() {
     }
     setParsing(true);
     let parsed: Record<string, unknown> | null = null;
+    let aiError: string | null = null;
     try {
-      const { engine, anthropicKey, qianfanKey } = useAppStore.getState();
-      const raw = await completeText(CHARACTER_PARSE_SYSTEM, text, engine, {
-        anthropic: anthropicKey,
-        qianfan: qianfanKey,
-      });
+      const raw = await completeText(CHARACTER_PARSE_SYSTEM, text);
       const jsonStr = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
       parsed = JSON.parse(jsonStr) as Record<string, unknown>;
     } catch (e) {
       console.warn('[create] 引擎解析失败，回落规则解析：', e);
       parsed = null;
+      aiError = describeAiError(e);
     }
     const n = applyParsed(parsed ?? heuristicParse(text));
     setParsing(false);
+    const body = n ? `填好了 ${n} 项。往下检查一下，每一项都还能改。` : '已把描述放进背景故事，其他项可以手动补。';
     Alert.alert(
-      n ? '解析好了' : '没读出结构化的字段',
-      n ? `填好了 ${n} 项。往下检查一下，每一项都还能改。` : '已把描述放进背景故事，其他项可以手动补。'
+      aiError ? '模型解析失败，已用规则解析' : n ? '解析好了' : '没读出结构化的字段',
+      aiError ? `${body}\n\n原因：${aiError}` : body
     );
   };
 
@@ -335,7 +334,7 @@ export default function CreateScreen() {
     const draft = draftCharacter();
     if (!draft) return;
     if (!imageKeyReady()) {
-      Alert.alert('未配置千帆 key', '立绘与聊天共用千帆 key：在 .env.local 或「设置 → 开发者」里填好即可。');
+      Alert.alert('AI 不可用', '立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。');
       return;
     }
     if (!guard()) return;
@@ -641,7 +640,7 @@ export default function CreateScreen() {
                 </View>
               ) : (
                 <Text style={styles.secondaryBtnText}>
-                  {imageKeyReady() ? t('生成立绘') : t('生成立绘（未配 key）')}
+                  {imageKeyReady() ? t('生成立绘') : t('生成立绘（AI 不可用）')}
                 </Text>
               )}
             </Pressable>

@@ -14,11 +14,12 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ARCHETYPE_LABEL } from '@/content/characters';
 import { characterSecrets, unlockedSecretCount } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
-import { generateReply } from '@/lib/engine';
+import { describeAiError, generateReply } from '@/lib/engine';
 import { updateBondMemory } from '@/lib/memory';
 import { daysTogether, uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { levelInfo, XP_PER_MESSAGE } from '@/lib/bond';
+import type { EngineReply } from '@/lib/types';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -44,7 +45,7 @@ export default function BondScreen() {
   if (!character) return <Redirect href="/apps/messages" />;
 
   const onSend = async (text: string, replyTo?: ReplyRef) => {
-    const { appendBond, engine, anthropicKey, qianfanKey } = useAppStore.getState();
+    const { appendBond } = useAppStore.getState();
     appendBond(
       bond.id,
       [{ id: uid('m'), from: 'me', kind: 'text', text, at: Date.now(), replyTo }],
@@ -53,8 +54,9 @@ export default function BondScreen() {
 
     setTyping(true);
     const current = useAppStore.getState().bonds.find((b) => b.id === bond.id);
-    const reply = await generateReply(
-      {
+    let reply: EngineReply;
+    try {
+      reply = await generateReply({
         character,
         mode: 'bonded',
         bond: {
@@ -68,10 +70,21 @@ export default function BondScreen() {
         me: meForCharacter(character.id),
         history: current?.messages ?? [],
         userText: text,
-      },
-      engine,
-      { anthropic: anthropicKey, qianfan: qianfanKey }
-    );
+      });
+    } catch (e) {
+      // 模型调用失败：在会话里露出原因（D-069：没有脚本回落，错误要看得见）
+      setTyping(false);
+      useAppStore.getState().appendBond(bond.id, [
+        {
+          id: uid('m'),
+          from: 'system',
+          kind: 'system',
+          text: t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) }),
+          at: Date.now(),
+        },
+      ]);
+      return;
+    }
     await wait(700 + Math.min(1200, text.length * 40));
     setTyping(false);
     for (const [i, t] of reply.texts.entries()) {

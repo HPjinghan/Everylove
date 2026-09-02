@@ -11,7 +11,6 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { bondedPostsFor, CHARACTERS, scriptFor, SQUARE_POSTS } from '@/content/characters';
-import { ENV_ANTHROPIC_KEY, ENV_QIANFAN_KEY } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { applyThemeColors } from '@/constants/theme';
 import { bondLevel, levelLabel } from '@/lib/bond';
@@ -24,7 +23,6 @@ import type {
   CalendarEvent,
   Character,
   ChatMessage,
-  EngineId,
   LovePref,
   OutingPlan,
   OutingSession,
@@ -82,9 +80,6 @@ interface AppState {
   outingPlans: OutingPlan[];
   /** 当前外出场景会话（同一时间只有一场；结束后清空） */
   outingSession: OutingSession | null;
-  engine: EngineId;
-  anthropicKey: string;
-  qianfanKey: string;
 
   completeOnboarding: (pref: LovePref) => void;
   setLanguage: (l: 'zh' | 'en' | 'ja') => void;
@@ -158,9 +153,6 @@ interface AppState {
   appendOuting: (msgs: ChatMessage[]) => void;
   /** 结束外出：聊过的话在羁绊会话留一条系统记录，然后清空场景 */
   endOuting: () => void;
-  setEngine: (e: EngineId) => void;
-  setAnthropicKey: (k: string) => void;
-  setQianfanKey: (k: string) => void;
   resetAll: () => void;
 }
 
@@ -192,10 +184,6 @@ const initialData = {
   datingView: 'swipe' as 'swipe' | 'grid',
   outingPlans: [] as OutingPlan[],
   outingSession: null as OutingSession | null,
-  // 工程配置里有 key 时默认走真模型（D-010）：Claude 优先，其次千帆；都没配则脚本引擎
-  engine: (ENV_ANTHROPIC_KEY ? 'anthropic' : ENV_QIANFAN_KEY ? 'qianfan' : 'mock') as EngineId,
-  anthropicKey: '',
-  qianfanKey: '',
 };
 
 export const useAppStore = create<AppState>()(
@@ -683,22 +671,24 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      setEngine: (e) => set({ engine: e }),
-      setAnthropicKey: (k) => set({ anthropicKey: k }),
-      setQianfanKey: (k) => set({ qianfanKey: k }),
-
       resetAll: () => set({ ...initialData, firstOpenAt: Date.now() }),
     }),
     {
       name: 'everylove-store',
-      version: 4,
+      version: 5,
       storage: createJSONStorage(() => AsyncStorage),
       // v2：种子角色改版（陆隽行下架、人外上新），清掉指向已删除角色的数据
       // v3：新手流标记（D-058）——已有存档的老用户不重走新手流
       // v4：Dock 默认收窄为通讯录+设置（D-064）——仍是旧默认的存档跟随新默认
+      // v5：引擎与 key 不再是用户数据（D-069）——清掉旧存档/云端快照里的 engine/anthropicKey/qianfanKey
       migrate: (persisted: unknown, version) => {
-        const state = persisted as Partial<AppState> | undefined;
+        const state = persisted as (Partial<AppState> & Record<string, unknown>) | undefined;
         if (!state) return state;
+        if (version < 5) {
+          delete state.engine;
+          delete state.anthropicKey;
+          delete state.qianfanKey;
+        }
         if (version < 2) {
           const seedIds = new Set(CHARACTERS.map((c) => c.id));
           const customIds = new Set((state.customCharacters ?? []).map((c) => c.id));
