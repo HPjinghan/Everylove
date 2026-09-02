@@ -31,7 +31,7 @@ import {
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { BLOCKED_NAME_PATTERN, LOVE_STYLES, loveStyleByLabel, RACES } from '@/content/characters';
-import { CHARACTER_PARSE_SYSTEM } from '@/content/prompts';
+import { CHARACTER_PARSE_SYSTEM, DEFAULT_PORTRAIT_STYLE, PORTRAIT_STYLES } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
 import { authConfigured, currentSession } from '@/lib/auth';
 import { t } from '@/lib/i18n';
@@ -159,6 +159,8 @@ export default function CreateScreen() {
   const [palette, setPalette] = useState(0);
   const [portraitUri, setPortraitUri] = useState<string | undefined>();
   const [generating, setGenerating] = useState(false);
+  // 立绘画风（D-076）：注入生图 prompt 第一行；动漫走蒸汽机、其余走 Qwen
+  const [artStyle, setArtStyle] = useState<(typeof PORTRAIT_STYLES)[number]['id']>(DEFAULT_PORTRAIT_STYLE);
 
   // ── 高级（默认收起） ──
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -299,6 +301,7 @@ export default function CreateScreen() {
       presetMemories: presetMemories.trim() || undefined,
       taboos: taboos.trim() || undefined,
       secrets: secrets.trim() || undefined,
+      artStyle,
       offerAfterTurns: offerTurns,
       hook: style ? style.desc.split('；')[0] : 'TA 在等一个点开 TA 的人。',
       intro: '……你捏出来的 TA，正在看你。',
@@ -411,7 +414,7 @@ export default function CreateScreen() {
   };
 
   const resetForm = () => {
-    setDesc(''); setName(''); setLook(''); setStory(''); setPortraitUri(undefined);
+    setDesc(''); setName(''); setLook(''); setStory(''); setPortraitUri(undefined); setArtStyle(DEFAULT_PORTRAIT_STYLE);
     setAgeStatus('adult'); setVisibility('private'); setRace('人类'); setRaceCustom('');
     setBirthMonth(null); setBirthDay(null); setCatchphrase('');
     setLikes(''); setDislikes(''); setOfferTurns(4); setLoveStyle(undefined);
@@ -432,6 +435,7 @@ export default function CreateScreen() {
     const pi = PALETTES.findIndex((p) => p.color === c.color);
     setPalette(pi >= 0 ? pi : 0);
     setPortraitUri(useAppStore.getState().portraits[c.id]);
+    setArtStyle(c.artStyle ?? DEFAULT_PORTRAIT_STYLE);
     if (!c.race) {
       setRace('人类'); setRaceCustom('');
     } else if (RACES.includes(c.race)) {
@@ -620,7 +624,18 @@ export default function CreateScreen() {
 
           <Text style={styles.step}>{t('⑦ TA 的头像（可选）')}</Text>
           <Text style={styles.stepHint}>
-            {t('上传一张图，或按 ⑤ 的描述生成一张半身立绘（约 1 分钟）；交友卡面与会话头像都用它。不能上传真人照片。')}
+            {t('上传一张图，或按 ⑤ 的描述生成一张半身立绘；交友卡面与会话头像都用它。不能上传真人照片。')}
+          </Text>
+          <Text style={styles.afterHint}>{t('画风（立绘与外出拍照共用）：')}</Text>
+          <View style={styles.chipRow}>
+            {PORTRAIT_STYLES.map((s) => (
+              <Chip key={s.id} label={t(s.label)} active={artStyle === s.id} onPress={() => setArtStyle(s.id)} />
+            ))}
+          </View>
+          <Text style={styles.afterHint}>
+            {artStyle === 'anime'
+              ? t('动漫走蒸汽机模型：约 10 秒出图，画风固定。')
+              : t('走 Qwen 模型：约 1 分钟出图，画风跟随选项。')}
           </Text>
           {portraitUri ? (
             <Image source={{ uri: portraitUri }} style={styles.portrait} contentFit="cover" />

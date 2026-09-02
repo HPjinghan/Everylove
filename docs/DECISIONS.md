@@ -667,3 +667,14 @@
 - **决策**：① 页面与 CLI 增加**画风**选项，注入为 **prompt 第一行**；选「**动漫**」自动走蒸汽机 Air-Image，其余走 qwen-image（model 框仍可手改）。② 拼接顺序固定为 **画风行 → user → system**（推翻 D-070 的「system 在前 / user 在前」可选，order 开关移除）。③ system 默认文案改为 Harper 给定：「根据以上要求生成角色立绘：人类（如果要求为非人类，则生成半人类）半身构图，正面脸，轻微侧身，直视镜头；背景简单，无前景遮挡，画面内没有任何文字 / 干净的线条，线条颜色和整体画面和谐，单幅画格、单人构图；细节干净，高清。」（`DEFAULT_SYSTEM`；「恢复默认」按钮回到它，工程立绘/画风常量仍可一键载入对比）。④ 画风初稿八条（Claude 拟）：动漫（蒸汽机）/ 少女漫·水彩（= 工程当前 COMIC_STYLE）/ 韩系清透 / 厚涂 / 国风水墨 / 写实插画 / 线稿 / 不加画风行；每条措辞页面上可直接改、按画风各自记在浏览器本地，「恢复这条画风的初稿」可还原。历史旁档 `.txt` 记 style / styleLine / user / system，历史卡多一块「画风」（琥珀色）。
 - **边界**：只改调 prompt 工具，**工程 `content/prompts.ts` / `lib/imagegen.ts` 不动**——画风表与新 system 文案在 `scripts/gen-image-core.mjs`（STYLES / DEFAULT_SYSTEM），画风定稿、决定进产品时再搬进 prompts.ts（D-017 单一来源）并接进创造表单。注意新 system 文案**没有**原 COMIC_RULES 的「氛围暧昧克制、无露骨；不模仿任何真实人物长相」一句（红线 #1/#5 的 prompt 侧实现）——进产品前需补回或另行注入。
 - **影响文件**：`scripts/gen-image-core.mjs`（STYLES / DEFAULT_SYSTEM / styleById / modelForStyle / composePrompt 改三段）、`scripts/gen-image-server.mjs`（config 带 styles/defaultSystem，generate 收 style/styleLine）、`scripts/gen-image-ui.html`（画风区块、order 开关移除、v3 本地存储）、`scripts/gen-image.mjs`（--art / --art-line / --list，--user-first 移除）。
+
+## D-076 · 2026-09-02 · App 立绘接入画风选项：创造 ⑦ 八选一、动漫走蒸汽机、prompt 改「画风行 → 主体 → system」（Harper 拍板）
+
+- **背景**：D-075 只改了调 prompt 工具，Harper「我现在生图明显还是之前的」——原意是 App 里的生图也要有画风选项。
+- **决策**：
+  1. **画风表进工程**：`content/prompts.ts` 新增 `PORTRAIT_STYLES`（纯字面量数组：id / label / model / line）与 `PORTRAIT_SYSTEM`（Harper 给定的 system 文案）；`Character.artStyle?: PortraitStyleId`（`lib/types.ts`），缺省 `shojo`（= 原 COMIC_STYLE，既有角色画风不变）。调 prompt 工具改为**实时读这两个常量**（`scripts/gen-image-core.mjs`，读不到回落内置副本）——工具与 App 单一来源（D-017）。
+  2. **立绘 prompt 结构**：`buildPortraitPrompt` = 画风行 → 主体（外貌 + 身份气质）→ `PORTRAIT_SYSTEM`，段间空行；**最后一行保留 `COMIC_RULES`**（「氛围暧昧克制、无露骨；不模仿真人」是红线 #1/#5 的 prompt 侧实现，Harper 的 system 文案没含它，红线只能 Harper 明示才改，故保留；要去掉请 Harper 拍板）。原 `PORTRAIT_COMPOSITION` 保留常量供工具对比，立绘不再用。
+  3. **模型按画风路由**：`imageModelFor(character)`——anime → `musesteamer-air-image`（`lib/imagegen.ts` 走其专用端点、不发 n；登录代理走新增服务 `qianfan.musesteamer`，`supabase/functions/ai` 加路由，**需重新部署 Edge Function**），其余 → qwen-image。
+  4. **外出拍照同画风**：`buildOutingPhotoPrompt` 第一行改为角色画风行（不指定回落 COMIC_STYLE），`generateScenePhoto(prompt, character)` 模型同上——同一个 TA 立绘与照片不换画风。
+  5. **创造表单 ⑦**：头像区块加「画风」八个 chip（t() 三语），提示按模型给耗时（动漫约 10 秒 / Qwen 约 1 分钟）；draft / 编辑回填 / 重置都带 artStyle；描述导入不解析画风。
+- **影响文件**：`content/prompts.ts`、`lib/types.ts`、`lib/imagegen.ts`、`app/apps/create.tsx`、`app/outing/[placeId].tsx`、`supabase/functions/ai/index.ts`、`lib/i18n.ts`（en/ja）、`scripts/gen-image-core.mjs`。

@@ -584,23 +584,61 @@ export function comicSubjectLine(character: Character): string {
   return `画面主角是「${character.name}」${g ? `（${g}）` : ''}：${race}${look}。`;
 }
 
-/* ── 立绘（D-019）：捏＋时生成一次，作头像/卡面用（D-037 后会话内生图已下线） ── */
+/* ── 立绘（D-019；D-076 改三段结构）：捏＋时生成一次，作头像/卡面用（D-037 后会话内生图已下线） ── */
 
-/** 立绘构图：半身、正面微侧、看镜头、纯浅色背景、无文字——给后续编辑留干净的参考 */
+/**
+ * 画风表（D-076，Harper 拍板）：line 注入生图 prompt **第一行**；model = 该画风用的模型
+ * （动漫 → 百度蒸汽机 Air-Image，它基本只出这一种画风但快且便宜；其余 → qwen-image，画风多样）。
+ * 纯字面量数组——调 prompt 工具 scripts/gen-image-core.mjs 直接从本文件读取，改这里两边同步（D-017）。
+ * 措辞是初稿，用 gen-image.bat 调；shojo 的 line 与原 COMIC_STYLE 一致，作缺省以保持既有角色画风不变。
+ */
+export const PORTRAIT_STYLES: { id: NonNullable<Character['artStyle']>; label: string; model: 'musesteamer-air-image' | 'qwen-image'; line: string }[] = [
+  { id: 'anime', label: '动漫', model: 'musesteamer-air-image', line: '日系动漫插画风格：精致的线稿与赛璐璐上色，色彩明亮通透，光影干净利落。' },
+  { id: 'shojo', label: '少女漫·水彩', model: 'qwen-image', line: '女性向少女漫画单格插画，日系条漫风格，柔和干净的线条，浅色水彩质感，米白底、玫瑰粉点缀。' },
+  { id: 'korean', label: '韩系清透', model: 'qwen-image', line: '韩系网漫插画风格：清透的皮肤质感与柔光，线条细腻，色调干净明亮。' },
+  { id: 'painterly', label: '厚涂', model: 'qwen-image', line: '厚涂插画风格：油画质感的笔触与光影，色彩沉稳有体积感，边缘柔和。' },
+  { id: 'ink', label: '国风水墨', model: 'qwen-image', line: '国风水墨插画：墨线为主、淡彩点缀，留白与晕染，气质古典清雅。' },
+  { id: 'realistic', label: '写实插画', model: 'qwen-image', line: '写实插画风格：接近真实的光影与皮肤质感，但保持绘画感，不是照片。' },
+  { id: 'lineart', label: '线稿', model: 'qwen-image', line: '铅笔线稿风格：黑白素描，干净的排线与轻微阴影，不上色。' },
+  { id: 'none', label: '不指定', model: 'qwen-image', line: '' },
+];
+
+export const DEFAULT_PORTRAIT_STYLE: NonNullable<Character['artStyle']> = 'shojo';
+
+export function portraitStyleFor(character: Pick<Character, 'artStyle'>) {
+  return PORTRAIT_STYLES.find((s) => s.id === (character.artStyle ?? DEFAULT_PORTRAIT_STYLE)) ?? PORTRAIT_STYLES[1];
+}
+
+/** 该角色生图该用的模型（立绘与外出拍照同口径） */
+export function imageModelFor(character: Pick<Character, 'artStyle'>): 'musesteamer-air-image' | 'qwen-image' {
+  return portraitStyleFor(character).model;
+}
+
+/**
+ * 立绘的 system 段（D-076，Harper 给定；放 prompt 最后，「以上要求」指画风行与主体描述）。
+ * 纯字面量——调 prompt 工具从本文件读取。
+ */
+export const PORTRAIT_SYSTEM =
+  '根据以上要求生成角色立绘：人类（如果要求为非人类，则生成半人类）半身构图，正面脸，轻微侧身，直视镜头；背景简单，无前景遮挡，画面内没有任何文字\n' +
+  '干净的线条，线条颜色和整体画面和谐，单幅画格、单人构图；细节干净，高清。';
+
+/** 立绘构图（D-019 原版；D-076 起立绘改用 PORTRAIT_SYSTEM，此常量留给调 prompt 工具对比与外出拍照参考） */
 export const PORTRAIT_COMPOSITION =
   '角色立绘：半身构图，正面略微侧身，直视镜头，表情自然带一点这个人特有的神气；' +
   '纯浅色干净背景，无道具遮挡脸和上半身，画面内没有任何文字。';
 
-/** 立绘 prompt：主体外貌 → 身份气质 → 立绘构图 → 画风 → 质量词 → 红线 */
+/**
+ * 立绘 prompt（D-076）：**画风行 → 主体（外貌 + 身份气质）→ system**，段间空行；
+ * 最后一行保留红线句 COMIC_RULES（红线 #1/#5 的 prompt 侧实现，不随 system 文案改动而丢）。
+ */
 export function buildPortraitPrompt(character: Character): string {
-  return [
+  const subject = [
     comicSubjectLine(character),
     `身份气质：${roleOnly(character.identity)}${character.styleLabel ? `，${character.styleLabel}` : ''}。`,
-    PORTRAIT_COMPOSITION,
-    COMIC_STYLE,
-    COMIC_QUALITY,
-    COMIC_RULES,
   ].join('\n');
+  return [portraitStyleFor(character).line, subject, `${PORTRAIT_SYSTEM}\n${COMIC_RULES}`]
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 /** 画风 */
@@ -639,12 +677,14 @@ export function buildOutingPhotoPrompt(
     opts.kind === 'solo'
       ? '构图：她举起手机随手拍主角——单人构图、中近景；主角刚注意到镜头，神态自然（看镜头浅笑，或嫌弃地别开脸但嘴角藏不住笑）。画面里只有主角一个人。'
       : '构图：两个人的自拍合影——主角凑近镜头、占画面主体；按快门的她只入镜一点点：小半侧脸、一缕头发或比耶的手势，绝不画出她清晰的正脸（她的长相留给想象）。画面里没有其他人。';
+  // 画风跟角色的立绘画风走（D-076）：同一个 TA 立绘与照片不换画风；不指定时回落原 COMIC_STYLE
+  const styleLine = portraitStyleFor(character).line || COMIC_STYLE;
   return [
+    styleLine,
     comicSubjectLine(character),
     sceneLine,
     doing,
     composition,
-    COMIC_STYLE,
     COMIC_QUALITY,
     COMIC_RULES,
   ].join('\n');

@@ -119,6 +119,8 @@ Deno.serve(async (req) => {
     const JSON_ROUTES: Record<string, string> = {
       'qianfan.chat': 'https://qianfan.baidubce.com/v2/chat/completions',
       'qianfan.images': 'https://qianfan.baidubce.com/v2/images/generations',
+      // 百度蒸汽机 Air-Image 专用端点（D-071/D-076：动漫画风走它；通用端点对它不回）
+      'qianfan.musesteamer': 'https://qianfan.baidubce.com/v2/musesteamer/images/generations',
       'baidu.asr': 'https://vop.baidu.com/server_api',
       'baidu.asr_pro': 'https://vop.baidu.com/pro_api',
     };

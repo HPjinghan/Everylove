@@ -393,6 +393,19 @@ const en: Record<string, string> = {
   '照片没看清，TA 没看到这条：{reason}': "Photo couldn't be read, this one wasn't seen: {reason}",
   '没听清这段语音（识别结果为空）': 'Nothing was recognized in this voice message',
   '录音文件是空的': 'The recording is empty',
+  // 创造 ⑦ 画风（D-076）
+  '上传一张图，或按 ⑤ 的描述生成一张半身立绘；交友卡面与会话头像都用它。不能上传真人照片。':
+    'Upload an image, or generate a half-body portrait from ⑤. Used on the dating card and as the chat avatar. No photos of real people.',
+  '画风（立绘与外出拍照共用）：': 'Art style (shared by the portrait and outing photos):',
+  '动漫走蒸汽机模型：约 10 秒出图，画风固定。': 'Anime uses the MuseSteamer model: about 10 seconds, fixed look.',
+  '走 Qwen 模型：约 1 分钟出图，画风跟随选项。': 'Uses the Qwen model: about 1 minute, look follows the option.',
+  '动漫': 'Anime',
+  '少女漫·水彩': 'Shojo · watercolor',
+  '韩系清透': 'Korean · airy',
+  '厚涂': 'Painterly',
+  '国风水墨': 'Ink wash',
+  '写实插画': 'Realistic illustration',
+  '线稿': 'Line art',
   // __EN_END__
 };
 
@@ -763,6 +776,19 @@ const ja: Record<string, string> = {
   '照片没看清，TA 没看到这条：{reason}': '写真を読み取れず、この一枚は届きませんでした：{reason}',
   '没听清这段语音（识别结果为空）': 'この音声は認識できませんでした（結果が空）',
   '录音文件是空的': '録音ファイルが空です',
+  // 创造 ⑦ 画风（D-076）
+  '上传一张图，或按 ⑤ 的描述生成一张半身立绘；交友卡面与会话头像都用它。不能上传真人照片。':
+    '画像をアップロードするか、⑤の描写から半身立ち絵を生成。カードとトークのアイコンに使います。実在の人物の写真は不可。',
+  '画风（立绘与外出拍照共用）：': '画風（立ち絵とおでかけ写真で共通）：',
+  '动漫走蒸汽机模型：约 10 秒出图，画风固定。': 'アニメは MuseSteamer モデル：約10秒、画風は固定。',
+  '走 Qwen 模型：约 1 分钟出图，画风跟随选项。': 'Qwen モデル：約1分、画風は選択に従います。',
+  '动漫': 'アニメ',
+  '少女漫·水彩': '少女漫画・水彩',
+  '韩系清透': '韓国風・透明感',
+  '厚涂': '厚塗り',
+  '国风水墨': '水墨・中華風',
+  '写实插画': 'リアル系イラスト',
+  '线稿': '線画',
   // __JA_END__
 };
 

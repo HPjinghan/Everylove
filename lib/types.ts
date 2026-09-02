@@ -4,6 +4,17 @@ export type ArchetypeId = 'gentle' | 'sharp' | 'ceo' | 'nonhuman';
 
 export type LovePref = 'male' | 'female' | 'any' | 'nonhuman';
 
+/** 立绘画风（D-076）：注入生图 prompt 第一行；anime 走蒸汽机、其余走 qwen-image。表见 content/prompts.ts PORTRAIT_STYLES */
+export type PortraitStyleId =
+  | 'anime'
+  | 'shojo'
+  | 'korean'
+  | 'painterly'
+  | 'ink'
+  | 'realistic'
+  | 'lineart'
+  | 'none';
+
 export interface Character {
   id: string;
   name: string;
@@ -57,6 +68,8 @@ export interface Character {
   taboos?: string;
   /** 隐藏设定/剧情钩子：每行一条，羁绊 LV3 起每升一级解锁一条；查手机解锁通道待做（OPEN_QUESTIONS #19） */
   secrets?: string;
+  /** 立绘画风（D-076）：创造 ⑦ 选择；缺省按 shojo（= 原工程画风）。立绘与外出拍照共用 */
+  artStyle?: PortraitStyleId;
   /** 聊几句后 TA 会想确定关系（默认 4，见 lib/engine ADOPTION_OFFER_AFTER_TURNS） */
   offerAfterTurns?: number;
   tags: string[];

@@ -205,7 +205,8 @@ export default function OutingSceneScreen() {
           weatherLine: weatherLine(),
           kind,
           digest: digest || undefined,
-        })
+        }),
+        character // 模型跟角色画风走（D-076）
       );
       useAppStore.getState().appendOuting([
         {

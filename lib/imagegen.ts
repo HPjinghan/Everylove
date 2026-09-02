@@ -8,7 +8,7 @@
 
 import * as FileSystem from 'expo-file-system/legacy';
 
-import { buildPortraitPrompt } from '@/content/prompts';
+import { buildPortraitPrompt, imageModelFor } from '@/content/prompts';
 // （外出拍照的 prompt 由调用方拼好传入，见 content/prompts.ts 的 buildOutingPhotoPrompt，D-051）
 import { ENV_QIANFAN_KEY } from '@/lib/engine';
 import { proxyJson, proxyReadySync } from '@/lib/proxy';
@@ -44,13 +44,23 @@ async function downloadTo(url: string, subdir: string, name: string): Promise<st
   return dl.uri;
 }
 
-/** 千帆同步文生图（本地 key 直连，无 key 走服务端代理），下载到本机后返回本地 URI */
-async function generateImage(prompt: string, subdir = 'portraits'): Promise<string> {
+/** 百度蒸汽机 Air-Image 走专用端点（通用端点对它不回，2026-09-02 实测；D-071）；它不收 n */
+const MUSE_MODEL_PREFIX = 'musesteamer';
+
+/**
+ * 千帆同步文生图（本地 key 直连，无 key 走服务端代理），下载到本机后返回本地 URI。
+ * model 由画风决定（D-076：动漫 → 蒸汽机，其余 → qwen-image）；不传按工程默认。
+ */
+async function generateImage(prompt: string, subdir = 'portraits', model: string = QIANFAN_IMAGE_MODEL): Promise<string> {
   const key = imageKey();
-  const body = { model: QIANFAN_IMAGE_MODEL, prompt, size: '1024x1024', n: 1 };
+  const muse = model.startsWith(MUSE_MODEL_PREFIX);
+  const body = muse ? { model, prompt, size: '1024x1024' } : { model, prompt, size: '1024x1024', n: 1 };
   let data: { data?: { url?: string }[] };
   if (key) {
-    const res = await fetch('https://qianfan.baidubce.com/v2/images/generations', {
+    const endpoint = muse
+      ? 'https://qianfan.baidubce.com/v2/musesteamer/images/generations'
+      : 'https://qianfan.baidubce.com/v2/images/generations';
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
       body: JSON.stringify(body),
@@ -58,18 +68,18 @@ async function generateImage(prompt: string, subdir = 'portraits'): Promise<stri
     if (!res.ok) throw new Error(`Qianfan image ${res.status}`);
     data = await res.json();
   } else {
-    data = await proxyJson('qianfan.images', body);
+    data = await proxyJson(muse ? 'qianfan.musesteamer' : 'qianfan.images', body);
   }
   const url = data.data?.[0]?.url;
   if (!url) throw new Error('no image url');
   return downloadTo(url, subdir, uid('img'));
 }
 
-// 立绘 prompt（画风 / 构图 / 红线）在 content/prompts.ts（D-017）
+// 立绘 prompt（画风表 / system / 红线）在 content/prompts.ts（D-017）
 
-/** 外出拍照（D-051）：她主动按快门的场景照——非会话自动投放（D-037 纪律不变） */
-export async function generateScenePhoto(prompt: string): Promise<string> {
-  return generateImage(prompt, 'photos');
+/** 外出拍照（D-051）：她主动按快门的场景照——非会话自动投放（D-037 纪律不变）；模型跟角色画风走（D-076） */
+export async function generateScenePhoto(prompt: string, character?: Pick<Character, 'artStyle'>): Promise<string> {
+  return generateImage(prompt, 'photos', character ? imageModelFor(character) : QIANFAN_IMAGE_MODEL);
 }
 
 /* ────────────────────────────── 立绘（D-019） ────────────────────────────── */
@@ -81,7 +91,7 @@ export function portraitFor(characterId: string): string | undefined {
 
 /** 只生成、不入库：捏＋预览用（角色还没创建，先看一眼、可重生成） */
 export async function generatePortraitFor(character: Character): Promise<string> {
-  return generateImage(buildPortraitPrompt(character), 'portraits');
+  return generateImage(buildPortraitPrompt(character), 'portraits', imageModelFor(character));
 }
 
 const portraitInflight = new Set<string>();

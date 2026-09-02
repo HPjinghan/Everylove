@@ -59,23 +59,35 @@ export function promptLimit(model) {
 
 /**
  * 画风选项：line 注入为 prompt 第一行；model = 自动选的模型（页面上仍可手改）。
- * 措辞是初稿，页面上每条可直接改（改动存浏览器本地），定稿后再搬进 content/prompts.ts。
+ * D-076 起**实时读工程 content/prompts.ts 的 PORTRAIT_STYLES / PORTRAIT_SYSTEM**（单一来源，D-017）：
+ * 改 prompts.ts 即刻反映到工具；读不到时回落下面的内置副本（与 prompts.ts 初版一致）。
  */
-export const STYLES = [
+const STYLES_FALLBACK = [
   { id: 'anime', label: '动漫', model: 'musesteamer-air-image', line: '日系动漫插画风格：精致的线稿与赛璐璐上色，色彩明亮通透，光影干净利落。' },
-  { id: 'shojo', label: '少女漫·水彩（工程当前）', model: 'qwen-image', line: '女性向少女漫画单格插画，日系条漫风格，柔和干净的线条，浅色水彩质感，米白底、玫瑰粉点缀。' },
+  { id: 'shojo', label: '少女漫·水彩', model: 'qwen-image', line: '女性向少女漫画单格插画，日系条漫风格，柔和干净的线条，浅色水彩质感，米白底、玫瑰粉点缀。' },
   { id: 'korean', label: '韩系清透', model: 'qwen-image', line: '韩系网漫插画风格：清透的皮肤质感与柔光，线条细腻，色调干净明亮。' },
   { id: 'painterly', label: '厚涂', model: 'qwen-image', line: '厚涂插画风格：油画质感的笔触与光影，色彩沉稳有体积感，边缘柔和。' },
   { id: 'ink', label: '国风水墨', model: 'qwen-image', line: '国风水墨插画：墨线为主、淡彩点缀，留白与晕染，气质古典清雅。' },
   { id: 'realistic', label: '写实插画', model: 'qwen-image', line: '写实插画风格：接近真实的光影与皮肤质感，但保持绘画感，不是照片。' },
   { id: 'lineart', label: '线稿', model: 'qwen-image', line: '铅笔线稿风格：黑白素描，干净的排线与轻微阴影，不上色。' },
-  { id: 'none', label: '不加画风行', model: 'qwen-image', line: '' },
+  { id: 'none', label: '不指定', model: 'qwen-image', line: '' },
 ];
-
-/** system 默认文案（Harper 2026-09-02 给定；放 prompt 最后，「以上要求」指画风行与 user） */
-export const DEFAULT_SYSTEM =
+const SYSTEM_FALLBACK =
   '根据以上要求生成角色立绘：人类（如果要求为非人类，则生成半人类）半身构图，正面脸，轻微侧身，直视镜头；背景简单，无前景遮挡，画面内没有任何文字\n' +
   '干净的线条，线条颜色和整体画面和谐，单幅画格、单人构图；细节干净，高清。';
+
+function readFromPrompts(name, fallback) {
+  try {
+    return promptConst(name);
+  } catch (e) {
+    console.warn(`[gen-image] 读 content/prompts.ts 的 ${name} 失败，用内置副本：${e.message}`);
+    return fallback;
+  }
+}
+
+export const STYLES = readFromPrompts('PORTRAIT_STYLES', STYLES_FALLBACK);
+/** system 默认文案（Harper 2026-09-02 给定；放 prompt 最后，「以上要求」指画风行与 user） */
+export const DEFAULT_SYSTEM = readFromPrompts('PORTRAIT_SYSTEM', SYSTEM_FALLBACK);
 
 export function styleById(id) {
   return STYLES.find((s) => s.id === id);
@@ -130,9 +142,9 @@ export function defaultModel() {
 
 export function promptConst(name) {
   const src = readFileSync(resolve(ROOT, 'content/prompts.ts'), 'utf8');
-  const m = src.match(new RegExp(`export const ${name} =\\s*([\\s\\S]*?);\\s*\\n`));
+  // 允许带 TS 类型标注（export const X: T[] = [...]）；值必须是纯字面量（字符串拼接 / 对象数组）
+  const m = src.match(new RegExp(`export const ${name}\\b[^=]*=\\s*([\\s\\S]*?);\\s*\\n`));
   if (!m) throw new Error(`content/prompts.ts 里找不到 ${name}`);
-  // 这些常量只是若干字符串字面量用 + 连接，直接求值即可
   return new Function(`return (${m[1]})`)();
 }
 
