@@ -9,7 +9,7 @@
  *            互不引用，只共用红线 CHAT_HARD_RULES 与「我」的身份块 userProfileBlock（D-035）
  *   §2 生图：只剩立绘（D-037 聊天/初见回归纯文本，会话内生图已下线）
  *   §3 记忆：记忆提取的系统指令 + 每次提取喂给模型的内容
- *   §6 多模态（D-070）：她发来的照片 → 视觉模型客观描述（语音走 ASR，不需要 prompt）
+ *   §6 多模态（D-073）：她发来的照片 → 视觉模型客观描述（语音走 ASR，不需要 prompt）
  *
  * 不在这里的：
  *   - 角色人设 persona / 追法 pursuit / 外貌 look / 人称 pronoun / 台词库 → content/characters.ts
@@ -39,7 +39,7 @@ export function messageContextText(m: ChatMessage): string {
   if (m.from === 'system') return '';
   if (m.recalled) return ''; // 撤回的消息不进上下文（LINE 规则，D-030）
   let body = (m.text || m.spoken || '').trim();
-  // 她的语音 / 照片（D-070）：识别文字与看图描述就是 TA「听到 / 看到」的东西；还没有结果的不进上下文
+  // 她的语音 / 照片（D-073）：识别文字与看图描述就是 TA「听到 / 看到」的东西；还没有结果的不进上下文
   if (m.from === 'me' && m.kind === 'voice') {
     body = m.transcript?.trim() ? `（语音）${m.transcript.trim()}` : '';
   } else if (m.from === 'me' && m.kind === 'image') {
@@ -862,7 +862,7 @@ export function heartbeatLine(
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/* §6 多模态（D-070）：她发来的照片 → 视觉模型客观描述 → 作为上下文交给对话模型          */
+/* §6 多模态（D-073）：她发来的照片 → 视觉模型客观描述 → 作为上下文交给对话模型          */
 /* ────────────────────────────────────────────────────────────────────────── */
 
 /**

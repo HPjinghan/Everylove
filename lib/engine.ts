@@ -98,7 +98,7 @@ export type ChatTurn = { role: 'user' | 'assistant'; content: string };
 export function buildTurns(history: ChatMessage[], userText: string): ChatTurn[] {
   const msgs = [...history];
   const last = msgs[msgs.length - 1];
-  // 本轮用户消息若已在 history 里就去掉（文字直接比；语音/照片比 messageContextText，D-070）
+  // 本轮用户消息若已在 history 里就去掉（文字直接比；语音/照片比 messageContextText，D-073）
   if (last && last.from === 'me' && (last.text === userText || messageContextText(last) === userText)) {
     msgs.pop();
   }

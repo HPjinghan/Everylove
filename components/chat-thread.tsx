@@ -265,7 +265,7 @@ function Bubble({
               durationMs={msg.durationMs}
               tint={textDark ? Romance.ink : '#FFFFFF'}
             />
-            {/* 她的语音识别结果（D-070）：小字回显；识别中 / 没听清给提示 */}
+            {/* 她的语音识别结果（D-073）：小字回显；识别中 / 没听清给提示 */}
             {msg.mediaStatus === 'pending' ? (
               <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>{t('识别中…')}</Text>
             ) : msg.mediaStatus === 'failed' ? (
@@ -282,7 +282,7 @@ function Bubble({
           <View>
             <Image source={{ uri: msg.imageUri }} style={styles.comicImage} contentFit="cover" />
             {msg.text ? <Text style={styles.comicCaption}>{msg.text}</Text> : null}
-            {/* 她的照片（D-070）：TA 看图中 / 没看清给提示；描述本身不上屏 */}
+            {/* 她的照片（D-073）：TA 看图中 / 没看清给提示；描述本身不上屏 */}
             {msg.mediaStatus === 'pending' ? (
               <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>{t('TA 在看…')}</Text>
             ) : msg.mediaStatus === 'failed' ? (
@@ -346,7 +346,7 @@ export function ChatThread({
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordSecs, setRecordSecs] = useState(0);
-  // 录音格式按百度 ASR 要求：16k 单声道 wav（D-070）
+  // 录音格式按百度 ASR 要求：16k 单声道 wav（D-073）
   const recorder = useAudioRecorder(ASR_RECORDING);
   const recordTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordStartAt = useRef(0);
@@ -451,7 +451,7 @@ export function ChatThread({
       recordTimer.current = setInterval(() => {
         const secs = Math.floor((Date.now() - recordStartAt.current) / 1000);
         setRecordSecs(secs);
-        // 百度 ASR 最长 60 秒：到点自动停止并发送（D-070）
+        // 百度 ASR 最长 60 秒：到点自动停止并发送（D-073）
         if (secs >= ASR_MAX_SECONDS) void stopRecord();
       }, 500);
     } else {

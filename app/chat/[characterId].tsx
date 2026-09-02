@@ -114,7 +114,7 @@ export default function SquareChatScreen() {
     await respond(text);
   };
 
-  /** 她的语音（D-070）：先上屏，识别成文字后回填、计心动，再让 TA 回应识别出的内容 */
+  /** 她的语音（D-073）：先上屏，识别成文字后回填、计心动，再让 TA 回应识别出的内容 */
   const onSendVoice = async (uri: string, durationMs: number) => {
     const msg: ChatMessage = {
       id: uid('m'),
@@ -145,7 +145,7 @@ export default function SquareChatScreen() {
     await respond(messageContextText(done));
   };
 
-  /** 她的照片（D-070）：先上屏，视觉模型描述后回填、计心动，再让 TA 回应 */
+  /** 她的照片（D-073）：先上屏，视觉模型描述后回填、计心动，再让 TA 回应 */
   const onSendImage = async (uri: string) => {
     const msg: ChatMessage = {
       id: uid('m'),

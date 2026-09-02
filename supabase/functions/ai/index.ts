@@ -4,8 +4,8 @@
  *      按用户限每日用量（ai_usage 表，防盗刷）。
  * 客户端协议：POST { service, body }，service ∈
  *   qianfan.chat / qianfan.images / anthropic.messages（JSON 透传）
- *   baidu.asr / baidu.asr_pro（百度语音识别，JSON；D-070）
- *   baidu.tts（百度短文本语音合成 tsn.baidu.com/text2audio，body 为表单字段对象；D-070，替代已下线的 qianfan.tts）
+ *   baidu.asr / baidu.asr_pro（百度语音识别，JSON；D-073）
+ *   baidu.tts（百度短文本语音合成 tsn.baidu.com/text2audio，body 为表单字段对象；D-073，替代已下线的 qianfan.tts）
  * 返回：上游 JSON 原样透传；上游返回二进制音频则包成 { audio_base64 }。
  * 部署：supabase functions deploy ai（verify_jwt 开启——平台先验 JWT，函数内再取 user 限流）。
  */
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       return new Response(await r.text(), { status: r.status, headers: JSON_HEADERS });
     }
 
-    // 千帆 v2 与百度语音同一把 bce-v3 key：ASR 是 JSON，TTS 是表单（D-070）
+    // 千帆 v2 与百度语音同一把 bce-v3 key：ASR 是 JSON，TTS 是表单（D-073）
     const JSON_ROUTES: Record<string, string> = {
       'qianfan.chat': 'https://qianfan.baidubce.com/v2/chat/completions',
       'qianfan.images': 'https://qianfan.baidubce.com/v2/images/generations',

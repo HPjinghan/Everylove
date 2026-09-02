@@ -631,11 +631,11 @@
 - **决策**：`.bat` 一律**纯 ASCII、CRLF、不用 chcp、不写中文**（注释与提示全英文）。Node 往真实控制台打中文走 WriteConsoleW，不依赖代码页，所以服务端日志的中文不受影响。node 缺失判断改为 `where node >nul 2>&1` + `if errorlevel 1`。
 - **影响文件**：`gen-image.bat`（重写）。
 
-## D-070 · 2026-09-02 · Message 的语音与照片实装：她的语音 TA 听得到、照片 TA 看得见（Harper 提出）
+## D-073 · 2026-09-02 · Message 的语音与照片实装：她的语音 TA 听得到、照片 TA 看得见（Harper 提出）
 
 - **背景**：D-030 上架了语音/图片发送，但引擎无法消费——她发语音或照片 TA 毫无反应。Harper：「语音的话你可以转文字发给我的聊天模型，图片的话你看一下怎么处理，全部你都可以在千帆上面找到最好最合适的模型用。」排查中顺带发现 D-048 的 TTS（千帆 `/v2/audio/speech` + qwen-tts）已全部 404——TA 的语音气泡其实一直静默失败。
 - **选型（同一把千帆 bce-v3 key 实测）**：
-  - **语音识别**：千帆 `/v2/chat` 下所有 Qwen 音频/omni 模型对本账号不存在，`ernie-5.0-thinking-preview` 拒收音频内容；千帆文档的语音识别走 **百度语音 `vop.baidu.com`**——极速版 `pro_api`（dev_pid 80001，普通话，约 1.5s）与标准版 `server_api`（1537 普通话 / 1737 英语，约 3.7s），同一把 key 直接可用，转写准确。日语不支持（→ OPEN_QUESTIONS #24）。
+  - **语音识别**：千帆 `/v2/chat` 下所有 Qwen 音频/omni 模型对本账号不存在，`ernie-5.0-thinking-preview` 拒收音频内容；千帆文档的语音识别走 **百度语音 `vop.baidu.com`**——极速版 `pro_api`（dev_pid 80001，普通话，约 1.5s）与标准版 `server_api`（1537 普通话 / 1737 英语，约 3.7s），同一把 key 直接可用，转写准确。日语不支持（→ OPEN_QUESTIONS #25）。
   - **看图**：`qwen3.5-397b-a17b` / `qwen3.5-122b-a10b` / `qwen3.5-35b-a3b` / `qwen3-vl-235b` 均能正确识别测试图、3~4s；`ernie-5.0` 12s（思考模型）；`ernie-4.5-turbo-vl-32k` 把红图说成白色（不可靠）。默认 **qwen3.5-397b-a17b**（最强，价格 0.0012/千 token 可接受），`EXPO_PUBLIC_QIANFAN_VISION_MODEL` 可换。
   - **语音合成**：千帆文档的语音合成是 **百度 `tsn.baidu.com/text2audio`**（表单，同一把 key，约 2.5s 出 mp3）；大模型音色可用（度泽言 4193 / 度嫣然 4194 / 度小贤 4115 …）。
 - **决策**：
@@ -647,4 +647,4 @@
   6. 新依赖 `expo-image-manipulator`（Expo Go 内置）：照片先缩到宽 1024、JPEG 0.75 再上传。
 - **推翻**：D-030「用户发的图片/语音不计心动值/羁绊值、不触发 TA 回复」；D-048 的接口与音色（qwen-tts / Ethan·Cherry·Serena）。
 - **影响文件**：`lib/media.ts`（新）、`lib/tts.ts`（重写）、`lib/types.ts`（transcript/caption/mediaStatus）、`store/app-store.ts`（patchMessage）、`content/prompts.ts`（§6 + messageContextText + 硬规则/输出格式各一句）、`lib/engine.ts`（buildTurns 去重按 messageContextText）、`components/chat-thread.tsx`（录音参数/自动停/回显）、`app/chat/[characterId].tsx`、`app/bond/[bondId].tsx`、`supabase/functions/ai/index.ts`、`lib/i18n.ts`、`.env.example`、`package.json`（expo-image-manipulator）。
-- **遗留**：外出场景不发语音/照片（本就没有入口）；日语 ASR 供应商待定（#24）；识别文字暂不做二次纠错。
+- **遗留**：外出场景不发语音/照片（本就没有入口）；日语 ASR 供应商待定（#25）；识别文字暂不做二次纠错。

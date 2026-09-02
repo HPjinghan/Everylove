@@ -386,7 +386,7 @@ const en: Record<string, string> = {
   '服务端代理（已登录）': 'Server proxy (signed in)',
   '不可用：无 key 且未登录': 'Unavailable: no key and not signed in',
   '引擎与 key 只读工程配置 .env.local（改后重启 Metro）；没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。': 'Engine and keys come only from .env.local (restart Metro after changes); without a key, signing in routes through the server proxy. Failures show up right in the conversation.',
-  // 她的语音与照片（D-070）
+  // 她的语音与照片（D-073）
   '识别中…': 'Transcribing…', '没听清': "Couldn't hear that",
   'TA 在看…': 'Looking…', 'TA 没看清这张': "Couldn't see this one",
   '语音没识别出来，TA 没听到这条：{reason}': "Voice couldn't be transcribed, this one wasn't heard: {reason}",
@@ -756,7 +756,7 @@ const ja: Record<string, string> = {
   '服务端代理（已登录）': 'サーバー経由（ログイン中）',
   '不可用：无 key 且未登录': '利用不可：keyなし・未ログイン',
   '引擎与 key 只读工程配置 .env.local（改后重启 Metro）；没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。': 'エンジンとkeyは.env.localのみ（変更後はMetro再起動）。keyがない場合はログインでサーバー経由。失敗は会話内にそのまま表示されます。',
-  // 她的语音与照片（D-070）
+  // 她的语音与照片（D-073）
   '识别中…': '認識中…', '没听清': '聞き取れませんでした',
   'TA 在看…': '見ています…', 'TA 没看清这张': 'この写真は見えませんでした',
   '语音没识别出来，TA 没听到这条：{reason}': '音声を認識できず、この一言は届きませんでした：{reason}',

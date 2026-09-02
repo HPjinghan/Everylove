@@ -116,7 +116,7 @@ interface AppState {
   markBondRead: (bondId: string) => void;
   /** LINE 规则（D-030）：撤回=占位+清内容（仅自己的消息、24h 内，界面侧把关）；删除=本地移除任意消息 */
   recallMessage: (scope: { bondId?: string; characterId?: string }, msgId: string) => void;
-  /** 就地更新一条消息（D-070：语音识别 / 看图结果回填） */
+  /** 就地更新一条消息（D-073：语音识别 / 看图结果回填） */
   patchMessage: (
     scope: { bondId?: string; characterId?: string },
     msgId: string,
