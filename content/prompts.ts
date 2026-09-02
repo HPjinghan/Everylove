@@ -9,6 +9,7 @@
  *            互不引用，只共用红线 CHAT_HARD_RULES 与「我」的身份块 userProfileBlock（D-035）
  *   §2 生图：只剩立绘（D-037 聊天/初见回归纯文本，会话内生图已下线）
  *   §3 记忆：记忆提取的系统指令 + 每次提取喂给模型的内容
+ *   §6 多模态（D-070）：她发来的照片 → 视觉模型客观描述（语音走 ASR，不需要 prompt）
  *
  * 不在这里的：
  *   - 角色人设 persona / 追法 pursuit / 外貌 look / 人称 pronoun / 台词库 → content/characters.ts
@@ -37,7 +38,13 @@ import type { Bond, BondMemory, Character, ChatMessage, EngineContext, UserProfi
 export function messageContextText(m: ChatMessage): string {
   if (m.from === 'system') return '';
   if (m.recalled) return ''; // 撤回的消息不进上下文（LINE 规则，D-030）
-  const body = (m.text || m.spoken || '').trim();
+  let body = (m.text || m.spoken || '').trim();
+  // 她的语音 / 照片（D-070）：识别文字与看图描述就是 TA「听到 / 看到」的东西；还没有结果的不进上下文
+  if (m.from === 'me' && m.kind === 'voice') {
+    body = m.transcript?.trim() ? `（语音）${m.transcript.trim()}` : '';
+  } else if (m.from === 'me' && m.kind === 'image') {
+    body = m.caption?.trim() ? `（她发来一张照片：${m.caption.trim()}）${body ? ' ' + body : ''}` : '';
+  }
   if (!body) return '';
   if (m.replyTo?.text) {
     return `（回复「${m.replyTo.text.slice(0, 24)}」）${body}`;
@@ -255,7 +262,7 @@ const CHAT_HARD_RULES_BASE = [
   '【底线，任何情况下都成立】',
   '- 尺度停在暧昧：心动、靠近、克制的亲密都可以写，露骨性内容不写。',
   '- 行为健康：她想结束就体面道别、明天再来；用陪伴留住人，不用愧疚、不用纠缠、不刷屏。',
-  '- 她提到的任何其他真实人物，你只关心她的感受，不评价那个人。',
+  '- 她提到的、或她发来的照片里出现的任何其他真实人物，你只关心她的感受，不评价那个人。',
   '- 若她表达自伤/自杀意念：立刻放下角色，温柔认真地回应她，并建议寻求当地的心理援助热线（中国大陆：12356，全国 24 小时）。',
 ];
 
@@ -278,6 +285,7 @@ export const CHAT_OUTPUT_FORMAT = [
   '【输出格式】',
   '- 只输出你要说的话本身：不带名字前缀、不解释、不加旁白、不用 markdown、不用 emoji。',
   '- 这是手机上的打字聊天：只发你会真的打出来的字——绝不写动作、神态、场景描写，不用（）舞台提示，那是见面时才有的东西；情绪用措辞、语气词和标点表达。',
+  '- 她发的语音会以「（语音）…」给你，照片会以「（她发来一张照片：…）」的文字描述给你：像真的听到了她的声音、看到了那张照片那样回应内容本身；不要复述描述文字，不要说「描述」「识别」「文字」这类字眼。',
 ];
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -852,3 +860,23 @@ export function heartbeatLine(
   const line = pool[Math.abs(salt) % pool.length];
   return line.replace(/\{title\}/g, title).replace(/\{nickname\}/g, nickname);
 }
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* §6 多模态（D-070）：她发来的照片 → 视觉模型客观描述 → 作为上下文交给对话模型          */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * 看图助手的系统指令（lib/media.ts describeImage 用，视觉模型默认 qwen3.5-397b-a17b）。
+ * 产出的描述只进对话上下文（messageContextText 包成「她发来一张照片：…」），不上屏。
+ * 红线 #2「他只看她」：画面里的人只说人数与在做什么，不描述长相、不猜身份——评价留给对话模型按硬规则处理。
+ */
+export const IMAGE_CAPTION_SYSTEM = [
+  '你是一个客观的看图助手。用户会发来一张她拍的或转发的照片，你用简体中文写一段 60~120 字的描述，供另一个聊天模型「看见」这张图。',
+  '要求：',
+  '- 只写画面里确实有的东西：场景、物件、食物、动物、天气光线、可见的文字、整体氛围。',
+  '- 若画面里有人：只说明人数与大概在做什么（如「一个人坐在窗边」），不描述任何人的长相、身材、年龄，不猜测身份或关系。',
+  '- 不评价、不抒情、不给建议、不加问句、不用 markdown、不用 emoji。',
+  '- 若看不清或不是照片（截图、表情包、文字图），如实说明它是什么、上面写了什么。',
+].join('\n');
+
+export const IMAGE_CAPTION_USER = '描述这张照片。';

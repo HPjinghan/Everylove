@@ -13,7 +13,6 @@
 
 import {
   AudioModule,
-  RecordingPresets,
   setAudioModeAsync,
   useAudioPlayer,
   useAudioRecorder,
@@ -42,6 +41,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Romance, themed } from '@/constants/theme';
 import { clockTime, voiceDuration } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { ASR_MAX_SECONDS, ASR_RECORDING } from '@/lib/media';
 import { synthesizeVoice, ttsReady } from '@/lib/tts';
 import type { ChatMessage } from '@/lib/types';
 import { findCharacter } from '@/store/app-store';
@@ -259,17 +259,35 @@ function Bubble({
           </View>
         ) : null}
         {msg.kind === 'voice' && msg.audioUri ? (
-          <AudioVoiceBubble
-            uri={msg.audioUri}
-            durationMs={msg.durationMs}
-            tint={textDark ? Romance.ink : '#FFFFFF'}
-          />
+          <View>
+            <AudioVoiceBubble
+              uri={msg.audioUri}
+              durationMs={msg.durationMs}
+              tint={textDark ? Romance.ink : '#FFFFFF'}
+            />
+            {/* 她的语音识别结果（D-070）：小字回显；识别中 / 没听清给提示 */}
+            {msg.mediaStatus === 'pending' ? (
+              <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>{t('识别中…')}</Text>
+            ) : msg.mediaStatus === 'failed' ? (
+              <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>{t('没听清')}</Text>
+            ) : msg.transcript ? (
+              <Text style={[styles.mediaTranscript, !textDark && styles.mediaHintLight]}>
+                {msg.transcript}
+              </Text>
+            ) : null}
+          </View>
         ) : msg.kind === 'voice' ? (
           <VoiceBubble text={msg.text} color={color} characterId={characterId} />
         ) : msg.kind === 'image' && msg.imageUri ? (
           <View>
             <Image source={{ uri: msg.imageUri }} style={styles.comicImage} contentFit="cover" />
             {msg.text ? <Text style={styles.comicCaption}>{msg.text}</Text> : null}
+            {/* 她的照片（D-070）：TA 看图中 / 没看清给提示；描述本身不上屏 */}
+            {msg.mediaStatus === 'pending' ? (
+              <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>{t('TA 在看…')}</Text>
+            ) : msg.mediaStatus === 'failed' ? (
+              <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>{t('TA 没看清这张')}</Text>
+            ) : null}
           </View>
         ) : (
           <Text style={[styles.bubbleText, !textDark && { color: '#FFFFFF' }]}>{msg.text}</Text>
@@ -328,7 +346,8 @@ export function ChatThread({
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordSecs, setRecordSecs] = useState(0);
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  // 录音格式按百度 ASR 要求：16k 单声道 wav（D-070）
+  const recorder = useAudioRecorder(ASR_RECORDING);
   const recordTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordStartAt = useRef(0);
 
@@ -402,6 +421,19 @@ export function ChatThread({
     }
   };
 
+  /** 停止录音并发送（用户再点一下，或到 ASR 时长上限自动停） */
+  const stopRecord = async () => {
+    if (!recordTimer.current) return; // 已停过（自动停与手点可能同时到）
+    clearInterval(recordTimer.current);
+    recordTimer.current = null;
+    await recorder.stop();
+    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+    setRecording(false);
+    const ms = Date.now() - recordStartAt.current;
+    const uri = recorder.uri;
+    if (uri && ms >= 600) onSendVoice?.(uri, ms);
+  };
+
   const toggleRecord = async () => {
     if (!onSendVoice || inputDisabled) return;
     if (!recording) {
@@ -416,18 +448,14 @@ export function ChatThread({
       recordStartAt.current = Date.now();
       setRecordSecs(0);
       setRecording(true);
-      recordTimer.current = setInterval(
-        () => setRecordSecs(Math.floor((Date.now() - recordStartAt.current) / 1000)),
-        500
-      );
+      recordTimer.current = setInterval(() => {
+        const secs = Math.floor((Date.now() - recordStartAt.current) / 1000);
+        setRecordSecs(secs);
+        // 百度 ASR 最长 60 秒：到点自动停止并发送（D-070）
+        if (secs >= ASR_MAX_SECONDS) void stopRecord();
+      }, 500);
     } else {
-      if (recordTimer.current) clearInterval(recordTimer.current);
-      await recorder.stop();
-      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
-      setRecording(false);
-      const ms = Date.now() - recordStartAt.current;
-      const uri = recorder.uri;
-      if (uri && ms >= 600) onSendVoice(uri, ms);
+      await stopRecord();
     }
   };
 
@@ -623,6 +651,9 @@ const styles = themed(() =>
     voiceDuration: { fontSize: 13, marginLeft: 6, fontWeight: '500' },
     voiceHint: { fontSize: 11, color: Romance.faint, marginTop: 4 },
     voiceTranscript: { fontSize: 14, color: Romance.sub, marginTop: 6, lineHeight: 20 },
+    mediaHint: { fontSize: 11, color: Romance.faint, marginTop: 4 },
+    mediaHintLight: { color: 'rgba(255,255,255,0.82)' },
+    mediaTranscript: { fontSize: 13, color: Romance.sub, marginTop: 5, lineHeight: 18 },
     replyBar: {
       flexDirection: 'row',
       alignItems: 'center',

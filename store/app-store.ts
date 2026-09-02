@@ -116,6 +116,12 @@ interface AppState {
   markBondRead: (bondId: string) => void;
   /** LINE 规则（D-030）：撤回=占位+清内容（仅自己的消息、24h 内，界面侧把关）；删除=本地移除任意消息 */
   recallMessage: (scope: { bondId?: string; characterId?: string }, msgId: string) => void;
+  /** 就地更新一条消息（D-070：语音识别 / 看图结果回填） */
+  patchMessage: (
+    scope: { bondId?: string; characterId?: string },
+    msgId: string,
+    patch: Partial<ChatMessage>
+  ) => void;
   deleteMessage: (scope: { bondId?: string; characterId?: string }, msgId: string) => void;
   /** 写入羁绊记忆库（由 lib/memory.ts 后台提取后调用，D-016） */
   setBondMemory: (bondId: string, memory: BondMemory) => void;
@@ -418,6 +424,26 @@ export const useAppStore = create<AppState>()(
             squareChats: {
               ...get().squareChats,
               [characterId]: { ...chat, messages: chat.messages.map(wipe) },
+            },
+          });
+        }
+      },
+
+      patchMessage: ({ bondId, characterId }, msgId, patch) => {
+        const apply = (m: ChatMessage): ChatMessage => (m.id === msgId ? { ...m, ...patch } : m);
+        if (bondId) {
+          set({
+            bonds: get().bonds.map((b) =>
+              b.id === bondId ? { ...b, messages: b.messages.map(apply) } : b
+            ),
+          });
+        } else if (characterId) {
+          const chat = get().squareChats[characterId];
+          if (!chat) return;
+          set({
+            squareChats: {
+              ...get().squareChats,
+              [characterId]: { ...chat, messages: chat.messages.map(apply) },
             },
           });
         }

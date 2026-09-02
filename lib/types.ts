@@ -128,6 +128,12 @@ export interface ChatMessage {
   /** 用户语音消息的本机音频（expo-audio 录制；D-030） */
   audioUri?: string;
   durationMs?: number;
+  /** 她的语音经识别得到的文字（D-070）：进模型上下文，气泡下方小字回显 */
+  transcript?: string;
+  /** 她发的照片经视觉模型得到的客观描述（D-070）：只进模型上下文，不上屏 */
+  caption?: string;
+  /** 多模态处理状态（D-070）：pending 识别/看图中；failed 失败（原因在随后的系统消息里）；空 = 完成或不适用 */
+  mediaStatus?: 'pending' | 'failed';
 }
 
 /** 广场搭话记录：不入消息 tab，会过期（免费层商业承重墙） */

@@ -3,8 +3,10 @@
  * 职责：LLM/生图/语音的 API key 收在服务端（Supabase Secrets），客户端只带登录态调用；
  *      按用户限每日用量（ai_usage 表，防盗刷）。
  * 客户端协议：POST { service, body }，service ∈
- *   qianfan.chat / qianfan.images / qianfan.tts / anthropic.messages
- * 返回：上游 JSON 原样透传；TTS 上游若返回二进制则包成 { audio_base64 }。
+ *   qianfan.chat / qianfan.images / anthropic.messages（JSON 透传）
+ *   baidu.asr / baidu.asr_pro（百度语音识别，JSON；D-070）
+ *   baidu.tts（百度短文本语音合成 tsn.baidu.com/text2audio，body 为表单字段对象；D-070，替代已下线的 qianfan.tts）
+ * 返回：上游 JSON 原样透传；上游返回二进制音频则包成 { audio_base64 }。
  * 部署：supabase functions deploy ai（verify_jwt 开启——平台先验 JWT，函数内再取 user 限流）。
  */
 
@@ -62,25 +64,36 @@ Deno.serve(async (req) => {
       return new Response(await r.text(), { status: r.status, headers: JSON_HEADERS });
     }
 
-    const QIANFAN_ROUTES: Record<string, string> = {
+    // 千帆 v2 与百度语音同一把 bce-v3 key：ASR 是 JSON，TTS 是表单（D-070）
+    const JSON_ROUTES: Record<string, string> = {
       'qianfan.chat': 'https://qianfan.baidubce.com/v2/chat/completions',
       'qianfan.images': 'https://qianfan.baidubce.com/v2/images/generations',
-      'qianfan.tts': 'https://qianfan.baidubce.com/v2/audio/speech',
+      'baidu.asr': 'https://vop.baidu.com/server_api',
+      'baidu.asr_pro': 'https://vop.baidu.com/pro_api',
     };
-    const upstream = QIANFAN_ROUTES[service];
+    const FORM_ROUTES: Record<string, string> = {
+      'baidu.tts': 'https://tsn.baidu.com/text2audio',
+    };
+    const upstream = JSON_ROUTES[service] ?? FORM_ROUTES[service];
     if (!upstream) return json({ error: `unknown service: ${service}` }, 400);
     if (!QIANFAN_KEY) return json({ error: 'qianfan key not configured' }, 503);
 
+    const isForm = service in FORM_ROUTES;
     const r = await fetch(upstream, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${QIANFAN_KEY}` },
-      body: JSON.stringify(body),
+      headers: {
+        'content-type': isForm ? 'application/x-www-form-urlencoded' : 'application/json',
+        authorization: `Bearer ${QIANFAN_KEY}`,
+      },
+      body: isForm
+        ? new URLSearchParams(body as Record<string, string>).toString()
+        : JSON.stringify(body),
     });
     const contentType = r.headers.get('content-type') ?? '';
     if (contentType.includes('application/json')) {
       return new Response(await r.text(), { status: r.status, headers: JSON_HEADERS });
     }
-    // TTS 二进制流 → 包成 base64 JSON（客户端统一处理）
+    // 二进制音频（TTS）→ 包成 base64 JSON（客户端统一处理）
     const buf = new Uint8Array(await r.arrayBuffer());
     let bin = '';
     for (let i = 0; i < buf.length; i += 8192) {

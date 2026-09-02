@@ -14,15 +14,20 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ARCHETYPE_LABEL } from '@/content/characters';
 import { characterSecrets, unlockedSecretCount } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
-import { describeAiError, generateReply } from '@/lib/engine';
+import { describeAiError, generateReply, messageContextText } from '@/lib/engine';
 import { updateBondMemory } from '@/lib/memory';
 import { daysTogether, uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { levelInfo, XP_PER_MESSAGE } from '@/lib/bond';
-import type { EngineReply } from '@/lib/types';
+import { describeImage, transcribeVoice } from '@/lib/media';
+import type { ChatMessage, EngineReply } from '@/lib/types';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+function sysMsg(text: string): ChatMessage {
+  return { id: uid('m'), from: 'system', kind: 'system', text, at: Date.now() };
+}
 
 export default function BondScreen() {
   const { bondId } = useLocalSearchParams<{ bondId: string }>();
@@ -44,14 +49,82 @@ export default function BondScreen() {
   const character = findCharacter(bond.characterId);
   if (!character) return <Redirect href="/apps/messages" />;
 
-  const onSend = async (text: string, replyTo?: ReplyRef) => {
-    const { appendBond } = useAppStore.getState();
-    appendBond(
-      bond.id,
-      [{ id: uid('m'), from: 'me', kind: 'text', text, at: Date.now(), replyTo }],
-      { affinityDelta: XP_PER_MESSAGE }
-    );
+  const scope = { bondId: bond.id };
 
+  const onSend = async (text: string, replyTo?: ReplyRef) => {
+    useAppStore
+      .getState()
+      .appendBond(
+        bond.id,
+        [{ id: uid('m'), from: 'me', kind: 'text', text, at: Date.now(), replyTo }],
+        { affinityDelta: XP_PER_MESSAGE }
+      );
+    await respond(text);
+  };
+
+  /** 她的语音（D-070）：先上屏，识别成文字后回填、计 XP，再让 TA 回应识别出的内容 */
+  const onSendVoice = async (uri: string, durationMs: number) => {
+    const msg: ChatMessage = {
+      id: uid('m'),
+      from: 'me',
+      kind: 'voice',
+      text: '',
+      audioUri: uri,
+      durationMs,
+      at: Date.now(),
+      mediaStatus: 'pending',
+    };
+    useAppStore.getState().appendBond(bond.id, [msg]);
+    let transcript: string;
+    try {
+      transcript = await transcribeVoice(uri);
+    } catch (e) {
+      useAppStore.getState().patchMessage(scope, msg.id, { mediaStatus: 'failed' });
+      useAppStore
+        .getState()
+        .appendBond(bond.id, [
+          sysMsg(t('语音没识别出来，TA 没听到这条：{reason}', { reason: describeAiError(e) })),
+        ]);
+      return;
+    }
+    const done: ChatMessage = { ...msg, transcript, mediaStatus: undefined };
+    useAppStore.getState().patchMessage(scope, msg.id, { transcript, mediaStatus: undefined });
+    useAppStore.getState().appendBond(bond.id, [], { affinityDelta: XP_PER_MESSAGE });
+    await respond(messageContextText(done));
+  };
+
+  /** 她的照片（D-070）：先上屏，视觉模型描述后回填、计 XP，再让 TA 回应 */
+  const onSendImage = async (uri: string) => {
+    const msg: ChatMessage = {
+      id: uid('m'),
+      from: 'me',
+      kind: 'image',
+      text: '',
+      imageUri: uri,
+      at: Date.now(),
+      mediaStatus: 'pending',
+    };
+    useAppStore.getState().appendBond(bond.id, [msg]);
+    let caption: string;
+    try {
+      caption = await describeImage(uri);
+    } catch (e) {
+      useAppStore.getState().patchMessage(scope, msg.id, { mediaStatus: 'failed' });
+      useAppStore
+        .getState()
+        .appendBond(bond.id, [
+          sysMsg(t('照片没看清，TA 没看到这条：{reason}', { reason: describeAiError(e) })),
+        ]);
+      return;
+    }
+    const done: ChatMessage = { ...msg, caption, mediaStatus: undefined };
+    useAppStore.getState().patchMessage(scope, msg.id, { caption, mediaStatus: undefined });
+    useAppStore.getState().appendBond(bond.id, [], { affinityDelta: XP_PER_MESSAGE });
+    await respond(messageContextText(done));
+  };
+
+  /** TA 的回合：引擎回复 + 记忆后台更新。text 已是模型视角的文字（语音 / 照片经 messageContextText 包装） */
+  const respond = async (text: string) => {
     setTyping(true);
     const current = useAppStore.getState().bonds.find((b) => b.id === bond.id);
     let reply: EngineReply;
@@ -74,15 +147,11 @@ export default function BondScreen() {
     } catch (e) {
       // 模型调用失败：在会话里露出原因（D-069：没有脚本回落，错误要看得见）
       setTyping(false);
-      useAppStore.getState().appendBond(bond.id, [
-        {
-          id: uid('m'),
-          from: 'system',
-          kind: 'system',
-          text: t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) }),
-          at: Date.now(),
-        },
-      ]);
+      useAppStore
+        .getState()
+        .appendBond(bond.id, [
+          sysMsg(t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) })),
+        ]);
       return;
     }
     await wait(700 + Math.min(1200, text.length * 40));
@@ -125,20 +194,8 @@ export default function BondScreen() {
         variant="line"
         typing={typing}
         onSend={onSend}
-        onSendImage={(uri) =>
-          useAppStore
-            .getState()
-            .appendBond(bond.id, [
-              { id: uid('m'), from: 'me', kind: 'image', text: '', imageUri: uri, at: Date.now() },
-            ])
-        }
-        onSendVoice={(uri, durationMs) =>
-          useAppStore
-            .getState()
-            .appendBond(bond.id, [
-              { id: uid('m'), from: 'me', kind: 'voice', text: '', audioUri: uri, durationMs, at: Date.now() },
-            ])
-        }
+        onSendImage={onSendImage}
+        onSendVoice={onSendVoice}
         onRecall={(m) => useAppStore.getState().recallMessage({ bondId: bond.id }, m.id)}
         onDelete={(m) => useAppStore.getState().deleteMessage({ bondId: bond.id }, m.id)}
         placeholder={t('和{name}说点什么…', { name: bond.name })}

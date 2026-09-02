@@ -17,9 +17,16 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { scriptFor } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
 import { HEART_FULL, heartGain } from '@/lib/bond';
-import { ADOPTION_OFFER_AFTER_TURNS, darkSideCheck, describeAiError, generateReply } from '@/lib/engine';
+import {
+  ADOPTION_OFFER_AFTER_TURNS,
+  darkSideCheck,
+  describeAiError,
+  generateReply,
+  messageContextText,
+} from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { describeImage, transcribeVoice } from '@/lib/media';
 import type { ChatMessage, EngineReply } from '@/lib/types';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
@@ -29,15 +36,13 @@ function himMsg(text: string, kind: 'text' | 'voice' = 'text'): ChatMessage {
   return { id: uid('m'), from: 'him', kind, text, at: Date.now() };
 }
 
+function sysMsg(text: string): ChatMessage {
+  return { id: uid('m'), from: 'system', kind: 'system', text, at: Date.now() };
+}
+
 /** 模型调用失败：在会话里露出原因（D-069：没有脚本回落，错误要看得见） */
 function failMsg(e: unknown): ChatMessage {
-  return {
-    id: uid('m'),
-    from: 'system',
-    kind: 'system',
-    text: t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) }),
-    at: Date.now(),
-  };
+  return sysMsg(t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) }));
 }
 
 export default function SquareChatScreen() {
@@ -89,19 +94,92 @@ export default function SquareChatScreen() {
     return <Redirect href={{ pathname: '/bond/[bondId]', params: { bondId: bond.id } }} />;
   }
 
-  const onSend = async (text: string, replyTo?: ReplyRef) => {
-    const { appendSquare } = useAppStore.getState();
+  const scope = { characterId: character.id };
+
+  /** 她这一回合的心动增量（D-029）：步长按角色节奏，salt 用轮次与文本长度做浮动 */
+  const turnOpts = (text: string) => {
     const pace = character.offerAfterTurns ?? ADOPTION_OFFER_AFTER_TURNS;
     const turnsSoFar = useAppStore.getState().squareChats[character.id]?.userTurns ?? 0;
-    appendSquare(
-      character.id,
-      [{ id: uid('m'), from: 'me', kind: 'text', text, at: Date.now(), replyTo }],
-      {
-        userTurn: true,
-        heartDelta: heartGain(pace, turnsSoFar * 31 + text.length),
-      }
-    );
+    return { userTurn: true, heartDelta: heartGain(pace, turnsSoFar * 31 + text.length) };
+  };
 
+  const onSend = async (text: string, replyTo?: ReplyRef) => {
+    useAppStore
+      .getState()
+      .appendSquare(
+        character.id,
+        [{ id: uid('m'), from: 'me', kind: 'text', text, at: Date.now(), replyTo }],
+        turnOpts(text)
+      );
+    await respond(text);
+  };
+
+  /** 她的语音（D-070）：先上屏，识别成文字后回填、计心动，再让 TA 回应识别出的内容 */
+  const onSendVoice = async (uri: string, durationMs: number) => {
+    const msg: ChatMessage = {
+      id: uid('m'),
+      from: 'me',
+      kind: 'voice',
+      text: '',
+      audioUri: uri,
+      durationMs,
+      at: Date.now(),
+      mediaStatus: 'pending',
+    };
+    useAppStore.getState().appendSquare(character.id, [msg]);
+    let transcript: string;
+    try {
+      transcript = await transcribeVoice(uri);
+    } catch (e) {
+      useAppStore.getState().patchMessage(scope, msg.id, { mediaStatus: 'failed' });
+      useAppStore
+        .getState()
+        .appendSquare(character.id, [
+          sysMsg(t('语音没识别出来，TA 没听到这条：{reason}', { reason: describeAiError(e) })),
+        ]);
+      return;
+    }
+    const done: ChatMessage = { ...msg, transcript, mediaStatus: undefined };
+    useAppStore.getState().patchMessage(scope, msg.id, { transcript, mediaStatus: undefined });
+    useAppStore.getState().appendSquare(character.id, [], turnOpts(transcript));
+    await respond(messageContextText(done));
+  };
+
+  /** 她的照片（D-070）：先上屏，视觉模型描述后回填、计心动，再让 TA 回应 */
+  const onSendImage = async (uri: string) => {
+    const msg: ChatMessage = {
+      id: uid('m'),
+      from: 'me',
+      kind: 'image',
+      text: '',
+      imageUri: uri,
+      at: Date.now(),
+      mediaStatus: 'pending',
+    };
+    useAppStore.getState().appendSquare(character.id, [msg]);
+    let caption: string;
+    try {
+      caption = await describeImage(uri);
+    } catch (e) {
+      useAppStore.getState().patchMessage(scope, msg.id, { mediaStatus: 'failed' });
+      useAppStore
+        .getState()
+        .appendSquare(character.id, [
+          sysMsg(t('照片没看清，TA 没看到这条：{reason}', { reason: describeAiError(e) })),
+        ]);
+      return;
+    }
+    const done: ChatMessage = { ...msg, caption, mediaStatus: undefined };
+    useAppStore.getState().patchMessage(scope, msg.id, { caption, mediaStatus: undefined });
+    useAppStore.getState().appendSquare(character.id, [], turnOpts(caption));
+    await respond(messageContextText(done));
+  };
+
+  /**
+   * TA 的回合：暗面路由 → 引擎回复 → 心动满的 offer 触发。
+   * text 已是模型视角的文字（语音 / 照片经 messageContextText 包装）。
+   */
+  const respond = async (text: string) => {
     const current = useAppStore.getState().squareChats[character.id];
 
     // 系统层前置：暗面路由绕过一切模式，任何引擎不可绕过
@@ -181,20 +259,8 @@ export default function SquareChatScreen() {
         characterId={character.id}
         typing={typing}
         onSend={onSend}
-        onSendImage={(uri) =>
-          useAppStore
-            .getState()
-            .appendSquare(character.id, [
-              { id: uid('m'), from: 'me', kind: 'image', text: '', imageUri: uri, at: Date.now() },
-            ])
-        }
-        onSendVoice={(uri, durationMs) =>
-          useAppStore
-            .getState()
-            .appendSquare(character.id, [
-              { id: uid('m'), from: 'me', kind: 'voice', text: '', audioUri: uri, durationMs, at: Date.now() },
-            ])
-        }
+        onSendImage={onSendImage}
+        onSendVoice={onSendVoice}
         onRecall={(m) => useAppStore.getState().recallMessage({ characterId: character.id }, m.id)}
         onDelete={(m) => useAppStore.getState().deleteMessage({ characterId: character.id }, m.id)}
         banner={
