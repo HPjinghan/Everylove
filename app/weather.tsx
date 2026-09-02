@@ -168,8 +168,6 @@ export default function WeatherScreen() {
 
         <Text style={styles.footnote}>
           {t('天气数据来自 Open-Meteo。位置只存在这台手机上，不会上传。')}
-          {'\n'}
-          {t('没设位置时，显示的是这个世界自己生成的天气。')}
         </Text>
       </ScrollView>
     </AppScreen>

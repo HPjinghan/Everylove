@@ -357,7 +357,7 @@ export default function CreateScreen() {
     if (character.visibility !== 'public') return character;
     const ok = await publishCharacter(character);
     if (!ok) {
-      Alert.alert(t('先按私密保存了'), t('公开到共享池需要登录账号，登录后再编辑改公开即可。'));
+      Alert.alert(t('先按私密保存了'), t('公开需要登录，登录后可以再改。'));
       return { ...character, visibility: 'private' };
     }
     return character;
@@ -404,7 +404,7 @@ export default function CreateScreen() {
       router.replace({ pathname: '/auth', params: { force: '1' } });
       return;
     }
-    Alert.alert(t('TA 醒过来了'), t('TA 已经在你的通讯录里，等你去说第一句话。'), [
+    Alert.alert(t('TA 醒过来了'), t('TA 在等你说第一句话。'), [
       {
         text: t('去和 TA 说话'),
         onPress: () => router.push({ pathname: '/chat/[characterId]', params: { characterId: id } }),
@@ -518,7 +518,7 @@ export default function CreateScreen() {
           {/* ───────── 描述导入（D-043） ───────── */}
           <Text style={styles.step}>{t('用一段话描述 TA（可选）')}</Text>
           <Text style={styles.stepHint}>
-            {t('写下或粘贴一段人设——小说片段、角色卡、脑子里的画面都行，最多 {n} 字。点「自动解析」帮你填好下面的表单，每一项都还能改。', { n: DESC_MAX })}
+            {t('小说片段、角色卡、脑子里的画面都行，最多 {n} 字。', { n: DESC_MAX })}
           </Text>
           <TextInput
             style={[styles.input, styles.inputDesc]}
@@ -573,7 +573,7 @@ export default function CreateScreen() {
           </View>
           {ageStatus === 'minor' ? (
             <Text style={styles.minorNotice}>
-              {t('未成年角色进入加强审查通道，且不开放恋爱互动。试装还没接审查系统，暂时不能发布。')}
+              {t('未成年角色不开放恋爱互动，暂时不能发布。')}
             </Text>
           ) : (
             <Text style={styles.afterHint}>{t('发布即确认 TA 是成年人。')}</Text>
@@ -586,7 +586,7 @@ export default function CreateScreen() {
           </View>
           <Text style={styles.afterHint}>
             {visibility === 'public'
-              ? t('公开：TA 会进入共享角色池，其他玩家也能在交友里滑到 TA（需要登录账号）。')
+              ? t('公开：其他人也能遇到 TA（需要登录）。')
               : t('私密：只有你能遇到 TA。')}
           </Text>
 
@@ -600,7 +600,7 @@ export default function CreateScreen() {
             multiline
             maxLength={60}
           />
-          <Text style={styles.afterHint}>{t('TA 的主题色——没头像时的底色、界面点缀的颜色：')}</Text>
+          <Text style={styles.afterHint}>{t('TA 的主题色：')}</Text>
           <View style={styles.paletteRow}>
             {PALETTES.map((p, i) => (
               <Pressable
@@ -624,9 +624,9 @@ export default function CreateScreen() {
 
           <Text style={styles.step}>{t('⑦ TA 的头像（可选）')}</Text>
           <Text style={styles.stepHint}>
-            {t('上传一张图，或按 ⑤ 的描述生成一张半身立绘；交友卡面与会话头像都用它。不能上传真人照片。')}
+            {t('不能上传真人照片。')}
           </Text>
-          <Text style={styles.afterHint}>{t('画风（立绘与外出拍照共用）：')}</Text>
+          <Text style={styles.afterHint}>{t('画风：')}</Text>
           <View style={styles.chipRow}>
             {PORTRAIT_STYLES.map((s) => (
               <Chip key={s.id} label={t(s.label)} active={artStyle === s.id} onPress={() => setArtStyle(s.id)} />
@@ -634,8 +634,8 @@ export default function CreateScreen() {
           </View>
           <Text style={styles.afterHint}>
             {artStyle === 'anime'
-              ? t('动漫走蒸汽机模型：约 10 秒出图，画风固定。')
-              : t('走 Qwen 模型：约 1 分钟出图，画风跟随选项。')}
+              ? t('出图约 10 秒。')
+              : t('出图约 1 分钟。')}
           </Text>
           {portraitUri ? (
             <Image source={{ uri: portraitUri }} style={styles.portrait} contentFit="cover" />
@@ -712,7 +712,6 @@ export default function CreateScreen() {
                   </Pressable>
                 ) : null}
               </View>
-              <Text style={styles.afterHint}>{t('会出现在你们的日历上。')}</Text>
 
               <Text style={styles.step}>{t('口癖')}</Text>
               <Text style={styles.stepHint}>{t('TA 挂在嘴边的话。')}</Text>
@@ -746,7 +745,6 @@ export default function CreateScreen() {
               />
 
               <Text style={styles.step}>{t('确定关系的节奏')}</Text>
-              <Text style={styles.stepHint}>{t('TA 陷入心动、想和你确定关系的速度。')}</Text>
               <View style={styles.chipRow}>
                 {OFFER_PACES.map((p) => (
                   <Pressable
@@ -789,7 +787,6 @@ export default function CreateScreen() {
               </View>
 
               <Text style={styles.step}>{t('主动联系强度')}</Text>
-              <Text style={styles.stepHint}>{t('TA 平时有多主动来找你。')}</Text>
               <View style={styles.chipRow}>
                 {INITIATIVES.map((it) => (
                   <Pressable
@@ -808,7 +805,7 @@ export default function CreateScreen() {
 
               <Text style={styles.step}>{t('预设共同记忆')}</Text>
               <Text style={styles.stepHint}>
-                {t('你们「早就认识」的部分：一行一条，TA 会自然提起，初次配对也会像一场重逢。')}
+                {t('你们「早就认识」的部分，一行一条。')}
               </Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
@@ -821,7 +818,7 @@ export default function CreateScreen() {
               />
 
               <Text style={styles.step}>{t('禁忌 / 边界')}</Text>
-              <Text style={styles.stepHint}>{t('TA 不做的事、回避的话题——涉及时 TA 会温和回避或直接拒绝。')}</Text>
+              <Text style={styles.stepHint}>{t('TA 不做的事、回避的话题。')}</Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
                 value={taboos}
@@ -834,7 +831,7 @@ export default function CreateScreen() {
 
               <Text style={styles.step}>{t('隐藏设定 / 剧情钩子')}</Text>
               <Text style={styles.stepHint}>
-                {t('TA 藏着的事：一行一条、浅的在前。羁绊 LV3 起每亲近一级解锁一条；没解锁的 TA 绝不说漏。')}
+                {t('TA 藏着的事，一行一条、浅的在前。')}
               </Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
@@ -858,7 +855,7 @@ export default function CreateScreen() {
               />
 
               <Text style={styles.step}>{t('日常作息')}</Text>
-              <Text style={styles.stepHint}>{t('TA 的一天怎么过——决定 TA 什么时候忙、什么时候来找你。')}</Text>
+              <Text style={styles.stepHint}>{t('TA 的一天怎么过。')}</Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
                 value={schedule}

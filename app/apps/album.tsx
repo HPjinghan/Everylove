@@ -83,7 +83,7 @@ export default function AlbumScreen() {
           <View style={styles.empty}>
             <Text style={styles.emptyHeart}>🖼️</Text>
             <Text style={styles.emptyText}>
-              {t('你们的每一个瞬间都会存在这里。')}{'\n'}{t('聊得越久，相册越厚。')}
+              {t('还没有你们的照片。')}
             </Text>
           </View>
         }

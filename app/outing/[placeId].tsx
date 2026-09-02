@@ -95,8 +95,8 @@ export default function OutingSceneScreen() {
             {place.stranger
               ? t('广场今天安安静静的——\n新面孔都被你认识完了。')
               : bonds.length
-                ? t('认识的人这会儿都在忙。\n晚上八点之后再出来走走，说不定就遇到了。')
-                : t('这里风景很好，但一个人逛有点安静。\n去广场碰碰运气，或先在「交友」里滑一滑。')}
+                ? t('认识的人这会儿都在忙。\n晚点再来走走。')
+                : t('这里风景很好，但一个人逛有点安静。')}
           </Text>
         </View>
       </View>
@@ -262,7 +262,7 @@ export default function OutingSceneScreen() {
             {offered ? (
               <View style={styles.offerWrap}>
                 <View style={styles.offerText}>
-                  <Text style={styles.offerTitle}>{t('羁绊 LV1 · TA 想和你交换联系方式')}</Text>
+                  <Text style={styles.offerTitle}>{t('TA 想和你交换联系方式')}</Text>
                   <Text style={styles.offerSub}>{t('就在这里、就是现在——面对面的那种')}</Text>
                 </View>
                 <Pressable
@@ -299,7 +299,7 @@ export default function OutingSceneScreen() {
           <View style={styles.sceneBanner}>
             <Text style={styles.sceneBannerText}>
               {kind === 'stranger'
-                ? `${place.emoji} ${t('你们还不认识 · 聊得来，TA 会想留下你的联系方式')}`
+                ? `${place.emoji} ${t('你们还不认识')}`
                 : `${place.emoji} ${t(place.hook)} · ${t('你们面对面')}`}
             </Text>
           </View>

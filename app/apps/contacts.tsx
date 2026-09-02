@@ -40,7 +40,7 @@ export default function ContactsScreen() {
           key: c.id,
           characterId: c.id,
           name: c.name,
-          sub: `${t('心动')} ${Math.min(HEART_FULL, squareChats[c.id]?.heart ?? 0)}/${HEART_FULL} · ${t('满了 TA 会想和你确定关系')}`,
+          sub: `${t('心动')} ${Math.min(HEART_FULL, squareChats[c.id]?.heart ?? 0)}/${HEART_FULL}`,
           tag: '心动中' as string | undefined,
           onPress: () =>
             router.push({ pathname: '/chat/[characterId]', params: { characterId: c.id } }),
@@ -82,7 +82,7 @@ export default function ContactsScreen() {
           </Pressable>
         )}
         ListEmptyComponent={
-          <Text style={styles.empty}>{t('这里还空着。')}{'\n'}{t('去「交友」滑到心动，再和 TA 加好友。')}</Text>
+          <Text style={styles.empty}>{t('这里还空着。')}</Text>
         }
       />
     </AppScreen>

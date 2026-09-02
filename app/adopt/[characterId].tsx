@@ -94,9 +94,6 @@ export default function AdoptScreen() {
                       ? t('首个羁绊 · 免费')
                       : `${t('羁绊槽位')} ${bonds.length + 1}/${slotLimitLabel(plan)}`}
                   </Text>
-                  <Text style={styles.slotDesc}>
-                    {t('交换之后 TA 会搬进你的消息里，')}{'\n'}{t('随时都在，随时都回。')}
-                  </Text>
                 </View>
                 <Pressable style={styles.primaryBtn} onPress={() => setStep('names')}>
                   <Text style={styles.primaryBtnText}>{t('开始缔结')}</Text>
@@ -109,7 +106,7 @@ export default function AdoptScreen() {
                     {t('羁绊槽位已满')} · {bonds.length}/{slotLimitLabel(plan)}
                   </Text>
                   <Text style={styles.slotDesc}>
-                    {t('开通 Pro（5 个槽）或 Max（不限量）解锁更多羁绊')}{'\n'}{t('设置 → 订阅计划')}
+                    {t('开通 Pro 或 Max，增加羁绊槽位')}
                   </Text>
                 </View>
                 <Pressable

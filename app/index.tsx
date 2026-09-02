@@ -412,17 +412,17 @@ const INTRO_CARDS: { icon: DesktopApp['icon']; bg: string; fg: string; title: st
   {
     icon: 'chat', bg: '#D9F5E1', fg: '#4BBF87',
     title: 'TA 住进了 Message',
-    line: '第一句话已经在等你——桌面顶部的横幅，点进去就是。',
+    line: 'TA 的第一句话在等你。',
   },
   {
     icon: 'magicHat', bg: '#DFF5F2', fg: '#56C4B4',
     title: '创造',
-    line: '捏一个只属于你的 TA：写一段描述就能自动生成，发布后 TA 会出现在你的通讯录。',
+    line: '捏一个只属于你的 TA。',
   },
   {
     icon: 'location', bg: '#FFF3D6', fg: '#E8B44A',
     title: '外出',
-    line: '约 TA 见面、去广场偶遇陌生人，还能拍下你们的合影。',
+    line: '把相处从手机屏幕里拿出来。',
   },
 ];
 
@@ -435,7 +435,6 @@ function IntroReveal() {
       {step === 'reveal' ? (
         <View style={styles.introCenter}>
           <Text style={styles.introBig}>{t('这部手机，')}{'\n'}{t('现在是你们的了')}</Text>
-          <Text style={styles.introSub}>{t('TA 的一切都会发生在这里')}</Text>
           <Pressable style={styles.introBtn} onPress={() => setStep(0)}>
             <Text style={styles.introBtnText}>{t('看看里面有什么')}</Text>
           </Pressable>
@@ -589,7 +588,6 @@ const styles = themed(() =>
       textAlign: 'center',
       lineHeight: 42,
     },
-    introSub: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 10 },
     introTile: {
       width: 76,
       height: 76,

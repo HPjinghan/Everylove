@@ -212,13 +212,13 @@ export default function MeScreen() {
             <Row label={t("从云端恢复到本机")} onPress={doRestore} />
             <Row label={t("退出登录")} onPress={doSignOut} />
             <Row label={t("删除云端数据")} onPress={doDeleteCloud} />
-            <Text style={styles.footHint}>{t("数据变化后会自动备份（含聊天与记忆，按最高敏感级）。")}</Text>
+            <Text style={styles.footHint}>{t("含聊天与记忆，按最高敏感级对待。")}</Text>
           </>
         ) : (
           <>
             <Row label={t("登录 / 开通云端")} onPress={() => router.push('/auth')} />
             <Text style={styles.footHint}>
-              {t("开通云端：TA 和你们的故事存进云端，换手机也不会失去。不开通也能完整游玩（数据只在本机）。")}
+              {t("换手机也不会失去 TA 和你们的故事。")}
             </Text>
           </>
         )}
@@ -243,7 +243,6 @@ export default function MeScreen() {
           value={me?.nickname ? `「${me.nickname}」` : t('还没告诉 TA 们你是谁')}
           onPress={() => router.push('/apps/identity')}
         />
-        <Text style={styles.footHint}>{t("TA 眼中的你：昵称、职业、关于你的一切。也能为单个角色使用不同身份。")}</Text>
       </Section>
 
       <Section title={t("主题")}>
@@ -280,7 +279,7 @@ export default function MeScreen() {
             </Pressable>
           ))}
         </View>
-        <Text style={styles.footHint}>{t("配色与壁纸即刻生效。锁屏换 TA 的照片、来电铃声：正式版开放。")}</Text>
+        <Text style={styles.footHint}>{t("锁屏照片、来电铃声：正式版开放。")}</Text>
       </Section>
 
       <Section title={t("订阅计划（试装模拟，不扣费）")}>
@@ -288,7 +287,7 @@ export default function MeScreen() {
           label={t("当前计划")}
           value={plan === 'max' ? 'Max' : plan === 'pro' ? 'Pro' : 'Free'}
         />
-        <Row label={t("羁绊槽位")} value={`${bonds.length}/${slotLimitLabel(plan)} · ${t("缔结才占槽")}`} />
+        <Row label={t("羁绊槽位")} value={`${bonds.length}/${slotLimitLabel(plan)}`} />
         <Row
           label={plan === 'pro' ? t('已订阅 Pro ✓') : t('订阅 Pro')}
           value={t("5 个羁绊槽")}
@@ -308,7 +307,6 @@ export default function MeScreen() {
         <Row label={t("分享给他")} value={t("即将上线")} dim />
         <Row label={t("口味偏好")} value={t("即将上线")} dim />
         <Row label={t("日记本（私密）")} value={t("即将上线")} dim />
-        <Text style={styles.footHint}>{t("开得越多，TA 越懂你。全部可随时关闭。")}</Text>
       </Section>
 
       <Section title={t("我的创作")}>

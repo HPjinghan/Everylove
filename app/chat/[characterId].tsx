@@ -68,7 +68,7 @@ export default function SquareChatScreen() {
             id: uid('m'),
             from: 'system',
             kind: 'system',
-            text: t('配对已过期——TA 忘记你了。重新开始吧。'),
+            text: t('隔了太久，TA 已经不记得你了。'),
             at: Date.now(),
           },
         ]);
@@ -279,11 +279,6 @@ export default function SquareChatScreen() {
                 {Math.min(100, chat?.heart ?? 0)}/{HEART_FULL}
               </Text>
             </View>
-            <Text style={styles.bannerText}>
-              {character.custom
-                ? t('TA 是你亲手创造的 · 心动满了，TA 会想和你确定关系')
-                : t('3 天不聊，TA 会忘记你')}
-            </Text>
           </View>
         }
         cta={
@@ -291,13 +286,11 @@ export default function SquareChatScreen() {
             <View style={styles.ctaWrap}>
               <View style={styles.ctaTextWrap}>
                 <Text style={styles.ctaTitle}>
-                  {character.custom ? t('羁绊 LV1 · TA 想和你确定关系') : t('羁绊 LV1 · TA 想要你的联系方式')}
+                  {character.custom ? t('TA 想和你确定关系') : t('TA 想要你的联系方式')}
                 </Text>
-                <Text style={styles.ctaSub}>
-                  {character.custom
-                    ? t('这一次，是 TA 自己想留在你身边')
-                    : t('加好友之后，TA 会搬进你的 Message 里')}
-                </Text>
+                {character.custom ? (
+                  <Text style={styles.ctaSub}>{t('这一次，是 TA 自己想留在你身边')}</Text>
+                ) : null}
               </View>
               <Pressable
                 style={styles.ctaBtn}
@@ -361,7 +354,6 @@ const styles = themed(() =>
     },
     heartFill: { height: '100%', borderRadius: 4, backgroundColor: Romance.accent },
     heartNum: { fontSize: 11, color: Romance.accent, fontWeight: '600' },
-    bannerText: { fontSize: 10, color: Romance.sub },
     ctaWrap: {
       flexDirection: 'row',
       alignItems: 'center',

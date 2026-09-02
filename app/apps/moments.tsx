@@ -208,7 +208,7 @@ export default function FeedScreen() {
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>🕊️</Text>
             <Text style={styles.emptyText}>
-              {t('时间线还是空的。\n和 TA 加好友，TA 的帖子就会出现在这里。')}
+              {t('时间线还是空的。')}
             </Text>
           </View>
         }

@@ -131,7 +131,7 @@ export default function IdentityScreen() {
         <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {forCharacter ? (
             <Text style={styles.scopeHint}>
-              {t('这份身份只有{name}看得到；其他角色仍用默认身份。', { name: forCharacter.name })}
+              {t('只对{name}生效。', { name: forCharacter.name })}
             </Text>
           ) : null}
 
@@ -178,7 +178,6 @@ export default function IdentityScreen() {
           />
           <Field
             label={t('职业')}
-            hint={t('角色必须稳定记住的职业')}
             value={draft.occupation ?? ''}
             onChange={(t) => patch({ occupation: t })}
           />
@@ -205,7 +204,7 @@ export default function IdentityScreen() {
           />
           <Field
             label={t('关于我')}
-            hint={t('身份、经历、性格、兴趣，以及希望角色记住的事实')}
+            hint={t('身份、经历、性格、兴趣……')}
             value={draft.about ?? ''}
             onChange={(t) => patch({ about: t })}
             multiline
@@ -231,9 +230,6 @@ export default function IdentityScreen() {
           ) : bonds.length ? (
             <View style={styles.perChar}>
               <Text style={styles.sectionTitle}>{t('为单个角色使用不同身份')}</Text>
-              <Text style={styles.fieldHint}>
-                {t('想在某个 TA 面前换一种活法？给 TA 一份独立的身份。')}
-              </Text>
               {bonds.map((b) => (
                 <Pressable
                   key={b.id}

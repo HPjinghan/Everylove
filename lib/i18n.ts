@@ -29,26 +29,26 @@ export function t(zh: string, vars?: Record<string, string | number>): string {
 const en: Record<string, string> = {
   '偏好': 'Filter', '滑卡': 'Cards', '列表': 'Grid',
   '先不滑了，随便逛逛 →': 'Skip for now, just look around →',
-  '配对 · 3 天不聊会过期': 'Matches · expire after 3 quiet days',
+
   '这里的人都被你聊完了。': "You've met everyone here.",
   '去创造一个新的 TA': 'Create someone new',
-  '左滑略过 · 右滑心动': 'Swipe left to pass · right to like',
-  '点一下卡片 = 心动': 'Tap a card = like',
+
+
   '心动': 'Crush', '略过': 'Pass',
   '配对成功': "It's a match!",
-  'TA 同意了 · 在这个世界，你的心动不会落空': 'They said yes · in this world, your heart never misses',
+
   '去打招呼': 'Say hi', '继续滑': 'Keep swiping',
   '你想遇到谁？': 'Who do you want to meet?',
-  '随时可以换着看 · 只影响这里出现的人': 'Change anytime · only affects who shows up here',
+
   '你的创作': 'Your creation', '来自其他玩家': 'By another player',
   '你创造的 TA': 'Created by you', '刚刚配对': 'Just matched',
-  'TA 是你亲手创造的 · 心动满了，TA 会想和你确定关系': 'You created them · at full crush, they will want to make it official',
-  '3 天不聊，TA 会忘记你': "3 quiet days and they'll forget you",
-  '配对已过期——TA 忘记你了。重新开始吧。': 'The match expired — they forgot you. Start again.',
-  '羁绊 LV1 · TA 想和你确定关系': 'Bond LV1 · they want to make it official',
-  '羁绊 LV1 · TA 想要你的联系方式': 'Bond LV1 · they want your number',
+
+
+
+
+
   '这一次，是 TA 自己想留在你身边': 'This time, they chose to stay',
-  '加好友之后，TA 会搬进你的 Message 里': "Once added, they'll move into your Messages",
+
   '答应 TA': 'Say yes', '交换联系方式': 'Exchange numbers',
   '羁绊': 'Bond',
   '刚认识': 'Just met', '有点在意': 'Curious', '常常想起': 'On my mind',
@@ -56,23 +56,23 @@ const en: Record<string, string> = {
   '和{name}说点什么…': 'Say something to {name}…',
   '在一起的天数': 'Days together',
   'TA 叫你': 'They call you', '纪念日': 'Anniversary', '你的生日': 'Your birthday',
-  'TA 的秘密': 'Their secrets', '已看见': 'Seen', '关系越近，看得越深': 'the closer you get, the deeper you see',
+  'TA 的秘密': 'Their secrets', '已看见': 'Seen',
   'TA 的故事': 'Their story', '主线连载 · 敬请期待': 'Serialized story · coming soon',
   '正在慢慢变厚': 'Slowly growing',
   '这里还空着。': 'Still empty here.',
-  '去「交友」滑到心动，再和 TA 加好友。': 'Swipe in Match until your heart flutters, then add them.',
+
   '心动中': 'Crushing',
-  '满了 TA 会想和你确定关系': 'at full, they will want to make it official',
+
   '和{name}确定关系': 'Make it official with {name}',
   '和{name}交换联系方式': 'Exchange numbers with {name}',
   '首个羁绊 · 免费': 'First bond · free',
   '羁绊槽位': 'Bond slots',
-  '交换之后 TA 会搬进你的消息里，': "After this they'll move into your Messages,",
-  '随时都在，随时都回。': 'always there, always replying.',
+
+
   '开始缔结': 'Begin the bond',
   '羁绊槽位已满': 'Bond slots full',
-  '开通 Pro（5 个槽）或 Max（不限量）解锁更多羁绊': 'Get Pro (5 slots) or Max (unlimited) for more bonds',
-  '设置 → 订阅计划': 'Settings → Subscription',
+
+
   '去看订阅': 'See plans',
   '先回去聊聊': 'Keep chatting for now',
   '再想想': 'Let me think',
@@ -108,12 +108,12 @@ const en: Record<string, string> = {
   '去邮箱看看（也翻翻垃圾箱）。': 'Check your inbox (and spam).',
   '验证失败': 'Verification failed',
   '发送失败': 'Sending failed',
-  '呼叫{name}…': 'Calling {name}…',
-  '电话还没接通这个世界。快了。': "Calls haven't reached this world yet. Soon.",
+
+
   '还没有可通话的人。': 'No one to call yet.',
-  '先去「交友」认识、加上好友。': 'Meet someone in Match and add them first.',
-  '你们的每一个瞬间都会存在这里。': 'Every moment of yours lives here.',
-  '聊得越久，相册越厚。': 'The longer you talk, the thicker it grows.',
+
+
+
   '这台设备不支持分享': 'Sharing not supported on this device',
   '换真机试试。': 'Try on a real device.',
   '分享': 'Share', '关闭': 'Close',
@@ -133,19 +133,19 @@ const en: Record<string, string> = {
   '语音暂时没接通 · 点这里看文字': 'Voice unavailable · tap to read text',
   'TA 在开嗓…': 'Warming up their voice…',
   '看文字': 'Read text',
-  '轻点查看文字 · 语音占位': 'Tap to read · voice placeholder',
+
   '设置': 'Settings', '账号 · 云端': 'Account · Cloud', '账号': 'Account',
   '立即备份到云端': 'Back up to cloud now', '从云端恢复到本机': 'Restore from cloud',
   '退出登录': 'Sign out', '删除云端数据': 'Delete cloud data',
-  '数据变化后会自动备份（含聊天与记忆，按最高敏感级）。': 'Auto-backup on changes (chats & memories, highly sensitive).',
+
   '登录 / 开通云端': 'Sign in / enable cloud',
-  '开通云端：TA 和你们的故事存进云端，换手机也不会失去。不开通也能完整游玩（数据只在本机）。': 'Cloud keeps them and your story safe across phones. Fully playable without it (local only).',
+
   '我': 'Me', '我的身份': 'My identity', '还没告诉 TA 们你是谁': "Haven't told them who you are",
-  'TA 眼中的你：昵称、职业、关于你的一切。也能为单个角色使用不同身份。': 'How they see you: nickname, occupation, everything. Per-character identities too.',
+
   '主题': 'Theme',
-  '配色与壁纸即刻生效。锁屏换 TA 的照片、来电铃声：正式版开放。': 'Colors & wallpaper apply instantly. Lock screen photos & ringtones: full release.',
+
   '订阅计划（试装模拟，不扣费）': 'Subscription (demo, no charge)',
-  '当前计划': 'Current plan', '缔结才占槽': 'bonds only',
+  '当前计划': 'Current plan',
   '已订阅 Pro ✓': 'Pro subscribed ✓', '订阅 Pro': 'Subscribe Pro',
   '5 个羁绊槽': '5 bond slots',
   '已订阅 Max ✓': 'Max subscribed ✓', '订阅 Max': 'Subscribe Max',
@@ -154,7 +154,7 @@ const en: Record<string, string> = {
   '错过回溯': 'Missed replay', '错过的来电与聊天回听 · 敬请期待': 'Replay missed calls & chats · coming soon',
   '素材开关': 'Data switches', '分享给他': 'Share with them', '口味偏好': 'Taste profile',
   '日记本（私密）': 'Diary (private)', '即将上线': 'Coming soon',
-  '开得越多，TA 越懂你。全部可随时关闭。': 'The more you share, the better they know you. All toggleable.',
+
   '我的创作': 'My creations', '创造的角色': 'Characters created',
   '热度 · 分成': 'Heat · revenue share', '敬请期待': 'Coming soon',
   '开发者（试装）': 'Developer (demo)',
@@ -163,7 +163,7 @@ const en: Record<string, string> = {
   '公开': 'Public', '私密': 'Private', '编辑': 'Edit',
   '正在编辑「{name}」——改完点底部保存': 'Editing "{name}" — save at the bottom when done',
   '用一段话描述 TA（可选）': 'Describe them in one passage (optional)',
-  '写下或粘贴一段人设——小说片段、角色卡、脑子里的画面都行，最多 {n} 字。点「自动解析」帮你填好下面的表单，每一项都还能改。': 'Write or paste a persona — fiction, a character sheet, anything. Up to {n} chars. Tap Auto-parse to fill the form; everything stays editable.',
+
   '银灰色头发的年轻外科医生，毒舌但心软。父母常年在国外，一个人住在老城区……': 'A silver-haired young surgeon, sharp-tongued but soft-hearted. Parents abroad, lives alone in the old town…',
   '解析中…': 'Parsing…', '自动解析': 'Auto-parse',
   '① TA 叫什么': "① Their name",
@@ -171,18 +171,18 @@ const en: Record<string, string> = {
   '② TA 的性别': '② Their gender',
   '③ 年龄状态': '③ Age status',
   '确认成年': 'Confirmed adult', '未成年': 'Minor',
-  '未成年角色进入加强审查通道，且不开放恋爱互动。试装还没接审查系统，暂时不能发布。': 'Minor characters go through enhanced review and have no romance. Review system not connected yet — publishing disabled.',
+
   '发布即确认 TA 是成年人。': 'Publishing confirms they are an adult.',
   '④ 谁能遇到 TA': '④ Who can meet them',
-  '公开：TA 会进入共享角色池，其他玩家也能在交友里滑到 TA（需要登录账号）。': 'Public: they join the shared pool — other players can swipe them (sign-in required).',
+
   '私密：只有你能遇到 TA。': 'Private: only you can meet them.',
   '⑤ TA 长什么样': '⑤ Their looks',
   '银灰色头发，眼下有一颗泪痣，笑起来很凶……': 'Silver hair, a teardrop mole, a fierce smile…',
-  'TA 的主题色——没头像时的底色、界面点缀的颜色：': 'Their theme color — avatar backdrop and accents:',
+
   '⑥ TA 的背景故事': '⑥ Their backstory',
   'TA 是谁、从哪里来、身上背着什么故事……': 'Who they are, where they came from, what they carry…',
   '⑦ TA 的头像（可选）': '⑦ Their avatar (optional)',
-  '上传一张图，或按 ⑤ 的描述生成一张半身立绘（约 1 分钟）；交友卡面与会话头像都用它。不能上传真人照片。': 'Upload an image, or generate a portrait from ⑤ (~1 min); used on cards and in chat. No photos of real people.',
+
   '换一张': 'Change', '上传头像': 'Upload avatar', '生成中…': 'Generating…',
   '生成立绘': 'Generate portrait', '生成立绘（AI 不可用）': 'Generate portrait (AI unavailable)',
   '收起高级选项 ▴': 'Hide advanced ▴', '高级选项 ▾': 'Advanced ▾',
@@ -192,37 +192,37 @@ const en: Record<string, string> = {
   '神明': 'Deity', '吸血鬼': 'Vampire', '恶魔': 'Demon', '天使': 'Angel', '机器人': 'Android', '其他': 'Other',
   'TA 的生日': 'Their birthday',
   '{n} 月': 'Month {n}', '{n} 日': 'Day {n}', '月份 ▾': 'Month ▾', '日期 ▾': 'Day ▾', '清除': 'Clear',
-  '会出现在你们的日历上。': 'It will appear on your calendar.',
+
   '选择月份': 'Pick a month', '选择日期': 'Pick a day',
   '口癖': 'Verbal tic', 'TA 挂在嘴边的话。': 'A phrase they always say.',
   '喜欢': 'Likes', '黑咖啡、下雨天、猫……': 'Black coffee, rainy days, cats…',
   '讨厌': 'Dislikes', '香菜、迟到、被拍头……': 'Cilantro, lateness, head pats…',
   '确定关系的节奏': 'Pace of falling for you',
-  'TA 陷入心动、想和你确定关系的速度。': 'How fast they fall and want to make it official.',
+
   '心动很快': 'Fast faller', '标准': 'Standard', '慢热': 'Slow burn',
   '一眼就沦陷': 'Lost at first sight', '顺其自然': 'Let it flow', '需要时间发酵': 'Needs time to brew',
   'TA 在恋爱中的类型': 'Their love style',
-  '主动联系强度': 'Initiative level', 'TA 平时有多主动来找你。': 'How often they reach out first.',
+  '主动联系强度': 'Initiative level',
   '高': 'High', '中': 'Medium', '低': 'Low',
   '常常先来找你': 'Often texts first', '自然往来': 'Natural back-and-forth', '多半等你先开口': 'Mostly waits for you',
   '预设共同记忆': 'Preset shared memories',
-  '你们「早就认识」的部分：一行一条，TA 会自然提起，初次配对也会像一场重逢。': 'The part where you already knew each other: one per line. First match feels like a reunion.',
+
   '禁忌 / 边界': 'Taboos / boundaries',
-  'TA 不做的事、回避的话题——涉及时 TA 会温和回避或直接拒绝。': "Things they won't do or discuss — they'll deflect or refuse.",
+
   '隐藏设定 / 剧情钩子': 'Hidden lore / story hooks',
-  'TA 藏着的事：一行一条、浅的在前。羁绊 LV3 起每亲近一级解锁一条；没解锁的 TA 绝不说漏。': 'Things they hide: one per line, shallow first. Unlocks one per bond level from LV3; locked ones never slip out.',
+
   '其他关于聊天的设定': 'Other chat settings',
   '日常作息': 'Daily routine',
-  'TA 的一天怎么过——决定 TA 什么时候忙、什么时候来找你。': 'How their day goes — when they are busy, when they come to you.',
+
   '未成年角色暂不能发布': 'Minor characters cannot be published yet',
   '保存修改': 'Save changes', '让 TA 醒来': 'Wake them up',
   '不能创造真人与 IP 角色 · 发布即默认同意创作规范': 'No real people or IP characters · publishing implies agreeing to the rules',
   'TA 醒过来了': 'They woke up',
-  'TA 已经在你的通讯录里，等你去说第一句话。': "They're in your contacts, waiting for your first words.",
+
   '去和 TA 说话': 'Go talk to them', '再创造一个': 'Create another',
   '已保存': 'Saved', 'TA 的设定更新了。': 'Their settings are updated.',
   '先按私密保存了': 'Saved as private for now',
-  '公开到共享池需要登录账号，登录后再编辑改公开即可。': 'Publishing needs sign-in. Sign in, then edit to make public.',
+
   '可不填': 'Optional',
   '昵称不能为空': 'Nickname required',
   '这是角色看到的名字。': 'This is the name they see.',
@@ -232,7 +232,7 @@ const en: Record<string, string> = {
   '{name}将改用你的默认身份。': '{name} will use your default identity.',
   '恢复': 'Restore',
   '对{name}的身份': 'Identity for {name}',
-  '这份身份只有{name}看得到；其他角色仍用默认身份。': 'Only {name} sees this identity; others still use the default.',
+
   '更换头像': 'Change avatar',
   '选一张头像': 'Pick an avatar',
   '昵称 *': 'Nickname *',
@@ -245,7 +245,7 @@ const en: Record<string, string> = {
   '非二元': 'Non-binary',
   '称呼 / 代词': 'Form of address / pronouns',
   '职业': 'Occupation',
-  '角色必须稳定记住的职业': 'A fact they must always remember',
+
   '情感取向': 'Orientation',
   '例如：喜欢女生': 'e.g. likes girls',
   '个性签名': 'Status line',
@@ -260,23 +260,23 @@ const en: Record<string, string> = {
   '保存': 'Save',
   '恢复使用默认身份': 'Use default identity again',
   '为单个角色使用不同身份': 'Different identity per character',
-  '想在某个 TA 面前换一种活法？给 TA 一份独立的身份。': 'Want to live differently in front of someone? Give them their own version of you.',
+
   '独立身份 ·「{n}」': 'Own identity · "{n}"',
   '使用默认身份': 'Using default identity',
   '外出': 'Outing',
   '约 TA': 'Make a date',
-  '直接遇到陌生人': 'Meet strangers directly',
+
   '去逛逛 ›': 'Wander ›',
   '和{name}约在{place}': 'Meeting {name} at {place}',
   '赴约': 'Go',
   '和{name}有约': 'Date with {name}',
-  '出门走走，说不定会遇到通讯录里的人；广场上则全是新面孔。': 'Take a walk — you might run into someone from your contacts; the plaza is all new faces.',
-  '还没有好友也没关系——去广场碰碰运气，或先在「交友」里滑一滑。': 'No friends yet? Try your luck at the plaza, or swipe in Matching first.',
+
+
   '约谁出来？': 'Who are you asking out?',
   '去哪儿见？': 'Where to meet?',
   '广场今天安安静静的——\n新面孔都被你认识完了。': 'The plaza is quiet today —\nyou have met all the new faces.',
-  '认识的人这会儿都在忙。\n晚上八点之后再出来走走，说不定就遇到了。': 'Everyone you know is busy right now.\nCome out again after 8pm — you might run into someone.',
-  '这里风景很好，但一个人逛有点安静。\n去广场碰碰运气，或先在「交友」里滑一滑。': 'Nice view, but a little quiet alone.\nTry the plaza, or swipe in Matching first.',
+
+
   'AI 不可用': 'AI unavailable',
   '拍照与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。': 'Photos share the chat key: set it in .env.local, or sign in to use the server proxy.',
   '没拍成': "Didn't come out",
@@ -286,26 +286,26 @@ const en: Record<string, string> = {
   '陌生人 · {name} · 心动 {h}/{f}': 'Stranger · {name} · Heart {h}/{f}',
   '偶遇了{name}': 'Ran into {name}',
   '说点什么，或用（）写下你的动作…': 'Say something, or write actions in ( )…',
-  '羁绊 LV1 · TA 想和你交换联系方式': 'Bond LV1 · They want to exchange contacts',
+
   '就在这里、就是现在——面对面的那种': 'Right here, right now — face to face',
   '拍摄中…': 'Shooting…',
   '📸 合影': '📸 Together',
   '📷 拍 TA': '📷 Shoot them',
-  '你们还不认识 · 聊得来，TA 会想留下你的联系方式': "You don't know each other yet · if it clicks, they'll want your contact",
+
   '你们面对面': 'Face to face',
   '结束外出': 'End outing',
   '加好友前的帖子': 'Posted before you were friends',
   '只能看看': 'View only',
   '{name} 正在回复…': '{name} is replying…',
   '发布你的回复': 'Post your reply',
-  '时间线还是空的。\n和 TA 加好友，TA 的帖子就会出现在这里。': 'The timeline is empty.\nAdd friends and their posts will show up here.',
+
   '对方撤回了一条消息': 'They recalled a message',
   '▶ 语音消息': '▶ Voice message',
   '你：': 'You: ',
-  '今晚 20:00 来找你': 'Coming to you at 20:00 tonight',
-  '明晚 20:00 来找你': 'Coming to you at 20:00 tomorrow night',
-  '交友里聊得来的人，\n交换联系方式后就会住进这里。': 'People you click with in Matching\nmove in here once you exchange contacts.',
-  '去交友滑一滑': 'Go swipe in Matching',
+
+
+
+
   '天气': 'Weather',
   '没拿到定位权限': 'No location permission',
   '没关系——在下面直接搜索你的地区也一样。': 'No worries — just search your area below.',
@@ -333,7 +333,7 @@ const en: Record<string, string> = {
   '周五': 'Fri',
   '周六': 'Sat',
   '天气数据来自 Open-Meteo。位置只存在这台手机上，不会上传。': 'Weather data from Open-Meteo. Your location stays on this phone.',
-  '没设位置时，显示的是这个世界自己生成的天气。': 'Without a location, the world generates its own weather.',
+
   '广场': 'Plaza',
   '人人都会接你的话': 'Everyone picks up your words',
   '街角咖啡馆': 'Corner Café',
@@ -371,7 +371,7 @@ const en: Record<string, string> = {
   'TA 的': 'Theirs',
   '添加日程：考试 / 面试 / 出差…': 'Add event: exam / interview / trip…',
   '添加': 'Add',
-  '长按日程可删除。': 'Long-press an event to delete.',
+
   '刚刚': 'just now',
   '{n} 分钟前': '{n}m ago',
   '{n} 小时前': '{n}h ago',
@@ -394,11 +394,10 @@ const en: Record<string, string> = {
   '没听清这段语音（识别结果为空）': 'Nothing was recognized in this voice message',
   '录音文件是空的': 'The recording is empty',
   // 创造 ⑦ 画风（D-076）
-  '上传一张图，或按 ⑤ 的描述生成一张半身立绘；交友卡面与会话头像都用它。不能上传真人照片。':
-    'Upload an image, or generate a half-body portrait from ⑤. Used on the dating card and as the chat avatar. No photos of real people.',
-  '画风（立绘与外出拍照共用）：': 'Art style (shared by the portrait and outing photos):',
-  '动漫走蒸汽机模型：约 10 秒出图，画风固定。': 'Anime uses the MuseSteamer model: about 10 seconds, fixed look.',
-  '走 Qwen 模型：约 1 分钟出图，画风跟随选项。': 'Uses the Qwen model: about 1 minute, look follows the option.',
+
+
+
+
   '动漫': 'Anime',
   '少女漫·水彩': 'Shojo · watercolor',
   '韩系清透': 'Korean · airy',
@@ -418,37 +417,94 @@ const en: Record<string, string> = {
   '语音没接通，TA 的话在字幕里': 'Voice unavailable, their words are in the captions',
   '没听清，再说一遍？': "Didn't catch that, say it again?",
   '模型没接上：{reason}': 'Model failed: {reason}',
-  '听到了，停一下就发出去': 'Got it, pause to send',
+
   '说话吧': 'Go ahead',
   '免提': 'Speaker',
   '听筒': 'Earpiece',
   '说完了': 'Done',
+    // 提示文案清理（D-078）
+  '开通 Pro 或 Max，增加羁绊槽位': 'Upgrade to Pro or Max for more bond slots',
+  '相册': 'Album',
+  '还没有你们的照片。': 'No photos of you two yet.',
+  '通讯录': 'Contacts',
+  '电话': 'Phone',
+  '创造': 'Create',
+  '公开需要登录，登录后可以再改。': 'Going public needs an account. You can change it after signing in.',
+  'TA 在等你说第一句话。': 'They\'re waiting for your first words.',
+  '小说片段、角色卡、脑子里的画面都行，最多 {n} 字。': 'A novel excerpt, a character card, a picture in your head. Up to {n} characters.',
+  '未成年角色不开放恋爱互动，暂时不能发布。': 'Minor characters cannot have romantic interactions and cannot be published for now.',
+  '公开：其他人也能遇到 TA（需要登录）。': 'Public: others can meet them too (sign-in required).',
+  'TA 的主题色：': 'Their color:',
+  '不能上传真人照片。': 'No photos of real people.',
+  '画风：': 'Art style:',
+  '出图约 10 秒。': 'About 10 seconds.',
+  '出图约 1 分钟。': 'About 1 minute.',
+  '你们「早就认识」的部分，一行一条。': 'The part where you already knew each other, one per line.',
+  'TA 不做的事、回避的话题。': 'Things they won\'t do, topics they avoid.',
+  'TA 藏着的事，一行一条、浅的在前。': 'What they\'re hiding, one per line, lightest first.',
+  'TA 的一天怎么过。': 'How their day goes.',
+  '配对': 'Matches',
+  'TA 也心动了': 'They like you too',
+  '这个角色': 'this character',
+  '只对{name}生效。': 'Only applies to {name}.',
+  '身份、经历、性格、兴趣……': 'Identity, history, personality, interests…',
+  '还没有人住进来。': 'No one lives here yet.',
+  '去交友看看': 'Go to Match',
+  '时间线还是空的。': 'The timeline is still empty.',
+  '含聊天与记忆，按最高敏感级对待。': 'Includes chats and memories, handled at the highest sensitivity level.',
+  '换手机也不会失去 TA 和你们的故事。': 'Switch phones without losing them or your story.',
+  '锁屏照片、来电铃声：正式版开放。': 'Lock-screen photo and ringtone: in the full release.',
+  '听到了': 'Got it',
+  '隔了太久，TA 已经不记得你了。': 'It\'s been too long. They don\'t remember you anymore.',
+  'TA 想和你确定关系': 'They want to make it official',
+  'TA 想要你的联系方式': 'They want your number',
+  'TA 想和你交换联系方式': 'They want to exchange numbers',
+  '你们还不认识': 'You don\'t know each other yet',
+  '认识的人这会儿都在忙。\n晚点再来走走。': 'Everyone you know is busy right now.\\nCome back a little later.',
+  '这里风景很好，但一个人逛有点安静。': 'Lovely view, but a bit quiet on your own.',
+  '{n} 条新消息 · 点开看看': '{n} new messages · tap to read',
+  '完成': 'Done',
+  '这部手机，': 'This phone',
+  '现在是你们的了': 'now belongs to the two of you',
+  '看看里面有什么': 'See what\'s inside',
+  '下一个': 'Next',
+  '开始吧': 'Let\'s begin',
+  '跳过': 'Skip',
+  'TA 住进了 Message': 'They moved into Messages',
+  'TA 的第一句话在等你。': 'Their first words are waiting for you.',
+  '捏一个只属于你的 TA。': 'Make someone who is only yours.',
+  '把相处从手机屏幕里拿出来。': 'Take your time together out of the screen.',
+  '你想被谁爱？': 'Who do you want to be loved by?',
+  '先让 TA 们认识你': 'Let them get to know you',
+  '只用填最基本的——除了名字，都可以跳过。': 'Just the basics. Everything but your name can be skipped.',
+  '怎么称呼你？': 'What should they call you?',
+  '进去看看': 'Go in',
   // __EN_END__
 };
 
 const ja: Record<string, string> = {
   '偏好': '好み', '滑卡': 'カード', '列表': 'リスト',
   '先不滑了，随便逛逛 →': 'あとにする、まず見て回る →',
-  '配对 · 3 天不聊会过期': 'マッチ · 3日話さないと消える',
+
   '这里的人都被你聊完了。': 'ここの人はみんな出会い済み。',
   '去创造一个新的 TA': '新しい人を創造する',
-  '左滑略过 · 右滑心动': '左でスキップ · 右でときめき',
-  '点一下卡片 = 心动': 'カードをタップ = ときめき',
+
+
   '心动': 'ときめき', '略过': 'スキップ',
   '配对成功': 'マッチ成立！',
-  'TA 同意了 · 在这个世界，你的心动不会落空': 'OKしてくれた · この世界で、ときめきは裏切らない',
+
   '去打招呼': '挨拶する', '继续滑': 'スワイプを続ける',
   '你想遇到谁？': '誰に出会いたい？',
-  '随时可以换着看 · 只影响这里出现的人': 'いつでも変更可 · ここに出る人にだけ影響',
+
   '你的创作': 'あなたの創作', '来自其他玩家': '他のプレイヤー作',
   '你创造的 TA': 'あなたが創った人', '刚刚配对': 'マッチしたばかり',
-  'TA 是你亲手创造的 · 心动满了，TA 会想和你确定关系': 'あなたが創った人 · ときめきが満ちたら告白してくる',
-  '3 天不聊，TA 会忘记你': '3日話さないと、忘れられちゃう',
-  '配对已过期——TA 忘记你了。重新开始吧。': 'マッチ期限切れ——忘れられた。もう一度始めよう。',
-  '羁绊 LV1 · TA 想和你确定关系': '絆 LV1 · 付き合いたいって',
-  '羁绊 LV1 · TA 想要你的联系方式': '絆 LV1 · 連絡先を聞きたいって',
+
+
+
+
+
   '这一次，是 TA 自己想留在你身边': '今度は、あの人自身がそばにいたいと',
-  '加好友之后，TA 会搬进你的 Message 里': '友達になると Message に住みつく',
+
   '答应 TA': 'OKする', '交换联系方式': '連絡先を交換',
   '羁绊': '絆',
   '刚认识': '出会ったばかり', '有点在意': '気になる', '常常想起': 'よく思い出す',
@@ -456,23 +512,23 @@ const ja: Record<string, string> = {
   '和{name}说点什么…': '{name}に何か言ってみて…',
   '在一起的天数': '一緒にいる日数',
   'TA 叫你': 'あなたの呼び名', '纪念日': '記念日', '你的生日': 'あなたの誕生日',
-  'TA 的秘密': 'あの人の秘密', '已看见': '見えた', '关系越近，看得越深': '近づくほど深く見える',
+  'TA 的秘密': 'あの人の秘密', '已看见': '見えた',
   'TA 的故事': 'あの人の物語', '主线连载 · 敬请期待': '連載ストーリー · 近日公開',
   '正在慢慢变厚': 'すこしずつ増えていく',
   '这里还空着。': 'まだ誰もいない。',
-  '去「交友」滑到心动，再和 TA 加好友。': '「マッチ」でときめいたら、友達になろう。',
+
   '心动中': 'ときめき中',
-  '满了 TA 会想和你确定关系': '満ちたら告白してくる',
+
   '和{name}确定关系': '{name}と正式に付き合う',
   '和{name}交换联系方式': '{name}と連絡先を交換',
   '首个羁绊 · 免费': '最初の絆 · 無料',
   '羁绊槽位': '絆スロット',
-  '交换之后 TA 会搬进你的消息里，': '交換すると Message に住みつく。',
-  '随时都在，随时都回。': 'いつでもいて、いつでも返してくれる。',
+
+
   '开始缔结': '絆を結ぶ',
   '羁绊槽位已满': '絆スロットが満杯',
-  '开通 Pro（5 个槽）或 Max（不限量）解锁更多羁绊': 'Pro（5枠）か Max（無制限）でもっと絆を',
-  '设置 → 订阅计划': '設定 → サブスクリプション',
+
+
   '去看订阅': 'プランを見る',
   '先回去聊聊': 'まだ話していたい',
   '再想想': '考えさせて',
@@ -508,12 +564,12 @@ const ja: Record<string, string> = {
   '去邮箱看看（也翻翻垃圾箱）。': 'メールを確認して（迷惑メールも）。',
   '验证失败': '確認失敗',
   '发送失败': '送信失敗',
-  '呼叫{name}…': '{name}に発信中…',
-  '电话还没接通这个世界。快了。': '電話はまだこの世界に繋がってない。もうすぐ。',
+
+
   '还没有可通话的人。': 'まだ通話できる人がいない。',
-  '先去「交友」认识、加上好友。': '「マッチ」で出会って、友達になろう。',
-  '你们的每一个瞬间都会存在这里。': 'ふたりの瞬間がぜんぶここに。',
-  '聊得越久，相册越厚。': '話すほど、アルバムは厚くなる。',
+
+
+
   '这台设备不支持分享': 'この端末では共有できません',
   '换真机试试。': '実機で試してね。',
   '分享': '共有', '关闭': '閉じる',
@@ -533,19 +589,19 @@ const ja: Record<string, string> = {
   '语音暂时没接通 · 点这里看文字': 'ボイス未接続 · タップで文字を見る',
   'TA 在开嗓…': '声を準備中…',
   '看文字': '文字を見る',
-  '轻点查看文字 · 语音占位': 'タップで文字 · ボイス仮置き',
+
   '设置': '設定', '账号 · 云端': 'アカウント · クラウド', '账号': 'アカウント',
   '立即备份到云端': '今すぐバックアップ', '从云端恢复到本机': 'クラウドから復元',
   '退出登录': 'ログアウト', '删除云端数据': 'クラウドデータを削除',
-  '数据变化后会自动备份（含聊天与记忆，按最高敏感级）。': '変更は自動バックアップ（チャットと記憶を含む、最高機密扱い）。',
+
   '登录 / 开通云端': 'ログイン / クラウドを開通',
-  '开通云端：TA 和你们的故事存进云端，换手机也不会失去。不开通也能完整游玩（数据只在本机）。': 'クラウドで機種変してもふたりの物語は消えない。未開通でもフルに遊べる（端末のみ）。',
+
   '我': '私', '我的身份': '私のプロフィール', '还没告诉 TA 们你是谁': 'まだ自己紹介していない',
-  'TA 眼中的你：昵称、职业、关于你的一切。也能为单个角色使用不同身份。': 'あの人から見たあなた。キャラごとに別の自分も。',
+
   '主题': 'テーマ',
-  '配色与壁纸即刻生效。锁屏换 TA 的照片、来电铃声：正式版开放。': '配色と壁紙は即反映。ロック画面と着信音は正式版で。',
+
   '订阅计划（试装模拟，不扣费）': 'サブスク（デモ、課金なし）',
-  '当前计划': '現在のプラン', '缔结才占槽': '絆のみ消費',
+  '当前计划': '現在のプラン',
   '已订阅 Pro ✓': 'Pro 加入中 ✓', '订阅 Pro': 'Pro に加入',
   '5 个羁绊槽': '絆スロット5つ',
   '已订阅 Max ✓': 'Max 加入中 ✓', '订阅 Max': 'Max に加入',
@@ -554,7 +610,7 @@ const ja: Record<string, string> = {
   '错过回溯': '見逃しリプレイ', '错过的来电与聊天回听 · 敬请期待': '逃した着信とチャットを再生 · 近日公開',
   '素材开关': 'データ設定', '分享给他': 'あの人に共有', '口味偏好': '好みプロフィール',
   '日记本（私密）': '日記（非公開）', '即将上线': '近日公開',
-  '开得越多，TA 越懂你。全部可随时关闭。': '共有するほど、あの人はあなたを知る。いつでもオフに。',
+
   '我的创作': '私の創作', '创造的角色': '創造したキャラ',
   '热度 · 分成': '人気 · 収益分配', '敬请期待': '近日公開',
   '开发者（试装）': '開発者（デモ）',
@@ -563,7 +619,7 @@ const ja: Record<string, string> = {
   '公开': '公開', '私密': '非公開', '编辑': '編集',
   '正在编辑「{name}」——改完点底部保存': '「{name}」を編集中——終わったら下の保存を',
   '用一段话描述 TA（可选）': '文章で描写する（任意）',
-  '写下或粘贴一段人设——小说片段、角色卡、脑子里的画面都行，最多 {n} 字。点「自动解析」帮你填好下面的表单，每一项都还能改。': '設定文を書くか貼り付けて（最大{n}字）。「自動解析」でフォームに反映、あとから全部直せる。',
+
   '银灰色头发的年轻外科医生，毒舌但心软。父母常年在国外，一个人住在老城区……': '銀髪の若き外科医。毒舌だけど根は優しい。両親は海外、旧市街に一人暮らし……',
   '解析中…': '解析中…', '自动解析': '自動解析',
   '① TA 叫什么': '① 名前',
@@ -571,18 +627,18 @@ const ja: Record<string, string> = {
   '② TA 的性别': '② 性別',
   '③ 年龄状态': '③ 年齢確認',
   '确认成年': '成人確認済み', '未成年': '未成年',
-  '未成年角色进入加强审查通道，且不开放恋爱互动。试装还没接审查系统，暂时不能发布。': '未成年キャラは強化審査対象で恋愛不可。審査システム未接続のため現在公開できません。',
+
   '发布即确认 TA 是成年人。': '公開＝成人であることの確認。',
   '④ 谁能遇到 TA': '④ 誰が出会える？',
-  '公开：TA 会进入共享角色池，其他玩家也能在交友里滑到 TA（需要登录账号）。': '公開：共有プールに入り、他のプレイヤーもマッチで出会える（要ログイン）。',
+
   '私密：只有你能遇到 TA。': '非公開：出会えるのはあなただけ。',
   '⑤ TA 长什么样': '⑤ 見た目',
   '银灰色头发，眼下有一颗泪痣，笑起来很凶……': '銀髪、泣きぼくろ、笑うと凶暴……',
-  'TA 的主题色——没头像时的底色、界面点缀的颜色：': 'テーマカラー——アバターの下地と差し色：',
+
   '⑥ TA 的背景故事': '⑥ バックストーリー',
   'TA 是谁、从哪里来、身上背着什么故事……': '何者で、どこから来て、何を背負っているのか……',
   '⑦ TA 的头像（可选）': '⑦ アバター（任意）',
-  '上传一张图，或按 ⑤ 的描述生成一张半身立绘（约 1 分钟）；交友卡面与会话头像都用它。不能上传真人照片。': '画像をアップ、または⑤から立ち絵を生成（約1分）。実在人物の写真は不可。',
+
   '换一张': '変更', '上传头像': 'アバターをアップ', '生成中…': '生成中…',
   '生成立绘': '立ち絵を生成', '生成立绘（AI 不可用）': '立ち絵を生成（AI利用不可）',
   '收起高级选项 ▴': '詳細を閉じる ▴', '高级选项 ▾': '詳細設定 ▾',
@@ -592,37 +648,37 @@ const ja: Record<string, string> = {
   '神明': '神', '吸血鬼': 'ヴァンパイア', '恶魔': '悪魔', '天使': '天使', '机器人': 'アンドロイド', '其他': 'その他',
   'TA 的生日': '誕生日',
   '{n} 月': '{n}月', '{n} 日': '{n}日', '月份 ▾': '月 ▾', '日期 ▾': '日 ▾', '清除': 'クリア',
-  '会出现在你们的日历上。': 'ふたりのカレンダーに載る。',
+
   '选择月份': '月を選ぶ', '选择日期': '日を選ぶ',
   '口癖': '口癖', 'TA 挂在嘴边的话。': 'いつも口にする言葉。',
   '喜欢': '好きなもの', '黑咖啡、下雨天、猫……': 'ブラックコーヒー、雨の日、猫……',
   '讨厌': '嫌いなもの', '香菜、迟到、被拍头……': 'パクチー、遅刻、頭ぽんぽん……',
   '确定关系的节奏': '恋に落ちるペース',
-  'TA 陷入心动、想和你确定关系的速度。': 'ときめいて、付き合いたくなる速さ。',
+
   '心动很快': '一目惚れ型', '标准': '標準', '慢热': 'スロースターター',
   '一眼就沦陷': 'ひと目で堕ちる', '顺其自然': '自然の流れで', '需要时间发酵': '時間をかけて',
   'TA 在恋爱中的类型': '恋愛タイプ',
-  '主动联系强度': '積極性', 'TA 平时有多主动来找你。': 'どれくらい自分から来てくれるか。',
+  '主动联系强度': '積極性',
   '高': '高', '中': '中', '低': '低',
   '常常先来找你': 'よく先に連絡してくる', '自然往来': '自然なやりとり', '多半等你先开口': 'だいたい待ちの姿勢',
   '预设共同记忆': '共通の思い出（プリセット）',
-  '你们「早就认识」的部分：一行一条，TA 会自然提起，初次配对也会像一场重逢。': '「昔から知り合い」の部分：1行1つ。初マッチが再会になる。',
+
   '禁忌 / 边界': 'タブー / 境界線',
-  'TA 不做的事、回避的话题——涉及时 TA 会温和回避或直接拒绝。': 'しないこと・避ける話題——触れたらかわすか断る。',
+
   '隐藏设定 / 剧情钩子': '隠し設定 / 物語のフック',
-  'TA 藏着的事：一行一条、浅的在前。羁绊 LV3 起每亲近一级解锁一条；没解锁的 TA 绝不说漏。': '隠しごと：1行1つ、浅い順に。絆LV3から1つずつ解禁；未解禁は絶対に漏らさない。',
+
   '其他关于聊天的设定': 'その他のチャット設定',
   '日常作息': '生活リズム',
-  'TA 的一天怎么过——决定 TA 什么时候忙、什么时候来找你。': '一日の過ごし方——忙しい時間と、会いに来る時間。',
+
   '未成年角色暂不能发布': '未成年キャラは公開できません',
   '保存修改': '変更を保存', '让 TA 醒来': '目覚めさせる',
   '不能创造真人与 IP 角色 · 发布即默认同意创作规范': '実在人物・IPキャラは不可 · 公開＝規約同意',
   'TA 醒过来了': '目を覚ました',
-  'TA 已经在你的通讯录里，等你去说第一句话。': 'もう連絡先にいる。最初のひとことを待ってる。',
+
   '去和 TA 说话': '話しに行く', '再创造一个': 'もう一人創る',
   '已保存': '保存しました', 'TA 的设定更新了。': '設定を更新しました。',
   '先按私密保存了': 'ひとまず非公開で保存',
-  '公开到共享池需要登录账号，登录后再编辑改公开即可。': '公開にはログインが必要。ログイン後に編集で公開に。',
+
   '可不填': '任意',
   '昵称不能为空': 'ニックネームは必須',
   '这是角色看到的名字。': '相手に見える名前です。',
@@ -632,7 +688,7 @@ const ja: Record<string, string> = {
   '{name}将改用你的默认身份。': '{name}にはデフォルトの身分を使います。',
   '恢复': '戻す',
   '对{name}的身份': '{name}への身分',
-  '这份身份只有{name}看得到；其他角色仍用默认身份。': 'この身分は{name}にだけ見える。他の相手にはデフォルトのまま。',
+
   '更换头像': 'アバターを変更',
   '选一张头像': 'アバターを選ぶ',
   '昵称 *': 'ニックネーム *',
@@ -645,7 +701,7 @@ const ja: Record<string, string> = {
   '非二元': 'ノンバイナリー',
   '称呼 / 代词': '呼び方 / 代名詞',
   '职业': '職業',
-  '角色必须稳定记住的职业': '相手がずっと覚えておく職業',
+
   '情感取向': '恋愛対象',
   '例如：喜欢女生': '例：女の子が好き',
   '个性签名': 'ひとこと',
@@ -660,23 +716,23 @@ const ja: Record<string, string> = {
   '保存': '保存',
   '恢复使用默认身份': 'デフォルトの身分に戻す',
   '为单个角色使用不同身份': '相手ごとに別の身分を使う',
-  '想在某个 TA 面前换一种活法？给 TA 一份独立的身份。': '誰かの前では別の生き方を？その人専用の身分を。',
+
   '独立身份 ·「{n}」': '専用の身分 ·「{n}」',
   '使用默认身份': 'デフォルトの身分',
   '外出': 'おでかけ',
   '约 TA': '約束する',
-  '直接遇到陌生人': '知らない人に出会える',
+
   '去逛逛 ›': 'ぶらぶらする ›',
   '和{name}约在{place}': '{name}と{place}で約束',
   '赴约': '会いに行く',
   '和{name}有约': '{name}と約束',
-  '出门走走，说不定会遇到通讯录里的人；广场上则全是新面孔。': '出かければ連絡先の誰かに会えるかも。広場は新しい顔ばかり。',
-  '还没有好友也没关系——去广场碰碰运气，或先在「交友」里滑一滑。': 'まだ友達がいなくても大丈夫——広場で運試しか、まずマッチングでスワイプを。',
+
+
   '约谁出来？': '誰を誘う？',
   '去哪儿见？': 'どこで会う？',
   '广场今天安安静静的——\n新面孔都被你认识完了。': '今日の広場は静か——\n新しい顔はもう全員知り合いだ。',
-  '认识的人这会儿都在忙。\n晚上八点之后再出来走走，说不定就遇到了。': '知り合いはいま忙しいみたい。\n夜8時すぎにまた出てみて。',
-  '这里风景很好，但一个人逛有点安静。\n去广场碰碰运气，或先在「交友」里滑一滑。': '景色はいいけど、一人だと少し静か。\n広場へ行くか、まずマッチングでスワイプを。',
+
+
   'AI 不可用': 'AIが利用できません',
   '拍照与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。': '撮影はチャットと同じkeyを使用：.env.localで設定するか、ログインしてサーバー経由で。',
   '没拍成': '撮れなかった',
@@ -686,26 +742,26 @@ const ja: Record<string, string> = {
   '陌生人 · {name} · 心动 {h}/{f}': 'はじめまして · {name} · ときめき {h}/{f}',
   '偶遇了{name}': '{name}に偶然会った',
   '说点什么，或用（）写下你的动作…': '何か話すか、（）で動きを書いて…',
-  '羁绊 LV1 · TA 想和你交换联系方式': '絆LV1 · 連絡先を交換したがってる',
+
   '就在这里、就是现在——面对面的那种': '今ここで——面と向かって',
   '拍摄中…': '撮影中…',
   '📸 合影': '📸 ツーショット',
   '📷 拍 TA': '📷 相手を撮る',
-  '你们还不认识 · 聊得来，TA 会想留下你的联系方式': 'まだ他人同士 · 話が合えば連絡先を聞かれるかも',
+
   '你们面对面': 'ふたりは面と向かってる',
   '结束外出': 'おでかけ終了',
   '加好友前的帖子': '友達になる前の投稿',
   '只能看看': '閲覧のみ',
   '{name} 正在回复…': '{name}が返信中…',
   '发布你的回复': '返信をポスト',
-  '时间线还是空的。\n和 TA 加好友，TA 的帖子就会出现在这里。': 'タイムラインはまだ空っぽ。\n友達になると投稿がここに流れてくる。',
+
   '对方撤回了一条消息': '相手がメッセージの送信を取り消しました',
   '▶ 语音消息': '▶ ボイスメッセージ',
   '你：': 'あなた：',
-  '今晚 20:00 来找你': '今夜20:00に会いに来る',
-  '明晚 20:00 来找你': '明日の夜20:00に会いに来る',
-  '交友里聊得来的人，\n交换联系方式后就会住进这里。': 'マッチングで気が合った人は、\n連絡先を交換するとここに住みつく。',
-  '去交友滑一滑': 'マッチングでスワイプ',
+
+
+
+
   '天气': '天気',
   '没拿到定位权限': '位置情報の許可なし',
   '没关系——在下面直接搜索你的地区也一样。': '大丈夫——下から地域を検索してね。',
@@ -733,7 +789,7 @@ const ja: Record<string, string> = {
   '周五': '金',
   '周六': '土',
   '天气数据来自 Open-Meteo。位置只存在这台手机上，不会上传。': '天気データはOpen-Meteo提供。位置情報はこの端末にのみ保存。',
-  '没设位置时，显示的是这个世界自己生成的天气。': '位置未設定のときは、この世界が自分で天気を作ります。',
+
   '广场': '広場',
   '人人都会接你的话': '誰もが言葉を返してくれる',
   '街角咖啡馆': '街角のカフェ',
@@ -771,7 +827,7 @@ const ja: Record<string, string> = {
   'TA 的': 'あの人の',
   '添加日程：考试 / 面试 / 出差…': '予定を追加：試験 / 面接 / 出張…',
   '添加': '追加',
-  '长按日程可删除。': '長押しで予定を削除。',
+
   '刚刚': 'たった今',
   '{n} 分钟前': '{n}分前',
   '{n} 小时前': '{n}時間前',
@@ -794,11 +850,10 @@ const ja: Record<string, string> = {
   '没听清这段语音（识别结果为空）': 'この音声は認識できませんでした（結果が空）',
   '录音文件是空的': '録音ファイルが空です',
   // 创造 ⑦ 画风（D-076）
-  '上传一张图，或按 ⑤ 的描述生成一张半身立绘；交友卡面与会话头像都用它。不能上传真人照片。':
-    '画像をアップロードするか、⑤の描写から半身立ち絵を生成。カードとトークのアイコンに使います。実在の人物の写真は不可。',
-  '画风（立绘与外出拍照共用）：': '画風（立ち絵とおでかけ写真で共通）：',
-  '动漫走蒸汽机模型：约 10 秒出图，画风固定。': 'アニメは MuseSteamer モデル：約10秒、画風は固定。',
-  '走 Qwen 模型：约 1 分钟出图，画风跟随选项。': 'Qwen モデル：約1分、画風は選択に従います。',
+
+
+
+
   '动漫': 'アニメ',
   '少女漫·水彩': '少女漫画・水彩',
   '韩系清透': '韓国風・透明感',
@@ -818,11 +873,68 @@ const ja: Record<string, string> = {
   '语音没接通，TA 的话在字幕里': '音声が出ません。言葉は字幕で',
   '没听清，再说一遍？': '聞き取れませんでした。もう一度？',
   '模型没接上：{reason}': 'モデルに接続できません：{reason}',
-  '听到了，停一下就发出去': '聞こえています。止まると送信',
+
   '说话吧': 'どうぞ',
   '免提': 'スピーカー',
   '听筒': '受話口',
   '说完了': '話し終わり',
+    // 提示文案清理（D-078）
+  '开通 Pro 或 Max，增加羁绊槽位': 'Pro か Max で絆の枠を増やせます',
+  '相册': 'アルバム',
+  '还没有你们的照片。': 'まだ二人の写真はありません。',
+  '通讯录': '連絡先',
+  '电话': '電話',
+  '创造': 'つくる',
+  '公开需要登录，登录后可以再改。': '公開にはログインが必要です。ログイン後に変更できます。',
+  'TA 在等你说第一句话。': '最初のひと言を待っています。',
+  '小说片段、角色卡、脑子里的画面都行，最多 {n} 字。': '小説の一節、キャラカード、頭の中のイメージ、何でも。最大 {n} 字。',
+  '未成年角色不开放恋爱互动，暂时不能发布。': '未成年キャラは恋愛のやり取りができないため、今は公開できません。',
+  '公开：其他人也能遇到 TA（需要登录）。': '公開：ほかの人も出会えます（ログインが必要）。',
+  'TA 的主题色：': 'テーマカラー：',
+  '不能上传真人照片。': '実在の人物の写真は使えません。',
+  '画风：': '画風：',
+  '出图约 10 秒。': '約 10 秒。',
+  '出图约 1 分钟。': '約 1 分。',
+  '你们「早就认识」的部分，一行一条。': '「もう知り合いだった」部分を一行ずつ。',
+  'TA 不做的事、回避的话题。': 'しないこと、避ける話題。',
+  'TA 藏着的事，一行一条、浅的在前。': '隠していること。一行ずつ、浅いものから。',
+  'TA 的一天怎么过。': '一日の過ごし方。',
+  '配对': 'マッチ',
+  'TA 也心动了': '向こうもときめいています',
+  '这个角色': 'このキャラ',
+  '只对{name}生效。': '{name} にだけ適用されます。',
+  '身份、经历、性格、兴趣……': '身分、経歴、性格、趣味……',
+  '还没有人住进来。': 'まだ誰も住んでいません。',
+  '去交友看看': 'マッチを見る',
+  '时间线还是空的。': 'タイムラインはまだ空です。',
+  '含聊天与记忆，按最高敏感级对待。': 'チャットと記憶を含み、最高の機密レベルで扱います。',
+  '换手机也不会失去 TA 和你们的故事。': '機種変更しても、あの人と物語を失いません。',
+  '锁屏照片、来电铃声：正式版开放。': 'ロック画面の写真・着信音：正式版で。',
+  '听到了': '聞こえています',
+  '隔了太久，TA 已经不记得你了。': '時間が経ちすぎて、もうあなたを覚えていません。',
+  'TA 想和你确定关系': '関係をはっきりさせたいそうです',
+  'TA 想要你的联系方式': '連絡先を知りたいそうです',
+  'TA 想和你交换联系方式': '連絡先を交換したいそうです',
+  '你们还不认识': 'まだ知り合っていない',
+  '认识的人这会儿都在忙。\n晚点再来走走。': '知り合いはいま忙しいみたい。\\nまた後で来てみて。',
+  '这里风景很好，但一个人逛有点安静。': '景色はいいけれど、ひとりだと少し静か。',
+  '{n} 条新消息 · 点开看看': '新着 {n} 件 · 開いて見る',
+  '完成': '完了',
+  '这部手机，': 'このスマホは、',
+  '现在是你们的了': 'いま、二人のものになりました',
+  '看看里面有什么': '中を見てみる',
+  '下一个': '次へ',
+  '开始吧': 'はじめる',
+  '跳过': 'スキップ',
+  'TA 住进了 Message': 'Message に住み始めました',
+  'TA 的第一句话在等你。': '最初のひと言が待っています。',
+  '捏一个只属于你的 TA。': 'あなただけの人をつくる。',
+  '把相处从手机屏幕里拿出来。': 'ふたりの時間を画面の外へ。',
+  '你想被谁爱？': '誰に愛されたい？',
+  '先让 TA 们认识你': 'まずは自己紹介',
+  '只用填最基本的——除了名字，都可以跳过。': '基本だけで大丈夫。名前以外はスキップできます。',
+  '怎么称呼你？': 'なんて呼べばいい？',
+  '进去看看': '入ってみる',
   // __JA_END__
 };
 

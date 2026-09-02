@@ -250,7 +250,7 @@ export default function CallScreen() {
           <View style={styles.meter}>
             <View style={[styles.meterDot, speechStarted.current && styles.meterDotOn]} />
             <Text style={styles.meterText}>
-              {speechStarted.current ? t('听到了，停一下就发出去') : t('说话吧')}
+              {speechStarted.current ? t('听到了') : t('说话吧')}
             </Text>
           </View>
         ) : null}

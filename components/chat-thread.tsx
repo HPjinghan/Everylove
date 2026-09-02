@@ -138,7 +138,7 @@ function VoiceBubble({
                 ? status === 'loading'
                   ? t('TA 在开嗓…')
                   : t('看文字')
-                : t('轻点查看文字 · 语音占位')}
+                : t('看文字')}
           </Text>
         </Pressable>
       )}

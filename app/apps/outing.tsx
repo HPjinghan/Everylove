@@ -75,7 +75,7 @@ export default function OutingScreen() {
               <Text style={styles.plazaEmoji}>{plaza.emoji}</Text>
               <View style={styles.plazaBody}>
                 <Text style={styles.plazaTitle}>{t(plaza.name)}</Text>
-                <Text style={styles.plazaSub}>{t('直接遇到陌生人')} · {t(plaza.hook)}</Text>
+                <Text style={styles.plazaSub}>{t(plaza.hook)}</Text>
               </View>
               <Text style={styles.plazaGo}>{t('去逛逛 ›')}</Text>
             </LinearGradient>
@@ -138,12 +138,6 @@ export default function OutingScreen() {
             );
           })}
         </View>
-
-        <Text style={styles.footHint}>
-          {bonds.length
-            ? t('出门走走，说不定会遇到通讯录里的人；广场上则全是新面孔。')
-            : t('还没有好友也没关系——去广场碰碰运气，或先在「交友」里滑一滑。')}
-        </Text>
       </ScrollView>
 
       {/* 约 TA：选人 → 选地点 */}
@@ -269,7 +263,6 @@ const styles = themed(() =>
     cardBadgeText: { fontSize: 10, fontWeight: '700', color: Romance.accent },
     cardName: { fontSize: 14, fontWeight: '600', color: Romance.ink, marginTop: 8, marginLeft: 4 },
     cardHook: { fontSize: 11, color: Romance.faint, marginTop: 2, marginLeft: 4 },
-    footHint: { textAlign: 'center', fontSize: 11, color: Romance.faint, marginTop: 6 },
     modal: { flex: 1, backgroundColor: Romance.bg, paddingTop: 28, paddingHorizontal: 20 },
     modalClose: { position: 'absolute', top: 16, right: 16, padding: 8, zIndex: 2 },
     modalTitle: { fontSize: 22, fontWeight: '700', color: Romance.ink, marginBottom: 18 },

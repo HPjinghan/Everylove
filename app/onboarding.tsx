@@ -30,11 +30,11 @@ const LANGS: { key: Lang; label: string }[] = [
   { key: 'ja', label: '日本語' },
 ];
 
-const OPTIONS: { key: LovePref; label: string; sub: string }[] = [
-  { key: 'male', label: '男生', sub: '他会先来找你' },
-  { key: 'female', label: '女生', sub: '她会先来找你' },
-  { key: 'any', label: '都可以', sub: '心动没有条件' },
-  { key: 'nonhuman', label: '非人类', sub: '有什么正朝你走来' },
+const OPTIONS: { key: LovePref; label: string }[] = [
+  { key: 'male', label: '男生' },
+  { key: 'female', label: '女生' },
+  { key: 'any', label: '都可以' },
+  { key: 'nonhuman', label: '非人类' },
 ];
 
 const GENDERS: { key: NonNullable<UserProfile['gender']>; label: string }[] = [
@@ -99,16 +99,13 @@ export default function OnboardingScreen() {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 80, paddingBottom: insets.bottom }]}>
         <Text style={styles.question}>{t('你想被谁爱？')}</Text>
-        <Text style={styles.hint}>{t('不用你主动。选好之后，等他来。')}</Text>
         <View style={styles.options}>
           {OPTIONS.map((o) => (
             <Pressable key={o.key} style={styles.option} onPress={() => choose(o.key)}>
               <Text style={styles.optionLabel}>{t(o.label)}</Text>
-              <Text style={styles.optionSub}>{t(o.sub)}</Text>
             </Pressable>
           ))}
         </View>
-        <Text style={styles.footnote}>{t('交友会记住你的口味 · 随时可以换着看')}</Text>
       </View>
     );
   }
@@ -173,7 +170,7 @@ export default function OnboardingScreen() {
             style={styles.meInput}
             value={occupation}
             onChangeText={setOccupation}
-            placeholder={t('可不填 · TA 会稳定记住')}
+            placeholder={t('可不填')}
             placeholderTextColor={Romance.faint}
             maxLength={20}
           />
@@ -185,10 +182,6 @@ export default function OnboardingScreen() {
           onPress={finish}>
           <Text style={styles.primaryBtnText}>{t('进去看看')}</Text>
         </Pressable>
-
-        <Text style={styles.footnote}>
-          {t('稍后可以在 设置 → 我的身份 里继续补充，')}{'\n'}{t('也能为单个角色使用不同身份。')}
-        </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -211,16 +204,6 @@ const styles = themed(() =>
       justifyContent: 'space-between',
     },
     optionLabel: { fontSize: 18, fontWeight: '600', color: Romance.ink },
-    optionSub: { fontSize: 12, color: Romance.faint },
-    footnote: {
-      marginTop: 'auto',
-      marginBottom: 24,
-      paddingTop: 24,
-      fontSize: 11,
-      color: Romance.faint,
-      textAlign: 'center',
-      lineHeight: 17,
-    },
     meContent: { flexGrow: 1 },
     meField: { marginTop: 22 },
     meLabel: { fontSize: 14, fontWeight: '600', color: Romance.ink },

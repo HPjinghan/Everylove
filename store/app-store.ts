@@ -587,7 +587,7 @@ export const useAppStore = create<AppState>()(
                           id: uid('m'),
                           from: 'system' as const,
                           kind: 'system' as const,
-                          text: `你们约好了去${place.name}见面 · 到「外出」里赴约`,
+                          text: `你们约好了去${place.name}见面`,
                           at: Date.now(),
                         },
                       ],

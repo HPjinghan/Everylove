@@ -272,7 +272,7 @@ export default function DatingScreen() {
       {/* 配对列表：滑到即配对；3 天不聊过期 */}
       {matches.length > 0 && (
         <View style={styles.matchesWrap}>
-          <Text style={styles.matchesTitle}>{t('配对 · 3 天不聊会过期')}</Text>
+          <Text style={styles.matchesTitle}>{t('配对')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.matchesRow}>
             {matches.map((c) => (
               <Pressable
@@ -313,9 +313,7 @@ export default function DatingScreen() {
               <Text style={styles.emptyEmoji}>🫧</Text>
               <Text style={styles.emptyText}>{t('这里的人都被你聊完了。')}</Text>
             </View>
-          ) : (
-            <Text style={styles.gridHint}>{t('点一下卡片 = 心动')}</Text>
-          )}
+          ) : null}
         </ScrollView>
       ) : (
       <View style={styles.deckArea}>
@@ -364,7 +362,6 @@ export default function DatingScreen() {
               <MingCute name="heart" size={30} color="#FFFFFF" />
             </Pressable>
           </View>
-          <Text style={styles.footHint}>{t('左滑略过 · 右滑心动')}</Text>
         </View>
       ) : null}
 
@@ -393,7 +390,6 @@ export default function DatingScreen() {
                 </Pressable>
               );
             })}
-            <Text style={styles.prefHint}>{t('随时可以换着看 · 只影响这里出现的人')}</Text>
           </Pressable>
         </Pressable>
       </Modal>
@@ -404,7 +400,7 @@ export default function DatingScreen() {
           <Text style={styles.matchBig}>{t('配对成功')}</Text>
           <CharAvatar name={match.name} color={match.color} size={96} characterId={match.id} />
           <Text style={styles.matchCharName}>{match.name}</Text>
-          <Text style={styles.matchSub}>{t('TA 同意了 · 在这个世界，你的心动不会落空')}</Text>
+          <Text style={styles.matchSub}>{t('TA 也心动了')}</Text>
           <Pressable style={styles.matchPrimary} onPress={() => sayHi(match)}>
             <Text style={styles.matchPrimaryText}>{t('去打招呼')}</Text>
           </Pressable>
@@ -453,7 +449,6 @@ const styles = themed(() =>
       shadowOffset: { width: 0, height: 4 },
       elevation: 3,
     },
-    gridHint: { textAlign: 'center', fontSize: 11, color: Romance.faint, marginTop: 14 },
     cardOverlayCompact: { paddingHorizontal: 12, paddingTop: 28, paddingBottom: 10 },
     prefMask: {
       flex: 1,
@@ -478,7 +473,6 @@ const styles = themed(() =>
     prefRowActive: { backgroundColor: Romance.accent },
     prefRowText: { fontSize: 15, fontWeight: '600', color: Romance.ink },
     prefRowTextActive: { color: '#FFFFFF' },
-    prefHint: { textAlign: 'center', fontSize: 11, color: Romance.faint, marginTop: 8 },
     matchesWrap: { paddingTop: 10 },
     matchesTitle: {
       fontSize: 11,
@@ -562,7 +556,6 @@ const styles = themed(() =>
       shadowRadius: 10,
       shadowOffset: { width: 0, height: 4 },
     },
-    footHint: { fontSize: 11, color: Romance.faint },
     emptyDeck: { alignItems: 'center', gap: 10, paddingHorizontal: 40 },
     emptyEmoji: { fontSize: 44 },
     emptyText: { fontSize: 14, color: Romance.sub, textAlign: 'center' },

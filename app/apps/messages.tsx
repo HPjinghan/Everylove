@@ -31,13 +31,6 @@ function timeLabel(b: Bond): string {
   return isToday ? clockTime(last.at) : timeAgo(last.at);
 }
 
-function arrivalPill(b: Bond): string | null {
-  if (!b.arrivalAt || b.arrivalAt <= Date.now()) return null;
-  const arrival = new Date(b.arrivalAt);
-  const today = arrival.toDateString() === new Date().toDateString();
-  return today ? t('今晚 20:00 来找你') : t('明晚 20:00 来找你');
-}
-
 export default function MessagesScreen() {
   const router = useRouter();
   const bonds = useAppStore((s) => s.bonds);
@@ -48,10 +41,10 @@ export default function MessagesScreen() {
         <View style={styles.empty}>
           <Text style={styles.emptyHeart}>♡</Text>
           <Text style={styles.emptyText}>
-            {t('交友里聊得来的人，\n交换联系方式后就会住进这里。')}
+            {t('还没有人住进来。')}
           </Text>
           <Pressable style={styles.emptyBtn} onPress={() => router.push('/apps/dating')}>
-            <Text style={styles.emptyBtnText}>{t('去交友滑一滑')}</Text>
+            <Text style={styles.emptyBtnText}>{t('去交友看看')}</Text>
           </Pressable>
         </View>
       ) : (
@@ -62,7 +55,6 @@ export default function MessagesScreen() {
           ItemSeparatorComponent={() => <View style={styles.sep} />}
           renderItem={({ item }) => {
             const c = findCharacter(item.characterId);
-            const pill = arrivalPill(item);
             return (
               <Pressable
                 style={styles.row}
@@ -77,7 +69,6 @@ export default function MessagesScreen() {
                   <Text style={styles.rowPreview} numberOfLines={1}>
                     {preview(item)}
                   </Text>
-                  {pill && <Text style={styles.arrivalHint}>{pill}</Text>}
                 </View>
                 <View style={styles.rowRight}>
                   <Text style={styles.rowTime}>{timeLabel(item)}</Text>
@@ -123,7 +114,6 @@ const styles = themed(() =>
     rowBody: { flex: 1 },
     rowName: { fontSize: 16, fontWeight: '600', color: '#111111' },
     rowPreview: { fontSize: 13, color: '#8E97A3', marginTop: 3 },
-    arrivalHint: { fontSize: 11, color: '#06C755', marginTop: 3, fontWeight: '500' },
     rowRight: { alignItems: 'flex-end', gap: 5 },
     rowTime: { fontSize: 11, color: '#B3BAC4' },
     unreadDot: {

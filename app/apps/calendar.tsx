@@ -233,7 +233,6 @@ export default function CalendarScreen() {
                 <Text style={styles.addBtnText}>{t('添加')}</Text>
               </Pressable>
             </View>
-            <Text style={styles.hint}>{t('长按日程可删除。')}</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -296,6 +295,5 @@ const styles = themed(() =>
       justifyContent: 'center',
     },
     addBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-    hint: { fontSize: 11, color: Romance.faint, marginTop: 10, lineHeight: 17 },
   })
 );

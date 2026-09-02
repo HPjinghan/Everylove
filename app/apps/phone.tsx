@@ -35,7 +35,7 @@ export default function PhoneScreen() {
             <MingCute name="phone" size={34} color="#3EB489" />
           </View>
           <Text style={styles.emptyText}>
-            {t('还没有可通话的人。')}{'\n'}{t('先去「交友」认识、加上好友。')}
+            {t('还没有可通话的人。')}
           </Text>
         </View>
       ) : (

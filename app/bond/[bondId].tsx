@@ -281,7 +281,7 @@ export default function BondScreen() {
                 <Text style={styles.profileRowLabel}>{t('TA 的秘密')}</Text>
                 <Text style={styles.profileRowValueDim}>
                   {t('已看见')} {unlockedSecretCount(levelInfo(bond.affinity).level, characterSecrets(character).length)}/
-                  {characterSecrets(character).length} · {t('关系越近，看得越深')}
+                  {characterSecrets(character).length}
                 </Text>
               </View>
             )}
