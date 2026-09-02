@@ -624,3 +624,9 @@
 - **决策**：`scripts/gen-image-core.mjs` 加模型注册表 `MODELS`（qwen-image / musesteamer-air-image：标签、单价、prompt 上限、接受的参数、备注）——`buildBody` 只带该模型接受的参数，`endpointFor` 让蒸汽机走其专用端点 `/v2/musesteamer/images/generations`（通用端点对它接受请求但不回，实测挂 5 分钟无响应）。网页 model 框改 datalist 可选两者，切换即更新 prompt 上限、置灰不支持的字段（negative/steps/guidance/n）并显示单价与耗时提示；请求体预览与服务端同口径。
 - **盘点结论（2026-09-02 实测，本账号）**：能用的只有 qwen-image（0.25 元、~60 s）与 musesteamer-air-image（0.05 元、~8 s）；`ernie-image-turbo` 返回 invalid_model（文档有、账号未开通或 ID 不同）、`flux.1-schnell` 返回 model_offline、`qwen-image-2.0/3.0/2512` 千帆未上（阿里百炼独占）。**工程立绘暂不换模型**——换不换是美术方向与成本的产品决定，立为 OPEN_QUESTIONS #24。
 - **影响文件**：`scripts/gen-image-core.mjs`（MODELS/endpointFor/promptLimit/buildBody）、`scripts/gen-image-server.mjs`（config 带 models）、`scripts/gen-image-ui.html`（模型选择/置灰/提示）、`docs/OPEN_QUESTIONS.md`（#24）。
+
+## D-072 · 2026-09-02 · gen-image.bat 改纯 ASCII + CRLF（修 Harper 报告的双击报错）
+
+- **问题**：双击 `gen-image.bat` 报 `'ttp:' 不是内部或外部命令`、`'nul' 不是内部或外部命令`、并误判「没找到 node」。原因是 cmd 的已知缺陷：批处理里执行 `chcp 65001` 后 cmd 按**字节偏移**重读文件，前后行含中文（多字节）就会读歪——`http:` 被读成 `ttp:`、`>nul` 被读成命令 `nul`，后续 `where node` 的判断也随之错乱。
+- **决策**：`.bat` 一律**纯 ASCII、CRLF、不用 chcp、不写中文**（注释与提示全英文）。Node 往真实控制台打中文走 WriteConsoleW，不依赖代码页，所以服务端日志的中文不受影响。node 缺失判断改为 `where node >nul 2>&1` + `if errorlevel 1`。
+- **影响文件**：`gen-image.bat`（重写）。
