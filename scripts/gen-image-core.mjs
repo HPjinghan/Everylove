@@ -16,9 +16,42 @@ import { fileURLToPath } from 'node:url';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const ENDPOINT = 'https://qianfan.baidubce.com/v2/images/generations';
+/** 百度蒸汽机 Air-Image 走专用端点（通用端点接受请求但不回，2026-09-02 实测） */
+export const MUSE_ENDPOINT = 'https://qianfan.baidubce.com/v2/musesteamer/images/generations';
 export const DEFAULT_OUT = resolve(ROOT, 'scripts/out');
 export const DEFAULT_SIZE = '1024x1024';
 export const LIMITS = { prompt: 800, negative: 500 };
+
+/**
+ * 千帆上目前能打通的文生图模型（2026-09-02 实测；ernie-image-turbo 本账号 invalid_model，flux.1-schnell 已 offline，
+ * qwen-image-2.0/3.0 千帆未上）。params = 该模型接受的可选参数，其余不发。
+ */
+export const MODELS = {
+  'qwen-image': {
+    label: 'Qwen Image（工程当前）',
+    price: '0.25 元/张',
+    promptMax: 800,
+    params: ['negative', 'seed', 'steps', 'guidance', 'prompt_extend'],
+    note: '约 60s/张；中英皆可；n 只支持 1',
+  },
+  'musesteamer-air-image': {
+    label: '蒸汽机 Air-Image（百度）',
+    price: '0.05 元/张',
+    promptMax: 1000,
+    params: ['seed', 'prompt_extend'],
+    note: '约 8s/张；不支持 negative / steps / guidance / n',
+  },
+};
+
+export function modelInfo(model) {
+  return MODELS[model];
+}
+export function endpointFor(model) {
+  return /^musesteamer/i.test(model) ? MUSE_ENDPOINT : ENDPOINT;
+}
+export function promptLimit(model) {
+  return modelInfo(model)?.promptMax ?? LIMITS.prompt;
+}
 
 /* ─────────────── .env.local ─────────────── */
 
@@ -103,12 +136,16 @@ export class QianfanError extends Error {
 
 /** 请求体：只带用户真的填了的字段，其余交给平台默认（= 工程行为） */
 export function buildBody({ prompt, model = defaultModel(), size = DEFAULT_SIZE, n = 1, negative, seed, steps, guidance, promptExtend }) {
-  const body = { model, prompt, size, n };
-  if (negative && String(negative).trim()) body.negative_prompt = String(negative).trim();
-  if (Number.isFinite(seed)) body.seed = Math.floor(seed);
-  if (Number.isFinite(steps)) body.steps = Math.floor(steps);
-  if (Number.isFinite(guidance)) body.guidance = guidance;
-  if (typeof promptExtend === 'boolean') body.prompt_extend = promptExtend;
+  const info = modelInfo(model);
+  const ok = (p) => !info || info.params.includes(p);
+  const body = { model, prompt, size };
+  // 蒸汽机的文档没有 n；未知模型按通用接口带上
+  if (!/^musesteamer/i.test(model)) body.n = n;
+  if (ok('negative') && negative && String(negative).trim()) body.negative_prompt = String(negative).trim();
+  if (ok('seed') && Number.isFinite(seed)) body.seed = Math.floor(seed);
+  if (ok('steps') && Number.isFinite(steps)) body.steps = Math.floor(steps);
+  if (ok('guidance') && Number.isFinite(guidance)) body.guidance = guidance;
+  if (ok('prompt_extend') && typeof promptExtend === 'boolean') body.prompt_extend = promptExtend;
   return body;
 }
 
@@ -123,7 +160,7 @@ export async function generate({ outDir = DEFAULT_OUT, meta = {}, ...opts }) {
   const { prompt, ...rest } = body;
   const params = { ...rest, ...meta };
   const t0 = Date.now();
-  const res = await fetch(ENDPOINT, {
+  const res = await fetch(endpointFor(body.model), {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
     body: JSON.stringify(body),

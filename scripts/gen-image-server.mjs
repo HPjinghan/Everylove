@@ -23,6 +23,7 @@ import {
   DEFAULT_OUT,
   DEFAULT_SIZE,
   LIMITS,
+  MODELS,
   QianfanError,
   apiKey,
   composePrompt,
@@ -80,6 +81,7 @@ const server = createServer(async (req, res) => {
         hasKey: Boolean(apiKey()),
         outDir: DEFAULT_OUT,
         limits: LIMITS,
+        models: MODELS,
         presets: { style: preset('style'), portrait: preset('portrait') },
       });
     }

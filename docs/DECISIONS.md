@@ -618,3 +618,9 @@
 - **决策**：调 prompt 网页与 CLI 的输入改为 **system / user 两段**（Harper：「结构上我会有 system 和 user 两个部分」）。千帆 `/v2/images/generations` **没有 system 字段**（只有一条 `prompt`，qwen-image ≤800 字符），所以两段在发出前由 `composePrompt` 拼成一条，顺序可选：**system 在前**（默认）/ **user 在前**（= 工程 `buildPortraitPrompt` 的主体在前、画风在后）。system 框可一键载入工程当前常量（立绘 = PORTRAIT_COMPOSITION+画风三条；画风 = COMIC_STYLE/QUALITY/RULES，实时读 prompts.ts）后再改；每段与拼接后的总长都有 800 计数。同时把文档里对调 prompt 有用的接口参数露出来（不填即平台默认 = 与工程一致）：`negative_prompt`（≤500）、`seed`（固定种子才是公平比较，页面有「随机一个并固定」）、`steps`（1–50）、`guidance`（0–20，默认 4）、`prompt_extend`（**平台默认 true，会先改写 prompt 再画**；关掉才是所写即所画）；qwen-image 的 `n` 只支持 1（页面注明）。历史旁档 `.txt` 的参数 JSON 记录 system / user / order / 各参数，历史卡分色显示 user（玫瑰）与 system（蓝灰），回填时两段各回各框；老格式（整条 prompt）回填时从末尾剥工程预设作 system。**英文 prompt 已验证可出图**（qwen-image 中英皆可）。
 - **影响文件**：`scripts/gen-image-core.mjs`（composePrompt/preset/buildBody/LIMITS）、`scripts/gen-image-server.mjs`、`scripts/gen-image-ui.html`、`scripts/gen-image.mjs`（--system/--system-file/--user-first/--negative/--seed/--steps/--guidance/--no-extend）。
 - **备注**：D-069 为并行进行中的引擎改造（脚本引擎下线），本条编号顺延。
+
+## D-071 · 2026-09-02 · 调 prompt 工具支持多模型（蒸汽机 Air-Image 专用端点）+ 千帆文生图模型盘点（Harper 提问触发）
+
+- **决策**：`scripts/gen-image-core.mjs` 加模型注册表 `MODELS`（qwen-image / musesteamer-air-image：标签、单价、prompt 上限、接受的参数、备注）——`buildBody` 只带该模型接受的参数，`endpointFor` 让蒸汽机走其专用端点 `/v2/musesteamer/images/generations`（通用端点对它接受请求但不回，实测挂 5 分钟无响应）。网页 model 框改 datalist 可选两者，切换即更新 prompt 上限、置灰不支持的字段（negative/steps/guidance/n）并显示单价与耗时提示；请求体预览与服务端同口径。
+- **盘点结论（2026-09-02 实测，本账号）**：能用的只有 qwen-image（0.25 元、~60 s）与 musesteamer-air-image（0.05 元、~8 s）；`ernie-image-turbo` 返回 invalid_model（文档有、账号未开通或 ID 不同）、`flux.1-schnell` 返回 model_offline、`qwen-image-2.0/3.0/2512` 千帆未上（阿里百炼独占）。**工程立绘暂不换模型**——换不换是美术方向与成本的产品决定，立为 OPEN_QUESTIONS #24。
+- **影响文件**：`scripts/gen-image-core.mjs`（MODELS/endpointFor/promptLimit/buildBody）、`scripts/gen-image-server.mjs`（config 带 models）、`scripts/gen-image-ui.html`（模型选择/置灰/提示）、`docs/OPEN_QUESTIONS.md`（#24）。

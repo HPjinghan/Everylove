@@ -40,6 +40,7 @@
   textarea:focus, input:focus, select:focus { border-color: var(--rose); box-shadow: 0 0 0 3px var(--rose-soft); }
   textarea.sys:focus { border-color: var(--sys); box-shadow: 0 0 0 3px var(--sys-soft); }
   input, select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #fff; outline: none; width: 100%; }
+  input:disabled, select:disabled, textarea:disabled { background: #f3eff0; color: #b3a9ad; border-style: dashed; cursor: not-allowed; }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
@@ -126,8 +127,9 @@
 
     <div class="row">
       <div><div class="lbl"><span>size</span></div><input id="size" list="sizes" value="1024x1024" /><datalist id="sizes"><option value="1024x1024" /><option value="768x1024" /><option value="1024x768" /><option value="1328x1328" /><option value="1536x1536" /></datalist></div>
-      <div><div class="lbl"><span>model</span></div><input id="model" /></div>
+      <div><div class="lbl"><span>model</span></div><input id="model" list="models" /><datalist id="models"></datalist></div>
     </div>
+    <div class="hint" id="modelHint"></div>
 
     <details id="adv">
       <summary>高级参数（不填 = 平台默认 = 和工程一样）</summary>
@@ -170,6 +172,8 @@
   const goEl = $('go'), statusEl = $('status'), fullEl = $('full'), fullCnt = $('fullCnt'), gridEl = $('grid'), emptyEl = $('empty'), hintEl = $('hint');
   let presets = { style: '', portrait: '' };
   let limits = { prompt: 800, negative: 500 };
+  let cfgLimits = { prompt: 800, negative: 500 };
+  let models = {};
 
   const order = () => document.querySelector('input[name=order]:checked').value;
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -188,18 +192,38 @@
       promptExtend: F.extend.checked ? undefined : false,
     };
   }
+  // 与 gen-image-core.mjs 的 buildBody 同口径：已知模型只带它接受的参数
   function bodyPreview() {
     const r = request();
-    const b = { model: r.model, prompt: compose(), size: r.size, n: r.n };
-    if (r.negative.trim()) b.negative_prompt = r.negative.trim();
-    if (r.seed !== '') b.seed = r.seed;
-    if (r.steps !== '') b.steps = r.steps;
-    if (r.guidance !== '') b.guidance = r.guidance;
-    if (r.promptExtend === false) b.prompt_extend = false;
+    const info = models[r.model];
+    const ok = (p) => !info || info.params.includes(p);
+    const b = { model: r.model, prompt: compose(), size: r.size };
+    if (!/^musesteamer/i.test(r.model)) b.n = r.n;
+    if (ok('negative') && r.negative.trim()) b.negative_prompt = r.negative.trim();
+    if (ok('seed') && r.seed !== '') b.seed = r.seed;
+    if (ok('steps') && r.steps !== '') b.steps = r.steps;
+    if (ok('guidance') && r.guidance !== '') b.guidance = r.guidance;
+    if (ok('prompt_extend') && r.promptExtend === false) b.prompt_extend = false;
     return b;
+  }
+  // 按模型切换：prompt 上限、不支持的字段置灰、提示行
+  function applyModel() {
+    const id = F.model.value.trim();
+    const info = models[id];
+    limits.prompt = info?.promptMax ?? (cfgLimits.prompt || 800);
+    const ok = (p) => !info || info.params.includes(p);
+    F.negative.disabled = !ok('negative');
+    F.steps.disabled = !ok('steps');
+    F.guidance.disabled = !ok('guidance');
+    F.n.disabled = /^musesteamer/i.test(id);
+    F.extend.disabled = !ok('prompt_extend');
+    $('modelHint').textContent = info
+      ? `${info.label} · ${info.price} · ${info.note}`
+      : (id ? `未知模型 ${id}：按通用接口原样发出全部参数` : '');
   }
   function setCnt(el, len, max) { el.textContent = `${len} / ${max}`; el.classList.toggle('over', len > max); }
   function render() {
+    applyModel();
     const b = bodyPreview();
     fullEl.textContent = JSON.stringify(b, null, 2);
     setCnt($('sysCnt'), F.system.value.trim().length, limits.prompt);
@@ -319,7 +343,9 @@
 
   async function init() {
     const cfg = await (await fetch('/api/config')).json();
-    presets = cfg.presets; limits = cfg.limits || limits;
+    presets = cfg.presets; cfgLimits = cfg.limits || cfgLimits; limits = { ...cfgLimits };
+    models = cfg.models || {};
+    $('models').replaceChildren(...Object.entries(models).map(([id, m]) => { const o = document.createElement('option'); o.value = id; o.label = `${m.label} · ${m.price}`; return o; }));
     if (!F.model.value) F.model.value = cfg.model;
     if (!F.size.value) F.size.value = cfg.size;
     hintEl.textContent = (cfg.hasKey ? '' : '⚠ 没找到千帆 key：.env.local 里填 EXPO_PUBLIC_QIANFAN_API_KEY。 ') + '图片和当时的 system / user / 参数都落在 ' + cfg.outDir + '（不进 git）。';
