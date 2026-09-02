@@ -648,3 +648,15 @@
 - **推翻**：D-030「用户发的图片/语音不计心动值/羁绊值、不触发 TA 回复」；D-048 的接口与音色（qwen-tts / Ethan·Cherry·Serena）。
 - **影响文件**：`lib/media.ts`（新）、`lib/tts.ts`（重写）、`lib/types.ts`（transcript/caption/mediaStatus）、`store/app-store.ts`（patchMessage）、`content/prompts.ts`（§6 + messageContextText + 硬规则/输出格式各一句）、`lib/engine.ts`（buildTurns 去重按 messageContextText）、`components/chat-thread.tsx`（录音参数/自动停/回显）、`app/chat/[characterId].tsx`、`app/bond/[bondId].tsx`、`supabase/functions/ai/index.ts`、`lib/i18n.ts`、`.env.example`、`package.json`（expo-image-manipulator）。
 - **遗留**：外出场景不发语音/照片（本就没有入口）；日语 ASR 供应商待定（#25）；识别文字暂不做二次纠错。
+
+## D-074 · 2026-09-02 · TA 偶尔发语音 + 多语种语音通道（Whisper 协议，可插拔）（Harper 提出）
+
+- **背景**：Harper：「让他偶尔也会给我发语音，然后现在这个模型只能识别中文？我需要日语英语也行，你看要不用 whisper。」D-073 的百度 ASR 只有中/英（及方言），百度 TTS 也只会中/英混读——目标市场是日本，这条路走不到头。
+- **决策**：
+  1. **TA 偶尔发语音**（`lib/tts.ts` 的 `shouldSendVoice`，`app/bond/[bondId].tsx`）：**只在羁绊会话**（语音是付费层「他在」的一部分，§2 商业承重墙；交友试聊不发）；每次回复只挑**最后一条气泡**、**2~80 字**的短句；概率随主动联系强度（高 30% / 中 18% / 低 10%），**她刚发过语音时 +40%**（礼尚往来，上限 85%）；发出即后台预热合成，点开即播；TTS 不可用或**当前通道不会说界面语言**（百度 + 日语）时不发。语音气泡沿用 D-048 形态（点按发声、可看文字），Message 列表预览「▶ 语音消息」。
+  2. **多语种语音通道：OpenAI 兼容协议，可插拔**（`EXPO_PUBLIC_SPEECH_BASE_URL / _API_KEY / _ASR_MODEL / _TTS_MODEL / _TTS_VOICE_HE|SHE|TA`）：识别走 Whisper 协议 `POST {base}/audio/transcriptions`（multipart，`FileSystem.uploadAsync` 直传文件，带界面语言提示 zh/en/ja），合成走 `POST {base}/audio/speech`（mp3）。**配了就优先，没配回落百度**——OpenAI（whisper-1 / gpt-4o-mini-transcribe + gpt-4o-mini-tts）、Groq（whisper-large-v3-turbo）、硅基流动（SenseVoiceSmall 中/英/日/韩/粤 + CosyVoice2 多语种，国内直连）、阿里百炼都是这一套接口，换家只改 env，不改代码。**选哪家、谁付费仍是 OPEN_QUESTIONS #25**（Claude 建议：国内测试期用硅基流动，出海后同一配置换 OpenAI）。
+  3. **代理**（`supabase/functions/ai`，已重新部署 v3）：新增 `speech.transcribe`（客户端传 base64，服务端拼 multipart 转发）与 `speech.synthesize`；服务端 Secrets 没配 `SPEECH_*` 时返回 503 `speech not configured`，客户端据此回落百度路由（`baidu.asr_pro` / `baidu.tts`）。分发包因此也能用上多语种通道，key 不进包。
+  4. TTS 缓存键改为（通道 + 模型 + 音色 + 文本），换通道不串音。
+- **未验证**：本机没有任何 OpenAI 兼容 key，Whisper 协议这两条通道按官方接口写、**未实测**；Harper 配上 key 后第一次发语音即验收（失败会在会话里露出原因）。
+- **推翻**：D-073 的「日语暂按普通话识别」——现在日语走 Whisper 通道；D-048/D-073 的「TTS 只有百度」。
+- **影响文件**：`lib/media.ts`（SPEECH_* 配置 + Whisper 直连/代理 + 通道顺序）、`lib/tts.ts`（重写：三通道 + `ttsSpeaksLang` + `shouldSendVoice`）、`app/bond/[bondId].tsx`（TA 偶尔发语音）、`supabase/functions/ai/index.ts`（speech.* + audioOrJson）、`.env.example`、`docs/OPEN_QUESTIONS.md`（#25 补记）。

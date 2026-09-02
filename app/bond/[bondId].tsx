@@ -20,6 +20,7 @@ import { daysTogether, uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { levelInfo, XP_PER_MESSAGE } from '@/lib/bond';
 import { describeImage, transcribeVoice } from '@/lib/media';
+import { shouldSendVoice, synthesizeVoice } from '@/lib/tts';
 import type { ChatMessage, EngineReply } from '@/lib/types';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
@@ -156,11 +157,17 @@ export default function BondScreen() {
     }
     await wait(700 + Math.min(1200, text.length * 40));
     setTyping(false);
+    // TA 偶尔发语音（D-074）：只挑最后一条气泡、短句；她刚发过语音时更爱回语音。发出后预热合成，点开即播
+    const herVoice = current?.messages[current.messages.length - 1]?.kind === 'voice';
     for (const [i, t] of reply.texts.entries()) {
       if (i > 0) await wait(500);
+      const asVoice = i === reply.texts.length - 1 && shouldSendVoice(character, t, { herVoice });
       useAppStore
         .getState()
-        .appendBond(bond.id, [{ id: uid('m'), from: 'him', kind: 'text', text: t, at: Date.now() }]);
+        .appendBond(bond.id, [
+          { id: uid('m'), from: 'him', kind: asVoice ? 'voice' : 'text', text: t, at: Date.now() },
+        ]);
+      if (asVoice) void synthesizeVoice(t, character);
     }
 
     // 记忆库后台更新：每隔几轮提取长期事实 + 滚动摘要，失败静默（D-016）
