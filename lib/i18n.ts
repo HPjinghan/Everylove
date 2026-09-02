@@ -406,6 +406,23 @@ const en: Record<string, string> = {
   '国风水墨': 'Ink wash',
   '写实插画': 'Realistic illustration',
   '线稿': 'Line art',
+  // 打电话（D-077）
+  '通话需要语音与聊天模型：在 .env.local 配置千帆 key，或登录后走服务端代理。': 'Calls need the voice and chat models: set the Qianfan key in .env.local, or sign in to use the server proxy.',
+  '拨号中…': 'Calling…',
+  'TA 接起来了': 'They picked up',
+  'TA 在说…': 'They are talking…',
+  'TA 在听': 'They are listening',
+  'TA 在想…': 'They are thinking…',
+  '通话结束': 'Call ended',
+  '没打通': "Couldn't connect",
+  '语音没接通，TA 的话在字幕里': 'Voice unavailable, their words are in the captions',
+  '没听清，再说一遍？': "Didn't catch that, say it again?",
+  '模型没接上：{reason}': 'Model failed: {reason}',
+  '听到了，停一下就发出去': 'Got it, pause to send',
+  '说话吧': 'Go ahead',
+  '免提': 'Speaker',
+  '听筒': 'Earpiece',
+  '说完了': 'Done',
   // __EN_END__
 };
 
@@ -789,6 +806,23 @@ const ja: Record<string, string> = {
   '国风水墨': '水墨・中華風',
   '写实插画': 'リアル系イラスト',
   '线稿': '線画',
+  // 打电话（D-077）
+  '通话需要语音与聊天模型：在 .env.local 配置千帆 key，或登录后走服务端代理。': '通話には音声とチャットのモデルが必要です：.env.local に千帆キーを設定するか、ログインしてサーバー経由にしてください。',
+  '拨号中…': '発信中…',
+  'TA 接起来了': '出ました',
+  'TA 在说…': '話しています…',
+  'TA 在听': '聞いています',
+  'TA 在想…': '考えています…',
+  '通话结束': '通話終了',
+  '没打通': 'つながりませんでした',
+  '语音没接通，TA 的话在字幕里': '音声が出ません。言葉は字幕で',
+  '没听清，再说一遍？': '聞き取れませんでした。もう一度？',
+  '模型没接上：{reason}': 'モデルに接続できません：{reason}',
+  '听到了，停一下就发出去': '聞こえています。止まると送信',
+  '说话吧': 'どうぞ',
+  '免提': 'スピーカー',
+  '听筒': '受話口',
+  '说完了': '話し終わり',
   // __JA_END__
 };
 

@@ -409,8 +409,8 @@ export function memoryBlockFor(memory: BondMemory | undefined): string[] {
   return lines;
 }
 
-/** 亲密模式完整系统 prompt */
-export function buildBondedSystemPrompt(ctx: EngineContext, now: Date = new Date()): string {
+/** 亲密模式的关系背景（人设 / 追法 / 时间感 / 她的身份 / 记忆 / 秘密 / 恋爱规则）；通话模式复用（D-077） */
+function bondedContextLines(ctx: EngineContext, now: Date): string[] {
   const c = ctx.character;
   const script = scriptFor(c);
   const bond = ctx.bond;
@@ -438,10 +438,39 @@ export function buildBondedSystemPrompt(ctx: EngineContext, now: Date = new Date
     ...BONDED_LOVE_RULES,
     ...initiativeLine(c),
     `- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`,
+  ];
+}
+
+/** 亲密模式完整系统 prompt */
+export function buildBondedSystemPrompt(ctx: EngineContext, now: Date = new Date()): string {
+  return [
+    ...bondedContextLines(ctx, now),
     ...CHAT_HARD_RULES_OF(),
     ...CHAT_OUTPUT_FORMAT,
     ...BONDED_LENGTH,
   ].join('\n');
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* §1-C′ 通话模式（D-077）—— 亲密背景 + 电话口吻：她听得见你的声音                    */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/** 她拨通时的那一轮 user 文本（不入会话，只让 TA 先开口） */
+export const CALL_PICKUP_USER = '（她给你打来电话，你接起来了。开口说第一句话。）';
+
+/** 通话的写法：覆盖聊天的输出格式——只说出口的话，短、口语、不分条 */
+export const CALL_MANNER = [
+  '【现在在打电话】你们正在通话——她听得见你的声音，你听得见她的。这不是发消息：',
+  '- 一次只说一两句，像真的在电话里说话：口语、短促、有停顿感；可以有「嗯」「诶」这样的气口，但别堆。',
+  '- 只输出你说出口的话：不带名字前缀、不用 markdown、不用 emoji、不用（）动作或情景描写、不分条。',
+  '- 她说的话是语音识别来的，可能有错字或断句怪，按最合理的意思理解，不要纠正她。',
+  '- 她沉默或只应了一声，你就接着说点自己的，或问一句轻的；别连珠炮。',
+  '- 她说要挂了，好好道别，一两句就够；不挽留、不追问。',
+];
+
+/** 通话模式完整系统 prompt：亲密模式的全部背景 + 电话口吻 */
+export function buildCallSystemPrompt(ctx: EngineContext, now: Date = new Date()): string {
+  return [...bondedContextLines(ctx, now), ...CHAT_HARD_RULES_OF(), ...CALL_MANNER].join('\n');
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -545,6 +574,7 @@ export const OUTING_OPENERS: Record<'date' | 'encounter' | 'stranger', string[]>
 export function buildChatSystemPrompt(ctx: EngineContext): string {
   if (ctx.mode === 'square') return buildSquareSystemPrompt(ctx);
   if (ctx.mode === 'outing') return buildOutingSystemPrompt(ctx);
+  if (ctx.mode === 'call') return buildCallSystemPrompt(ctx);
   return buildBondedSystemPrompt(ctx);
 }
 

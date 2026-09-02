@@ -678,3 +678,15 @@
   4. **外出拍照同画风**：`buildOutingPhotoPrompt` 第一行改为角色画风行（不指定回落 COMIC_STYLE），`generateScenePhoto(prompt, character)` 模型同上——同一个 TA 立绘与照片不换画风。
   5. **创造表单 ⑦**：头像区块加「画风」八个 chip（t() 三语），提示按模型给耗时（动漫约 10 秒 / Qwen 约 1 分钟）；draft / 编辑回填 / 重置都带 artStyle；描述导入不解析画风。
 - **影响文件**：`content/prompts.ts`、`lib/types.ts`、`lib/imagegen.ts`、`app/apps/create.tsx`、`app/outing/[placeId].tsx`、`supabase/functions/ai/index.ts`、`lib/i18n.ts`（en/ja）、`scripts/gen-image-core.mjs`。
+
+## D-077 · 2026-09-02 · 打电话上线：管线式通话（识别 → 引擎通话模式 → 合成）；端到端实时模型留待 dev build（Harper 提出）
+
+- **背景**：Harper「能把打电话功能也安排上吗，百度有对应的模型不」。调研：百度有**端到端语音语言大模型**（2026-01 公测；`wss://aip.baidubce.com/ws/2.0/speech/v1/realtime`，模型 `audio-mini-realtime-near/far`（Lite）与 `audio-realtime-near/far`（Pro）；PCM16 16k 单声道分片上送、JSON 事件双向流；`instructions` 人设 ≤2500 字（仅 Pro）、音色 度沁雪 8003 / 度小舒 8014 / 度灵静 8008 / 度海棠 8021；宣称约 1 秒响应）。**但它要实时 PCM 音频流**：Expo Go 里 expo-audio 只能整段录音、拿不到流，接它必须 dev build + 原生音频流模块（OpenAI Realtime 同理）。
+- **决策**：先做**管线式通话**，全部复用已有模块、不新增模型：
+  1. **流程**：拨号 1.6 s → TA 接起先开口（`CALL_PICKUP_USER` 作本轮 user 文本、不入会话）→ 合成播放 → 播完自动开始听她说 → **音量计断句**（`isMeteringEnabled`，>-28 dB 算开口，开口后静音 1.3 s 送出；一句最长 30 s；25 s 没开口重开录音；「说完了」可手动断句）→ 识别（lib/media，通道顺序同聊天）→ 引擎**通话模式** → 合成 → 播放 → 再听。免提 = 播放前 `allowsRecording:false` 走扬声器；听筒 = 保持录音会话，iOS 从听筒出声。
+  2. **通话模式 prompt**（`EngineContext.mode: 'call'`，prompts §1-C′）：亲密模式的全部背景（`bondedContextLines` 抽出复用）+ `CALL_MANNER`（一次一两句、口语、只说出口的话、识别文本按最合理意思理解、她要挂就好好道别）；引擎按非 bonded 模式不拆气泡，`stripStageDirections` 兜底。
+  3. **会话与记忆**：她的话（转写）与 TA 的话都进羁绊会话，`ChatMessage.viaCall: true`；她每句 +5 XP（同消息口径）；挂断留系统消息「📞 m:ss」并 `updateBondMemory`——TA 记得电话里说过什么。
+  4. **入口**：电话 App 的拨打键、羁绊会话头部听筒图标；`callReady()` = 能合成 + 有引擎取路，不满足弹说明。路由 `call/[characterId]` fullScreenModal。
+  5. **延迟**：每轮约 4~8 s（识别 1~2 + 模型 2~4 + 合成 1~2），页面用「TA 在想…」承接。
+- **未做 / 后续**：TA 主动来电（来电流：定时/事件触发全屏响铃）；铃声与接听动画；通话中打断 TA（barge-in，管线式做不到，端到端模型天然支持）；日语通话受百度 ASR 限制（#25）。端到端实时通道的接入路线立为 OPEN_QUESTIONS #26。
+- **影响文件**：`lib/call.ts`（新）、`app/call/[characterId].tsx`（新）、`content/prompts.ts`（bondedContextLines / CALL_MANNER / CALL_PICKUP_USER / buildCallSystemPrompt）、`lib/types.ts`（mode 'call'、viaCall）、`app/apps/phone.tsx`（拨打接通）、`app/bond/[bondId].tsx`（头部听筒）、`app/_layout.tsx`（路由）、`lib/i18n.ts`（en/ja）。

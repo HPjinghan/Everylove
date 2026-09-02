@@ -147,6 +147,8 @@ export interface ChatMessage {
   caption?: string;
   /** 多模态处理状态（D-073）：pending 识别/看图中；failed 失败（原因在随后的系统消息里）；空 = 完成或不适用 */
   mediaStatus?: 'pending' | 'failed';
+  /** 通话里说的话（D-077）：电话转写进会话，TA 记得电话里说过什么；气泡带小听筒标记 */
+  viaCall?: boolean;
 }
 
 /** 广场搭话记录：不入消息 tab，会过期（免费层商业承重墙） */
@@ -268,8 +270,8 @@ export type EngineId = 'anthropic' | 'qianfan';
 
 export interface EngineContext {
   character: Character;
-  /** square 初识 / bonded 亲密 / outing 外出（亲身互动故事模式，D-038） */
-  mode: 'square' | 'bonded' | 'outing';
+  /** square 初识 / bonded 亲密 / outing 外出（亲身互动故事模式，D-038）/ call 通话（亲密背景 + 电话口吻，D-077） */
+  mode: 'square' | 'bonded' | 'outing' | 'call';
   /** bonded/outing 模式下的关系信息（含记忆库、缔结时间，注入系统 prompt） */
   bond?: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'birthday' | 'memory' | 'createdAt'>;
   /** 「我」的身份（D-035）：注入系统 prompt，TA 借此认识她 */

@@ -5,15 +5,17 @@
 
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharAvatar } from '@/components/char-avatar';
 import { ChatThread, type ReplyRef } from '@/components/chat-thread';
+import { MingCute } from '@/components/mingcute';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ARCHETYPE_LABEL } from '@/content/characters';
 import { characterSecrets, unlockedSecretCount } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
+import { callReady } from '@/lib/call';
 import { describeAiError, generateReply, messageContextText } from '@/lib/engine';
 import { updateBondMemory } from '@/lib/memory';
 import { daysTogether, uid } from '@/lib/format';
@@ -190,6 +192,19 @@ export default function BondScreen() {
             </Text>
           </View>
           <IconSymbol name="chevron.right" size={14} color={Romance.faint} />
+        </Pressable>
+        {/* 打电话（D-077）：管线式通话，全屏 */}
+        <Pressable
+          onPress={() => {
+            if (!callReady()) {
+              Alert.alert(t('AI 不可用'), t('通话需要语音与聊天模型：在 .env.local 配置千帆 key，或登录后走服务端代理。'));
+              return;
+            }
+            router.push({ pathname: '/call/[characterId]', params: { characterId: character.id } });
+          }}
+          hitSlop={10}
+          style={{ padding: 4 }}>
+          <MingCute name="phone" size={22} color="#3EB489" />
         </Pressable>
       </View>
 

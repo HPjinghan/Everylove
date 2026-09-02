@@ -79,6 +79,10 @@ export default function RootLayout() {
         <Stack.Screen name="adopt/[characterId]" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="bond/[bondId]" />
         <Stack.Screen name="outing/[placeId]" />
+        <Stack.Screen
+          name="call/[characterId]"
+          options={{ presentation: 'fullScreenModal', gestureEnabled: false, animation: 'fade' }}
+        />
       </Stack>
       <StatusBar style="dark" />
     </ThemeProvider>

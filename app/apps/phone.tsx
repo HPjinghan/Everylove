@@ -1,6 +1,6 @@
 /**
- * 电话（D-030）：显示可通话的人 = 加好友（缔结契约）的 TA 们。
- * 语音模型接入后开放真实通话（OPEN_QUESTIONS #6 语音供应商）；当前拨打为占位。
+ * 电话（D-030；D-077 真通话）：显示可通话的人 = 加好友（缔结契约）的 TA 们。
+ * 拨打 → 全屏通话页 app/call/[characterId]（管线式：识别 → 引擎通话模式 → 合成，见 lib/call.ts）。
  */
 
 import { FlatList, Pressable, StyleSheet, Text, View, Alert } from 'react-native';
@@ -11,6 +11,7 @@ import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
 import { Romance, themed } from '@/constants/theme';
 import { levelInfo } from '@/lib/bond';
+import { callReady } from '@/lib/call';
 import { t } from '@/lib/i18n';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
@@ -18,8 +19,12 @@ export default function PhoneScreen() {
   const router = useRouter();
   const bonds = useAppStore((s) => s.bonds);
 
-  const call = (name: string) => {
-    Alert.alert(t('呼叫{name}…', { name }), t('电话还没接通这个世界。快了。'));
+  const call = (characterId: string) => {
+    if (!callReady()) {
+      Alert.alert(t('AI 不可用'), t('通话需要语音与聊天模型：在 .env.local 配置千帆 key，或登录后走服务端代理。'));
+      return;
+    }
+    router.push({ pathname: '/call/[characterId]', params: { characterId } });
   };
 
   return (
@@ -58,7 +63,7 @@ export default function PhoneScreen() {
                     <Text style={styles.rowSub}>{`${t('羁绊')} LV${levelInfo(item.affinity).level} · ${t(levelInfo(item.affinity).name)}`}</Text>
                   </View>
                 </Pressable>
-                <Pressable style={styles.callBtn} onPress={() => call(item.name)} hitSlop={6}>
+                <Pressable style={styles.callBtn} onPress={() => call(item.characterId)} hitSlop={6}>
                   <MingCute name="phone" size={22} color="#FFFFFF" />
                 </Pressable>
               </View>
