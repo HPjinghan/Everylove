@@ -9,7 +9,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "gen-image": "node ./scripts/gen-image.mjs"
+    "gen-image": "node ./scripts/gen-image.mjs",
+    "gen-image:web": "node ./scripts/gen-image-server.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

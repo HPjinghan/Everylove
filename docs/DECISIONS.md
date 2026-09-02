@@ -593,3 +593,9 @@
 - **决策**：加一个零依赖 Node 脚本，输入文字 → 千帆文生图 → 图落 `scripts/out/`（已 gitignore），供在工程外快速迭代生图 prompt。**与 `lib/imagegen.ts` 同一条 API**（`POST /v2/images/generations`，同 model / size / n，同样 http→https 落盘），key 读 `.env.local` 的 `EXPO_PUBLIC_QIANFAN_API_KEY`（环境变量 `QIANFAN_API_KEY` 可覆盖），不走服务端代理。`--style` / `--portrait` 从 `content/prompts.ts` **实时读** COMIC_STYLE / COMIC_QUALITY / COMIC_RULES / PORTRAIT_COMPOSITION 追加到 prompt 尾部——改 prompts.ts 即刻反映，不另存一份副本（D-017「prompt 只在一个文件」纪律不破）。每张图旁存同名 `.txt` 记录当次 prompt 与参数。npm 入口 `npm run gen-image -- "..."`。
 - **理由**：Expo Go 里调 prompt 一轮要走捏＋表单，太慢；脚本一行出图，且保证和线上同接口同参数，看到的就是用户会看到的。
 - **影响文件**：`scripts/gen-image.mjs`（新）、`package.json`（gen-image）、`.gitignore`（scripts/out/）。
+
+## D-068 · 2026-09-02 · 生图调 prompt 本地网页 + 双击启动（Harper 提出）
+
+- **决策**：D-067 的命令行之外，加**本地网页版**——根目录 `gen-image.bat` 双击即起（或 `npm run gen-image:web`），`scripts/gen-image-server.mjs` 零依赖 Node http 服务，**只绑 127.0.0.1:3939**（key 在本机，不对外），自动开浏览器；页面 `scripts/gen-image-ui.html`（无 CDN、离线可用）：左栏写字 + 尾巴三选（不追加 / 画风尾巴 / 立绘尾巴，实时读 prompts.ts）+ size / 张数 / model + 「实际发出的完整 prompt」预览，Ctrl+Enter 生成；右栏是 `scripts/out/` 的历史墙（最新在前，含当时 prompt、耗时），每张可「回填到左边」（自动剥掉尾巴只留她写的那段）/ 复制 prompt / 点开原图。表单内容存 localStorage。CLI 与网页共用 `scripts/gen-image-core.mjs`（env 读取、prompts.ts 常量求值、调用与落盘、历史解析）；`.txt` 旁档格式（参数 JSON + 空行 + prompt）是历史墙的数据源，CLI 与网页出的图互相可见。
+- **理由**：Harper 不想开 IDE 改脚本参数；网页能并排看历史图与 prompt 差异，才是「调 prompt」的工作台。
+- **影响文件**：`gen-image.bat`（新，根目录）、`scripts/gen-image-server.mjs`（新）、`scripts/gen-image-ui.html`（新）、`scripts/gen-image-core.mjs`（新，从 gen-image.mjs 抽出）、`scripts/gen-image.mjs`（改用核心）、`package.json`（gen-image:web）。

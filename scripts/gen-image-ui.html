@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>生图调 prompt</title>
+<style>
+  :root {
+    --bg: #faf7f5;
+    --panel: #ffffff;
+    --ink: #2b2326;
+    --muted: #8a7f83;
+    --line: #ece4e6;
+    --rose: #e56b8a;
+    --rose-soft: #fbe9ee;
+    --ok: #3d9a6a;
+    --err: #c8434f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", "Hiragino Sans", system-ui, sans-serif; }
+  .app { display: grid; grid-template-columns: 400px 1fr; min-height: 100vh; }
+  @media (max-width: 900px) { .app { grid-template-columns: 1fr; } .side { position: static !important; height: auto !important; } }
+
+  .side { position: sticky; top: 0; height: 100vh; overflow: auto; padding: 20px; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px; }
+  h1 { font-size: 16px; margin: 0; display: flex; align-items: baseline; gap: 10px; }
+  h1 small { color: var(--muted); font-weight: normal; font-size: 12px; }
+  label.lbl { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  textarea { width: 100%; min-height: 180px; resize: vertical; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; line-height: 1.6; background: #fffdfd; outline: none; }
+  textarea:focus, input:focus, select:focus { border-color: var(--rose); box-shadow: 0 0 0 3px var(--rose-soft); }
+  input, select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #fff; outline: none; width: 100%; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg label { flex: 1; text-align: center; padding: 7px 4px; cursor: pointer; font-size: 13px; color: var(--muted); border-right: 1px solid var(--line); user-select: none; }
+  .seg label:last-child { border-right: 0; }
+  .seg input { display: none; }
+  .seg input:checked + span { color: var(--rose); font-weight: 600; }
+  .seg label:has(input:checked) { background: var(--rose-soft); }
+  button.go { padding: 12px; border: 0; border-radius: 12px; background: var(--rose); color: #fff; font: inherit; font-weight: 600; font-size: 15px; cursor: pointer; }
+  button.go:disabled { opacity: .55; cursor: wait; }
+  .hint { font-size: 12px; color: var(--muted); }
+  .status { font-size: 13px; min-height: 20px; }
+  .status.err { color: var(--err); white-space: pre-wrap; }
+  .status.ok { color: var(--ok); }
+  details { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; background: #fffdfd; }
+  summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+  pre.full { white-space: pre-wrap; word-break: break-word; font: 12px/1.6 ui-monospace, Consolas, monospace; margin: 8px 0 0; color: #5a4f53; }
+
+  .main { padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+  .main h2 { font-size: 13px; color: var(--muted); font-weight: normal; margin: 0; letter-spacing: .04em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+  .card.fresh { box-shadow: 0 0 0 2px var(--rose-soft), 0 6px 20px rgba(229,107,138,.12); }
+  .imgs { display: grid; gap: 2px; background: #f2ecee; }
+  .imgs.n2, .imgs.n4 { grid-template-columns: 1fr 1fr; }
+  .imgs.n3 { grid-template-columns: 1fr 1fr 1fr; }
+  .imgs a { display: block; aspect-ratio: 1; background: #f7f2f4; }
+  .imgs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .meta { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .meta .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .meta .p { font-size: 12.5px; line-height: 1.55; color: #4c4246; white-space: pre-wrap; word-break: break-word; max-height: 4.6em; overflow: hidden; position: relative; }
+  .meta .p.open { max-height: none; }
+  .meta .p:not(.open)::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1.6em; background: linear-gradient(transparent, #fff); }
+  .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .acts button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
+  .acts button:hover { border-color: var(--rose); color: var(--rose); }
+  .pending { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; color: var(--muted); font-size: 13px; flex-direction: column; gap: 8px; background: #f7f2f4; }
+  .spin { width: 22px; height: 22px; border: 3px solid var(--rose-soft); border-top-color: var(--rose); border-radius: 50%; animation: r 1s linear infinite; }
+  @keyframes r { to { transform: rotate(360deg); } }
+  .empty { color: var(--muted); font-size: 13px; padding: 40px; text-align: center; border: 1px dashed var(--line); border-radius: 14px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <h1>生图调 prompt <small>同 lib/imagegen.ts 接口 · 千帆</small></h1>
+
+    <div>
+      <label class="lbl" for="prompt">你的文字（Ctrl+Enter 生成）</label>
+      <textarea id="prompt" placeholder="例：一个二十出头的男生，黑色微卷短发，戴细框眼镜，白衬衫" spellcheck="false"></textarea>
+    </div>
+
+    <div>
+      <label class="lbl">尾部追加（实时读 content/prompts.ts）</label>
+      <div class="seg" id="tail">
+        <label><input type="radio" name="tail" value="none" /><span>不追加</span></label>
+        <label><input type="radio" name="tail" value="style" /><span>画风尾巴</span></label>
+        <label><input type="radio" name="tail" value="portrait" checked /><span>立绘尾巴</span></label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div><label class="lbl" for="size">size</label><input id="size" value="1024x1024" /></div>
+      <div><label class="lbl" for="n">张数</label>
+        <select id="n"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+    </div>
+    <div><label class="lbl" for="model">model</label><input id="model" /></div>
+
+    <button class="go" id="go">生成</button>
+    <div class="status" id="status"></div>
+
+    <details>
+      <summary>实际发出的完整 prompt</summary>
+      <pre class="full" id="full"></pre>
+    </details>
+
+    <div class="hint" id="hint"></div>
+  </aside>
+
+  <main class="main">
+    <h2 id="title">历史（scripts/out，最新在前）</h2>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>还没有图。左边写字，点生成。</div>
+  </main>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const promptEl = $('prompt'), sizeEl = $('size'), nEl = $('n'), modelEl = $('model'), goEl = $('go'), statusEl = $('status'), fullEl = $('full'), gridEl = $('grid'), emptyEl = $('empty'), hintEl = $('hint');
+  let tails = { style: '', portrait: '' };
+
+  const tail = () => document.querySelector('input[name=tail]:checked').value;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function renderFull() {
+    const t = tail();
+    const extra = t === 'none' ? '' : '\n' + tails[t];
+    fullEl.textContent = promptEl.value.trim() + extra;
+  }
+
+  // 记住上次写的
+  try {
+    const saved = JSON.parse(localStorage.getItem('gen-image-form') || '{}');
+    if (saved.prompt) promptEl.value = saved.prompt;
+    if (saved.tail) { const r = document.querySelector(`input[name=tail][value=${saved.tail}]`); if (r) r.checked = true; }
+    if (saved.size) sizeEl.value = saved.size;
+    if (saved.n) nEl.value = saved.n;
+  } catch {}
+  function persist() {
+    try { localStorage.setItem('gen-image-form', JSON.stringify({ prompt: promptEl.value, tail: tail(), size: sizeEl.value, n: nEl.value })); } catch {}
+    renderFull();
+  }
+  promptEl.addEventListener('input', persist);
+  $('tail').addEventListener('change', persist);
+  sizeEl.addEventListener('input', persist);
+  nEl.addEventListener('change', persist);
+  promptEl.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); go(); } });
+
+  function card(h, fresh) {
+    const el = document.createElement('div');
+    el.className = 'card' + (fresh ? ' fresh' : '');
+    const imgs = h.images.map((src) => `<a href="${src}" target="_blank" title="新标签打开原图"><img src="${src}" loading="lazy" /></a>`).join('');
+    el.innerHTML = `
+      <div class="imgs n${h.images.length}">${imgs}</div>
+      <div class="meta">
+        <div class="top"><span>${esc(h.time || '')}</span><span>${esc(h.params?.model || '')} · ${esc(h.params?.size || '')}${h.elapsed ? ` · ${h.elapsed.toFixed(0)}s` : ''}</span></div>
+        <div class="p">${esc(h.prompt || '')}</div>
+        <div class="acts">
+          <button data-act="toggle">展开 prompt</button>
+          <button data-act="reuse">回填到左边</button>
+          <button data-act="copy">复制 prompt</button>
+        </div>
+      </div>`;
+    const p = el.querySelector('.p');
+    el.querySelector('[data-act=toggle]').onclick = (e) => { p.classList.toggle('open'); e.target.textContent = p.classList.contains('open') ? '收起' : '展开 prompt'; };
+    el.querySelector('[data-act=reuse]').onclick = () => {
+      // 回填时把当前所选尾巴从末尾剥掉，只留她自己写的那段
+      let body = h.prompt || '';
+      for (const t of ['portrait', 'style']) if (tails[t] && body.endsWith(tails[t])) { body = body.slice(0, -tails[t].length).trimEnd(); const r = document.querySelector(`input[name=tail][value=${t}]`); if (r) r.checked = true; break; }
+      promptEl.value = body;
+      if (h.params?.size) sizeEl.value = h.params.size;
+      if (h.params?.model) modelEl.value = h.params.model;
+      persist(); promptEl.focus(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    el.querySelector('[data-act=copy]').onclick = (e) => { navigator.clipboard?.writeText(h.prompt || ''); e.target.textContent = '已复制'; setTimeout(() => (e.target.textContent = '复制 prompt'), 1200); };
+    return el;
+  }
+
+  function pendingCard(prompt) {
+    const el = document.createElement('div');
+    el.className = 'card fresh';
+    el.innerHTML = `<div class="pending"><div class="spin"></div><div>生成中 <span class="t">0</span>s（一般 40–90s）</div></div><div class="meta"><div class="p">${esc(prompt)}</div></div>`;
+    const t0 = Date.now(); const tEl = el.querySelector('.t');
+    el._timer = setInterval(() => (tEl.textContent = Math.round((Date.now() - t0) / 1000)), 1000);
+    return el;
+  }
+
+  async function go() {
+    const body = promptEl.value.trim();
+    if (!body) { statusEl.className = 'status err'; statusEl.textContent = '先写点什么。'; promptEl.focus(); return; }
+    const req = { prompt: body, tail: tail(), size: sizeEl.value.trim(), n: Number(nEl.value), model: modelEl.value.trim() };
+    const shown = fullEl.textContent;
+    const pend = pendingCard(shown);
+    gridEl.prepend(pend); emptyEl.hidden = true;
+    statusEl.className = 'status'; statusEl.textContent = '已发出，等千帆…';
+    goEl.disabled = true;
+    try {
+      const r = await fetch('/api/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(req) });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error + (data.detail ? '\n' + data.detail : ''));
+      clearInterval(pend._timer);
+      pend.replaceWith(card({ ...data, time: new Date().toLocaleString('zh-CN', { hour12: false }) }, true));
+      statusEl.className = 'status ok'; statusEl.textContent = `完成，${data.elapsed.toFixed(1)}s。`;
+    } catch (e) {
+      clearInterval(pend._timer); pend.remove();
+      statusEl.className = 'status err'; statusEl.textContent = '失败：' + (e.message || e);
+      if (!gridEl.children.length) emptyEl.hidden = false;
+    } finally {
+      goEl.disabled = false;
+    }
+  }
+  goEl.onclick = go;
+
+  async function init() {
+    const cfg = await (await fetch('/api/config')).json();
+    tails = cfg.tails;
+    if (!modelEl.value) modelEl.value = cfg.model;
+    if (!sizeEl.value) sizeEl.value = cfg.size;
+    hintEl.textContent = (cfg.hasKey ? '' : '⚠ 没找到千帆 key：.env.local 里填 EXPO_PUBLIC_QIANFAN_API_KEY。 ') + '图片和当时的 prompt 都落在 ' + cfg.outDir + '（不进 git）。';
+    renderFull();
+    const hist = await (await fetch('/api/history')).json();
+    gridEl.replaceChildren(...hist.map((h) => card(h)));
+    emptyEl.hidden = hist.length > 0;
+  }
+  init().catch((e) => { statusEl.className = 'status err'; statusEl.textContent = '服务没响应：' + e.message; });
+</script>
+</body>
+</html>
