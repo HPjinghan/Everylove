@@ -474,15 +474,18 @@ const en: Record<string, string> = {
   'TA 的第一句话在等你。': 'Their first words are waiting for you.',
   '捏一个只属于你的 TA。': 'Make someone who is only yours.',
   '把相处从手机屏幕里拿出来。': 'Take your time together out of the screen.',
-  '你想被谁爱？': 'Who do you want to be loved by?',
+
   '先让 TA 们认识你': 'Let them get to know you',
-  '只用填最基本的——除了名字，都可以跳过。': 'Just the basics. Everything but your name can be skipped.',
+
   '怎么称呼你？': 'What should they call you?',
   '进去看看': 'Go in',
   // 外出优化（D-079）
   '和{name}在一起': 'With {name}',
   '明天': 'Tomorrow',
   '照片洗好了，已存进相册': 'Photo developed and saved to the album',
+  // onboarding 并成一步（D-080）
+  '更倾向于和什么样的人建立关系？': 'Who are you more drawn to?',
+  '只用填最基本的，其余都可以跳过。': 'Just the basics. Everything else can be skipped.',
   // __EN_END__
 };
 
@@ -934,15 +937,18 @@ const ja: Record<string, string> = {
   'TA 的第一句话在等你。': '最初のひと言が待っています。',
   '捏一个只属于你的 TA。': 'あなただけの人をつくる。',
   '把相处从手机屏幕里拿出来。': 'ふたりの時間を画面の外へ。',
-  '你想被谁爱？': '誰に愛されたい？',
+
   '先让 TA 们认识你': 'まずは自己紹介',
-  '只用填最基本的——除了名字，都可以跳过。': '基本だけで大丈夫。名前以外はスキップできます。',
+
   '怎么称呼你？': 'なんて呼べばいい？',
   '进去看看': '入ってみる',
   // 外出优化（D-079）
   '和{name}在一起': '{name} と一緒',
   '明天': '明日',
   '照片洗好了，已存进相册': '写真ができました。アルバムに保存しました',
+  // onboarding 并成一步（D-080）
+  '更倾向于和什么样的人建立关系？': 'どんな人と関係を築きたい？',
+  '只用填最基本的，其余都可以跳过。': '基本だけで大丈夫。ほかはスキップできます。',
   // __JA_END__
 };
 

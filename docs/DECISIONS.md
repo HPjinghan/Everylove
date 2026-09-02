@@ -716,3 +716,9 @@
   6. **外出对话进记忆**：`finishOuting` 时 `absorbOutingMemory`——复用记忆提取（§3）加一段 `outingMemoryContext`（在哪、什么时候、赴约/偶遇、准时/迟到），facts 与 summary 都更新；不动 factsUpTo/summarizedUpTo（现场消息不在 bond.messages）。**推翻 D-038 的「外出对话暂不进记忆提取窗口」试装限制。** 陌生人场次无羁绊不记；现场交换了联系方式的按第一次见面记。
 - **未做 / 后续**：约定前的提醒（前一晚 / 当天心跳式关怀）——心跳三段式只覆盖用户层日程，可后续接；约定的手动编辑 / 删除只能在外出页撤掉；识别只认六个地点。
 - **影响文件**：`lib/outing.ts`（新）、`lib/appointments.ts`（新）、`components/toast.tsx`（新）、`lib/types.ts`、`store/app-store.ts`、`content/prompts.ts`（§1-D 此刻段 / dateLate 开场白 / §3 context / §7）、`lib/memory.ts`、`lib/call.ts`、`app/outing/[placeId].tsx`、`app/apps/{outing,album,calendar}.tsx`、`app/bond/[bondId].tsx`、`app/_layout.tsx`、`lib/i18n.ts`。
+
+## D-080 · 2026-09-02 · onboarding 并成一步：去掉独立的「你想被谁爱？」，作为必选项「更倾向于和什么样的人建立关系？」并入「先让 TA 们认识你」（Harper 提出）
+
+- **背景**：Harper「去掉最开始的你会喜欢谁的 step，然后把它放到我写自己的名字的那一步加一个更倾向于和什么样的人建立关系？」。
+- **决策**：onboarding 流程改为 语言 →「先让 TA 们认识你」。原第一问「你想被谁爱？」的四个选项（男生 / 女生 / 都可以 / 非人类）改为该页第三个字段「更倾向于和什么样的人建立关系？」的 chip 行，**与昵称同为必填**（不预选：这是全性向声明也是交友口味过滤，默认「都可以」会让首次滑卡的牌堆混性别，对女频先行不利）；页面提示改「只用填最基本的，其余都可以跳过。」。写入位置不变（`completeOnboarding(pref)` → `store.lovePref`），偏好仍可在交友页右上角随时改（D-049）。
+- **影响文件**：`app/onboarding.tsx`、`lib/i18n.ts`（删两键、补两键 en/ja）、CLAUDE.md §1/§4。

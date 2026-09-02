@@ -1,8 +1,7 @@
 /**
- * Onboarding 两步（D-035）：
- * 1.「你想被谁爱？」——既是全性向声明，也是交友推荐的口味过滤。
- * 2.「先让 TA 们认识你」——只填最基本的：昵称必填，其余（性别/称呼/职业）都可跳过；
- *    完整设定稍后在 设置 → 我的身份 里补充，也能为单个角色使用不同身份。
+ * Onboarding（D-035；D-080 并成一步）：语言 →「先让 TA 们认识你」。
+ * 昵称与「更倾向于和什么样的人建立关系」必填（后者既是全性向声明，也是交友推荐的口味过滤，原独立一步「你想被谁爱？」并入此处）；
+ * 其余（性别/称呼/职业）都可跳过，完整设定稍后在 设置 → 我的身份 里补充，也能为单个角色使用不同身份。
  */
 
 import { useRouter } from 'expo-router';
@@ -30,7 +29,7 @@ const LANGS: { key: Lang; label: string }[] = [
   { key: 'ja', label: '日本語' },
 ];
 
-const OPTIONS: { key: LovePref; label: string }[] = [
+const PREFS: { key: LovePref; label: string }[] = [
   { key: 'male', label: '男生' },
   { key: 'female', label: '女生' },
   { key: 'any', label: '都可以' },
@@ -48,18 +47,13 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const [step, setStep] = useState<'lang' | 'pref' | 'me'>('lang');
+  const [step, setStep] = useState<'lang' | 'me'>('lang');
   useAppStore((s2) => s2.language); // 语言切换即重渲染
-  const [pref, setPref] = useState<LovePref>('male');
+  const [pref, setPref] = useState<LovePref | null>(null);
   const [nickname, setNickname] = useState('');
   const [gender, setGender] = useState<NonNullable<UserProfile['gender']>>('unspecified');
   const [pronoun, setPronoun] = useState('');
   const [occupation, setOccupation] = useState('');
-
-  const choose = (p: LovePref) => {
-    setPref(p);
-    setStep('me');
-  };
 
   if (step === 'lang') {
     return (
@@ -72,7 +66,7 @@ export default function OnboardingScreen() {
               style={styles.option}
               onPress={() => {
                 useAppStore.getState().setLanguage(l.key);
-                setStep('pref');
+                setStep('me');
               }}>
               <Text style={styles.optionLabel}>{l.label}</Text>
             </Pressable>
@@ -82,9 +76,11 @@ export default function OnboardingScreen() {
     );
   }
 
+  const ready = !!nickname.trim() && !!pref;
+
   const finish = () => {
     const name = nickname.trim();
-    if (!name) return;
+    if (!name || !pref) return;
     useAppStore.getState().setMe({
       nickname: name,
       gender,
@@ -94,21 +90,6 @@ export default function OnboardingScreen() {
     useAppStore.getState().completeOnboarding(pref);
     router.replace('/');
   };
-
-  if (step === 'pref') {
-    return (
-      <View style={[styles.screen, { paddingTop: insets.top + 80, paddingBottom: insets.bottom }]}>
-        <Text style={styles.question}>{t('你想被谁爱？')}</Text>
-        <View style={styles.options}>
-          {OPTIONS.map((o) => (
-            <Pressable key={o.key} style={styles.option} onPress={() => choose(o.key)}>
-              <Text style={styles.optionLabel}>{t(o.label)}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-    );
-  }
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -120,7 +101,7 @@ export default function OnboardingScreen() {
         ]}
         keyboardShouldPersistTaps="handled">
         <Text style={styles.question}>{t('先让 TA 们认识你')}</Text>
-        <Text style={styles.hint}>{t('只用填最基本的——除了名字，都可以跳过。')}</Text>
+        <Text style={styles.hint}>{t('只用填最基本的，其余都可以跳过。')}</Text>
 
         <View style={styles.meField}>
           <Text style={styles.meLabel}>{t('昵称 *')}</Text>
@@ -153,6 +134,23 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.meField}>
+          <Text style={styles.meLabel}>{t('更倾向于和什么样的人建立关系？')} *</Text>
+          <View style={styles.chips}>
+            {PREFS.map((o) => {
+              const active = pref === o.key;
+              return (
+                <Pressable
+                  key={o.key}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => setPref(o.key)}>
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(o.label)}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.meField}>
           <Text style={styles.meLabel}>{t('称呼 / 代词')}</Text>
           <TextInput
             style={styles.meInput}
@@ -177,8 +175,8 @@ export default function OnboardingScreen() {
         </View>
 
         <Pressable
-          style={[styles.primaryBtn, !nickname.trim() && styles.primaryBtnDisabled]}
-          disabled={!nickname.trim()}
+          style={[styles.primaryBtn, !ready && styles.primaryBtnDisabled]}
+          disabled={!ready}
           onPress={finish}>
           <Text style={styles.primaryBtnText}>{t('进去看看')}</Text>
         </Pressable>
