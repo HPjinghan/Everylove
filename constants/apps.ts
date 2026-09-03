@@ -32,6 +32,10 @@ export const DESKTOP_APPS: DesktopApp[] = [
   { id: 'calendar', label: '日历', icon: 'calendar', bg: '#FFE0E0', fg: '#EF8080', route: '/apps/calendar' },
   { id: 'outing', label: '外出', icon: 'location', bg: '#FFF3D6', fg: '#E8B44A', route: '/apps/outing' },
   { id: 'create', label: '创造', icon: 'magicHat', bg: '#DFF5F2', fg: '#56C4B4', route: '/apps/create' },
+  // 记事本（D-085）：她自己的本子，私密——只有她让 TA 看手机时 TA 才看得到
+  { id: 'notes', label: '记事本', icon: 'notebook', bg: '#FFF1D6', fg: '#E0A23A', route: '/apps/notes' },
+  // 查手机（D-085）：所有缔结的 TA 各一部手机；也能让 TA 看我的手机
+  { id: 'phones', label: '查手机', icon: 'phoneEye', bg: '#E4E9F5', fg: '#6B7FB0', route: '/apps/phones' },
   { id: 'settings', label: '设置', icon: 'settings', bg: '#E8ECF2', fg: '#93A3B8', route: '/apps/settings' },
 ];
 

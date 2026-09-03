@@ -780,3 +780,16 @@
   4. **key 纪律不变**：EAS 按 git 打包上传，`.env.local` 被 gitignore 天然不进构建；Supabase 公开配置（URL / anon key）放 **EAS 环境变量 production**（`eas env:create`），AI key 一律不放——分发包 AI 走服务端代理（D-057）。Supabase Auth 的 Apple provider 需把 `com.kotoko.everylove` 加进 Client IDs（保留 `host.exp.Exponent` 给 Expo Go）。
 - **操作手册**：`docs/RELEASE.md`（前置条件、一次性配置、每次发包命令、热更 vs 重打包）。
 - **影响文件**：`eas.json`（新）、`app.json`、`docs/RELEASE.md`（新）。
+
+## D-085 · 2026-09-03 · 记事本 App、桌面「查手机」App（看 TA 的手机 / 让 TA 看我的手机）、TA 的手机 = 记事本（按 MBTI 频率写心事）+ 日历 + Message（Harper 提出）
+
+- **背景**：Harper 三条：① 新增记事本，自己的本子随时写；② 首页加「查手机」，进去是所有缔结 TA 的手机可选，还能邀请他们查我的手机；③ TA 查我的手机能看到记事本和我与其他人的近期聊天，然后给我发消息。追加：查 TA 的手机里要有 TA 的记事本、日历和 Message，TA 按 MBTI 频率往记事本里写心事。
+- **决策**：
+  1. **记事本 App**（`app/apps/notes.tsx`，桌面图标「记事本」）：`store.notes`（id / text / at / updatedAt），列表最近改动在前 + 全屏编辑、长按删除；界面全按设计 token（`Card` / `Space` / `Fonts`）。**私密**：只有她「让 TA 看我的手机」时 TA 才看得到——这就是 §7 素材系统里的「可选日记」通道（设置 → 素材开关的「日记本」行改为跳到记事本）。
+  2. **查手机 App**（`app/apps/phones.tsx`，桌面图标「查手机」）：每个缔结的 TA 一部手机（角色色外壳 + 头像），「看 TA 的手机」走 D-082/D-084 的锁屏 / 内容；「让 TA 看我的手机」→ `peekMyPhone`。
+  3. **TA 看我的手机**（`lib/chat.ts peekMyPhone`）：会话留「TA 看了你的手机」+ 轻提示「TA 拿起了你的手机」；把她的记事本（最近 8 条、每条 ≤240 字）与她和其他 TA 的近期聊天（最多 3 人、各 6 句）拼成一轮 user 文本（prompts §8）让 TA 发 1–2 句消息（进会话、计未读）——按性格可在意 / 吃醋 / 逗她 / 被记事本打动，**只说自己的感受，不审问、不翻旧账、不愧疚绑架（红线 6）；记事本里的其他真人一个字不评论（红线 2）**；记事本内容先过**暗面路由**（红线 3：危机内容走温柔模式、不入戏）。之后记一条 `[节点]` 事实，并把记事本经记忆提取并进 facts（`absorbNotesMemory`，「开得越多 TA 越懂你」）。
+  4. **TA 的手机内容重做**（`components/his-phone.tsx`，替换原备忘录版）：**记事本** = TA 写给自己的心事（`Bond.notes`，最多 30 条）+ 锁着的页（隐藏设定：已解锁的 🔓 可读、未解锁 🔒 只见轮廓）；**日历** = 和她的约定（带时间）+ TA 自己稀疏的两条（与日历 App「TA 层」同一取样）+ TA 的生日；**Message** = TA 手机里和她的对话（最近 6 句，TA 视角：她的称呼 / 「我」）；**相册** = 立绘 + 相册里这个 TA 的照片。
+  5. **TA 的记事本调度器**（`lib/his-notes.ts`）：与发帖同机制——频率按 MBTI（**I 比 E 更爱写本子，与发帖相反**：INFP 2.5 / INFJ 2 / ISFP 2 … ESTJ 0.5，默认 1 条/天，±35% 抖动），启动 / 回前台 / 打开 TA 的手机时补写，错过只补 1 条，**一条都没有时立刻写第一条**（本子不空着）；内容由引擎按亲密模式背景生成（prompts §9 `HIS_NOTE_MANNER`：写给自己看、一到三句、有心事、不写称呼不用 emoji），失败静默。
+  6. **公共层 `lib/chat.ts`**：`bondedContext` / `respondAsHim` / `sendCardAndRespond` / `applyReplyEffects`（[解锁手机] / [拆红包] 标记落状态，会话页改为共用它）——TA「回一句」不再只能在会话页发生。
+  7. **图标**：MingCute 表新增两枚手绘（notebook / phoneEye）。新 App 进注册表即自动补到桌面网格末尾（D-034 归一化）。
+- **影响文件**：`app/apps/notes.tsx`（新）、`app/apps/phones.tsx`（新）、`components/his-phone.tsx`（新）、`lib/chat.ts`（新）、`lib/his-notes.ts`（新）、`components/chat-extras.tsx`（PhoneSheet 移出）、`components/mingcute.tsx`、`constants/apps.ts`、`lib/types.ts`（Note / HisNote / Bond.notes）、`store/app-store.ts`（notes / noteSchedule / addHisNote…）、`content/prompts.ts`（§8 / §9、记忆 context 标签通用化）、`lib/memory.ts`（absorbNotesMemory）、`app/bond/[bondId].tsx`、`app/apps/settings.tsx`、`app/_layout.tsx`、`lib/i18n.ts`。

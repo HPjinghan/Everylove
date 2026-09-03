@@ -231,6 +231,8 @@ export interface Bond {
   phoneCode?: string;
   /** 查手机（D-082）：她已经拿到密码（聊天里 TA 答应了，或她猜对了）；之后随时能看 */
   phoneUnlocked?: boolean;
+  /** TA 的记事本（D-085）：lib/his-notes.ts 按 MBTI 频率写，最多 HIS_NOTES_MAX 条 */
+  notes?: HisNote[];
 }
 
 export interface PostComment {
@@ -300,6 +302,21 @@ export interface OutingSession {
   planAt?: number;
   /** 她相对约定时间晚到的分钟数（负数 = 早到） */
   lateMinutes?: number;
+}
+
+/** 她的记事本（D-085）：随时写；私密，只有她让 TA 看手机时 TA 才看得到 */
+export interface Note {
+  id: string;
+  text: string;
+  at: number;
+  updatedAt: number;
+}
+
+/** TA 记事本里的一条心事（D-085）：按 MBTI 频率由引擎写，她查手机时看得到 */
+export interface HisNote {
+  id: string;
+  text: string;
+  at: number;
 }
 
 /** 相册里的一张拍立得（D-079）：外出拍的照片按下快门就是资产，不再并入羁绊会话 */

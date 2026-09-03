@@ -22,6 +22,7 @@ import { randomPasscode } from '@/lib/phone';
 import type {
   AlbumShot,
   Bond,
+  Note,
   BondMemory,
   CalendarEvent,
   Character,
@@ -85,6 +86,10 @@ interface AppState {
   outingSession: OutingSession | null;
   /** 相册（D-079）：外出拍的照片按下快门即入册，不再并入羁绊会话 */
   album: AlbumShot[];
+  /** 她的记事本（D-085） */
+  notes: Note[];
+  /** TA 记事本调度（D-085）：characterId → 下一条心事的到点时间（频率按 MBTI，lib/his-notes.ts） */
+  noteSchedule: Record<string, number>;
 
   completeOnboarding: (pref: LovePref) => void;
   setLanguage: (l: 'zh' | 'en' | 'ja') => void;
@@ -164,6 +169,12 @@ interface AppState {
   ) => void;
   removeOutingPlan: (id: string) => void;
   addAlbumShot: (shot: AlbumShot) => void;
+  addNote: (n: Note) => void;
+  updateNote: (id: string, text: string) => void;
+  removeNote: (id: string) => void;
+  setNoteDue: (characterId: string, at: number) => void;
+  /** TA 往自己的记事本里写一条（lib/his-notes.ts） */
+  addHisNote: (bondId: string, text: string) => void;
   /**
    * 进入地点开一场外出：该地点有约定 → 赴约（消耗约定）；没有 → 偶遇一位通讯录里的 TA
    * （跳过离席中的；赴约不跳过——TA 说到做到）。没有可遇的人返回 null。
@@ -205,6 +216,8 @@ const initialData = {
   outingPlans: [] as OutingPlan[],
   outingSession: null as OutingSession | null,
   album: [] as AlbumShot[],
+  notes: [] as Note[],
+  noteSchedule: {} as Record<string, number>,
 };
 
 export const useAppStore = create<AppState>()(
@@ -640,6 +653,20 @@ export const useAppStore = create<AppState>()(
         set({ outingPlans: get().outingPlans.filter((p) => p.id !== id) }),
 
       addAlbumShot: (shot) => set({ album: [...get().album, shot] }),
+
+      addNote: (n) => set({ notes: [...get().notes, n] }),
+      updateNote: (id, text) =>
+        set({ notes: get().notes.map((n) => (n.id === id ? { ...n, text, updatedAt: Date.now() } : n)) }),
+      removeNote: (id) => set({ notes: get().notes.filter((n) => n.id !== id) }),
+      setNoteDue: (characterId, at) => set({ noteSchedule: { ...get().noteSchedule, [characterId]: at } }),
+      addHisNote: (bondId, text) =>
+        set({
+          bonds: get().bonds.map((b) =>
+            b.id === bondId
+              ? { ...b, notes: [...(b.notes ?? []), { id: uid('hn'), text, at: Date.now() }].slice(-30) }
+              : b
+          ),
+        }),
 
       startOuting: (placeId) => {
         // 同地点的进行中会话：续上（离开再进来 TA 还在）；换了地点则先体面结束上一场

@@ -306,7 +306,7 @@ export default function MeScreen() {
       <Section title={t("素材开关")}>
         <Row label={t("分享给他")} value={t("即将上线")} dim />
         <Row label={t("口味偏好")} value={t("即将上线")} dim />
-        <Row label={t("日记本（私密）")} value={t("即将上线")} dim />
+        <Row label={t("记事本（私密）")} onPress={() => router.push('/apps/notes' as never)} />
       </Section>
 
       <Section title={t("我的创作")}>

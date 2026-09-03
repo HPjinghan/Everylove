@@ -474,6 +474,20 @@ function bondedContextLines(ctx: EngineContext, now: Date): string[] {
   ];
 }
 
+/* ── §9 TA 的记事本（D-085）：TA 写给自己的心事，按 MBTI 频率（lib/his-notes.ts） ── */
+
+export const HIS_NOTE_MANNER = [
+  '【记事本】现在你在自己的记事本里写一条——写给自己看的，不是发给她的消息：',
+  '- 一到三句，私密、真实、有点心事：今天发生的事、想到她的瞬间、没说出口的话、你自己的小情绪。',
+  '- 不写称呼、不用 emoji、不解释、不总结；像随手记，可以没头没尾。',
+  '- 只输出这一条的正文，不带日期、不带引号。',
+];
+export const HIS_NOTE_USER = '（写下今天记事本里的一条。）';
+
+export function buildHisNoteSystem(ctx: EngineContext, now: Date = new Date()): string {
+  return [...bondedContextLines(ctx, now), ...CHAT_HARD_RULES_OF(), ...HIS_NOTE_MANNER].join('\n');
+}
+
 /** 亲密模式完整系统 prompt */
 export function buildBondedSystemPrompt(ctx: EngineContext, now: Date = new Date()): string {
   return [
@@ -822,7 +836,7 @@ export function buildMemoryExtractPrompt(input: {
       : '已滑出对话窗口的更早对话：无',
     ...(context ? [context] : []),
     context
-      ? `这次见面的现场对话（请从中提取/更新 facts，并把这次见面用一句话并进 summary）：\n${transcript(recent, hisName)}`
+      ? `这段内容（请按上面的说明从中提取/更新 facts 与 summary）：\n${transcript(recent, hisName)}`
       : `最近对话（请从中提取/更新 facts）：\n${transcript(recent, hisName)}`,
   ].join('\n\n');
 }
@@ -1070,6 +1084,29 @@ export function buildAppointmentExtractPrompt(input: {
   return [
     `现在是 ${todayLine(now)} ${hh}:${mm}。TA 叫「${input.hisName}」，TA 叫她「${input.nickname}」。`,
     `最近对话：\n${transcript(input.recent, input.hisName)}`,
+  ].join('\n\n');
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* §8 看我的手机（D-085）：她把手机递给 TA——记事本 + 她和别人的聊天 → TA 发一条消息          */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+export function buildPeekMyPhoneUser(input: {
+  nickname: string;
+  notes: { at: number; text: string }[];
+  chats: { name: string; messages: ChatMessage[] }[];
+}): string {
+  const noteLines = input.notes.length
+    ? input.notes.map((n) => `- ${todayLine(new Date(n.at))}：${n.text.replace(/\n+/g, ' / ')}`).join('\n')
+    : '（空的）';
+  const chatBlocks = input.chats.length
+    ? input.chats.map((c) => `和${c.name}：\n${transcript(c.messages, c.name)}`).join('\n\n')
+    : '（没有别的聊天）';
+  return [
+    `（${input.nickname}把自己的手机递给你，说「随便看」。你翻了翻——`,
+    `【她的记事本】\n${noteLines}`,
+    `【她和别人的聊天】（都是这个世界里的人）\n${chatBlocks}`,
+    '看完之后，你给她发一条消息，1-2 句，像你平时发消息那样。按你的性格反应：可以在意、可以吃醋、可以逗她、可以被记事本里的某句话打动；只说你自己的感受，不审问、不翻旧账、不用愧疚绑架她。记事本里如果提到别的真实的人，一个字都不评论。）',
   ].join('\n\n');
 }
 

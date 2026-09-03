@@ -14,6 +14,7 @@ import { applyThemeColors, Romance } from '@/constants/theme';
 import { authConfigured } from '@/lib/auth';
 import { setLang } from '@/lib/i18n';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
+import { deliverDueHisNotes } from '@/lib/his-notes';
 import { checkMissedPlans } from '@/lib/outing';
 import { deliverDuePosts } from '@/lib/posts';
 import { initCloudSync } from '@/lib/sync';
@@ -58,6 +59,7 @@ export default function RootLayout() {
     deliverDueHeartbeats();
     void deliverDuePosts();
     void checkMissedPlans();
+    void deliverDueHisNotes();
     SplashScreen.hideAsync();
   }, [ready]);
 
@@ -74,6 +76,7 @@ export default function RootLayout() {
         deliverDueHeartbeats();
         void deliverDuePosts();
         void checkMissedPlans();
+        void deliverDueHisNotes();
         void refreshWeather();
       }
     });

@@ -184,6 +184,48 @@ export async function absorbOutingMemory(
   }
 }
 
+/** 她让 TA 看的记事本（D-085）：当作她说的话提取事实（[她]），summary 不动 */
+export async function absorbNotesMemory(
+  bondId: string,
+  notes: { at: number; text: string }[]
+): Promise<boolean> {
+  const key = `${bondId}:notes`;
+  if (inflight.has(key) || !notes.length) return false;
+  const bond = useAppStore.getState().bonds.find((b) => b.id === bondId);
+  if (!bond) return false;
+  const memory = bond.memory ?? EMPTY_MEMORY;
+  const recent: ChatMessage[] = notes.map((n, i) => ({
+    id: `note-${i}`,
+    from: 'me',
+    kind: 'text',
+    text: `（记事本 ${new Date(n.at).toLocaleDateString('zh-CN')}）${n.text}`,
+    at: n.at,
+  }));
+  const userPrompt = buildMemoryExtractPrompt({
+    hisName: bond.name,
+    nickname: bond.nickname,
+    memory,
+    aged: [],
+    recent,
+    context:
+      '下面不是聊天，而是她把手机递给 TA 时 TA 看到的她自己的记事本（她写给自己的话）。请把值得长期记住的事记进 facts（[她]，注明是记事本里写的），summary 原样保留；记事本里提到的其他真实的人只记「她和那个人的关系 / 发生了什么」，不记评价。',
+  });
+  inflight.add(key);
+  try {
+    const raw = await completeText(MEMORY_EXTRACT_SYSTEM, userPrompt);
+    const parsed = parseMemoryJSON(raw);
+    if (!parsed) return false;
+    const latest = useAppStore.getState().bonds.find((b) => b.id === bondId)?.memory ?? memory;
+    useAppStore.getState().setBondMemory(bondId, { ...latest, facts: parsed.facts, updatedAt: Date.now() });
+    return true;
+  } catch (e) {
+    console.warn('[memory] 记事本并入失败，跳过：', e);
+    return false;
+  } finally {
+    inflight.delete(key);
+  }
+}
+
 /** 直接写一条事实（不经模型；D-079 爽约这类系统确知的事）：放最前、去重、封顶 */
 export function addMemoryFact(bondId: string, fact: string): void {
   const bond = useAppStore.getState().bonds.find((b) => b.id === bondId);

@@ -1,24 +1,17 @@
 /**
- * 会话「+」面板的玩法（D-081/D-084）：外出邀请（地点 → 时间）/ 查 TA 的手机（解锁后的内容）/ 红包。
- * 位置改用 components/location-picker.tsx（真实地图），锁屏改用 components/phone-lock.tsx（iPhone 式）。
- * 「查 TA 的手机」进去后是备忘录（TA 记着关于她的事）/ 相册 / 加密日记（隐藏设定：看得见已解锁的，锁着的只见轮廓）——
- * 正式形态与「被发现」的修罗场见 OPEN_QUESTIONS #19。
+ * 会话「+」面板的玩法（D-081/D-084）：外出邀请（地点 → 时间）/ 红包。
+ * 位置在 components/location-picker.tsx（真实地图）；查手机的锁屏在 components/phone-lock.tsx（iPhone 式）、
+ * 解锁后的内容在 components/his-phone.tsx（记事本 / 日历 / Message / 相册，D-085）。
  */
 
-import { Image } from 'expo-image';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { CharAvatar } from '@/components/char-avatar';
 import { TimePicker } from '@/components/time-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { PLACES, type Place } from '@/content/places';
-import { characterSecrets, unlockedSecretCount } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
-import { levelInfo } from '@/lib/bond';
 import { t } from '@/lib/i18n';
-import type { Bond, Character } from '@/lib/types';
-import { useAppStore } from '@/store/app-store';
 
 export type ExtraSheet = 'invite' | 'phone' | 'redpacket' | 'location' | null;
 
@@ -173,104 +166,6 @@ export function RedPacketSheet({
   );
 }
 
-/* ── 查 TA 的手机 ── */
-
-const NOTE_PREFIX: Record<string, string> = { 约定: '约定 · ', 答应: '答应过 · ', 节点: '' };
-
-export function PhoneSheet({
-  visible,
-  onClose,
-  bond,
-  character,
-  onViewed,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  bond: Bond;
-  character: Character;
-  /** 内容真的展开给她看时（打开即已解锁，或刚猜对） */
-  onViewed?: () => void;
-}) {
-  const album = useAppStore((s) => s.album);
-  const portrait = useAppStore((s) => s.portraits[character.id]);
-  const viewed = useRef(false);
-  useEffect(() => {
-    if (!visible) {
-      viewed.current = false;
-      return;
-    }
-    if (!viewed.current) {
-      viewed.current = true;
-      onViewed?.();
-    }
-  }, [visible, onViewed]);
-
-  const notes = (bond.memory?.facts ?? []).map((raw) => {
-    const m = raw.match(/^\[(她|约定|答应|节点)\]\s*(.+)$/);
-    return m ? `${NOTE_PREFIX[m[1]] ?? ''}${m[2]}` : raw;
-  });
-  const photos = [
-    ...(portrait ? [{ id: 'portrait', uri: portrait }] : []),
-    ...album.filter((p) => p.characterId === character.id).map((p) => ({ id: p.id, uri: p.uri })),
-  ];
-  const secrets = characterSecrets(character);
-  const unlockedSecrets = unlockedSecretCount(levelInfo(bond.affinity).level, secrets.length);
-
-  return (
-    <Sheet visible={visible} title={t('{name} 的手机', { name: bond.name })} onClose={onClose}>
-      <View style={[styles.lock, { backgroundColor: character.colorSoft ?? Romance.accentSoft }]}>
-        <CharAvatar name={bond.name} color={character.color} size={56} characterId={character.id} />
-        <Text style={styles.lockName}>{bond.name}</Text>
-      </View>
-
-      <Text style={styles.section}>{t('备忘录')}</Text>
-      <View style={styles.note}>
-        {notes.length ? (
-          notes.slice(0, 14).map((n, i) => (
-            <Text key={i} style={styles.noteLine}>
-              · {n}
-            </Text>
-          ))
-        ) : (
-          <Text style={styles.noteEmpty}>{t('（还是空的）')}</Text>
-        )}
-      </View>
-
-      <Text style={styles.section}>{t('相册')}</Text>
-      {photos.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRow}>
-          {photos.map((p) => (
-            <Image key={p.id} source={{ uri: p.uri }} style={styles.photo} contentFit="cover" />
-          ))}
-        </ScrollView>
-      ) : (
-        <View style={styles.note}>
-          <Text style={styles.noteEmpty}>{t('（还是空的）')}</Text>
-        </View>
-      )}
-
-      {secrets.length ? (
-        <>
-          <Text style={styles.section}>{t('加密日记')}</Text>
-          <View style={styles.note}>
-            {secrets.map((s, i) =>
-              i < unlockedSecrets ? (
-                <Text key={i} style={styles.noteLine}>
-                  · {s}
-                </Text>
-              ) : (
-                <Text key={i} style={styles.noteLocked}>
-                  🔒 ••••••••••••
-                </Text>
-              )
-            )}
-          </View>
-        </>
-      ) : null}
-    </Sheet>
-  );
-}
-
 const styles = themed(() =>
   StyleSheet.create({
     sheet: { flex: 1, backgroundColor: Romance.bg },
@@ -327,14 +222,5 @@ const styles = themed(() =>
     primaryBtnRed: { backgroundColor: '#E5533D' },
     primaryBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
     btnDisabled: { opacity: 0.4 },
-    lock: { borderRadius: 24, paddingVertical: 26, alignItems: 'center', gap: 8 },
-    lockName: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-    section: { fontSize: 12, fontWeight: '700', color: Romance.sub, marginTop: 8, marginLeft: 4 },
-    note: { backgroundColor: '#FFFBEA', borderRadius: 16, padding: 14, gap: 6 },
-    noteLine: { fontSize: 13, color: '#5B4A2E', lineHeight: 19 },
-    noteEmpty: { fontSize: 13, color: Romance.faint },
-    noteLocked: { fontSize: 13, color: Romance.faint, letterSpacing: 1 },
-    photoRow: { gap: 8 },
-    photo: { width: 84, height: 84, borderRadius: 12, backgroundColor: Romance.line },
   })
 );

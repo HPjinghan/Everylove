@@ -9,7 +9,8 @@ import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharAvatar } from '@/components/char-avatar';
-import { InviteSheet, PhoneSheet, RedPacketSheet, type ExtraSheet } from '@/components/chat-extras';
+import { InviteSheet, RedPacketSheet, type ExtraSheet } from '@/components/chat-extras';
+import { PhoneSheet } from '@/components/his-phone';
 import { LocationPicker, type PickedLocation } from '@/components/location-picker';
 import { PhoneLock } from '@/components/phone-lock';
 import { ChatThread, type ReplyRef } from '@/components/chat-thread';
@@ -19,6 +20,7 @@ import { ARCHETYPE_LABEL } from '@/content/characters';
 import { characterSecrets, unlockedSecretCount } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
 import { callReady } from '@/lib/call';
+import { applyReplyEffects } from '@/lib/chat';
 import { describeAiError, generateReply, messageContextText } from '@/lib/engine';
 import { updateBondMemory } from '@/lib/memory';
 import { appointmentAtLabel, planTimeLabel } from '@/lib/appointments';
@@ -238,21 +240,8 @@ export default function BondScreen() {
       if (asVoice) void synthesizeVoice(t, character);
     }
 
-    // 查手机（D-082）：TA 这轮答应让她看 → 解锁，会话留一条
-    if (reply.unlockPhone && !current?.phoneUnlocked) {
-      useAppStore.getState().setPhoneUnlocked(bond.id);
-      useAppStore.getState().appendBond(bond.id, [sysMsg(t('TA 同意让你看手机了'))]);
-    }
-    // 红包（D-084）：TA 这轮拆了 → 最近一个没拆的红包标「已领取」
-    if (reply.openRedPacket) {
-      const latest = useAppStore.getState().bonds.find((b) => b.id === bond.id);
-      const packet = [...(latest?.messages ?? [])].reverse().find((m) => m.card?.type === 'redpacket' && !m.card.claimed);
-      if (packet?.card) {
-        useAppStore.getState().patchMessage({ bondId: bond.id }, packet.id, {
-          card: { ...packet.card, claimed: true, declined: false },
-        });
-      }
-    }
+    // 回复里的系统标记（D-082 解锁手机 / D-084 拆红包）→ 状态，与公共层共用（lib/chat.ts）
+    applyReplyEffects(bond.id, reply);
 
     // 记忆库后台更新：每隔几轮提取长期事实 + 滚动摘要，失败静默（D-016）
     // （升级出画面已下线：聊天回归纯文本，D-037；升级系统提示仍在 store.appendBond）

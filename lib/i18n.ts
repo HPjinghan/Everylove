@@ -153,7 +153,7 @@ const en: Record<string, string> = {
   'TA 叫你起床 · 敬请期待': 'They wake you up · coming soon',
   '错过回溯': 'Missed replay', '错过的来电与聊天回听 · 敬请期待': 'Replay missed calls & chats · coming soon',
   '素材开关': 'Data switches', '分享给他': 'Share with them', '口味偏好': 'Taste profile',
-  '日记本（私密）': 'Diary (private)', '即将上线': 'Coming soon',
+'即将上线': 'Coming soon',
 
   '我的创作': 'My creations', '创造的角色': 'Characters created',
   '热度 · 分成': 'Heat · revenue share', '敬请期待': 'Coming soon',
@@ -497,9 +497,9 @@ const en: Record<string, string> = {
   '塞进红包': 'Send',
 
   '{name} 的手机': '{name}\'s phone',
-  '备忘录': 'Notes',
-  '（还是空的）': '(still empty)',
-  '加密日记': 'Locked diary',
+
+
+
   '已领取': 'Opened',
   '等 TA 拆开': 'Waiting to be opened',
   '你看了 TA 的手机': 'You looked at their phone',
@@ -528,6 +528,19 @@ const en: Record<string, string> = {
   '点地图上的一个地方': 'Tap a spot on the map',
   'TA 没拆': 'They didn\'t open it',
   '当前位置': 'Current location',
+    // 记事本 / 查手机 App / 看我的手机（D-085）
+  '记事本': 'Notes',
+  '记事本（私密）': 'Notes (private)',
+  '还是空的。': 'Still empty.',
+  '删掉这条？': 'Delete this note?',
+  '写点什么…': 'Write something…',
+  '看 TA 的手机': 'Look at their phone',
+  '让 TA 看我的手机': 'Let them see my phone',
+  '和{name}去{place}': 'With {name} at {place}',
+  '我的生日': 'My birthday',
+  'TA 看了你的手机': 'They looked at your phone',
+  'TA 拿起了你的手机': 'They picked up your phone',
+  '…': '…',
   // __EN_END__
 };
 
@@ -658,7 +671,7 @@ const ja: Record<string, string> = {
   'TA 叫你起床 · 敬请期待': 'モーニングコール · 近日公開',
   '错过回溯': '見逃しリプレイ', '错过的来电与聊天回听 · 敬请期待': '逃した着信とチャットを再生 · 近日公開',
   '素材开关': 'データ設定', '分享给他': 'あの人に共有', '口味偏好': '好みプロフィール',
-  '日记本（私密）': '日記（非公開）', '即将上线': '近日公開',
+'即将上线': '近日公開',
 
   '我的创作': '私の創作', '创造的角色': '創造したキャラ',
   '热度 · 分成': '人気 · 収益分配', '敬请期待': '近日公開',
@@ -1002,9 +1015,9 @@ const ja: Record<string, string> = {
   '塞进红包': '包む',
 
   '{name} 的手机': '{name} のスマホ',
-  '备忘录': 'メモ',
-  '（还是空的）': '（まだ空です）',
-  '加密日记': '鍵付き日記',
+
+
+
   '已领取': '受け取り済み',
   '等 TA 拆开': '開けるのを待っています',
   '你看了 TA 的手机': 'スマホをのぞきました',
@@ -1033,6 +1046,19 @@ const ja: Record<string, string> = {
   '点地图上的一个地方': '地図をタップして場所を選ぶ',
   'TA 没拆': '開けませんでした',
   '当前位置': '現在地',
+    // 记事本 / 查手机 App / 看我的手机（D-085）
+  '记事本': 'メモ',
+  '记事本（私密）': 'メモ（非公開）',
+  '还是空的。': 'まだ空です。',
+  '删掉这条？': 'このメモを削除しますか？',
+  '写点什么…': '何か書く…',
+  '看 TA 的手机': 'スマホを見る',
+  '让 TA 看我的手机': '自分のスマホを見せる',
+  '和{name}去{place}': '{name}と{place}',
+  '我的生日': '誕生日',
+  'TA 看了你的手机': 'スマホを見られました',
+  'TA 拿起了你的手机': 'スマホを手に取りました',
+  '…': '…',
   // __JA_END__
 };
 
