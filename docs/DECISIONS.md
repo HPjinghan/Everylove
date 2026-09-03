@@ -770,3 +770,13 @@
   6. **红包由 TA 决定**：提示语改为「按性格和关系决定拆不拆，拆了在回复末尾写 `[拆红包]`」；引擎 `applyReplyMarkers` 统一剥 `[解锁手机]` / `[拆红包]` 并置位；会话层：这轮带标记 → 最近一个没拆的红包标「已领取」，没带 → 标「TA 没拆」；亲密模式 prompt 常驻一条红包规则，之前没拆的聊到了也能拆。卡片上下文告诉模型「你拆了 / 你没拆」。
   7. **真实地图发位置**：`components/location-picker.tsx`——`react-native-maps`（iOS Apple 地图，Expo Go 自带）全屏；已授权就直接落到当前位置，否则不打扰；定位按钮请求权限（拒绝也无妨）；点地图 / 拖标选点；顶部搜索走 Nominatim（OSM 免费接口，带 UA 与语言），候选点选；选点后 `expo-location` 反地理编码出一行名字 + 一行地址；发送 = 位置卡片带经纬度，气泡里嵌一小块不可交互的地图。app.json 加 expo-location 权限文案（dev build 用；Expo Go 用自带的）。
 - **影响文件**：`package.json`（react-native-maps、@expo-google-fonts/fredoka）、`app.json`、`constants/theme.ts`（Fonts.label/labelBold）、`app/_layout.tsx`、`app/index.tsx`、`components/app-screen.tsx`、`components/chat-thread.tsx`、`components/card.tsx`（新）、`components/time-picker.tsx`（新）、`components/phone-lock.tsx`（新）、`components/location-picker.tsx`（新）、`components/chat-extras.tsx`（InviteSheet 两步、LocationSheet 删、PhoneSheet 只剩内容）、`app/bond/[bondId].tsx`、`app/apps/outing.tsx`、`lib/types.ts`、`lib/engine.ts`、`content/prompts.ts`、`lib/i18n.ts`。
+
+## D-085 · 2026-09-03 · TestFlight 构建管线：EAS Build production 档 + bundle id + iOS 权限文案（Harper 提出）
+
+- **决策**：正式测试通道按 D-059 预留的口径落地——**EAS Build（云端）→ `eas submit` → TestFlight**，Windows 上可全程发包。工程侧：
+  1. `eas.json`：`production` 档（channel `production`、EAS 环境 `production`、构建号远程自增 `appVersionSource: remote`）+ `submit.production`；不加 development/simulator 档（dev build 何时切见 OPEN_QUESTIONS #26）。
+  2. `app.json`：`ios.bundleIdentifier = com.harperz.everylove`（反域名取 Expo 账号名；首次上传 App Store Connect 前仍可改，上传后锁死）；`usesAppleSignIn` + `expo-apple-authentication` 插件（原生包必须有 Sign in with Apple entitlement，Expo Go 里是它自带的）；`ITSAppUsesNonExemptEncryption=false`（只用 HTTPS，免每个 build 手动答出口合规）；权限文案中文化：麦克风（语音消息/打电话）、相册（上传头像/发照片）、不申请相机（代码没用）、去掉 expo-location 默认塞的两条「始终定位」文案（只用前台定位）。
+  3. **渠道隔离**：Expo Go 朋友试装继续走 `preview` 渠道（D-059），TestFlight 包走 `production` 渠道；runtimeVersion 仍 `sdkVersion` 策略（Expo Go 只认 `exposdk:54.0.0`），所以**纪律**：动了 app.json 插件 / 原生依赖必须重新 build+submit，不能只 `eas update --channel production`（同 runtime 会把不兼容的 JS 推给旧包）。
+  4. **key 纪律不变**：EAS 按 git 打包上传，`.env.local` 被 gitignore 天然不进构建；Supabase 公开配置（URL / anon key）放 **EAS 环境变量 production**（`eas env:create`），AI key 一律不放——分发包 AI 走服务端代理（D-057）。Supabase Auth 的 Apple provider 需把 `com.harperz.everylove` 加进 Client IDs（保留 `host.exp.Exponent` 给 Expo Go）。
+- **操作手册**：`docs/RELEASE.md`（前置条件、一次性配置、每次发包命令、热更 vs 重打包）。
+- **影响文件**：`eas.json`（新）、`app.json`、`docs/RELEASE.md`（新）。

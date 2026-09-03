@@ -9,7 +9,12 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.harperz.everylove",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "web": {
       "output": "static",
@@ -27,11 +32,26 @@
         }
       ],
       "expo-notifications",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "用来录语音消息和打电话给 TA。"
+        }
+      ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "用来在会话里发送你的位置；不授权也可以在地图上自己选。"
+          "locationWhenInUsePermission": "用来在会话里发送你的位置；不授权也可以在地图上自己选。",
+          "locationAlwaysPermission": false,
+          "locationAlwaysAndWhenInUsePermission": false
+        }
+      ],
+      "expo-apple-authentication",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "用来上传头像和把照片发给 TA。",
+          "cameraPermission": false
         }
       ]
     ],
