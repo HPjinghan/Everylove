@@ -309,7 +309,7 @@ const en: Record<string, string> = {
   '天气': 'Weather',
   '没拿到定位权限': 'No location permission',
   '没关系——在下面直接搜索你的地区也一样。': 'No worries — just search your area below.',
-  '当前位置': 'Current location',
+
   '定位失败': 'Location failed',
   '在下面手动搜索你的地区吧。': 'Search your area below instead.',
   '没找到这个地方': 'Place not found',
@@ -495,7 +495,7 @@ const en: Record<string, string> = {
   '留一句话': 'Leave a note',
   '给你的': 'For you',
   '塞进红包': 'Send',
-  '我在{place}': 'I\'m at {place}',
+
   '{name} 的手机': '{name}\'s phone',
   '备忘录': 'Notes',
   '（还是空的）': '(still empty)',
@@ -505,8 +505,29 @@ const en: Record<string, string> = {
   '你看了 TA 的手机': 'You looked at their phone',
   // 查手机密码（D-082）
   'TA 同意让你看手机了': 'They agreed to let you see their phone',
-  '密码': 'Passcode',
+
   '密码不对': 'Wrong passcode',
+    // 地基层 + 邀请时间 / 锁屏 / 红包 / 地图（D-084）
+  '后天': 'Day after tomorrow',
+  '周{d}': '{d}',
+  '选个时间': 'Pick a time',
+  '上午 10:00': '10:00 am',
+  '中午 12:00': '12:00 noon',
+  '下午 15:00': '3:00 pm',
+  '傍晚 17:30': '5:30 pm',
+  '晚上 19:00': '7:00 pm',
+  '夜里 21:00': '9:00 pm',
+  '约在什么时候？': 'When?',
+  '输入密码': 'Enter Passcode',
+  '问 TA 要密码': 'Ask them for it',
+  '想看看你的手机': 'Can I see your phone?',
+  '查手机': 'Phone',
+  '搜索地点': 'Search a place',
+  '地图上的一个点': 'A spot on the map',
+  '发送位置': 'Send location',
+  '点地图上的一个地方': 'Tap a spot on the map',
+  'TA 没拆': 'They didn\'t open it',
+  '当前位置': 'Current location',
   // __EN_END__
 };
 
@@ -793,7 +814,7 @@ const ja: Record<string, string> = {
   '天气': '天気',
   '没拿到定位权限': '位置情報の許可なし',
   '没关系——在下面直接搜索你的地区也一样。': '大丈夫——下から地域を検索してね。',
-  '当前位置': '現在地',
+
   '定位失败': '位置情報の取得に失敗',
   '在下面手动搜索你的地区吧。': '下から地域を検索してみて。',
   '没找到这个地方': '見つかりませんでした',
@@ -979,7 +1000,7 @@ const ja: Record<string, string> = {
   '留一句话': 'ひとこと添える',
   '给你的': 'あなたに',
   '塞进红包': '包む',
-  '我在{place}': '{place}にいます',
+
   '{name} 的手机': '{name} のスマホ',
   '备忘录': 'メモ',
   '（还是空的）': '（まだ空です）',
@@ -989,8 +1010,29 @@ const ja: Record<string, string> = {
   '你看了 TA 的手机': 'スマホをのぞきました',
   // 查手机密码（D-082）
   'TA 同意让你看手机了': 'スマホを見せてくれることになりました',
-  '密码': 'パスコード',
+
   '密码不对': 'パスコードが違います',
+    // 地基层 + 邀请时间 / 锁屏 / 红包 / 地图（D-084）
+  '后天': '明後日',
+  '周{d}': '{d}曜',
+  '选个时间': '時間を選ぶ',
+  '上午 10:00': '午前 10:00',
+  '中午 12:00': '正午 12:00',
+  '下午 15:00': '午後 3:00',
+  '傍晚 17:30': '夕方 5:30',
+  '晚上 19:00': '夜 7:00',
+  '夜里 21:00': '夜 9:00',
+  '约在什么时候？': 'いつにする？',
+  '输入密码': 'パスコードを入力',
+  '问 TA 要密码': 'パスコードを聞く',
+  '想看看你的手机': 'スマホ見せて',
+  '查手机': 'スマホ',
+  '搜索地点': '場所を検索',
+  '地图上的一个点': '地図上の地点',
+  '发送位置': '位置を送る',
+  '点地图上的一个地方': '地図をタップして場所を選ぶ',
+  'TA 没拆': '開けませんでした',
+  '当前位置': '現在地',
   // __JA_END__
 };
 

@@ -756,3 +756,17 @@
   3. **界面本身这轮不动**：按设计稿重做（去阴影、1.5px 描边只留卡片与主按钮、圆角 6、Fredoka、菱纹与聊天壁纸）是逐屏工程，另起任务按模块推进；`Romance.line` 仍是浅色（它同时被当浅底用），顶栏下沿 / 输入栏上沿改用 `Romance.stroke` 属于那一轮。Fredoka 需装 `@expo-google-fonts/fredoka`，Noto Serif SC 体积大、仅头像单字，是否内嵌待定。
   4. **文件**：`design/` 目录进仓库（README + 解出的页面源码）；4.6 MB 原始 bundle 进 .gitignore。
 - **影响文件**：`constants/theme.ts`、`constants/design.ts`（新）、`design/README.md`（新）、`design/design-system.page.html`（新）、`.gitignore`。
+
+## D-084 · 2026-09-03 · 设计系统地基层（Fredoka、共用件按规格）+ 昨日功能跟进：邀请带时间、iPhone 式锁屏与「问 TA 要密码」、红包由 TA 决定拆不拆、真实地图发位置（Harper 提出）
+
+- **背景**：Harper 决定「先把地基层做了」，并跟进四条：约外出只选地点 TA 不知道时间；查手机界面要像真的 iPhone 锁屏，并加「问他密码」按钮（发一条「谁想看你的手机」，TA 按情况同意与否，同意就把密码发出来）；红包发出后 TA 自己判断拆不拆并回话；发送位置要调起真实地图，可拿用户坐标，不授权也能在地图上选或搜索。
+- **地基层（只碰共用件，界面结构不动）**：
+  1. **字体**：装 `@expo-google-fonts/fredoka`，根布局 `useFonts` 加载 500/600（加载失败也放行，回落系统字体）；`Fonts.label` / `Fonts.labelBold` 两个 token。先用在：桌面时钟（Fredoka 600、字距 -1）、`AppScreen` 标题（17/600）、聊天时间戳（11/500）、锁屏时钟与键盘数字。
+  2. **共用件按 `constants/design.ts`**：`AppScreen` 顶栏改 1.5px `Romance.stroke` 下沿；`ChatThread` 输入栏 1.5px 上沿、输入框 paper 底 h38 r6、气泡 r6 尾角 2 内距 9×13 最大宽 72% 无阴影、「+」面板图块 r6；新增 `components/card.tsx`（`Card` = 白色 r6 1.5px 描边无阴影，`Divider` = 同色描边线）供新界面用。
+  3. **工作规则（写进 CLAUDE.md §11）**：新界面只引 `constants/design.ts` 与 `Romance` 的 token，不再手写圆角 / 阴影 / 字号；卡片一律 `Card`。
+- **功能跟进**：
+  4. **邀请带时间**：新增 `components/time-picker.tsx`（日期 chip 今天 / 明天 / 后天 / 之后四天 × 时段 chip 上午 10:00 / 中午 12:00 / 下午 15:00 / 傍晚 17:30 / 晚上 19:00 / 夜里 21:00，今天已过时段不出）。会话「+」的外出邀请与外出页「约 TA」都走 地点 → 时间 两步；卡片标题「明天 15:00 · 街角咖啡馆」，约定带 `at`（走 D-079 的赴约窗口 / 迟到 / 爽约），TA 的提示语里带绝对时间。
+  5. **iPhone 式锁屏**：`components/phone-lock.tsx`——全屏渐变壁纸（角色主题色 → 深色）、锁图标、Fredoka 大时钟、日期、「输入密码」四个点、九宫格数字键盘（带字母）、删除键；猜错抖动清空；左下 **「问 TA 要密码」**、右下取消。「问 TA 要密码」= 发一张 `phoneRequest` 卡片「想看看你的手机」，提示语告诉 TA 她在要密码、密码是什么，按性格 × 亲密度决定：给就说出密码并写 `[解锁手机]`（引擎剥掉、解锁）；不给就说明或逗她。解锁后才进 `PhoneSheet` 的手机内容。
+  6. **红包由 TA 决定**：提示语改为「按性格和关系决定拆不拆，拆了在回复末尾写 `[拆红包]`」；引擎 `applyReplyMarkers` 统一剥 `[解锁手机]` / `[拆红包]` 并置位；会话层：这轮带标记 → 最近一个没拆的红包标「已领取」，没带 → 标「TA 没拆」；亲密模式 prompt 常驻一条红包规则，之前没拆的聊到了也能拆。卡片上下文告诉模型「你拆了 / 你没拆」。
+  7. **真实地图发位置**：`components/location-picker.tsx`——`react-native-maps`（iOS Apple 地图，Expo Go 自带）全屏；已授权就直接落到当前位置，否则不打扰；定位按钮请求权限（拒绝也无妨）；点地图 / 拖标选点；顶部搜索走 Nominatim（OSM 免费接口，带 UA 与语言），候选点选；选点后 `expo-location` 反地理编码出一行名字 + 一行地址；发送 = 位置卡片带经纬度，气泡里嵌一小块不可交互的地图。app.json 加 expo-location 权限文案（dev build 用；Expo Go 用自带的）。
+- **影响文件**：`package.json`（react-native-maps、@expo-google-fonts/fredoka）、`app.json`、`constants/theme.ts`（Fonts.label/labelBold）、`app/_layout.tsx`、`app/index.tsx`、`components/app-screen.tsx`、`components/chat-thread.tsx`、`components/card.tsx`（新）、`components/time-picker.tsx`（新）、`components/phone-lock.tsx`（新）、`components/location-picker.tsx`（新）、`components/chat-extras.tsx`（InviteSheet 两步、LocationSheet 删、PhoneSheet 只剩内容）、`app/bond/[bondId].tsx`、`app/apps/outing.tsx`、`lib/types.ts`、`lib/engine.ts`、`content/prompts.ts`、`lib/i18n.ts`。

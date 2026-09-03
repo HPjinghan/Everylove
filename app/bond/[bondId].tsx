@@ -9,7 +9,9 @@ import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharAvatar } from '@/components/char-avatar';
-import { InviteSheet, LocationSheet, PhoneSheet, RedPacketSheet, type ExtraSheet } from '@/components/chat-extras';
+import { InviteSheet, PhoneSheet, RedPacketSheet, type ExtraSheet } from '@/components/chat-extras';
+import { LocationPicker, type PickedLocation } from '@/components/location-picker';
+import { PhoneLock } from '@/components/phone-lock';
 import { ChatThread, type ReplyRef } from '@/components/chat-thread';
 import { MingCute } from '@/components/mingcute';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -19,6 +21,7 @@ import { Romance, themed } from '@/constants/theme';
 import { callReady } from '@/lib/call';
 import { describeAiError, generateReply, messageContextText } from '@/lib/engine';
 import { updateBondMemory } from '@/lib/memory';
+import { appointmentAtLabel, planTimeLabel } from '@/lib/appointments';
 import { detectAppointment } from '@/lib/outing';
 import { daysTogether, uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -77,35 +80,50 @@ export default function BondScreen() {
     return msg.id;
   };
 
-  /** 外出邀请：卡片 → 立即成为一条约定（TA 一定答应；时间可在接下来的对话里定，D-079 会识别） */
-  const invite = (place: Place) => {
+  /** 外出邀请（D-084 带时间）：卡片 → 立即成为一条带时间的约定（TA 一定答应），TA 用引擎回一句 */
+  const invite = (place: Place, at: number) => {
     setSheet(null);
+    const when = planTimeLabel(at);
     const pending = sendCard(
-      { type: 'invite', title: t(place.name), subtitle: t(place.hook), placeId: place.id },
-      `（她发来一张外出邀请：约你去${place.name}。你答应下来，用你的口吻回她，可以顺口问问或定个时间。）`
+      { type: 'invite', title: `${when} · ${t(place.name)}`, subtitle: t(place.hook), placeId: place.id },
+      `（她发来一张外出邀请：${appointmentAtLabel(at)} 去${place.name}。你答应下来，用你的口吻回她。）`
     );
-    useAppStore.getState().addOutingPlan(character.id, place.id, { source: 'manual' });
+    useAppStore.getState().addOutingPlan(character.id, place.id, { at, source: 'manual' });
     void pending;
   };
 
-  /** 红包：TA 回完话就算拆开了 */
+  /** 红包（D-084）：拆不拆由 TA 决定——回复带 [拆红包] 标记才算拆了（respond 里处理）；这轮没拆就标「TA 没拆」 */
   const sendRedPacket = (amount: number, note: string) => {
     setSheet(null);
     const card: ChatCard = { type: 'redpacket', title: `¥${amount.toFixed(2)}`, subtitle: note, amount };
     void (async () => {
       const id = await sendCard(
         card,
-        `（她给你发了一个 ¥${amount.toFixed(2)} 的红包，留言「${note}」。你收下了——按你的性格回她，一两句。）`
+        `（她给你发了一个 ¥${amount.toFixed(2)} 的红包，留言「${note}」。按你的性格和你们的关系决定拆不拆：拆了就在回复最后单独一行写 [拆红包]；不拆就说说为什么或逗她。）`
       );
-      useAppStore.getState().patchMessage({ bondId: bond.id }, id, { card: { ...card, claimed: true } });
+      const after = useAppStore.getState().bonds.find((b) => b.id === bond.id)?.messages.find((m) => m.id === id);
+      if (after?.card && !after.card.claimed) {
+        useAppStore.getState().patchMessage({ bondId: bond.id }, id, { card: { ...after.card, declined: true } });
+      }
     })();
   };
 
-  const sendLocation = (label: string, sub?: string) => {
+  /** 位置（D-084）：真实地图选的点，卡片带坐标（气泡里一小块地图） */
+  const sendLocation = (loc: PickedLocation) => {
     setSheet(null);
     void sendCard(
-      { type: 'location', title: label, subtitle: sub },
-      `（她发来了自己的位置：${label}${sub ? `，${sub}` : ''}。）`
+      { type: 'location', title: loc.title, subtitle: loc.subtitle, lat: loc.lat, lon: loc.lon },
+      `（她发来了自己的位置：${loc.title}${loc.subtitle ? `，${loc.subtitle}` : ''}。）`
+    );
+  };
+
+  /** 锁屏上的「问 TA 要密码」（D-084）：给 TA 发一条「想看你的手机」，TA 按性格决定给不给 */
+  const askPasscode = () => {
+    setSheet(null);
+    const code = useAppStore.getState().ensurePhoneCode(bond.id);
+    void sendCard(
+      { type: 'phoneRequest', title: t('想看看你的手机') },
+      `（她按了「问 TA 要密码」：${bond.nickname} 想看看你的手机。按你的性格和你们现在的亲密程度决定给不给：给就把密码 ${code} 告诉她，并在回复最后单独一行写 [解锁手机]；不给就说明为什么或逗她，不写标记。）`
     );
   };
 
@@ -225,6 +243,16 @@ export default function BondScreen() {
       useAppStore.getState().setPhoneUnlocked(bond.id);
       useAppStore.getState().appendBond(bond.id, [sysMsg(t('TA 同意让你看手机了'))]);
     }
+    // 红包（D-084）：TA 这轮拆了 → 最近一个没拆的红包标「已领取」
+    if (reply.openRedPacket) {
+      const latest = useAppStore.getState().bonds.find((b) => b.id === bond.id);
+      const packet = [...(latest?.messages ?? [])].reverse().find((m) => m.card?.type === 'redpacket' && !m.card.claimed);
+      if (packet?.card) {
+        useAppStore.getState().patchMessage({ bondId: bond.id }, packet.id, {
+          card: { ...packet.card, claimed: true, declined: false },
+        });
+      }
+    }
 
     // 记忆库后台更新：每隔几轮提取长期事实 + 滚动摘要，失败静默（D-016）
     // （升级出画面已下线：聊天回归纯文本，D-037；升级系统提示仍在 store.appendBond）
@@ -287,9 +315,18 @@ export default function BondScreen() {
 
       <InviteSheet visible={sheet === 'invite'} onClose={() => setSheet(null)} onPick={invite} />
       <RedPacketSheet visible={sheet === 'redpacket'} onClose={() => setSheet(null)} onSend={sendRedPacket} />
-      <LocationSheet visible={sheet === 'location'} onClose={() => setSheet(null)} onSend={sendLocation} />
+      <LocationPicker visible={sheet === 'location'} onClose={() => setSheet(null)} onSend={sendLocation} />
+      {/* 查手机（D-082/D-084）：没解锁是 iPhone 式锁屏（猜 / 问 TA 要），解锁后才是手机内容 */}
+      <PhoneLock
+        visible={sheet === 'phone' && !bond.phoneUnlocked}
+        color={character.color}
+        passcode={sheet === 'phone' ? useAppStore.getState().ensurePhoneCode(bond.id) : ''}
+        onUnlock={() => useAppStore.getState().setPhoneUnlocked(bond.id)}
+        onAsk={askPasscode}
+        onClose={() => setSheet(null)}
+      />
       <PhoneSheet
-        visible={sheet === 'phone'}
+        visible={sheet === 'phone' && !!bond.phoneUnlocked}
         onClose={() => setSheet(null)}
         bond={bond}
         character={character}

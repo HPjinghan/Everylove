@@ -43,8 +43,9 @@ export function messageContextText(m: ChatMessage): string {
   // 「+」面板的卡片（D-081）：TA 看到的是「她做了什么」
   if (m.kind === 'card' && m.card) {
     const c = m.card;
-    if (c.type === 'invite') return `（她发来一张外出邀请：约你去${c.title}）`;
-    if (c.type === 'redpacket') return `（她给你发了一个 ${c.title} 的红包${c.subtitle ? `，留言「${c.subtitle}」` : ''}）`;
+    if (c.type === 'invite') return `（她发来一张外出邀请：${c.title}）`;
+    if (c.type === 'redpacket') return `（她给你发了一个 ${c.title} 的红包${c.subtitle ? `，留言「${c.subtitle}」` : ''}${c.claimed ? '，你拆了' : c.declined ? '，你没拆' : ''}）`;
+    if (c.type === 'phoneRequest') return '（她想看你的手机，问你要密码）';
     return `（她发来了自己的位置：${c.title}${c.subtitle ? `，${c.subtitle}` : ''}）`;
   }
   let body = (m.text || m.spoken || '').trim();
@@ -423,6 +424,9 @@ export function memoryBlockFor(memory: BondMemory | undefined): string[] {
  * 答应了就在回复末尾单独一行写标记——引擎剥掉标记并解锁（lib/engine.ts applyPhoneUnlock），她看不到标记。
  */
 export const PHONE_UNLOCK_MARK = '[解锁手机]';
+/** 红包（D-084）：她发的红包由 TA 自己决定拆不拆，拆了在回复末尾单独一行写标记 */
+export const RED_PACKET_MARK = '[拆红包]';
+export const RED_PACKET_RULE = `【红包】她给你发红包时，按你的性格和你们的关系决定拆不拆：拆了就在回复的最后单独一行写 ${RED_PACKET_MARK}（她看不到这个标记），并回她一句；不拆就说说为什么或逗她，不写标记。之前没拆的红包，聊到了也可以拆（同样写标记）。`;
 
 export function phoneBlock(ctx: EngineContext): string[] {
   const code = ctx.bond?.phoneCode;
@@ -463,6 +467,7 @@ function bondedContextLines(ctx: EngineContext, now: Date): string[] {
     ...memoryBlockFor(bond?.memory),
     ...secretsBlock(c, lv.level),
     ...phoneBlock(ctx),
+    RED_PACKET_RULE,
     ...BONDED_LOVE_RULES,
     ...initiativeLine(c),
     `- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`,

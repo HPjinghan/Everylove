@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Romance, themed } from '@/constants/theme';
+import { Shape } from '@/constants/design';
+import { Fonts, Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 
 /**
@@ -53,12 +54,13 @@ const styles = themed(() =>
       alignItems: 'center',
       paddingHorizontal: 12,
       paddingVertical: 8,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: Romance.line,
+      // 设计系统（D-084）：顶栏透底、只有一条 1.5px 墨色下沿
+      borderBottomWidth: Shape.stroke,
+      borderBottomColor: Romance.stroke,
     },
     back: { flexDirection: 'row', alignItems: 'center', width: 76 },
     backText: { fontSize: 14, color: Romance.ink },
-    title: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '600', color: Romance.ink },
+    title: { flex: 1, textAlign: 'center', fontFamily: Fonts.labelBold, fontSize: 17, color: Romance.ink },
     right: { width: 76, alignItems: 'flex-end' },
     body: { flex: 1 },
   })

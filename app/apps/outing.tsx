@@ -14,6 +14,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
+import { TimePicker } from '@/components/time-picker';
 import { Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { PLACES, placeById, type Place } from '@/content/places';
@@ -34,6 +35,7 @@ export default function OutingScreen() {
 
   const [planOpen, setPlanOpen] = useState(false);
   const [planCharacterId, setPlanCharacterId] = useState<string | null>(null);
+  const [planPlaceId, setPlanPlaceId] = useState<string | null>(null);
 
   const w = todayWeather();
   const plaza: Place | undefined = PLACES.find((p) => p.stranger);
@@ -43,11 +45,13 @@ export default function OutingScreen() {
     [...customs, ...CHARACTERS].find((c) => c.id === characterId)?.color ?? Romance.accent;
   const bondOf = (characterId: string) => bonds.find((b) => b.characterId === characterId);
 
-  const makePlan = (placeId: string) => {
-    if (!planCharacterId) return;
-    useAppStore.getState().addOutingPlan(planCharacterId, placeId);
+  /** 约 TA（D-084 带时间）：选人 → 选地点 → 选时间 */
+  const makePlan = (at: number) => {
+    if (!planCharacterId || !planPlaceId) return;
+    useAppStore.getState().addOutingPlan(planCharacterId, planPlaceId, { at, source: 'manual' });
     setPlanOpen(false);
     setPlanCharacterId(null);
+    setPlanPlaceId(null);
   };
 
   return (
@@ -166,6 +170,7 @@ export default function OutingScreen() {
             onPress={() => {
               setPlanOpen(false);
               setPlanCharacterId(null);
+              setPlanPlaceId(null);
             }}>
             <MingCute name="close" size={20} color={Romance.sub} />
           </Pressable>
@@ -187,11 +192,11 @@ export default function OutingScreen() {
                 </Pressable>
               ))}
             </>
-          ) : (
+          ) : !planPlaceId ? (
             <>
               <Text style={styles.modalTitle}>{t('去哪儿见？')}</Text>
               {spots.map((place) => (
-                <Pressable key={place.id} style={styles.modalRow} onPress={() => makePlan(place.id)}>
+                <Pressable key={place.id} style={styles.modalRow} onPress={() => setPlanPlaceId(place.id)}>
                   <Text style={styles.modalRowEmoji}>{place.emoji}</Text>
                   <View style={styles.modalRowBody}>
                     <Text style={styles.modalRowText}>{t(place.name)}</Text>
@@ -199,6 +204,11 @@ export default function OutingScreen() {
                   </View>
                 </Pressable>
               ))}
+            </>
+          ) : (
+            <>
+              <Text style={styles.modalTitle}>{t('约在什么时候？')}</Text>
+              <TimePicker onPick={makePlan} />
             </>
           )}
         </View>

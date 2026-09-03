@@ -119,17 +119,22 @@ export interface UserProfile {
 export type MessageFrom = 'him' | 'me' | 'system';
 export type MessageKind = 'text' | 'voice' | 'system' | 'image' | 'card';
 
-/** 「+」面板发出的卡片消息（D-081）：外出邀请 / 红包 / 位置 */
+/** 「+」面板发出的卡片消息（D-081/D-084）：外出邀请 / 红包 / 位置 / 想看手机 */
 export interface ChatCard {
-  type: 'invite' | 'redpacket' | 'location';
+  type: 'invite' | 'redpacket' | 'location' | 'phoneRequest';
   title: string;
   subtitle?: string;
   /** 红包金额（试装游戏币） */
   amount?: number;
   /** 外出邀请对应的地点 */
   placeId?: string;
-  /** 红包：TA 已领取 */
+  /** 红包：TA 拆了（D-084：由 TA 自己决定，回复里带 [拆红包] 标记） */
   claimed?: boolean;
+  /** 红包：TA 这轮没拆 */
+  declined?: boolean;
+  /** 位置：真实坐标（D-084，卡片里带一小块地图） */
+  lat?: number;
+  lon?: number;
 }
 
 export interface ChatMessage {
@@ -344,4 +349,6 @@ export interface EngineReply {
   darkSide?: boolean;
   /** 查手机（D-082）：TA 在这轮答应让她看手机（回复里的解锁标记已剥掉） */
   unlockPhone?: boolean;
+  /** 红包（D-084）：TA 在这轮拆了红包（标记已剥掉） */
+  openRedPacket?: boolean;
 }

@@ -1,8 +1,7 @@
 /**
- * 会话「+」面板的四个玩法（D-081）：外出邀请 / 查 TA 的手机 / 红包 / 位置。
- * 每个都是一张 pageSheet；选定后由调用方（羁绊会话）落成卡片消息（kind 'card'）并让 TA 回应。
- * 「查 TA 的手机」：第一次要先拿到密码（D-082）——聊天里问 TA（TA 答应就解锁），或在锁屏上自己猜（猜对就开）；
- * 进去后是备忘录（TA 记着关于她的事）/ 相册 / 加密日记（隐藏设定：看得见已解锁的，锁着的只见轮廓）——
+ * 会话「+」面板的玩法（D-081/D-084）：外出邀请（地点 → 时间）/ 查 TA 的手机（解锁后的内容）/ 红包。
+ * 位置改用 components/location-picker.tsx（真实地图），锁屏改用 components/phone-lock.tsx（iPhone 式）。
+ * 「查 TA 的手机」进去后是备忘录（TA 记着关于她的事）/ 相册 / 加密日记（隐藏设定：看得见已解锁的，锁着的只见轮廓）——
  * 正式形态与「被发现」的修罗场见 OPEN_QUESTIONS #19。
  */
 
@@ -11,15 +10,14 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { CharAvatar } from '@/components/char-avatar';
+import { TimePicker } from '@/components/time-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { PLACES, type Place } from '@/content/places';
 import { characterSecrets, unlockedSecretCount } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
 import { levelInfo } from '@/lib/bond';
 import { t } from '@/lib/i18n';
-import { PHONE_PASSCODE_LENGTH } from '@/lib/phone';
 import type { Bond, Character } from '@/lib/types';
-import { weatherCity } from '@/lib/weather';
 import { useAppStore } from '@/store/app-store';
 
 export type ExtraSheet = 'invite' | 'phone' | 'redpacket' | 'location' | null;
@@ -54,7 +52,7 @@ function Sheet({
   );
 }
 
-/* ── 外出邀请：选一个地点 ── */
+/* ── 外出邀请：选地点 → 选时间（D-084） ── */
 
 export function InviteSheet({
   visible,
@@ -63,19 +61,43 @@ export function InviteSheet({
 }: {
   visible: boolean;
   onClose: () => void;
-  onPick: (place: Place) => void;
+  onPick: (place: Place, at: number) => void;
 }) {
+  const [place, setPlace] = useState<Place | null>(null);
+  const close = () => {
+    setPlace(null);
+    onClose();
+  };
   return (
-    <Sheet visible={visible} title={t('约 TA 去哪儿？')} onClose={onClose}>
-      {SPOTS.map((p) => (
-        <Pressable key={p.id} style={styles.row} onPress={() => onPick(p)}>
-          <Text style={styles.rowEmoji}>{p.emoji}</Text>
-          <View style={styles.rowBody}>
-            <Text style={styles.rowTitle}>{t(p.name)}</Text>
-            <Text style={styles.rowSub}>{t(p.hook)}</Text>
-          </View>
-        </Pressable>
-      ))}
+    <Sheet visible={visible} title={place ? t('约在什么时候？') : t('约 TA 去哪儿？')} onClose={close}>
+      {place ? (
+        <>
+          <Pressable style={styles.row} onPress={() => setPlace(null)}>
+            <Text style={styles.rowEmoji}>{place.emoji}</Text>
+            <View style={styles.rowBody}>
+              <Text style={styles.rowTitle}>{t(place.name)}</Text>
+              <Text style={styles.rowSub}>{t(place.hook)}</Text>
+            </View>
+          </Pressable>
+          <TimePicker
+            onPick={(at) => {
+              const p = place;
+              setPlace(null);
+              onPick(p, at);
+            }}
+          />
+        </>
+      ) : (
+        SPOTS.map((p) => (
+          <Pressable key={p.id} style={styles.row} onPress={() => setPlace(p)}>
+            <Text style={styles.rowEmoji}>{p.emoji}</Text>
+            <View style={styles.rowBody}>
+              <Text style={styles.rowTitle}>{t(p.name)}</Text>
+              <Text style={styles.rowSub}>{t(p.hook)}</Text>
+            </View>
+          </Pressable>
+        ))
+      )}
     </Sheet>
   );
 }
@@ -151,45 +173,6 @@ export function RedPacketSheet({
   );
 }
 
-/* ── 位置：当前城市（天气页设置过的）或这个世界里的某个地点 ── */
-
-export function LocationSheet({
-  visible,
-  onClose,
-  onSend,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onSend: (label: string, sub?: string) => void;
-}) {
-  const city = weatherCity();
-  return (
-    <Sheet visible={visible} title={t('位置')} onClose={onClose}>
-      {city ? (
-        <Pressable style={styles.row} onPress={() => onSend(t('我在{place}', { place: city }), t('当前位置'))}>
-          <Text style={styles.rowEmoji}>📍</Text>
-          <View style={styles.rowBody}>
-            <Text style={styles.rowTitle}>{city}</Text>
-            <Text style={styles.rowSub}>{t('当前位置')}</Text>
-          </View>
-        </Pressable>
-      ) : null}
-      {SPOTS.map((p) => (
-        <Pressable
-          key={p.id}
-          style={styles.row}
-          onPress={() => onSend(t('我在{place}', { place: t(p.name) }), t(p.hook))}>
-          <Text style={styles.rowEmoji}>{p.emoji}</Text>
-          <View style={styles.rowBody}>
-            <Text style={styles.rowTitle}>{t(p.name)}</Text>
-            <Text style={styles.rowSub}>{t(p.hook)}</Text>
-          </View>
-        </Pressable>
-      ))}
-    </Sheet>
-  );
-}
-
 /* ── 查 TA 的手机 ── */
 
 const NOTE_PREFIX: Record<string, string> = { 约定: '约定 · ', 答应: '答应过 · ', 节点: '' };
@@ -210,60 +193,17 @@ export function PhoneSheet({
 }) {
   const album = useAppStore((s) => s.album);
   const portrait = useAppStore((s) => s.portraits[character.id]);
-  const unlocked = !!bond.phoneUnlocked;
-  const [code, setCode] = useState('');
-  const [wrong, setWrong] = useState(false);
   const viewed = useRef(false);
   useEffect(() => {
     if (!visible) {
       viewed.current = false;
-      setCode('');
-      setWrong(false);
       return;
     }
-    // 第一次点开锁屏就把密码定下来（随机，记在羁绊上）——她猜的和 TA 会说的是同一把
-    if (!unlocked) useAppStore.getState().ensurePhoneCode(bond.id);
-    if (unlocked && !viewed.current) {
+    if (!viewed.current) {
       viewed.current = true;
       onViewed?.();
     }
-  }, [visible, unlocked, onViewed, bond.id]);
-
-  const tryCode = (v: string) => {
-    const digits = v.replace(/\D/g, '').slice(0, PHONE_PASSCODE_LENGTH);
-    setCode(digits);
-    setWrong(false);
-    if (digits.length < PHONE_PASSCODE_LENGTH) return;
-    if (digits === useAppStore.getState().ensurePhoneCode(bond.id)) {
-      useAppStore.getState().setPhoneUnlocked(bond.id);
-    } else {
-      setWrong(true);
-      setTimeout(() => setCode(''), 350);
-    }
-  };
-
-  if (!unlocked) {
-    return (
-      <Sheet visible={visible} title={t('{name} 的手机', { name: bond.name })} onClose={onClose}>
-        <View style={[styles.lock, styles.lockScreen, { backgroundColor: character.colorSoft ?? Romance.accentSoft }]}>
-          <CharAvatar name={bond.name} color={character.color} size={64} characterId={character.id} />
-          <Text style={styles.lockName}>{bond.name}</Text>
-          <TextInput
-            style={[styles.codeInput, wrong && styles.codeInputWrong]}
-            value={code}
-            onChangeText={tryCode}
-            keyboardType="number-pad"
-            maxLength={PHONE_PASSCODE_LENGTH}
-            secureTextEntry
-            autoFocus
-            placeholder={t('密码')}
-            placeholderTextColor={Romance.faint}
-          />
-          <Text style={styles.lockHint}>{wrong ? t('密码不对') : ' '}</Text>
-        </View>
-      </Sheet>
-    );
-  }
+  }, [visible, onViewed]);
 
   const notes = (bond.memory?.facts ?? []).map((raw) => {
     const m = raw.match(/^\[(她|约定|答应|节点)\]\s*(.+)$/);
@@ -388,21 +328,7 @@ const styles = themed(() =>
     primaryBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
     btnDisabled: { opacity: 0.4 },
     lock: { borderRadius: 24, paddingVertical: 26, alignItems: 'center', gap: 8 },
-    lockScreen: { paddingVertical: 48, marginTop: 10 },
     lockName: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-    codeInput: {
-      marginTop: 18,
-      width: 168,
-      backgroundColor: 'rgba(255,255,255,0.85)',
-      borderRadius: 16,
-      paddingVertical: 12,
-      fontSize: 26,
-      letterSpacing: 14,
-      textAlign: 'center',
-      color: Romance.ink,
-    },
-    codeInputWrong: { backgroundColor: '#FDEBEA' },
-    lockHint: { fontSize: 12, color: '#C43A34', marginTop: 8, height: 16 },
     section: { fontSize: 12, fontWeight: '700', color: Romance.sub, marginTop: 8, marginLeft: 4 },
     note: { backgroundColor: '#FFFBEA', borderRadius: 16, padding: 14, gap: 6 },
     noteLine: { fontSize: 13, color: '#5B4A2E', lineHeight: 19 },

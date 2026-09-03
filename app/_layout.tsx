@@ -1,3 +1,4 @@
+import { Fredoka_500Medium, Fredoka_600SemiBold, useFonts } from '@expo-google-fonts/fredoka';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -26,6 +27,9 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const hydrated = useHydrated();
+  // 设计系统字体（D-084）：Fredoka 管数字与标签；加载失败也放行（回落系统字体）
+  const [fontsReady, fontError] = useFonts({ Fredoka_500Medium, Fredoka_600SemiBold });
+  const ready = hydrated && (fontsReady || !!fontError);
   // 主题（D-030）与语言（D-066）：水合即应用；切换时 key 重挂载全树让 themed()/t() 生效
   const themeId = useAppStore((s) => s.themeId);
   const language = useAppStore((s) => s.language);
@@ -46,14 +50,14 @@ export default function RootLayout() {
   // 启动：种子帖、心跳与发帖补投（开门链路已下线，D-046；发帖调度 D-055）。
   // onboarding 门禁是声明式的（app/index.tsx 桌面），根布局不做任何命令式跳转——首帧跳转会崩在 assertIsReady。
   useEffect(() => {
-    if (!hydrated) return;
+    if (!ready) return;
     useAppStore.getState().ensureSeedPosts();
     void initWeather();
     deliverDueHeartbeats();
     void deliverDuePosts();
     void checkMissedPlans();
     SplashScreen.hideAsync();
-  }, [hydrated]);
+  }, [ready]);
 
   // 云同步（D-054/D-057 云端为主）：标脏防抖上传、退后台冲刷、启动/登录/回线对账
   useEffect(() => {

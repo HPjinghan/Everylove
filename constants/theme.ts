@@ -136,6 +136,9 @@ export function themed<T extends object>(factory: () => T): T {
   });
 }
 
+/** 设计系统字体（D-084）：label = Fredoka 500（数字、标签、导航、时间戳）、labelBold = Fredoka 600（时钟、标题、按钮）；正文用系统字体。字体在 app/_layout.tsx 用 useFonts 加载 */
+const FREDOKA = { label: 'Fredoka_500Medium', labelBold: 'Fredoka_600SemiBold' };
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */
@@ -146,17 +149,21 @@ export const Fonts = Platform.select({
     rounded: 'ui-rounded',
     /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
+    ...FREDOKA,
   },
   default: {
     sans: 'normal',
     serif: 'serif',
     rounded: 'normal',
     mono: 'monospace',
+    ...FREDOKA,
   },
   web: {
     sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     serif: "Georgia, 'Times New Roman', serif",
     rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+    label: "'Fredoka', 'SF Pro Rounded', sans-serif",
+    labelBold: "'Fredoka', 'SF Pro Rounded', sans-serif",
   },
 });

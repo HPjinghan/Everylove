@@ -39,7 +39,10 @@ import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
 import { PhotoViewer, Polaroid, type ViewerShot } from '@/components/polaroid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Romance, themed } from '@/constants/theme';
+import MapView, { Marker } from 'react-native-maps';
+
+import { Shape, Space } from '@/constants/design';
+import { Fonts, Romance, themed } from '@/constants/theme';
 import { clockTime, voiceDuration } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { ASR_MAX_SECONDS, ASR_RECORDING } from '@/lib/media';
@@ -76,15 +79,32 @@ function CardBody({ card, dark }: { card: ChatCard; dark: boolean }) {
         <Text style={styles.cardRedKicker}>🧧 {t('红包')}</Text>
         <Text style={styles.cardRedAmount}>{card.title}</Text>
         {card.subtitle ? <Text style={styles.cardRedNote}>{card.subtitle}</Text> : null}
-        <Text style={styles.cardRedState}>{card.claimed ? t('已领取') : t('等 TA 拆开')}</Text>
+        <Text style={styles.cardRedState}>
+          {card.claimed ? t('已领取') : card.declined ? t('TA 没拆') : t('等 TA 拆开')}
+        </Text>
       </View>
     );
   }
-  const kicker = card.type === 'invite' ? t('外出邀请') : t('位置');
+  const kicker = card.type === 'invite' ? t('外出邀请') : card.type === 'phoneRequest' ? t('查手机') : t('位置');
+  const emoji = card.type === 'invite' ? '🚶' : card.type === 'phoneRequest' ? '📱' : '📍';
+  const hasMap = card.type === 'location' && card.lat != null && card.lon != null;
   return (
     <View style={styles.card}>
+      {hasMap ? (
+        <View style={styles.cardMap} pointerEvents="none">
+          <MapView
+            style={StyleSheet.absoluteFill}
+            initialRegion={{ latitude: card.lat!, longitude: card.lon!, latitudeDelta: 0.008, longitudeDelta: 0.008 }}
+            scrollEnabled={false}
+            zoomEnabled={false}
+            rotateEnabled={false}
+            pitchEnabled={false}>
+            <Marker coordinate={{ latitude: card.lat!, longitude: card.lon! }} />
+          </MapView>
+        </View>
+      ) : null}
       <Text style={[styles.cardKicker, !dark && styles.cardKickerLight]}>
-        {card.type === 'invite' ? '🚶' : '📍'} {kicker}
+        {emoji} {kicker}
       </Text>
       <Text style={[styles.cardTitle, !dark && { color: '#FFFFFF' }]}>{card.title}</Text>
       {card.subtitle ? (
@@ -265,8 +285,8 @@ function Bubble({
     </View>
   ) : null;
   const bubbleBg = mine
-    ? { backgroundColor: line ? LINE.me : Romance.bubbleMe, borderBottomRightRadius: 4 }
-    : { backgroundColor: line ? LINE.him : Romance.bubbleHim, borderBottomLeftRadius: 4 };
+    ? { backgroundColor: line ? LINE.me : Romance.bubbleMe, borderBottomRightRadius: Shape.radiusTail }
+    : { backgroundColor: line ? LINE.him : Romance.bubbleHim, borderBottomLeftRadius: Shape.radiusTail };
   const textDark = !mine || line;
   const redPacket = msg.kind === 'card' && msg.card?.type === 'redpacket';
   return (
@@ -653,15 +673,12 @@ const styles = themed(() =>
     msgRowHim: { justifyContent: 'flex-start' },
     msgRowMe: { justifyContent: 'flex-end' },
     msgAvatar: { marginRight: 8 },
+    // 设计系统气泡（D-084）：r6 / 尾角 2、内距 9×13、最大宽 72%、无描边无阴影
     bubble: {
-      maxWidth: '74%',
-      borderRadius: 22,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      shadowColor: '#3B2126',
-      shadowOpacity: 0.05,
-      shadowRadius: 6,
-      shadowOffset: { width: 0, height: 2 },
+      maxWidth: Space.bubbleMaxWidth,
+      borderRadius: Shape.radius,
+      paddingHorizontal: Space.bubbleX,
+      paddingVertical: Space.bubbleY,
     },
     bubbleText: { fontSize: 16, lineHeight: 23, color: Romance.ink },
     typingText: { fontSize: 14, color: Romance.sub },
@@ -684,10 +701,10 @@ const styles = themed(() =>
     metaCol: { justifyContent: 'flex-end', paddingBottom: 2 },
     metaColMe: { alignItems: 'flex-end', marginRight: 6 },
     metaColHim: { alignItems: 'flex-start', marginLeft: 6 },
-    metaText: { fontSize: 10, color: 'rgba(255,255,255,0.95)', lineHeight: 13 },
-    bubbleLine: { borderRadius: 18, shadowOpacity: 0.08 },
-    inputBarLine: { backgroundColor: '#FFFFFF', borderTopColor: '#E5E9F0' },
-    inputLine: { backgroundColor: '#F1F3F6' },
+    metaText: { fontFamily: Fonts.label, fontSize: 11, color: 'rgba(255,255,255,0.95)', lineHeight: 14 },
+    bubbleLine: { borderRadius: Shape.radius },
+    inputBarLine: { backgroundColor: '#FFFFFF' },
+    inputLine: { backgroundColor: Romance.bg },
     systemText: {
       fontSize: 12,
       color: Romance.sub,
@@ -728,13 +745,14 @@ const styles = themed(() =>
       paddingHorizontal: 14,
       paddingTop: 8,
       backgroundColor: Romance.bg,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: Romance.line,
+      // 设计系统（D-084）：输入栏一条 1.5px 上沿线
+      borderTopWidth: Shape.stroke,
+      borderTopColor: Romance.stroke,
     },
     input: {
       flex: 1,
-      height: 40,
-      borderRadius: 24,
+      height: Space.inputHeight,
+      borderRadius: Shape.radius,
       backgroundColor: '#FFFFFF',
       paddingHorizontal: 16,
       fontSize: 16,
@@ -743,8 +761,8 @@ const styles = themed(() =>
     recordingPill: {
       flex: 1,
       minWidth: 0,
-      height: 40,
-      borderRadius: 24,
+      height: Space.inputHeight,
+      borderRadius: Shape.radius,
       backgroundColor: '#FDEBEA',
       flexDirection: 'row',
       alignItems: 'center',
@@ -766,7 +784,7 @@ const styles = themed(() =>
     extraIcon: {
       width: 58,
       height: 58,
-      borderRadius: 18,
+      borderRadius: Shape.radius,
       backgroundColor: '#FFFFFF',
       alignItems: 'center',
       justifyContent: 'center',
@@ -774,6 +792,7 @@ const styles = themed(() =>
     extraIconLine: { backgroundColor: '#F1F3F6' },
     extraLabel: { fontSize: 11, color: Romance.sub, marginTop: 6 },
     card: { minWidth: 190, maxWidth: 240 },
+    cardMap: { height: 110, borderRadius: Shape.radiusInner, overflow: 'hidden', marginBottom: 8 },
     cardKicker: { fontSize: 10, color: 'rgba(0,0,0,0.45)', letterSpacing: 0.5 },
     cardKickerLight: { color: 'rgba(255,255,255,0.8)' },
     cardTitle: { fontSize: 16, fontWeight: '700', color: Romance.ink, marginTop: 4 },

@@ -27,7 +27,13 @@
         }
       ],
       "expo-notifications",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "用来在会话里发送你的位置；不授权也可以在地图上自己选。"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -513,12 +513,12 @@ const styles = themed(() =>
     weatherLabel: { fontSize: 15, fontWeight: '700', color: Romance.ink },
     weatherRange: { fontSize: 12, color: Romance.sub, marginTop: 1 },
     weatherLine: { fontSize: 11, color: Romance.faint, marginTop: 2, maxWidth: 150 },
+    // 设计系统时钟（D-084）：Fredoka 600、字距 -2
     bigClock: {
+      fontFamily: Fonts.labelBold,
       fontSize: 56,
-      fontWeight: '300',
       color: Romance.ink,
-      letterSpacing: 2,
-      fontFamily: Fonts?.rounded,
+      letterSpacing: -1,
     },
     clockSub: { fontSize: 13, color: Romance.sub, marginTop: 2 },
     grid: { flex: 1, marginTop: 8 },
