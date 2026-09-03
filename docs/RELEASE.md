@@ -21,7 +21,7 @@
   ```
 
   （语音音色 `EXPO_PUBLIC_SPEECH_TTS_VOICE_*`、`EXPO_PUBLIC_BAIDU_TTS_PER` 等按需同法添加。`.env.local` 不会被上传。）
-- **Supabase → Authentication → Providers → Apple → Client IDs** 追加 `com.harperz.everylove`（逗号分隔，保留 `host.exp.Exponent` 给 Expo Go）。不加的话正式包里 Apple 登录会报 audience 不匹配。
+- **Supabase → Authentication → Providers → Apple → Client IDs** 追加 `com.kotoko.everylove`（逗号分隔，保留 `host.exp.Exponent` 给 Expo Go）。不加的话正式包里 Apple 登录会报 audience 不匹配。
 
 ## 1. 构建（每次发包）
 
@@ -42,7 +42,7 @@ npx eas-cli build -p ios --profile production
 npx eas-cli submit -p ios --latest --profile production
 ```
 
-首次会问 Apple 登录并**代建 App Store Connect 的 App 记录**（名字可先用「全自动恋爱」，正式名定了再改；bundle id 必须是 `com.harperz.everylove`）。想一步到位可在 build 时加 `--auto-submit`。
+首次会问 Apple 登录并**代建 App Store Connect 的 App 记录**（名字可先用「全自动恋爱」，正式名定了再改；bundle id 必须是 `com.kotoko.everylove`）。想一步到位可在 build 时加 `--auto-submit`。
 
 上传后 App Store Connect → **TestFlight** 等处理（10~30 分钟）：
 - **内部测试**：App Store Connect 团队成员（最多 100 人）加进内部群组即可装，不用审核；

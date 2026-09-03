@@ -775,8 +775,8 @@
 
 - **决策**：正式测试通道按 D-059 预留的口径落地——**EAS Build（云端）→ `eas submit` → TestFlight**，Windows 上可全程发包。工程侧：
   1. `eas.json`：`production` 档（channel `production`、EAS 环境 `production`、构建号远程自增 `appVersionSource: remote`）+ `submit.production`；不加 development/simulator 档（dev build 何时切见 OPEN_QUESTIONS #26）。
-  2. `app.json`：`ios.bundleIdentifier = com.harperz.everylove`（反域名取 Expo 账号名；首次上传 App Store Connect 前仍可改，上传后锁死）；`usesAppleSignIn` + `expo-apple-authentication` 插件（原生包必须有 Sign in with Apple entitlement，Expo Go 里是它自带的）；`ITSAppUsesNonExemptEncryption=false`（只用 HTTPS，免每个 build 手动答出口合规）；权限文案中文化：麦克风（语音消息/打电话）、相册（上传头像/发照片）、不申请相机（代码没用）、去掉 expo-location 默认塞的两条「始终定位」文案（只用前台定位）。
+  2. `app.json`：`ios.bundleIdentifier = com.kotoko.everylove`（Harper 定名，反域名 com.kotoko；首次上传 App Store Connect 前仍可改，上传后锁死）；`usesAppleSignIn` + `expo-apple-authentication` 插件（原生包必须有 Sign in with Apple entitlement，Expo Go 里是它自带的）；`ITSAppUsesNonExemptEncryption=false`（只用 HTTPS，免每个 build 手动答出口合规）；权限文案中文化：麦克风（语音消息/打电话）、相册（上传头像/发照片）、不申请相机（代码没用）、去掉 expo-location 默认塞的两条「始终定位」文案（只用前台定位）。
   3. **渠道隔离**：Expo Go 朋友试装继续走 `preview` 渠道（D-059），TestFlight 包走 `production` 渠道；runtimeVersion 仍 `sdkVersion` 策略（Expo Go 只认 `exposdk:54.0.0`），所以**纪律**：动了 app.json 插件 / 原生依赖必须重新 build+submit，不能只 `eas update --channel production`（同 runtime 会把不兼容的 JS 推给旧包）。
-  4. **key 纪律不变**：EAS 按 git 打包上传，`.env.local` 被 gitignore 天然不进构建；Supabase 公开配置（URL / anon key）放 **EAS 环境变量 production**（`eas env:create`），AI key 一律不放——分发包 AI 走服务端代理（D-057）。Supabase Auth 的 Apple provider 需把 `com.harperz.everylove` 加进 Client IDs（保留 `host.exp.Exponent` 给 Expo Go）。
+  4. **key 纪律不变**：EAS 按 git 打包上传，`.env.local` 被 gitignore 天然不进构建；Supabase 公开配置（URL / anon key）放 **EAS 环境变量 production**（`eas env:create`），AI key 一律不放——分发包 AI 走服务端代理（D-057）。Supabase Auth 的 Apple provider 需把 `com.kotoko.everylove` 加进 Client IDs（保留 `host.exp.Exponent` 给 Expo Go）。
 - **操作手册**：`docs/RELEASE.md`（前置条件、一次性配置、每次发包命令、热更 vs 重打包）。
 - **影响文件**：`eas.json`（新）、`app.json`、`docs/RELEASE.md`（新）。
