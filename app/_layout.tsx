@@ -1,6 +1,8 @@
-import { Fredoka_500Medium, Fredoka_600SemiBold, useFonts } from '@expo-google-fonts/fredoka';
+import { Fredoka_500Medium } from '@expo-google-fonts/fredoka/500Medium';
+import { Fredoka_600SemiBold } from '@expo-google-fonts/fredoka/600SemiBold';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
+import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
