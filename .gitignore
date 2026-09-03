@@ -44,3 +44,6 @@ app-example
 
 # 生图脚本产物（scripts/gen-image.mjs）
 scripts/out/
+
+# Claude Design 原始导出（4.6 MB bundle）；解出的页面源码 design/design-system.page.html 进 git
+design/Everylove Design System.html

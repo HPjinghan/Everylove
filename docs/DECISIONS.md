@@ -745,3 +745,14 @@
   3. **自己猜**：「查 TA 的手机」未解锁时是锁屏（头像 + 四位密码框，无提示文案），输满四位即校验：对 → 解锁并展开；错 → 红框「密码不对」清空重试，次数不限、TA 不知道（偷看的负罪感与「被发现」留 #19）。
   4. **解锁后**：`Bond.phoneUnlocked = true`，之后随时能看；内容展开时会话留「你看了 TA 的手机」（她自己的痕迹）。prompt 改为「她知道你的密码，你同意过让她看」。
 - **影响文件**：`lib/phone.ts`（新）、`lib/types.ts`（Bond.phoneCode / phoneUnlocked、EngineReply.unlockPhone、EngineContext.bond Pick）、`content/prompts.ts`（PHONE_UNLOCK_MARK / phoneBlock 进 bondedContextLines）、`lib/engine.ts`（applyPhoneUnlock）、`store/app-store.ts`（ensurePhoneCode / setPhoneUnlocked）、`app/bond/[bondId].tsx`、`lib/call.ts`、`components/chat-extras.tsx`（锁屏）、`lib/i18n.ts`。
+
+## D-083 · 2026-09-03 · 接入 Claude Design 设计系统：色彩落成「纸面」主题（新装机默认），非色彩规格落成 constants/design.ts；界面逐屏重做另起（Harper 提出）
+
+- **背景**：Harper 在 Claude Design 里把方向 3a 总结成「Everylove - Design System」（Pink · calm geometric），要求「只读 design system」并导入。分享链接是跨域 iframe，浏览器里只读到第一屏；Harper 把导出的 bundle 放进仓库，从其 `__bundler/template` 解出页面源码 `design/design-system.page.html`（138 KB），全文读取。
+- **设计系统要点（原文见 design/）**：粉色纸面、菱形暗纹、墨色细描边、无阴影、4–6px 小圆角；结构性元素（顶栏、聊天流）通底不加框，只有内容卡片和主按钮保留 1.5px 描边。色彩：paper #FFD6E7 / primary #E8578A / accent #C2185B（唯一强调色）/ ink #4A2B36 / muted #A97F8D / surface #FFFFFF / chat paper #FBE4EC；角色头像色固定（沈 #3E5C6B / 胡 #A8354D / 苏 #7A4257）配 Noto Serif SC 单字。字体：Fredoka 500/600 管数字、时钟、标题、导航、标签、按钮、时间戳；系统字体 400 管正文；字号 clock 84 / display 30 / title 17 / card 15 / body 15·22 / label 13 / eyebrow 12 / caption 12 / timestamp 11。间距 14 屏边 / 8–10 行内 / 22–26 图块间 / 桌面 4×104 图块 60 / Match 卡 342·3:4。图案：菱格 14px 线 1px accent 7%；聊天壁纸 120px SVG accent 1.4px 16%。
+- **决策**：
+  1. **色彩 → 主题**：`THEMES.paper`（「纸面」）原样映射；`RomancePalette` 新增 `stroke`（结构描边 = ink）与 `accentStrong`（#C2185B），其余三套主题补同名字段（stroke = 各自 line，accentStrong = 各自加深）。设计稿只有 muted 一档次级色，`faint`/`line` 在 paper→muted 之间取浅色。**新装机默认主题改为 paper**（老存档 themeId 不动，设置里可切）。
+  2. **非色彩规格 → `constants/design.ts`**：Shape / Type / Space / Pattern / Component / PRINCIPLES / AVATAR_COLORS，token 即代码，后续改界面只引它。
+  3. **界面本身这轮不动**：按设计稿重做（去阴影、1.5px 描边只留卡片与主按钮、圆角 6、Fredoka、菱纹与聊天壁纸）是逐屏工程，另起任务按模块推进；`Romance.line` 仍是浅色（它同时被当浅底用），顶栏下沿 / 输入栏上沿改用 `Romance.stroke` 属于那一轮。Fredoka 需装 `@expo-google-fonts/fredoka`，Noto Serif SC 体积大、仅头像单字，是否内嵌待定。
+  4. **文件**：`design/` 目录进仓库（README + 解出的页面源码）；4.6 MB 原始 bundle 进 .gitignore。
+- **影响文件**：`constants/theme.ts`、`constants/design.ts`（新）、`design/README.md`（新）、`design/design-system.page.html`（新）、`.gitignore`。
