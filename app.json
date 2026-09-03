@@ -53,7 +53,8 @@
           "photosPermission": "用来上传头像和把照片发给 TA。",
           "cameraPermission": false
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
