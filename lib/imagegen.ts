@@ -10,13 +10,13 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import { buildPortraitPrompt, imageModelFor } from '@/content/prompts';
 // （外出拍照的 prompt 由调用方拼好传入，见 content/prompts.ts 的 buildOutingPhotoPrompt，D-051）
-import { ENV_QIANFAN_KEY } from '@/lib/engine';
+import { CONFIG } from '@/core/config';
 import { proxyJson, proxyReadySync } from '@/lib/proxy';
 import { uid } from '@/lib/format';
 import type { Character } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
-export const QIANFAN_IMAGE_MODEL = process.env.EXPO_PUBLIC_QIANFAN_IMAGE_MODEL || 'qwen-image';
+export const QIANFAN_IMAGE_MODEL = CONFIG.qianfanImageModel;
 
 /**
  * 种子角色是否自动生成立绘（首次进入试聊时后台生成一张）。
@@ -27,7 +27,7 @@ export const SEED_PORTRAITS_AUTO = false;
 
 /** 只读工程配置（开发者面板手填已下线，D-069） */
 function imageKey(): string {
-  return ENV_QIANFAN_KEY;
+  return CONFIG.qianfanKey;
 }
 
 /** 可出图 = 本地有千帆 key（直连），或已登录（走服务端代理，D-057） */

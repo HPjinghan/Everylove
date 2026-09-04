@@ -1,102 +1,90 @@
 /**
- * 羁绊会话的引擎回合（D-085）——从会话页抽出来、任何地方都能让 TA「回一句」的公共层：
- * - sendCardAndRespond：她发一张卡片（+XP）→ TA 按提示语回 → 落会话（unread +1）→ 标记副作用 → 记忆 / 约定识别
- * - applyReplyEffects：回复里的系统标记落成状态（[解锁手机] → 解锁；[拆红包] → 最近一个没拆的红包「已领取」）
- * - peekMyPhone：她让 TA 看自己的手机——TA 翻记事本与她和别人的聊天，然后给她发一条消息；记事本内容并进记忆
- * 会话页自己带打字指示与语音，所以仍用自己的 respond，只共用 applyReplyEffects。
+ * 会话层 API（D-085 抽出、D-086 落到底座）：界面只 import 这里（和各玩法的 send 函数），不直接碰引擎 / 记忆 / 约定识别。
+ * 回合本身在 core/turn（全 App 唯一的一条管线）；这里补上：
+ * - 带媒体的两条路：她的语音 / 照片——先上屏，识别 / 看图后回填，再让 TA 回（D-073）；
+ * - 让 TA 看我的手机（D-085）：TA 翻她的记事本与她和别人的聊天，然后发 1–2 句消息，记事本并进记忆。
  */
 
-import { buildPeekMyPhoneUser, todayLine } from '@/content/prompts';
 import { showToast } from '@/components/toast';
-import { XP_PER_MESSAGE } from '@/lib/bond';
-import { darkSideCheck, describeAiError, generateReply } from '@/lib/engine';
+import { buildPeekMyPhoneUser, todayLine } from '@/content/prompts';
+import { modeOf, type TurnScope } from '@/core/modes';
+import { himMsg, respond, runTurn, sendCard, sendText, sysMsg, type TurnResult, type TurnUi } from '@/core/turn';
+import { darkSideCheck, describeAiError, messageContextText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
-import { absorbNotesMemory, addMemoryFact, updateBondMemory } from '@/lib/memory';
-import { detectAppointment } from '@/lib/outing';
-import type { Bond, ChatCard, ChatMessage, EngineContext, EngineReply } from '@/lib/types';
-import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
+import { describeImage, transcribeVoice } from '@/lib/media';
+import { absorbNotesMemory, addMemoryFact } from '@/lib/memory';
+import type { Bond, ChatMessage, EngineContext } from '@/lib/types';
+import { useAppStore } from '@/store/app-store';
 
-function sysMsg(text: string): ChatMessage {
-  return { id: uid('m'), from: 'system', kind: 'system', text, at: Date.now() };
-}
+export { respond, runTurn, sendCard, sendText };
+export type { TurnResult, TurnScope, TurnUi };
 
-function bondNow(bondId: string): Bond | undefined {
-  return useAppStore.getState().bonds.find((b) => b.id === bondId);
-}
+/* ── 定位一段会话 ── */
+export const bondScope = (bondId: string): TurnScope => ({ mode: 'bonded', bondId });
+export const callScope = (bondId: string): TurnScope => ({ mode: 'call', bondId });
+export const squareScope = (characterId: string): TurnScope => ({ mode: 'square', characterId });
+export const outingScope = (characterId: string): TurnScope => ({ mode: 'outing', characterId });
 
-/** 亲密模式的引擎上下文（含手机密码：第一次需要时生成） */
+/** 亲密模式的引擎上下文（TA 写记事本等后台用途；含手机密码，第一次需要时生成） */
 export function bondedContext(bond: Bond, userText: string): EngineContext | null {
-  const character = findCharacter(bond.characterId);
-  if (!character) return null;
-  const phoneCode = useAppStore.getState().ensurePhoneCode(bond.id);
-  return {
-    character,
-    mode: 'bonded',
-    bond: {
-      name: bond.name,
-      nickname: bond.nickname,
-      affinity: bond.affinity,
-      birthday: bond.birthday,
-      createdAt: bond.createdAt,
-      memory: bond.memory,
-      phoneCode,
-      phoneUnlocked: bond.phoneUnlocked,
-    },
-    me: meForCharacter(character.id),
-    history: bond.messages,
-    userText,
+  const scope = bondScope(bond.id);
+  return modeOf(scope).context(scope, userText);
+}
+
+/** 她的语音（D-073）：先上屏，识别成文字后回填、记账，再让 TA 回应识别出的内容 */
+export async function sendVoice(scope: TurnScope, uri: string, durationMs: number, ui?: TurnUi): Promise<TurnResult> {
+  const mode = modeOf(scope);
+  const msg: ChatMessage = {
+    id: uid('m'),
+    from: 'me',
+    kind: 'voice',
+    text: '',
+    audioUri: uri,
+    durationMs,
+    at: Date.now(),
+    mediaStatus: 'pending',
   };
-}
-
-/** 回复里的系统标记 → 状态（会话页与公共层共用） */
-export function applyReplyEffects(bondId: string, reply: EngineReply): void {
-  const store = useAppStore.getState();
-  const bond = bondNow(bondId);
-  if (!bond) return;
-  if (reply.unlockPhone && !bond.phoneUnlocked) {
-    store.setPhoneUnlocked(bondId);
-    store.appendBond(bondId, [sysMsg(t('TA 同意让你看手机了'))]);
-  }
-  if (reply.openRedPacket) {
-    const packet = [...bond.messages].reverse().find((m) => m.card?.type === 'redpacket' && !m.card.claimed);
-    if (packet?.card) {
-      store.patchMessage({ bondId }, packet.id, { card: { ...packet.card, claimed: true, declined: false } });
-    }
-  }
-}
-
-/** TA 回一轮（不在会话页时用：没有打字指示，直接落会话并计未读）。失败在会话里露出原因。 */
-export async function respondAsHim(bondId: string, userText: string): Promise<EngineReply | null> {
-  const bond = bondNow(bondId);
-  const ctx = bond && bondedContext(bond, userText);
-  if (!ctx) return null;
-  let reply: EngineReply;
+  mode.append(scope, [msg]);
+  let transcript: string;
   try {
-    reply = await generateReply(ctx);
+    transcript = await transcribeVoice(uri);
   } catch (e) {
-    useAppStore
-      .getState()
-      .appendBond(bondId, [sysMsg(t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) }))]);
-    return null;
+    mode.patch(scope, msg.id, { mediaStatus: 'failed' });
+    mode.append(scope, [sysMsg(t('语音没识别出来，TA 没听到这条：{reason}', { reason: describeAiError(e) }))]);
+    return { reply: null, error: e };
   }
-  useAppStore.getState().appendBond(
-    bondId,
-    reply.texts.map((text, i) => ({ id: uid('m'), from: 'him' as const, kind: 'text' as const, text, at: Date.now() + i })),
-    { unreadDelta: reply.texts.length }
-  );
-  applyReplyEffects(bondId, reply);
-  void updateBondMemory(bondId);
-  void detectAppointment(bondId);
-  return reply;
+  mode.patch(scope, msg.id, { transcript, mediaStatus: undefined });
+  const text = messageContextText({ ...msg, transcript, mediaStatus: undefined });
+  mode.creditUserTurn(scope, text);
+  return runTurn(scope, text, ui);
 }
 
-/** 她发一张卡片并让 TA 回（任何地方可用） */
-export async function sendCardAndRespond(bondId: string, card: ChatCard, prompt: string): Promise<string> {
-  const msg: ChatMessage = { id: uid('m'), from: 'me', kind: 'card', text: card.title, card, at: Date.now() };
-  useAppStore.getState().appendBond(bondId, [msg], { affinityDelta: XP_PER_MESSAGE });
-  await respondAsHim(bondId, prompt);
-  return msg.id;
+/** 她的照片（D-073）：先上屏，视觉模型描述后回填、记账，再让 TA 回应 */
+export async function sendImage(scope: TurnScope, uri: string, ui?: TurnUi): Promise<TurnResult> {
+  const mode = modeOf(scope);
+  const msg: ChatMessage = {
+    id: uid('m'),
+    from: 'me',
+    kind: 'image',
+    text: '',
+    imageUri: uri,
+    at: Date.now(),
+    mediaStatus: 'pending',
+  };
+  mode.append(scope, [msg]);
+  let caption: string;
+  try {
+    caption = await describeImage(uri);
+  } catch (e) {
+    mode.patch(scope, msg.id, { mediaStatus: 'failed' });
+    mode.append(scope, [sysMsg(t('照片没看清，TA 没看到这条：{reason}', { reason: describeAiError(e) }))]);
+    return { reply: null, error: e };
+  }
+  mode.patch(scope, msg.id, { caption, mediaStatus: undefined });
+  const text = messageContextText({ ...msg, caption, mediaStatus: undefined });
+  mode.creditUserTurn(scope, text);
+  return runTurn(scope, text, ui);
 }
 
 /** 记事本最多给 TA 看几条 / 每条多长；她和别人的聊天：几个人、各几句 */
@@ -111,8 +99,10 @@ const PEEK_LINES = 6;
  */
 export async function peekMyPhone(bondId: string): Promise<boolean> {
   const state = useAppStore.getState();
-  const bond = bondNow(bondId);
+  const bond = state.bonds.find((b) => b.id === bondId);
   if (!bond) return false;
+  const scope = bondScope(bondId);
+  const mode = modeOf(scope);
   const notes = [...state.notes]
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .slice(0, PEEK_NOTES)
@@ -128,21 +118,20 @@ export async function peekMyPhone(bondId: string): Promise<boolean> {
     .sort((a, b) => (b.messages[b.messages.length - 1]?.at ?? 0) - (a.messages[a.messages.length - 1]?.at ?? 0))
     .slice(0, PEEK_OTHERS);
 
-  state.appendBond(bondId, [sysMsg(t('TA 看了你的手机'))]);
+  mode.append(scope, [sysMsg(t('TA 看了你的手机'))]);
   showToast(t('TA 拿起了你的手机'));
 
   // 暗面路由前置（红线 3）：记事本里有危机内容 → 温柔模式，不入戏
   const dark = darkSideCheck(notes.map((n) => n.text).join('\n'));
   if (dark) {
-    useAppStore.getState().appendBond(
-      bondId,
-      dark.texts.map((text, i) => ({ id: uid('m'), from: 'him' as const, kind: 'text' as const, text, at: Date.now() + i })),
-      { unreadDelta: dark.texts.length }
-    );
+    mode.append(scope, dark.texts.map(himMsg), { unreadDelta: dark.texts.length });
     return true;
   }
 
-  const reply = await respondAsHim(bondId, buildPeekMyPhoneUser({ nickname: bond.nickname, notes, chats }));
+  const { reply } = await respond(scope, buildPeekMyPhoneUser({ nickname: bond.nickname, notes, chats }), {
+    pace: 'none',
+    unread: true,
+  });
   addMemoryFact(bondId, `[节点] ${todayLine()} 她把手机递给 ${bond.name} 看了——记事本和她与别人的聊天`);
   if (notes.length) void absorbNotesMemory(bondId, notes);
   return !!reply;

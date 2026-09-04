@@ -1,75 +1,53 @@
 /**
- * ChatEngine：对话引擎抽象（anthropic / qianfan，D-069 起没有脚本引擎）。
- * 系统层规则（情绪暗面路由、尺度、无 PUA）在入口处执行，任何引擎不可绕过——
- * 对应行为树「系统层锁死」。领养触发（他开口要联系方式）是产品触发器，
- * 由会话轮数决定，不交给模型（见 DECISIONS D-008）。
- * 引擎与 key 全部来自工程配置 .env.local（或登录后的服务端代理）；调用失败直接抛错，
- * 由界面把原因露出来——假回复只会妨碍判断（D-069）。
+ * ChatEngine 门面（D-086 起是薄的一层）：
+ * - 供应商在 core/providers（features/providers.ts 注册 anthropic / qianfan），这里只调 completeChat；
+ * - 系统 prompt 由 core/prompt 按分段表装配（content/prompts.ts 出文本、features/prompts.ts 定顺序）；
+ * - 回复暗号（[解锁手机] / [拆红包]……）由 core/markers 统一剥掉并置位 reply.flags。
+ * 系统层规则（情绪暗面路由）在 generateReply 入口执行，任何供应商不可绕过——对应行为树「系统层锁死」。
+ * 领养触发是产品触发器（D-008），在 features/adoption.ts，不交给模型。
+ * 取路 = 本地 key 直连 > 登录走服务端代理 > 不可用抛错；调用失败直接抛，界面把原因露出来（D-069）。
  */
 
 import { DARK_SIDE_PATTERN, DARK_SIDE_REPLY } from '@/content/characters';
-import { buildChatSystemPrompt, messageContextText, OPENING_STAGE_LINE, PHONE_UNLOCK_MARK, RED_PACKET_MARK } from '@/content/prompts';
-import { t } from '@/lib/i18n';
-import { proxyAvailable, proxyJson, proxyReadySync } from '@/lib/proxy';
-import type { ChatMessage, EngineContext, EngineId, EngineReply } from '@/lib/types';
+import { buildChatSystemPrompt, messageContextText, OPENING_STAGE_LINE } from '@/content/prompts';
+import { stripReplyMarkers } from '@/core/markers';
+import { modes } from '@/core/modes';
+import {
+  AiUnavailableError,
+  chatRoute,
+  chatRouteSync,
+  completeChat,
+  currentChatProvider,
+  type AiRoute,
+  type ChatTurn,
+} from '@/core/providers';
+import type { ChatMessage, EngineContext, EngineReply } from '@/lib/types';
 
 // 全部 prompt 文本都在 content/prompts.ts（D-017）；这里只负责调用与组装历史。
 export { messageContextText } from '@/content/prompts';
+export { AiUnavailableError, type AiRoute, type ChatTurn };
 
-const ANTHROPIC_MODEL = 'claude-sonnet-5';
-
-/**
- * 工程配置：来自 .env.local（不进 git，见 .env.example）。
- * Metro 在打包时内联 EXPO_PUBLIC_ 变量，改动 .env.local 后需重启 npx expo start。仅试装用（D-010）。
- */
-export const ENV_ANTHROPIC_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
-export const ENV_QIANFAN_KEY = process.env.EXPO_PUBLIC_QIANFAN_API_KEY ?? '';
-/** 千帆平台上挂着多家模型，具体用哪个由配置决定，默认 DeepSeek V4（千帆模型 ID：deepseek-v4-pro） */
-export const QIANFAN_MODEL = process.env.EXPO_PUBLIC_QIANFAN_MODEL || 'deepseek-v4-pro';
-
-/**
- * 引擎选择也是工程配置（D-069）：EXPO_PUBLIC_AI_ENGINE=anthropic|qianfan；
- * 不填则有 Claude key 用 Claude，否则千帆（服务端代理两家都通，默认千帆）。
- */
-const ENV_ENGINE = process.env.EXPO_PUBLIC_AI_ENGINE;
-export const ENGINE: EngineId =
-  ENV_ENGINE === 'anthropic' || ENV_ENGINE === 'qianfan'
-    ? ENV_ENGINE
-    : ENV_ANTHROPIC_KEY
-      ? 'anthropic'
-      : 'qianfan';
-
-/** 本地直连用的 key：只读工程配置（开发者面板手填已下线，D-069） */
-export function envKey(engine: EngineId = ENGINE): string {
-  return engine === 'anthropic' ? ENV_ANTHROPIC_KEY : ENV_QIANFAN_KEY;
-}
+/** 角色回话的输出预算（推理模型的供应商会自行加思考余量） */
+const REPLY_MAX_TOKENS = 300;
 
 /** 界面用的引擎名 */
-export function engineLabel(engine: EngineId = ENGINE): string {
-  return engine === 'anthropic' ? `Claude · ${ANTHROPIC_MODEL}` : `千帆 · ${QIANFAN_MODEL}`;
+export function engineLabel(providerId?: string): string {
+  return currentChatProvider(providerId).label;
 }
 
-/** AI 取路（D-057/D-069）：direct 本地 key 直连 > proxy 登录走服务端代理 > none 不可用（不再有 mock） */
-export type AiRoute = 'direct' | 'proxy' | 'none';
+/** 某供应商本地直连用的 key（媒体模块判断能否直连百度时用；空 = 没配） */
+export function envKey(providerId?: string): string {
+  return currentChatProvider(providerId).localKey();
+}
 
-/** 同步近似（UI 显示用） */
-export function aiRouteSync(engine: EngineId = ENGINE): AiRoute {
-  if (envKey(engine)) return 'direct';
-  return proxyReadySync() ? 'proxy' : 'none';
+/** AI 取路（D-057/D-069）：direct 本地 key 直连 > proxy 登录走服务端代理 > none 不可用。同步近似，界面显示用。 */
+export function aiRouteSync(providerId?: string): AiRoute {
+  return chatRouteSync(currentChatProvider(providerId));
 }
 
 /** 准确判断（发请求前用） */
-export async function aiRoute(engine: EngineId = ENGINE): Promise<AiRoute> {
-  if (envKey(engine)) return 'direct';
-  return (await proxyAvailable()) ? 'proxy' : 'none';
-}
-
-/** 没有任何可用取路时抛出：界面直接把原因露出来，不再用脚本假装回复（D-069） */
-export class AiUnavailableError extends Error {
-  constructor() {
-    super(t('未配置 AI：.env.local 没有 key，也未登录（服务端代理不可用）'));
-    this.name = 'AiUnavailableError';
-  }
+export async function aiRoute(providerId?: string): Promise<AiRoute> {
+  return chatRoute(currentChatProvider(providerId));
 }
 
 /** 把调用错误压成一行给界面看（试装口径：错误要看得见） */
@@ -83,8 +61,6 @@ export function describeAiError(e: unknown): string {
  * 更早的相处由记忆库的 summary 承接（仅羁绊层）。
  */
 export const HISTORY_ROUNDS = 20;
-
-export type ChatTurn = { role: 'user' | 'assistant'; content: string };
 
 /**
  * 把会话历史整理成模型可用的轮次：
@@ -170,173 +146,50 @@ export function darkSideCheck(userText: string): EngineReply | null {
   return null;
 }
 
-/** apiKey 为空 = 走服务端代理（D-057：key 收在服务端，客户端带登录态调用） */
-async function anthropicReply(ctx: EngineContext, apiKey: string | null): Promise<EngineReply> {
-  const body = {
-    model: ANTHROPIC_MODEL,
-    max_tokens: 300,
-    system: buildChatSystemPrompt(ctx),
-    messages: buildTurns(ctx.history, ctx.userText),
-  };
-  let data: { content: { type: string; text?: string }[] };
-  if (apiKey) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
-    data = await res.json();
-  } else {
-    data = await proxyJson('anthropic.messages', body);
-  }
-  const text = data.content
-    .filter((b) => b.type === 'text' && b.text)
-    .map((b) => b.text)
-    .join('')
-    .trim();
-  if (!text) throw new Error('empty reply');
-  const bubbles = splitBubbles(text, ctx.mode === 'bonded' ? 2 : 1, ctx.character.name);
-  return { texts: ctx.mode === 'outing' ? bubbles : stripStageDirections(bubbles) };
-}
-
-/** 百度千帆 v2（OpenAI 兼容格式），模型由 QIANFAN_MODEL 决定；apiKey 为空 = 走服务端代理 */
-async function qianfanReply(ctx: EngineContext, apiKey: string | null): Promise<EngineReply> {
-  const body = {
-    model: QIANFAN_MODEL,
-    // deepseek-v4-pro 是推理模型，思考 token 也算在 max_tokens 里；给足余量防止正文被截空
-    max_tokens: 1000,
-    messages: [
-      { role: 'system', content: buildChatSystemPrompt(ctx) },
-      ...buildTurns(ctx.history, ctx.userText),
-    ],
-  };
-  let data: { choices?: { message?: { content?: string } }[] };
-  if (apiKey) {
-    const res = await fetch('https://qianfan.baidubce.com/v2/chat/completions', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`Qianfan API ${res.status}`);
-    data = await res.json();
-  } else {
-    data = await proxyJson('qianfan.chat', body);
-  }
-  const text = data.choices?.[0]?.message?.content?.trim();
-  if (!text) throw new Error('empty reply');
-  const bubbles = splitBubbles(text, ctx.mode === 'bonded' ? 2 : 1, ctx.character.name);
-  return { texts: ctx.mode === 'outing' ? bubbles : stripStageDirections(bubbles) };
-}
-
 /**
- * 通用文本补全（不带角色人设）：供记忆提取/摘要/发帖/回帖/描述解析用，走工程配置的引擎。
+ * 通用文本补全（不带角色人设）：供记忆提取/摘要/发帖/回帖/描述解析用，走工程配置的供应商。
  * 没有可用取路抛 AiUnavailableError，调用失败原样抛出——由调用方决定露出还是静默（D-069：不再回落脚本）。
  */
 export async function completeText(
   systemPrompt: string,
   userPrompt: string,
   maxTokens = 1200,
-  engine: EngineId = ENGINE
+  providerId?: string
 ): Promise<string> {
-  const route = await aiRoute(engine);
-  if (route === 'none') throw new AiUnavailableError();
-  const key = route === 'direct' ? envKey(engine) : null;
-  if (engine === 'anthropic') {
-    const body = {
-      model: ANTHROPIC_MODEL,
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    };
-    let data: { content: { type: string; text?: string }[] };
-    if (key) {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': key,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
-      data = await res.json();
-    } else {
-      data = await proxyJson('anthropic.messages', body);
-    }
-    return data.content
-      .filter((b) => b.type === 'text' && b.text)
-      .map((b) => b.text)
-      .join('')
-      .trim();
-  }
-  const body = {
-    model: QIANFAN_MODEL,
-    // 推理模型的思考 token 也算在内，给足余量
-    max_tokens: Math.max(maxTokens, 2000),
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-  };
-  let data: { choices?: { message?: { content?: string } }[] };
-  if (key) {
-    const res = await fetch('https://qianfan.baidubce.com/v2/chat/completions', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`Qianfan API ${res.status}`);
-    data = await res.json();
-  } else {
-    data = await proxyJson('qianfan.chat', body);
-  }
-  return (data.choices?.[0]?.message?.content ?? '').trim();
+  return completeChat(
+    { system: systemPrompt, turns: [{ role: 'user', content: userPrompt }], maxTokens, kind: 'task' },
+    providerId
+  );
 }
 
 /**
- * 统一入口：暗面路由 → 工程配置的引擎（本地 key 直连 / 登录走服务端代理，D-057）。
- * 调用失败或没有取路时**抛错**，界面在会话里露出原因（D-069：脚本引擎与回落链路已删——
- * 「他一定会回」改由真模型保证，假回复只会妨碍判断）。
+ * 角色回一轮：暗面路由 → 装配系统 prompt → 供应商 → 拆气泡（条数与是否剥舞台提示由会话模式决定）→ 剥暗号。
+ * 调用失败或没有取路时**抛错**，界面在会话里露出原因（D-069）。
  */
-export async function generateReply(ctx: EngineContext, engine: EngineId = ENGINE): Promise<EngineReply> {
+export async function generateReply(ctx: EngineContext, providerId?: string): Promise<EngineReply> {
   const dark = darkSideCheck(ctx.userText);
   if (dark) return dark;
 
-  const route = await aiRoute(engine);
-  if (route === 'none') throw new AiUnavailableError();
-  const key = route === 'direct' ? envKey(engine) : null;
-  try {
-    const reply = engine === 'anthropic' ? await anthropicReply(ctx, key) : await qianfanReply(ctx, key);
-    return applyReplyMarkers(reply);
-  } catch (e) {
-    console.warn(`[engine] ${engine}${key ? '' : '（代理）'} 调用失败：`, e);
-    throw e;
-  }
+  const text = await completeChat(
+    {
+      system: buildChatSystemPrompt(ctx),
+      turns: buildTurns(ctx.history, ctx.userText),
+      maxTokens: REPLY_MAX_TOKENS,
+      kind: 'reply',
+    },
+    providerId
+  );
+  if (!text) throw new Error('empty reply');
+
+  const policy = modes.get(ctx.mode);
+  const maxBubbles = policy?.maxBubbles ?? (ctx.mode === 'bonded' ? 2 : 1);
+  const stripStage = policy?.stripStage ?? ctx.mode !== 'outing';
+  const bubbles = splitBubbles(text, maxBubbles, ctx.character.name);
+  return stripReplyMarkers({ texts: stripStage ? stripStageDirections(bubbles) : bubbles });
 }
 
-/** 回复里的系统标记（D-082 [解锁手机] / D-084 [拆红包]）：剥掉并置位——标记她看不到；全剥空则留一个省略号 */
-export function applyReplyMarkers(reply: EngineReply): EngineReply {
-  const marks: [string, 'unlockPhone' | 'openRedPacket'][] = [
-    [PHONE_UNLOCK_MARK, 'unlockPhone'],
-    [RED_PACKET_MARK, 'openRedPacket'],
-  ];
-  let texts = reply.texts;
-  const flags: Partial<EngineReply> = {};
-  for (const [mark, key] of marks) {
-    if (!texts.some((t) => t.includes(mark))) continue;
-    texts = texts.map((t) => t.split(mark).join('').trim());
-    flags[key] = true;
-  }
-  if (!Object.keys(flags).length) return reply;
-  const cleaned = texts.filter(Boolean);
-  return { ...reply, ...flags, texts: cleaned.length ? cleaned : ['……'] };
-}
+/** 兼容旧名：剥回复暗号（现由 core/markers 的注册表驱动） */
+export const applyReplyMarkers = stripReplyMarkers;
 
-/** 领养触发器：广场会话中用户第 4 次发言后，他开口要联系方式 */
+/** 领养节奏的缺省值：心动满 100 约需几句（角色可用 offerAfterTurns 覆盖，D-029） */
 export const ADOPTION_OFFER_AFTER_TURNS = 4;

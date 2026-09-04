@@ -20,14 +20,15 @@ import {
 } from '@/content/prompts';
 import { showToast } from '@/components/toast';
 import { appointmentAtLabel, parseAppointmentAt, planIsMissed } from '@/lib/appointments';
-import { completeText, generateReply } from '@/lib/engine';
+import { bondScope, respond } from '@/lib/chat';
+import { completeText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { generateScenePhoto } from '@/lib/imagegen';
 import { absorbOutingMemory, addMemoryFact } from '@/lib/memory';
 import type { Character, OutingSession } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
-import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
+import { findCharacter, useAppStore } from '@/store/app-store';
 
 /** 一小时没说话，再进来就是新的一场 */
 export const OUTING_IDLE_MS = 3600_000;
@@ -218,35 +219,8 @@ export async function checkMissedPlans(now = Date.now()): Promise<number> {
       bond.id,
       `[节点] ${todayLine(new Date(plan.at))} 她爽约了：约好 ${atLabel} 在${place.name}见面，她没来`
     );
-    // TA 主动说一句（引擎；不可用就沉默——记忆里已经记着了，下次聊到自然会提）
-    try {
-      const fresh = useAppStore.getState().bonds.find((b) => b.id === bond.id) ?? bond;
-      const reply = await generateReply({
-        character,
-        mode: 'bonded',
-        bond: {
-          name: fresh.name,
-          nickname: fresh.nickname,
-          affinity: fresh.affinity,
-          birthday: fresh.birthday,
-          createdAt: fresh.createdAt,
-          memory: fresh.memory,
-        },
-        me: meForCharacter(character.id),
-        history: fresh.messages,
-        userText: missedDateUserLine(place.name, atLabel),
-      });
-      const texts = reply.texts.slice(0, 2);
-      if (texts.length) {
-        useAppStore.getState().appendBond(
-          bond.id,
-          texts.map((text, i) => ({ id: uid('m'), from: 'him' as const, kind: 'text' as const, text, at: Date.now() + i })),
-          { unreadDelta: texts.length }
-        );
-      }
-    } catch (e) {
-      console.warn('[outing] 爽约后 TA 没说上话：', e);
-    }
+    // TA 主动说一句（走回合管线：不可用就沉默——记忆里已经记着了，下次聊到自然会提）
+    await respond(bondScope(bond.id), missedDateUserLine(place.name, atLabel), { pace: 'none', unread: true });
     n++;
   }
   return n;

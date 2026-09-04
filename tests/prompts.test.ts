@@ -4,6 +4,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import '@/features';
+
 import { buildChatSystemPrompt, buildHisNoteSystem, messageContextText } from '@/content/prompts';
 import { setLang } from '@/lib/i18n';
 import {

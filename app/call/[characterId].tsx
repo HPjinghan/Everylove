@@ -130,7 +130,7 @@ export default function CallScreen() {
       }
       if (!alive.current) return;
       setHerLine(text);
-      const reply = await callReply(character, bond.id, text);
+      const reply = await callReply(bond.id, text);
       turnBusy.current = false;
       await speak(reply);
     } catch (e) {
@@ -181,7 +181,7 @@ export default function CallScreen() {
       if (cancelled) return;
       setPhaseSafe('connecting');
       try {
-        const line = await callPickupLine(character, bond.id);
+        const line = await callPickupLine(bond.id);
         if (cancelled) return;
         connectedAt.current = Date.now();
         await speak(line);

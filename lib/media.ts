@@ -13,12 +13,12 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 
 import { IMAGE_CAPTION_SYSTEM, IMAGE_CAPTION_USER } from '@/content/prompts';
+import { CONFIG } from '@/core/config';
 import { AiUnavailableError, aiRoute, envKey } from '@/lib/engine';
 import { getLang, t } from '@/lib/i18n';
 import { proxyJson } from '@/lib/proxy';
 
-export const QIANFAN_VISION_MODEL =
-  process.env.EXPO_PUBLIC_QIANFAN_VISION_MODEL || 'qwen3.5-397b-a17b';
+export const QIANFAN_VISION_MODEL = CONFIG.qianfanVisionModel;
 
 /** 百度 ASR 的音频要求：16k 采样、单声道、16bit PCM（wav）；最长 60 秒 */
 export const ASR_MAX_SECONDS = 59;
@@ -44,9 +44,9 @@ const QIANFAN_CHAT_URL = 'https://qianfan.baidubce.com/v2/chat/completions';
 const CUID = 'everylove-app';
 
 /** OpenAI 兼容语音服务（D-074）：语音识别与合成共用一个 base URL + key；不填 = 用百度 */
-export const SPEECH_BASE_URL = (process.env.EXPO_PUBLIC_SPEECH_BASE_URL || '').replace(/\/+$/, '');
-export const SPEECH_API_KEY = process.env.EXPO_PUBLIC_SPEECH_API_KEY || '';
-export const SPEECH_ASR_MODEL = process.env.EXPO_PUBLIC_SPEECH_ASR_MODEL || 'whisper-1';
+export const SPEECH_BASE_URL = CONFIG.speech.baseUrl;
+export const SPEECH_API_KEY = CONFIG.speech.apiKey;
+export const SPEECH_ASR_MODEL = CONFIG.speech.asrModel;
 export function speechConfigured(): boolean {
   return Boolean(SPEECH_BASE_URL && SPEECH_API_KEY);
 }
@@ -86,8 +86,7 @@ async function transcribeWhisperProxy(audioBase64: string, language: string): Pr
 
 /** dev_pid：80001 极速版普通话 / 1537 普通话 / 1737 英语（EXPO_PUBLIC_BAIDU_ASR_DEV_PID 可强制） */
 function asrDevPid(): number {
-  const forced = Number(process.env.EXPO_PUBLIC_BAIDU_ASR_DEV_PID);
-  if (forced) return forced;
+  if (CONFIG.baiduAsrDevPid) return CONFIG.baiduAsrDevPid;
   return getLang() === 'en' ? 1737 : 80001;
 }
 

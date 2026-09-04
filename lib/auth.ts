@@ -9,8 +9,10 @@ import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 
-export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+import { CONFIG } from '@/core/config';
+
+export const SUPABASE_URL = CONFIG.supabaseUrl;
+export const SUPABASE_ANON_KEY = CONFIG.supabaseAnonKey;
 
 /** env 里配好了 Supabase 才可用；没配时设置页显示引导，其他一切照旧 */
 export function authConfigured(): boolean {

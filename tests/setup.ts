@@ -1,8 +1,8 @@
 /**
  * 测试环境（node，无 React Native）：把带原生依赖的模块换成最小桩。
  * - AsyncStorage → 内存实现（zustand persist 与天气缓存用）
- * - react-native → 只提供用到的几个静态对象
- * - constants/theme → 只提供 applyThemeColors（store 调）
+ * - react-native / expo-* / react-native-maps → 只提供 import 时会碰到的名字，其余按需返回空组件
+ * - constants/theme → 只提供 applyThemeColors 与 themed（store 与卡片样式调）
  * - lib/weather → 固定的天气句（prompt 快照要确定性）
  */
 import { vi } from 'vitest';
@@ -17,17 +17,41 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
-vi.mock('react-native', () => ({
-  Platform: { OS: 'ios', select: (o: Record<string, unknown>) => o.ios ?? o.default },
-  AppState: { addEventListener: () => ({ remove() {} }) },
-  StyleSheet: { create: (s: unknown) => s, hairlineWidth: 1 },
-}));
+/**
+ * 任何没列出的导出都给一个空组件（vitest 对 mock 上不存在的导出会报错）。
+ * 注意 `then` 必须返回 undefined：mock 模块会被 await，若 then 是函数就成了永远不 resolve 的 thenable。
+ */
+function stubModule(known: Record<string, unknown>) {
+  return new Proxy(known, {
+    get: (target, key) => {
+      if (typeof key === 'symbol' || key === 'then' || key === '__esModule') return undefined;
+      return key in target ? target[key] : () => null;
+    },
+  });
+}
 
+vi.mock('react-native', () =>
+  stubModule({
+    Platform: { OS: 'ios', select: (o: Record<string, unknown>) => o.ios ?? o.default },
+    AppState: { addEventListener: () => ({ remove() {} }) },
+    StyleSheet: { create: (s: unknown) => s, hairlineWidth: 1, absoluteFill: {} },
+  })
+);
+vi.mock('react-native-maps', () => stubModule({ default: () => null }));
 vi.mock('react-native-url-polyfill/auto', () => ({}));
+vi.mock('expo-file-system/legacy', () => stubModule({ documentDirectory: '/tmp/', EncodingType: { Base64: 'base64' } }));
+vi.mock('expo-audio', () =>
+  stubModule({
+    RecordingPresets: { HIGH_QUALITY: { ios: {} } },
+    IOSOutputFormat: { LINEARPCM: 'lpcm' },
+    AudioQuality: { MAX: 127 },
+  })
+);
+vi.mock('expo-image-manipulator', () => stubModule({ SaveFormat: { JPEG: 'jpeg' } }));
 
 vi.mock('@/constants/theme', () => ({
   applyThemeColors: () => {},
-  Romance: {},
+  Romance: new Proxy({}, { get: (_t, k) => (typeof k === 'symbol' || k === 'then' ? undefined : '#000000') }),
   Fonts: {},
   themed: (f: () => unknown) => f(),
 }));

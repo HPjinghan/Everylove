@@ -15,22 +15,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChatThread } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { scriptFor } from '@/content/characters';
 import { OUTING_OPENERS } from '@/content/prompts';
 import { placeById } from '@/content/places';
 import { Romance, themed } from '@/constants/theme';
-import { HEART_FULL, heartGain, XP_PER_MESSAGE } from '@/lib/bond';
-import { ADOPTION_OFFER_AFTER_TURNS, describeAiError, generateReply } from '@/lib/engine';
+import { wait } from '@/core/turn';
+import { HEART_FULL } from '@/lib/bond';
 import { uid } from '@/lib/format';
 import { imageKeyReady } from '@/lib/imagegen';
 import { t } from '@/lib/i18n';
-import { appointmentAtLabel, ON_TIME_TOLERANCE_MIN, planTimeLabel } from '@/lib/appointments';
+import { ON_TIME_TOLERANCE_MIN, planTimeLabel } from '@/lib/appointments';
+import { outingScope, sendText } from '@/lib/chat';
 import { enterPlace, finishOuting, setSceneVisible, shootPhoto } from '@/lib/outing';
-import type { EngineReply } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
-import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
-
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+import { findCharacter, useAppStore } from '@/store/app-store';
 
 export default function OutingSceneScreen() {
   const { placeId } = useLocalSearchParams<{ placeId: string }>();
@@ -125,89 +122,8 @@ export default function OutingSceneScreen() {
 
   if (!active || !character) return null;
 
-  const onSend = async (text: string) => {
-    const { appendOuting, appendBond } = useAppStore.getState();
-    appendOuting([{ id: uid('m'), from: 'me', kind: 'text', text, at: Date.now() }]);
-    // 她开口 = +XP（升级系统提示会出现在羁绊会话里）
-    if (bond) appendBond(bond.id, [], { affinityDelta: XP_PER_MESSAGE });
-
-    // 陌生人偶遇也积累心动（D-056）：与交友试聊同一套心动值（记在 squareChats 上，两处共通）
-    if (!bond) {
-      const { ensureSquareChat, appendSquare } = useAppStore.getState();
-      ensureSquareChat(character.id);
-      const chat = useAppStore.getState().squareChats[character.id];
-      const pace = character.offerAfterTurns ?? ADOPTION_OFFER_AFTER_TURNS;
-      appendSquare(character.id, [], {
-        userTurn: true,
-        heartDelta: heartGain(pace, (chat?.userTurns ?? 0) * 31 + text.length),
-      });
-    }
-
-    setTyping(true);
-    const current = useAppStore.getState().outingSession;
-    let reply: EngineReply;
-    try {
-      reply = await generateReply({
-        character,
-        mode: 'outing',
-        bond: bond
-          ? {
-              name: bond.name,
-              nickname: bond.nickname,
-              affinity: bond.affinity,
-              birthday: bond.birthday,
-              createdAt: bond.createdAt,
-              memory: bond.memory,
-            }
-          : undefined,
-        me: meForCharacter(character.id),
-        outing: {
-          placeName: place.name,
-          scene: place.scene,
-          kind: kind ?? active.kind,
-          weatherLine: weatherLine(),
-          appointment: active.planAt
-            ? { atLabel: appointmentAtLabel(active.planAt), lateMinutes: active.lateMinutes ?? 0 }
-            : undefined,
-        },
-        history: current?.messages ?? [],
-        userText: text,
-      });
-    } catch (e) {
-      // 模型调用失败：在场景里露出原因（D-069：没有脚本回落，错误要看得见）
-      setTyping(false);
-      useAppStore.getState().appendOuting([
-        {
-          id: uid('m'),
-          from: 'system',
-          kind: 'system',
-          text: t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) }),
-          at: Date.now(),
-        },
-      ]);
-      return;
-    }
-    await wait(700 + Math.min(1200, text.length * 40));
-    setTyping(false);
-    for (const line of reply.texts) {
-      useAppStore
-        .getState()
-        .appendOuting([{ id: uid('m'), from: 'him', kind: 'text', text: line, at: Date.now() }]);
-    }
-
-    // 心动满 100（D-056）：TA 当场开口想交换联系方式（产品触发器，不由模型决定，D-029 纪律）
-    const after = useAppStore.getState().squareChats[character.id];
-    if (!bond && after && !after.adoptionOffered && (after.heart ?? 0) >= HEART_FULL) {
-      const script = scriptFor(character);
-      for (const line of script.offer) {
-        await wait(900);
-        useAppStore
-          .getState()
-          .appendOuting([{ id: uid('m'), from: 'him', kind: 'text', text: line, at: Date.now() }]);
-      }
-      useAppStore.getState().appendSquare(character.id, [], { offered: true });
-    }
-  };
+  // 回合走底座管线（D-086）：XP / 陌生人心动记账、现场描写不剥、心动满的 offer 都在模式与钩子里
+  const onSend = (text: string) => void sendText(outingScope(character.id), text, { ui: { typing: setTyping } });
 
   const name = bond?.name ?? character.name;
 

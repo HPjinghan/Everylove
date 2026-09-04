@@ -121,7 +121,8 @@ export type MessageKind = 'text' | 'voice' | 'system' | 'image' | 'card';
 
 /** 「+」面板发出的卡片消息（D-081/D-084）：外出邀请 / 红包 / 位置 / 想看手机 */
 export interface ChatCard {
-  type: 'invite' | 'redpacket' | 'location' | 'phoneRequest';
+  /** 卡片种类（core/cards 注册表；D-086 起可扩展——新种类在 features/ 里注册） */
+  type: 'invite' | 'redpacket' | 'location' | 'phoneRequest' | (string & {});
   title: string;
   subtitle?: string;
   /** 红包金额（试装游戏币） */
@@ -364,8 +365,9 @@ export interface EngineReply {
   texts: string[];
   /** 命中情绪暗面路由（系统层，绕过角色扮演） */
   darkSide?: boolean;
-  /** 查手机（D-082）：TA 在这轮答应让她看手机（回复里的解锁标记已剥掉） */
-  unlockPhone?: boolean;
-  /** 红包（D-084）：TA 在这轮拆了红包（标记已剥掉） */
-  openRedPacket?: boolean;
+  /**
+   * 回复暗号（D-082 [解锁手机] / D-084 [拆红包] ……）：已从 texts 里剥掉，按 core/markers 注册的 key 置位；
+   * 回合管线据此调用各暗号的 apply 落状态（D-086）
+   */
+  flags?: Record<string, boolean>;
 }

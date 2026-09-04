@@ -13,21 +13,18 @@
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { pronounFor } from '@/content/prompts';
-import { ENV_QIANFAN_KEY } from '@/lib/engine';
+import { CONFIG } from '@/core/config';
 import { getLang, type Lang } from '@/lib/i18n';
 import { SPEECH_API_KEY, SPEECH_BASE_URL, SPEECH_UNCONFIGURED, speechConfigured } from '@/lib/media';
 import { proxyJson, proxyReadySync } from '@/lib/proxy';
 import type { Character } from '@/lib/types';
 
 const BAIDU_TTS_URL = 'https://tsn.baidu.com/text2audio';
-const ENV_PER = process.env.EXPO_PUBLIC_BAIDU_TTS_PER || '';
-const SPEECH_TTS_MODEL = process.env.EXPO_PUBLIC_SPEECH_TTS_MODEL || 'gpt-4o-mini-tts';
+const ENV_PER = CONFIG.baiduTtsPer;
+const ENV_QIANFAN_KEY = CONFIG.qianfanKey;
+const SPEECH_TTS_MODEL = CONFIG.speech.ttsModel;
 /** OpenAI 兼容通道的音色（按人称）：默认 OpenAI 音色名；硅基流动 / 百炼等换成各自的音色 id（见 .env.example） */
-const SPEECH_VOICE = {
-  he: process.env.EXPO_PUBLIC_SPEECH_TTS_VOICE_HE || 'onyx',
-  she: process.env.EXPO_PUBLIC_SPEECH_TTS_VOICE_SHE || 'nova',
-  ta: process.env.EXPO_PUBLIC_SPEECH_TTS_VOICE_TA || 'alloy',
-};
+const SPEECH_VOICE = CONFIG.speech.voice;
 /** 百度 tex 上限 1024 GBK 字节（约 500 汉字）；气泡本来就短，保守截断 */
 const MAX_CHARS = 300;
 

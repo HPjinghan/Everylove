@@ -9,16 +9,15 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import 'react-native-reanimated';
 
+// 底座启动（D-086）：把所有玩法装进 core/ 的插槽——必须在任何回合 / 任务之前
+import '@/features';
+
 import { ToastHost } from '@/components/toast';
 import { applyThemeColors, Romance } from '@/constants/theme';
+import { runJobs } from '@/core/jobs';
 import { authConfigured } from '@/lib/auth';
 import { setLang } from '@/lib/i18n';
-import { deliverDueHeartbeats } from '@/lib/heartbeat';
-import { deliverDueHisNotes } from '@/lib/his-notes';
-import { checkMissedPlans } from '@/lib/outing';
-import { deliverDuePosts } from '@/lib/posts';
 import { initCloudSync } from '@/lib/sync';
-import { initWeather, refreshWeather } from '@/lib/weather';
 import '@/lib/notifications';
 import { useAppStore, useHydrated } from '@/store/app-store';
 
@@ -50,16 +49,11 @@ export default function RootLayout() {
       text: Romance.ink,
     },
   };
-  // 启动：种子帖、心跳与发帖补投（开门链路已下线，D-046；发帖调度 D-055）。
+  // 启动：后台任务（种子帖 / 天气 / 心跳 / 发帖 / 爽约 / TA 的记事本……全在 features/schedulers.ts 登记）。
   // onboarding 门禁是声明式的（app/index.tsx 桌面），根布局不做任何命令式跳转——首帧跳转会崩在 assertIsReady。
   useEffect(() => {
     if (!ready) return;
-    useAppStore.getState().ensureSeedPosts();
-    void initWeather();
-    deliverDueHeartbeats();
-    void deliverDuePosts();
-    void checkMissedPlans();
-    void deliverDueHisNotes();
+    void runJobs('launch');
     SplashScreen.hideAsync();
   }, [ready]);
 
@@ -69,16 +63,10 @@ export default function RootLayout() {
     return initCloudSync();
   }, [hydrated]);
 
-  // 回前台补投心跳与帖子
+  // 回前台：同一批后台任务按各自的钟补投
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') {
-        deliverDueHeartbeats();
-        void deliverDuePosts();
-        void checkMissedPlans();
-        void deliverDueHisNotes();
-        void refreshWeather();
-      }
+      if (s === 'active') void runJobs('foreground');
     });
     return () => sub.remove();
   }, []);

@@ -14,7 +14,8 @@ import { PhoneSheet } from '@/components/his-phone';
 import { PhoneLock } from '@/components/phone-lock';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
-import { peekMyPhone, sendCardAndRespond } from '@/lib/chat';
+import { askPasscode as askHisPasscode } from '@/features/phone-peek';
+import { peekMyPhone } from '@/lib/chat';
 import { aiRouteSync } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -33,12 +34,7 @@ export default function PhonesScreen() {
     const bond = bonds.find((b) => b.id === bondId);
     if (!bond) return;
     setOpenId(null);
-    const code = useAppStore.getState().ensurePhoneCode(bond.id);
-    void sendCardAndRespond(
-      bond.id,
-      { type: 'phoneRequest', title: t('想看看你的手机') },
-      `（她按了「问 TA 要密码」：${bond.nickname} 想看看你的手机。按你的性格和你们现在的亲密程度决定给不给：给就把密码 ${code} 告诉她，并在回复最后单独一行写 [解锁手机]；不给就说明为什么或逗她，不写标记。）`
-    );
+    void askHisPasscode(bond.id);
     router.push({ pathname: '/bond/[bondId]', params: { bondId: bond.id } });
   };
 

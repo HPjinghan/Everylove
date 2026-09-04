@@ -11,6 +11,8 @@ vi.mock('@/lib/proxy', () => ({
   },
 }));
 
+import '@/features';
+
 import { applyReplyMarkers, buildTurns, HISTORY_ROUNDS, splitBubbles, stripStageDirections } from '@/lib/engine';
 import { history, NOW } from './fixtures';
 
@@ -51,11 +53,11 @@ describe('splitBubbles / stripStageDirections', () => {
 
 describe('applyReplyMarkers', () => {
   it('剥掉标记并置位；全剥空留省略号', () => {
-    expect(applyReplyMarkers({ texts: ['密码是 4821', '[解锁手机]'] })).toMatchObject({
+    expect(applyReplyMarkers({ texts: ['密码是 4821', '[解锁手机]'] })).toEqual({
       texts: ['密码是 4821'],
-      unlockPhone: true,
+      flags: { unlockPhone: true },
     });
-    expect(applyReplyMarkers({ texts: ['[拆红包]'] })).toMatchObject({ texts: ['……'], openRedPacket: true });
+    expect(applyReplyMarkers({ texts: ['[拆红包]'] })).toEqual({ texts: ['……'], flags: { openRedPacket: true } });
     expect(applyReplyMarkers({ texts: ['没有标记'] })).toEqual({ texts: ['没有标记'] });
   });
 });

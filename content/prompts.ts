@@ -5,8 +5,9 @@
  *
  * 目录：
  *   §4 通用：人称 / 时间感 / 消息进模型的文字 / 对话记录排版（放最前面，其他节都用）
- *   §1 对话：三套角色扮演系统 prompt —— 初识模式（交友配对）/ 亲密模式（领养后）/ 外出模式（D-038/D-040），
- *            互不引用，只共用红线 CHAT_HARD_RULES 与「我」的身份块 userProfileBlock（D-035）
+ *   §1 对话：四种模式（初识 / 亲密 / 外出 / 通话）+ TA 写记事本 的文本块——D-086 起由 core/prompt 按分段表装配，
+ *            分段的模式与顺序声明在 features/prompts.ts（玩法自己的分段在各自的 features/*.tsx）；
+ *            这里只出文本：每个导出的块 / 函数就是一段，装配顺序与旧的手工拼接逐字一致（tests/prompts.test.ts 快照）
  *   §2 生图：只剩立绘（D-037 聊天/初见回归纯文本，会话内生图已下线）
  *   §3 记忆：记忆提取的系统指令 + 每次提取喂给模型的内容
  *   §6 多模态（D-073）：她发来的照片 → 视觉模型客观描述（语音走 ASR，不需要 prompt）
@@ -23,6 +24,8 @@
 import { LOVE_STYLES, loveStyleByLabel, scriptFor } from '@/content/characters';
 import { PLACES } from '@/content/places';
 import { appointmentAtLabel, ON_TIME_TOLERANCE_MIN } from '@/lib/appointments';
+import { cardContextText } from '@/core/cards';
+import { assembleSystemPrompt, type PromptMode } from '@/core/prompt';
 import { levelInfo } from '@/lib/bond';
 import { daysTogether } from '@/lib/format';
 import { getLang } from '@/lib/i18n';
@@ -40,14 +43,8 @@ import type { Bond, BondMemory, Character, ChatMessage, EngineContext, UserProfi
 export function messageContextText(m: ChatMessage): string {
   if (m.from === 'system') return '';
   if (m.recalled) return ''; // 撤回的消息不进上下文（LINE 规则，D-030）
-  // 「+」面板的卡片（D-081）：TA 看到的是「她做了什么」
-  if (m.kind === 'card' && m.card) {
-    const c = m.card;
-    if (c.type === 'invite') return `（她发来一张外出邀请：${c.title}）`;
-    if (c.type === 'redpacket') return `（她给你发了一个 ${c.title} 的红包${c.subtitle ? `，留言「${c.subtitle}」` : ''}${c.claimed ? '，你拆了' : c.declined ? '，你没拆' : ''}）`;
-    if (c.type === 'phoneRequest') return '（她想看你的手机，问你要密码）';
-    return `（她发来了自己的位置：${c.title}${c.subtitle ? `，${c.subtitle}` : ''}）`;
-  }
+  // 「+」面板的卡片（D-081）：TA 看到的是「她做了什么」——文字由卡片种类重建（core/cards，各玩法注册；D-086）
+  if (m.kind === 'card' && m.card) return cardContextText(m.card);
   let body = (m.text || m.spoken || '').trim();
   // 她的语音 / 照片（D-073）：识别文字与看图描述就是 TA「听到 / 看到」的东西；还没有结果的不进上下文
   if (m.from === 'me' && m.kind === 'voice') {
@@ -328,22 +325,11 @@ export const SQUARE_MANNER = [
 /** 初识模式的长度要求 */
 export const SQUARE_LENGTH = '- 回复 1-2 句，口语、具体，不写小作文。';
 
-/** 初识模式完整系统 prompt */
-export function buildSquareSystemPrompt(ctx: EngineContext): string {
+/** 初识模式的情境段（装配顺序见 features/prompts.ts）：此刻的情境 → 重逢提示 → 轮次分寸 */
+export function squareSituationLines(ctx: EngineContext): string[] {
   const c = ctx.character;
-  const script = scriptFor(c);
   const n = countUserTurns(ctx.history) + 1;
-  // 自创角色不给台词样本：兜底脚本不是 TA 的声音，口吻由口癖/设定/追法定义（D-025）
-  const voice = c.custom ? [] : [...script.opening, ...script.square.slice(0, 2)];
-
   return [
-    `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。下面所有规则里，「她」指正在和你聊天的用户。`,
-    `【你是谁】${script.persona}`,
-    `【你的追法】${pursuitLine(c)}`,
-    ...characterProfileBlock(c),
-    ...(voice.length ? ['【你的声音】下面是你说过的话，照这个口吻说，不要复读：', ...voice.map((l) => `- ${l}`)] : []),
-    ...userProfileBlock(ctx.me, 'square'),
-    ...sharedMemoryBlock(c),
     // 自创角色的暧昧期（D-052）：不是配对来的陌生人——她把你带到这个世界，你对她有说不清的熟悉感
     c.custom
       ? `【此刻的情境】你们刚认识不久，但你对她有一种说不清的熟悉感——好像很久以前就该认识她。这是她对你说的第 ${n} 句话。你正在过自己的日子（${c.identity} 的日常），聊天是顺带的，不是全部注意力。`
@@ -352,11 +338,7 @@ export function buildSquareSystemPrompt(ctx: EngineContext): string {
       ? ['- 你们有共同的过去（见上）——这次配对更像一场重逢：带着熟稔，但仍从当下聊起。']
       : []),
     `- ${squareTurnGuide(n)}`,
-    ...SQUARE_MANNER,
-    ...CHAT_HARD_RULES_OF(),
-    ...CHAT_OUTPUT_FORMAT,
-    SQUARE_LENGTH,
-  ].join('\n');
+  ];
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -440,38 +422,63 @@ export function phoneBlock(ctx: EngineContext): string[] {
   ];
 }
 
-/** 亲密模式的关系背景（人设 / 追法 / 时间感 / 她的身份 / 记忆 / 秘密 / 恋爱规则）；通话模式复用（D-077） */
-function bondedContextLines(ctx: EngineContext, now: Date): string[] {
+/* ── 各模式共用的段（D-086）：第一行 / 你的声音 / 现在 / 生日 / 阶段感——装配顺序见 features/prompts.ts ── */
+
+/** 各模式的第一行：你是谁、你们是什么关系、「她」指谁 */
+export function introLine(ctx: EngineContext, now: Date): string {
   const c = ctx.character;
-  const script = scriptFor(c);
+  if (ctx.mode === 'square') {
+    return `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。下面所有规则里，「她」指正在和你聊天的用户。`;
+  }
   const bond = ctx.bond;
   const nickname = bond?.nickname ?? '你';
-  const days = bond?.createdAt ? daysTogether(bond.createdAt, now.getTime()) : 1;
   const lv = levelInfo(bond?.affinity ?? 0);
-  const stage = lv.name;
-  const voice = c.custom
-    ? []
-    : [...script.bonded.slice(0, 3), ...script.arrival.slice(1, 2).map((a) => a.text)];
+  if (ctx.mode === 'outing') {
+    const o = ctx.outing;
+    const stranger = o?.kind === 'stranger';
+    const sceneLine = o
+      ? `${o.placeName}。${o.scene}${o.weatherLine ? `${o.weatherLine}。` : ''}`
+      : '你们常去的地方。';
+    const relation = stranger
+      ? '你们并不认识——这是一场陌生人之间的偶遇。'
+      : `你们已经加了好友，你叫她「${nickname}」，羁绊 LV${lv.level}·${lv.name}。`;
+    return `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。现在不是在手机上聊天——你们两个人此刻真的在同一个地方：${sceneLine}${relation}下面所有规则里，「她」指正和你在一起的用户。`;
+  }
+  // 亲密 / 通话 / TA 写记事本：TA 是主动的一方，被爱是她不用努力的事（D-018）
+  const days = bond?.createdAt ? daysTogether(bond.createdAt, now.getTime()) : 1;
+  return `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。你们已经加了好友、交换了联系方式，你叫她「${nickname}」，在一起第 ${days} 天，羁绊 LV${lv.level}·${lv.name}。你是主动的那一方——被爱是她不用努力的事。下面所有规则里，「她」指正在和你聊天的用户。`;
+}
 
-  return [
-    `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。你们已经加了好友、交换了联系方式，你叫她「${nickname}」，在一起第 ${days} 天，羁绊 LV${lv.level}·${stage}。你是主动的那一方——被爱是她不用努力的事。下面所有规则里，「她」指正在和你聊天的用户。`,
-    `【你是谁】${script.persona}`,
-    `【你的追法】${pursuitLine(c)}`,
-    ...characterProfileBlock(c),
-    ...(voice.length ? ['【你的声音】下面是你说过的话，照这个口吻说，不要复读：', ...voice.map((l) => `- ${l}`)] : []),
-    `【现在】${timeOfDayLine(now)}。`,
-    ...BONDED_TIME_RULES,
-    ...(bond?.birthday ? [`- 她的生日是 ${bond.birthday}，临近时你会记得。`] : []),
-    ...userProfileBlock(ctx.me, 'bonded'),
-    ...sharedMemoryBlock(c),
-    ...memoryBlockFor(bond?.memory),
-    ...secretsBlock(c, lv.level),
-    ...phoneBlock(ctx),
-    RED_PACKET_RULE,
-    ...BONDED_LOVE_RULES,
-    ...initiativeLine(c),
-    `- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`,
-  ];
+/** 【你的声音】：台词样本按模式选；自创角色不给样本（兜底脚本不是 TA 的声音，口吻由口癖/设定/追法定义，D-025） */
+export function voiceBlock(ctx: EngineContext): string[] {
+  const c = ctx.character;
+  if (c.custom) return [];
+  const s = scriptFor(c);
+  const voice =
+    ctx.mode === 'square'
+      ? [...s.opening, ...s.square.slice(0, 2)]
+      : ctx.mode === 'outing'
+        ? ctx.outing?.kind === 'stranger'
+          ? s.square.slice(0, 2)
+          : s.bonded.slice(0, 3)
+        : [...s.bonded.slice(0, 3), ...s.arrival.slice(1, 2).map((a) => a.text)];
+  return voice.length ? ['【你的声音】下面是你说过的话，照这个口吻说，不要复读：', ...voice.map((l) => `- ${l}`)] : [];
+}
+
+/** 【现在】时间感 */
+export function nowLine(now: Date): string {
+  return `【现在】${timeOfDayLine(now)}。`;
+}
+
+/** 她的生日（亲密背景） */
+export function birthdayLine(ctx: EngineContext): string[] {
+  return ctx.bond?.birthday ? [`- 她的生日是 ${ctx.bond.birthday}，临近时你会记得。`] : [];
+}
+
+/** 阶段感（键 = lib/bond.ts 的 LEVEL_NAMES） */
+export function stageLine(ctx: EngineContext): string {
+  const stage = levelInfo(ctx.bond?.affinity ?? 0).name;
+  return `- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`;
 }
 
 /* ── §9 TA 的记事本（D-085）：TA 写给自己的心事，按 MBTI 频率（lib/his-notes.ts） ── */
@@ -484,18 +491,9 @@ export const HIS_NOTE_MANNER = [
 ];
 export const HIS_NOTE_USER = '（写下今天记事本里的一条。）';
 
+/** TA 写记事本的系统 prompt：亲密背景 + 记事本写法（装配模式 note） */
 export function buildHisNoteSystem(ctx: EngineContext, now: Date = new Date()): string {
-  return [...bondedContextLines(ctx, now), ...CHAT_HARD_RULES_OF(), ...HIS_NOTE_MANNER].join('\n');
-}
-
-/** 亲密模式完整系统 prompt */
-export function buildBondedSystemPrompt(ctx: EngineContext, now: Date = new Date()): string {
-  return [
-    ...bondedContextLines(ctx, now),
-    ...CHAT_HARD_RULES_OF(),
-    ...CHAT_OUTPUT_FORMAT,
-    ...BONDED_LENGTH,
-  ].join('\n');
+  return assembleSystemPrompt(ctx, { mode: 'note', now });
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -514,11 +512,6 @@ export const CALL_MANNER = [
   '- 她沉默或只应了一声，你就接着说点自己的，或问一句轻的；别连珠炮。',
   '- 她说要挂了，好好道别，一两句就够；不挽留、不追问。',
 ];
-
-/** 通话模式完整系统 prompt：亲密模式的全部背景 + 电话口吻 */
-export function buildCallSystemPrompt(ctx: EngineContext, now: Date = new Date()): string {
-  return [...bondedContextLines(ctx, now), ...CHAT_HARD_RULES_OF(), ...CALL_MANNER].join('\n');
-}
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* §1-D 外出模式（D-038）—— 两个人真的在同一个空间：亲身互动的故事模式              */
@@ -554,58 +547,22 @@ export const OUTING_STRANGER_MANNER = [
   '- 聊得投缘可以更放松、更靠近；但「交换联系方式」这件事不用你张罗——到了那一刻自然会发生。',
 ];
 
-/** 外出模式完整系统 prompt（赴约/偶遇带关系背景；陌生人偶遇 D-040 不带） */
-export function buildOutingSystemPrompt(ctx: EngineContext, now: Date = new Date()): string {
-  const c = ctx.character;
-  const script = scriptFor(c);
-  const bond = ctx.bond;
+/** 外出的【此刻】：赴约（准时 / 迟到 / 早到 / 没定时间）、偶遇、陌生人（D-040/D-079） */
+export function outingMomentLine(ctx: EngineContext): string {
   const o = ctx.outing;
-  const stranger = o?.kind === 'stranger';
-  const nickname = bond?.nickname ?? '你';
-  const lv = levelInfo(bond?.affinity ?? 0);
-  const stage = lv.name;
-  const voice = c.custom ? [] : stranger ? script.square.slice(0, 2) : script.bonded.slice(0, 3);
-  const sceneLine = o
-    ? `${o.placeName}。${o.scene}${o.weatherLine ? `${o.weatherLine}。` : ''}`
-    : '你们常去的地方。';
-  const relation = stranger
-    ? '你们并不认识——这是一场陌生人之间的偶遇。'
-    : `你们已经加了好友，你叫她「${nickname}」，羁绊 LV${lv.level}·${stage}。`;
   const appt = o?.appointment;
-  const moment = stranger
-    ? '【此刻】你在这里过自己的日子，她恰好出现在附近，你们搭上了话。'
-    : o?.kind === 'date'
-      ? !appt
-        ? '【此刻】你们约好了在这里见面，你提前到了一会儿——她来了。你说到做到。'
-        : appt.lateMinutes > ON_TIME_TOLERANCE_MIN
-          ? `【此刻】你们约好了 ${appt.atLabel} 在这里见面，你早就到了；她比约定晚了 ${appt.lateMinutes} 分钟才出现。你等了这么久——按你的性格自然反应（可以在意、可以嘴硬、可以先问她路上怎么了，但不用愧疚绑架她），然后把这次见面好好过下去。`
-          : appt.lateMinutes < -ON_TIME_TOLERANCE_MIN
-            ? `【此刻】你们约好了 ${appt.atLabel} 在这里见面，她比约定早到了 ${-appt.lateMinutes} 分钟——你也刚到不久，有点意外她这么早。你说到做到。`
-            : `【此刻】你们约好了 ${appt.atLabel} 在这里见面，你提前到了一会儿——她准时来了。你说到做到。`
-      : '【此刻】你没想到会在这里碰到她——你恰好也在，这是一场偶遇。先有一点藏不住的惊喜，再自然地邀她一起待一会儿。';
-
-  return [
-    `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。现在不是在手机上聊天——你们两个人此刻真的在同一个地方：${sceneLine}${relation}下面所有规则里，「她」指正和你在一起的用户。`,
-    `【你是谁】${script.persona}`,
-    `【你的追法】${pursuitLine(c)}`,
-    ...characterProfileBlock(c),
-    ...(voice.length
-      ? ['【你的声音】下面是你说过的话，照这个口吻说，不要复读：', ...voice.map((l) => `- ${l}`)]
-      : []),
-    `【现在】${timeOfDayLine(now)}。`,
-    moment,
-    // 陌生人不知道她是谁（她的资料不注入），但她的边界任何模式都在（D-035/D-040）
-    ...(stranger ? boundariesBlock(ctx.me) : userProfileBlock(ctx.me, 'outing')),
-    ...sharedMemoryBlock(c),
-    ...(stranger ? [] : memoryBlockFor(bond?.memory)),
-    ...(stranger ? [] : secretsBlock(c, lv.level)),
-    ...OUTING_MANNER,
-    ...(stranger
-      ? OUTING_STRANGER_MANNER
-      : [`- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`, ...initiativeLine(c)]),
-    ...CHAT_HARD_RULES_OF(),
-    ...OUTING_OUTPUT_FORMAT,
-  ].join('\n');
+  if (o?.kind === 'stranger') return '【此刻】你在这里过自己的日子，她恰好出现在附近，你们搭上了话。';
+  if (o?.kind === 'date') {
+    if (!appt) return '【此刻】你们约好了在这里见面，你提前到了一会儿——她来了。你说到做到。';
+    if (appt.lateMinutes > ON_TIME_TOLERANCE_MIN) {
+      return `【此刻】你们约好了 ${appt.atLabel} 在这里见面，你早就到了；她比约定晚了 ${appt.lateMinutes} 分钟才出现。你等了这么久——按你的性格自然反应（可以在意、可以嘴硬、可以先问她路上怎么了，但不用愧疚绑架她），然后把这次见面好好过下去。`;
+    }
+    if (appt.lateMinutes < -ON_TIME_TOLERANCE_MIN) {
+      return `【此刻】你们约好了 ${appt.atLabel} 在这里见面，她比约定早到了 ${-appt.lateMinutes} 分钟——你也刚到不久，有点意外她这么早。你说到做到。`;
+    }
+    return `【此刻】你们约好了 ${appt.atLabel} 在这里见面，你提前到了一会儿——她准时来了。你说到做到。`;
+  }
+  return '【此刻】你没想到会在这里碰到她——你恰好也在，这是一场偶遇。先有一点藏不住的惊喜，再自然地邀她一起待一会儿。';
 }
 
 /** 外出开场白（TA 先开口；离线模板，{place} 换地点名、{nickname} 换称呼、{minutes} 换迟到分钟数） */
@@ -629,12 +586,24 @@ export const OUTING_OPENERS: Record<'date' | 'dateLate' | 'encounter' | 'strange
   ],
 };
 
-/** 分发器：引擎只调这一个 */
+/** 输出格式按装配模式：聊天两模式共用；通话 / 记事本 / 外出各有一套 */
+export function outputFormatFor(mode: PromptMode): string[] {
+  if (mode === 'outing') return OUTING_OUTPUT_FORMAT;
+  if (mode === 'call') return CALL_MANNER;
+  if (mode === 'note') return HIS_NOTE_MANNER;
+  return CHAT_OUTPUT_FORMAT;
+}
+
+/** 长度要求：只有两种聊天模式各自有 */
+export function lengthFor(mode: PromptMode): string[] {
+  if (mode === 'square') return [SQUARE_LENGTH];
+  if (mode === 'bonded') return BONDED_LENGTH;
+  return [];
+}
+
+/** 分发器：引擎只调这一个——D-086 起由 core/prompt 按分段表装配（分段在 features/prompts.ts 与各玩法里注册） */
 export function buildChatSystemPrompt(ctx: EngineContext, now: Date = new Date()): string {
-  if (ctx.mode === 'square') return buildSquareSystemPrompt(ctx);
-  if (ctx.mode === 'outing') return buildOutingSystemPrompt(ctx, now);
-  if (ctx.mode === 'call') return buildCallSystemPrompt(ctx, now);
-  return buildBondedSystemPrompt(ctx, now);
+  return assembleSystemPrompt(ctx, { now });
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */

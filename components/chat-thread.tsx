@@ -35,19 +35,20 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CardShell } from '@/components/card-bubble';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
 import { PhotoViewer, Polaroid, type ViewerShot } from '@/components/polaroid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import MapView, { Marker } from 'react-native-maps';
 
 import { Shape, Space } from '@/constants/design';
+import { cardKinds } from '@/core/cards';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { clockTime, voiceDuration } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { ASR_MAX_SECONDS, ASR_RECORDING } from '@/lib/media';
 import { synthesizeVoice, ttsReady } from '@/lib/tts';
-import type { ChatCard, ChatMessage } from '@/lib/types';
+import type { ChatMessage } from '@/lib/types';
 import { findCharacter } from '@/store/app-store';
 
 /** LINE 拟真配色（variant='line'） */
@@ -71,47 +72,11 @@ export type ChatExtra = {
 /** 撤回时限（LINE：24 小时内可撤回） */
 export const RECALL_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-/** 卡片气泡（D-081）：邀请 / 位置走浅色卡；红包整个气泡染红 */
-function CardBody({ card, dark }: { card: ChatCard; dark: boolean }) {
-  if (card.type === 'redpacket') {
-    return (
-      <View style={styles.cardRed}>
-        <Text style={styles.cardRedKicker}>🧧 {t('红包')}</Text>
-        <Text style={styles.cardRedAmount}>{card.title}</Text>
-        {card.subtitle ? <Text style={styles.cardRedNote}>{card.subtitle}</Text> : null}
-        <Text style={styles.cardRedState}>
-          {card.claimed ? t('已领取') : card.declined ? t('TA 没拆') : t('等 TA 拆开')}
-        </Text>
-      </View>
-    );
-  }
-  const kicker = card.type === 'invite' ? t('外出邀请') : card.type === 'phoneRequest' ? t('查手机') : t('位置');
-  const emoji = card.type === 'invite' ? '🚶' : card.type === 'phoneRequest' ? '📱' : '📍';
-  const hasMap = card.type === 'location' && card.lat != null && card.lon != null;
-  return (
-    <View style={styles.card}>
-      {hasMap ? (
-        <View style={styles.cardMap} pointerEvents="none">
-          <MapView
-            style={StyleSheet.absoluteFill}
-            initialRegion={{ latitude: card.lat!, longitude: card.lon!, latitudeDelta: 0.008, longitudeDelta: 0.008 }}
-            scrollEnabled={false}
-            zoomEnabled={false}
-            rotateEnabled={false}
-            pitchEnabled={false}>
-            <Marker coordinate={{ latitude: card.lat!, longitude: card.lon! }} />
-          </MapView>
-        </View>
-      ) : null}
-      <Text style={[styles.cardKicker, !dark && styles.cardKickerLight]}>
-        {emoji} {kicker}
-      </Text>
-      <Text style={[styles.cardTitle, !dark && { color: '#FFFFFF' }]}>{card.title}</Text>
-      {card.subtitle ? (
-        <Text style={[styles.cardSub, !dark && styles.cardKickerLight]}>{card.subtitle}</Text>
-      ) : null}
-    </View>
-  );
+/** 卡片气泡（D-081）：怎么画由卡片种类注册表决定（core/cards，各玩法注册；D-086）；没注册的画一张只有标题的通用卡 */
+function CardBody({ msg, dark }: { msg: ChatMessage; dark: boolean }) {
+  const card = msg.card!;
+  const kind = cardKinds.get(card.type);
+  return <>{kind?.render?.(card, dark) ?? <CardShell kicker="" title={card.title} subtitle={card.subtitle} dark={dark} />}</>;
 }
 
 /**
@@ -288,7 +253,7 @@ function Bubble({
     ? { backgroundColor: line ? LINE.me : Romance.bubbleMe, borderBottomRightRadius: Shape.radiusTail }
     : { backgroundColor: line ? LINE.him : Romance.bubbleHim, borderBottomLeftRadius: Shape.radiusTail };
   const textDark = !mine || line;
-  const redPacket = msg.kind === 'card' && msg.card?.type === 'redpacket';
+  const bubbleTint = msg.kind === 'card' && msg.card ? cardKinds.get(msg.card.type)?.bubbleColor : undefined;
   return (
     <View style={[styles.msgRow, mine ? styles.msgRowMe : styles.msgRowHim]}>
       {!mine && (
@@ -298,7 +263,7 @@ function Bubble({
       <Pressable
         onLongPress={onLongPress ? () => onLongPress(msg) : undefined}
         delayLongPress={350}
-        style={[styles.bubble, line && styles.bubbleLine, bubbleBg, redPacket && styles.bubbleRed]}>
+        style={[styles.bubble, line && styles.bubbleLine, bubbleBg, bubbleTint ? { backgroundColor: bubbleTint } : null]}>
         {msg.replyTo ? (
           <View style={styles.quote}>
             <Text style={styles.quoteName}>{msg.replyTo.from === 'me' ? t('你') : name}</Text>
@@ -339,7 +304,7 @@ function Bubble({
             ) : null}
           </View>
         ) : msg.kind === 'card' && msg.card ? (
-          <CardBody card={msg.card} dark={textDark} />
+          <CardBody msg={msg} dark={textDark} />
         ) : (
           <Text style={[styles.bubbleText, !textDark && { color: '#FFFFFF' }]}>{msg.text}</Text>
         )}
@@ -791,17 +756,5 @@ const styles = themed(() =>
     },
     extraIconLine: { backgroundColor: '#F1F3F6' },
     extraLabel: { fontSize: 11, color: Romance.sub, marginTop: 6 },
-    card: { minWidth: 190, maxWidth: 240 },
-    cardMap: { height: 110, borderRadius: Shape.radiusInner, overflow: 'hidden', marginBottom: 8 },
-    cardKicker: { fontSize: 10, color: 'rgba(0,0,0,0.45)', letterSpacing: 0.5 },
-    cardKickerLight: { color: 'rgba(255,255,255,0.8)' },
-    cardTitle: { fontSize: 16, fontWeight: '700', color: Romance.ink, marginTop: 4 },
-    cardSub: { fontSize: 12, color: 'rgba(0,0,0,0.55)', marginTop: 3, lineHeight: 17 },
-    bubbleRed: { backgroundColor: '#E5533D' },
-    cardRed: { minWidth: 190, maxWidth: 240 },
-    cardRedKicker: { fontSize: 10, color: 'rgba(255,255,255,0.85)', letterSpacing: 0.5 },
-    cardRedAmount: { fontSize: 24, fontWeight: '800', color: '#FFE9B8', marginTop: 4 },
-    cardRedNote: { fontSize: 12, color: '#FFF3E0', marginTop: 4, lineHeight: 17 },
-    cardRedState: { fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 8 },
   })
 );
