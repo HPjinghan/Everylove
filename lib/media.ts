@@ -3,7 +3,7 @@
  * - 语音 → 文字（D-074 双通道）：配了 OpenAI 兼容语音服务（EXPO_PUBLIC_SPEECH_*，Whisper 协议 /audio/transcriptions——
  *   OpenAI / Groq / 硅基流动 / 阿里百炼都是这一套）就走它：中/英/日全语种、带界面语言提示；没配则回落百度语音识别
  *   （vop.baidu.com，与千帆同一把 bce-v3 key：普通话极速版 80001 约 1.5s、界面英语时标准版 1737；日语不支持，OPEN_QUESTIONS #25）。
- * - 照片 → 描述：千帆视觉模型（默认 qwen3.5-397b-a17b）按 prompts.ts §6 客观描述——只写画面、不描述人的长相（红线 #2）。
+ * - 照片 → 描述：千帆视觉模型（默认 qwen3.5-397b-a17b）按 content/prompts/caption.ts 客观描述——只写画面、不描述人的长相（红线 #2）。
  * 两者产出的文字只作对话模型的上下文（messageContextText），TA 的回复仍由聊天引擎生成：主引擎不换模型、人设不漂。
  * 取路同 engine（D-057/D-069）：本地千帆 key 直连 > 登录走服务端代理 > 不可用抛错；失败原样抛出，界面露出原因。
  */

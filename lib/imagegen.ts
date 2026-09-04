@@ -9,7 +9,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { buildPortraitPrompt, imageModelFor } from '@/content/prompts';
-// （外出拍照的 prompt 由调用方拼好传入，见 content/prompts.ts 的 buildOutingPhotoPrompt，D-051）
+// （外出拍照的 prompt 由调用方拼好传入，见 content/prompts/photo.ts 的 buildOutingPhotoPrompt，D-051）
 import { CONFIG } from '@/core/config';
 import { proxyJson, proxyReadySync } from '@/lib/proxy';
 import { uid } from '@/lib/format';
@@ -75,7 +75,7 @@ async function generateImage(prompt: string, subdir = 'portraits', model: string
   return downloadTo(url, subdir, uid('img'));
 }
 
-// 立绘 prompt（画风表 / system / 红线）在 content/prompts.ts（D-017）
+// 立绘 prompt（画风表 / system / 红线）在 content/prompts/portrait.ts（D-017/D-087）
 
 /** 外出拍照（D-051）：她主动按快门的场景照——非会话自动投放（D-037 纪律不变）；模型跟角色画风走（D-076） */
 export async function generateScenePhoto(prompt: string, character?: Pick<Character, 'artStyle'>): Promise<string> {

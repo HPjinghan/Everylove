@@ -855,5 +855,5 @@ export function meForCharacter(characterId: string): UserProfile | undefined {
 }
 
 /** 亲密度阶段标签 */
-// 亲密度阶段名已移到 lib/format.ts（prompts.ts 也要用，避免循环引用）；这里保留导出兼容旧 import
+// 亲密度阶段名已移到 lib/format.ts（content/prompts 也要用，避免循环引用）；这里保留导出兼容旧 import
 export { affinityStage } from '@/lib/format';

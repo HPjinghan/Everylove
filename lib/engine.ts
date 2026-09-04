@@ -1,7 +1,7 @@
 /**
  * ChatEngine 门面（D-086 起是薄的一层）：
  * - 供应商在 core/providers（features/providers.ts 注册 anthropic / qianfan），这里只调 completeChat；
- * - 系统 prompt 由 core/prompt 按分段表装配（content/prompts.ts 出文本、features/prompts.ts 定顺序）；
+ * - 系统 prompt 由 core/prompt 按分段表装配（content/prompts/ 出文本、features/prompts.ts 定顺序）；
  * - 回复暗号（[解锁手机] / [拆红包]……）由 core/markers 统一剥掉并置位 reply.flags。
  * 系统层规则（情绪暗面路由）在 generateReply 入口执行，任何供应商不可绕过——对应行为树「系统层锁死」。
  * 领养触发是产品触发器（D-008），在 features/adoption.ts，不交给模型。
@@ -23,7 +23,7 @@ import {
 } from '@/core/providers';
 import type { ChatMessage, EngineContext, EngineReply } from '@/lib/types';
 
-// 全部 prompt 文本都在 content/prompts.ts（D-017）；这里只负责调用与组装历史。
+// 全部 prompt 文本都在 content/prompts/（D-017/D-087）；这里只负责调用与组装历史。
 export { messageContextText } from '@/content/prompts';
 export { AiUnavailableError, type AiRoute, type ChatTurn };
 

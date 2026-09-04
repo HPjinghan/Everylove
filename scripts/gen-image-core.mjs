@@ -59,8 +59,8 @@ export function promptLimit(model) {
 
 /**
  * 画风选项：line 注入为 prompt 第一行；model = 自动选的模型（页面上仍可手改）。
- * D-076 起**实时读工程 content/prompts.ts 的 PORTRAIT_STYLES / PORTRAIT_SYSTEM**（单一来源，D-017）：
- * 改 prompts.ts 即刻反映到工具；读不到时回落下面的内置副本（与 prompts.ts 初版一致）。
+ * D-076 起**实时读工程 content/prompts/portrait.ts 的 PORTRAIT_STYLES / PORTRAIT_SYSTEM**（单一来源，D-017/D-087）：
+ * 改 portrait.ts 即刻反映到工具；读不到时回落下面的内置副本（与初版一致）。
  */
 const STYLES_FALLBACK = [
   { id: 'anime', label: '动漫', model: 'musesteamer-air-image', line: '日系动漫插画风格：精致的线稿与赛璐璐上色，色彩明亮通透，光影干净利落。' },
@@ -80,7 +80,7 @@ function readFromPrompts(name, fallback) {
   try {
     return promptConst(name);
   } catch (e) {
-    console.warn(`[gen-image] 读 content/prompts.ts 的 ${name} 失败，用内置副本：${e.message}`);
+    console.warn(`[gen-image] 读 content/prompts/ 的 ${name} 失败，用内置副本：${e.message}`);
     return fallback;
   }
 }
@@ -138,13 +138,20 @@ export function defaultModel() {
   return process.env.EXPO_PUBLIC_QIANFAN_IMAGE_MODEL || env.EXPO_PUBLIC_QIANFAN_IMAGE_MODEL || 'qwen-image';
 }
 
-/* ─────────────── 工程画风常量（实时读 content/prompts.ts，D-017 单一来源） ─────────────── */
+/* ─────────────── 工程画风常量（实时读 content/prompts/，D-017 单一来源） ─────────────── */
+
+/** 工程 prompt 文件（D-087 拆目录）：立绘常量在 portrait.ts，生图共用的画风 / 质量 / 红线在 image-common.ts */
+function promptFiles() {
+  return ['content/prompts/portrait.ts', 'content/prompts/image-common.ts'];
+}
 
 export function promptConst(name) {
-  const src = readFileSync(resolve(ROOT, 'content/prompts.ts'), 'utf8');
+  const src = promptFiles()
+    .map((f) => readFileSync(resolve(ROOT, f), 'utf8'))
+    .join('\n');
   // 允许带 TS 类型标注（export const X: T[] = [...]）；值必须是纯字面量（字符串拼接 / 对象数组）
   const m = src.match(new RegExp(`export const ${name}\\b[^=]*=\\s*([\\s\\S]*?);\\s*\\n`));
-  if (!m) throw new Error(`content/prompts.ts 里找不到 ${name}`);
+  if (!m) throw new Error(`content/prompts/ 里找不到 ${name}`);
   return new Function(`return (${m[1]})`)();
 }
 

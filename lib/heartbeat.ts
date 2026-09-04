@@ -2,7 +2,7 @@
  * 心跳调度器（D-020/D-021）：日历用户层日程的三段式关怀——
  * 事前关心（前一天 18:00 起）、当天加油（当天 7:00 起）、事后回访（次日 12:00 起）。
  * 与「开门」同机制：App 启动 / 回前台时补投（deliverDueHeartbeats），投进首个羁绊的会话流。
- * 没有羁绊则不投（心跳是羁绊层的能力）；台词模板在 content/prompts.ts §1-C。
+ * 没有羁绊则不投（心跳是羁绊层的能力）；台词模板在 content/prompts/heartbeat.ts。
  */
 
 import { dateKey, parseDateKey } from '@/content/calendar';

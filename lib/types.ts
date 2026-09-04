@@ -4,7 +4,7 @@ export type ArchetypeId = 'gentle' | 'sharp' | 'ceo' | 'nonhuman';
 
 export type LovePref = 'male' | 'female' | 'any' | 'nonhuman';
 
-/** 立绘画风（D-076）：注入生图 prompt 第一行；anime 走蒸汽机、其余走 qwen-image。表见 content/prompts.ts PORTRAIT_STYLES */
+/** 立绘画风（D-076）：注入生图 prompt 第一行；anime 走蒸汽机、其余走 qwen-image。表见 content/prompts/portrait.ts PORTRAIT_STYLES */
 export type PortraitStyleId =
   | 'anime'
   | 'shojo'

@@ -822,3 +822,15 @@
 - **配置**：Supabase → Authentication → Sign In / Providers → **Anonymous sign-ins 开启**（Supabase 自带每 IP 每小时 30 次匿名登录限流；滥用风险留给正式版加验证码）。
 - **发版**：JS 改动，走 `eas update --channel production`（不重打包）；发布前 `expo export` 置空 AI key 并 grep 校验，再 `--skip-bundler` 发布（流程写进 `docs/RELEASE.md` §3）。错误文案改为「未配置 AI：.env.local 没有 key，服务端代理也没连上」（en/ja 同步）。
 - **影响文件**：`lib/auth.ts`、`lib/proxy.ts`、`lib/sync.ts`、`lib/pool.ts`、`app/_layout.tsx`、`app/adopt/[characterId].tsx`、`app/apps/create.tsx`、`app/apps/settings.tsx`、`core/providers.ts`、`lib/i18n.ts`、`.env.example`、`docs/RELEASE.md`。
+
+## D-087 · 2026-09-04 · Prompt 文件拆成 content/prompts/ 目录：一用途一文件，一般对话与外出分开、立绘与外出拍照分开；记事本并入记忆的说明段归位（Harper 提出）
+
+- **背景**：Harper 问「所有的 prompt 有统一的管理文件吗」，随后要求：把 lib/memory.ts 里那条记事本并入记忆的说明段挪进 prompt 文件；「生图每个不一样的地方也应该分开」；「一般对话和外出也要分开」。
+- **决策**：
+  1. **`content/prompts.ts`（1100 行）拆成 `content/prompts/` 目录，`index.ts` 汇总导出**——所有 `@/content/prompts` 的引用不变。一用途一文件：`shared`（通用块）/ `chat`（一般对话：初识 + 亲密）/ `outing`（外出）/ `call` / `his-notes` / `phone`（查手机 + 看我的手机）/ `red-packet` / `image-common`（生图共用：主体描述、红线句）/ `portrait`（立绘）/ `photo`（外出拍照）/ `memory` / `social`（X）/ `appointment`（约定识别 + 爽约）/ `caption`（看图）/ `heartbeat` / `create`。
+  2. **一段只属于一个用途**：D-086 里按模式切换的 `introLine` / `voiceBlock` / `outputFormatFor` / `lengthFor` 删掉，改为 `squareIntroLine` / `bondedIntroLine` / `outingIntroLine`、`squareVoiceBlock` / `bondedVoiceBlock` / `outingVoiceBlock`，分段表（`features/prompts.ts`）也按模式各注册一段（intro-square / intro-bonded / intro-outing，user-*，memory / memory-outing，output-chat / output-call / output-note / output-outing，length-square / length-bonded……）。装配结果与拆分前逐字一致：14 份对话快照 + 26 份任务类快照（`tests/prompts-tasks.test.ts`，拆分前从旧代码生成）全部通过。
+  3. **记事本并入记忆的说明段**归位为 `content/prompts/memory.ts` 的 `NOTES_MEMORY_CONTEXT`，`lib/memory.ts` 引用它。
+  4. **调图工具**（`scripts/gen-image-core.mjs`）改为实时读 `content/prompts/portrait.ts` 与 `image-common.ts`（`PORTRAIT_STYLES` / `PORTRAIT_SYSTEM` / `COMIC_*`），行为不变。
+  5. 拆分用脚本按顶层声明切块、JSDoc 随声明走、原文逐字搬运（`scratchpad/split_prompts.py`，不进仓库）。
+- **推翻 / 修订**：D-017「只动这一个文件」→「只看这一个目录」，`index.ts` 头部是目录索引；D-086 的跨模式段函数删除。
+- **影响文件**：`content/prompts/*`（新 17 个）、`content/prompts.ts`（删）、`features/prompts.ts`（按模式分段）、`lib/memory.ts`、`scripts/gen-image-core.mjs`、`scripts/gen-image.mjs`、`tests/prompts-tasks.test.ts`（新）、`docs/ARCHITECTURE.md`、`CLAUDE.md`。

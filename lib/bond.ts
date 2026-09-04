@@ -16,7 +16,7 @@ export function xpNeedAt(level: number): number {
   return 50 + 40 * (level - 1);
 }
 
-/** 等级名（阶段感；键与 content/prompts.ts 的 BONDED_STAGE_NOTES 对应） */
+/** 等级名（阶段感；键与 content/prompts/shared.ts 的 BONDED_STAGE_NOTES 对应） */
 export const LEVEL_NAMES = ['刚认识', '有点在意', '常常想起', '放在心上', '密不可分', '唯一例外'];
 export const MAX_LEVEL = LEVEL_NAMES.length; // LV6 唯一例外封顶（XP 继续累积）
 

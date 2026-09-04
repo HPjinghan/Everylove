@@ -16,7 +16,7 @@
  * system（放最后；默认 = 工程约定的收尾文案 DEFAULT_SYSTEM）：
  *   --system TEXT        直接给（给空串 = 不带 system）
  *   --system-file FILE   从文件读
- *   --style / --portrait 用工程 content/prompts.ts 当前常量（画风三条 / 立绘构图+画风三条）
+ *   --style / --portrait 用工程 content/prompts/portrait.ts 当前常量（画风三条 / 立绘构图+画风三条）
  *
  * 其他：
  *   --model ID           覆盖画风自动选的模型

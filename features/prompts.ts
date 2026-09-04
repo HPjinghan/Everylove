@@ -1,6 +1,7 @@
 /**
- * 系统 prompt 的基础分段（D-086）：把 content/prompts.ts 里的文本块按模式与顺序装进底座。
- * 文本本身全在 content/prompts.ts（改「TA 怎么说话」看那里）；这里只声明「哪一段、进哪些模式、排第几」。
+ * 系统 prompt 的分段表（D-086/D-087）：把 content/prompts/ 各文件里的文本块按模式与顺序装进底座。
+ * 文本本身全在 content/prompts/（一般对话 chat.ts、外出 outing.ts、通话 call.ts、记事本 his-notes.ts、通用 shared.ts）；
+ * 这里只声明「哪一段、进哪些模式、排第几」。一段只属于一个用途——一般对话与外出各自一份，不在段里按模式切换。
  * 玩法自己的规则（查手机 / 红包）由各自的 features/*.tsx 注册，不在这里。
  * 顺序与 D-086 之前的手工拼接逐字一致（tests/prompts.test.ts 快照锁定）。
  */
@@ -8,95 +9,104 @@
 import { scriptFor } from '@/content/characters';
 import {
   birthdayLine,
+  BONDED_LENGTH,
   BONDED_LOVE_RULES,
   BONDED_TIME_RULES,
+  bondedIntroLine,
+  bondedVoiceBlock,
   boundariesBlock,
+  CALL_MANNER,
   CHAT_HARD_RULES_OF,
+  CHAT_OUTPUT_FORMAT,
   characterProfileBlock,
+  HIS_NOTE_MANNER,
   initiativeLine,
-  introLine,
-  lengthFor,
   memoryBlockFor,
   nowLine,
   OUTING_MANNER,
+  OUTING_OUTPUT_FORMAT,
   OUTING_STRANGER_MANNER,
+  outingIntroLine,
   outingMomentLine,
-  outputFormatFor,
+  outingVoiceBlock,
   pursuitLine,
   secretsBlock,
   sharedMemoryBlock,
+  SQUARE_LENGTH,
   SQUARE_MANNER,
+  squareIntroLine,
   squareSituationLines,
+  squareVoiceBlock,
   stageLine,
   userProfileBlock,
-  voiceBlock,
 } from '@/content/prompts';
 import { ORDER, promptSections, type PromptMode } from '@/core/prompt';
 import { levelInfo } from '@/lib/bond';
 import type { EngineContext } from '@/lib/types';
 
-/** 亲密背景的三个用法：亲密聊天 / 通话 / TA 写记事本 */
+/** 亲密背景的三个用法：亲密聊天 / 通话 / TA 写记事本（chat.ts 的亲密段） */
 export const BONDED_FAMILY: readonly PromptMode[] = ['bonded', 'call', 'note'];
-/** 带关系背景的模式（外出的赴约 / 偶遇也带；陌生人偶遇在段内自行跳过） */
-export const RELATION_MODES: readonly PromptMode[] = ['bonded', 'call', 'note', 'outing'];
+const SQUARE: readonly PromptMode[] = ['square'];
+const OUTING: readonly PromptMode[] = ['outing'];
 
-const isStranger = (ctx: EngineContext) => ctx.mode === 'outing' && ctx.outing?.kind === 'stranger';
+const isStranger = (ctx: EngineContext) => ctx.outing?.kind === 'stranger';
 
-/* ── 开头：你是谁 ── */
-promptSections.register({ name: 'intro', modes: 'all', order: ORDER.intro, lines: (ctx, env) => [introLine(ctx, env.now)] });
+/* ── 开头：你是谁（第一行与台词样本按模式各一份） ── */
+promptSections.register({ name: 'intro-square', modes: SQUARE, order: ORDER.intro, lines: (ctx) => [squareIntroLine(ctx)] });
+promptSections.register({ name: 'intro-bonded', modes: BONDED_FAMILY, order: ORDER.intro, lines: (ctx, env) => [bondedIntroLine(ctx, env.now)] });
+promptSections.register({ name: 'intro-outing', modes: OUTING, order: ORDER.intro, lines: (ctx) => [outingIntroLine(ctx)] });
 promptSections.register({ name: 'persona', modes: 'all', order: ORDER.persona, lines: (ctx) => [`【你是谁】${scriptFor(ctx.character).persona}`] });
 promptSections.register({ name: 'pursuit', modes: 'all', order: ORDER.pursuit, lines: (ctx) => [`【你的追法】${pursuitLine(ctx.character)}`] });
 promptSections.register({ name: 'profile', modes: 'all', order: ORDER.profile, lines: (ctx) => characterProfileBlock(ctx.character) });
-promptSections.register({ name: 'voice', modes: 'all', order: ORDER.voice, lines: (ctx) => voiceBlock(ctx) });
+promptSections.register({ name: 'voice-square', modes: SQUARE, order: ORDER.voice, lines: (ctx) => squareVoiceBlock(ctx) });
+promptSections.register({ name: 'voice-bonded', modes: BONDED_FAMILY, order: ORDER.voice, lines: (ctx) => bondedVoiceBlock(ctx) });
+promptSections.register({ name: 'voice-outing', modes: OUTING, order: ORDER.voice, lines: (ctx) => outingVoiceBlock(ctx) });
 
 /* ── 时间与此刻 ── */
-promptSections.register({ name: 'now', modes: RELATION_MODES, order: ORDER.now, lines: (_ctx, env) => [nowLine(env.now)] });
+promptSections.register({ name: 'now', modes: [...BONDED_FAMILY, 'outing'], order: ORDER.now, lines: (_ctx, env) => [nowLine(env.now)] });
 promptSections.register({ name: 'time-rules', modes: BONDED_FAMILY, order: ORDER.timeRules, lines: () => BONDED_TIME_RULES });
 promptSections.register({ name: 'birthday', modes: BONDED_FAMILY, order: ORDER.birthday, lines: (ctx) => birthdayLine(ctx) });
-promptSections.register({ name: 'outing-moment', modes: ['outing'], order: ORDER.moment, lines: (ctx) => [outingMomentLine(ctx)] });
+promptSections.register({ name: 'outing-moment', modes: OUTING, order: ORDER.moment, lines: (ctx) => [outingMomentLine(ctx)] });
 
 /* ── 她是谁（初识只给资料卡；陌生人偶遇只给边界，D-035/D-040） ── */
+promptSections.register({ name: 'user-square', modes: SQUARE, order: ORDER.user, lines: (ctx) => userProfileBlock(ctx.me, 'square') });
+promptSections.register({ name: 'user-bonded', modes: BONDED_FAMILY, order: ORDER.user, lines: (ctx) => userProfileBlock(ctx.me, 'bonded') });
 promptSections.register({
-  name: 'user',
-  modes: 'all',
+  name: 'user-outing',
+  modes: OUTING,
   order: ORDER.user,
-  lines: (ctx) => {
-    if (ctx.mode === 'square') return userProfileBlock(ctx.me, 'square');
-    if (ctx.mode === 'outing') return isStranger(ctx) ? boundariesBlock(ctx.me) : userProfileBlock(ctx.me, 'outing');
-    return userProfileBlock(ctx.me, 'bonded');
-  },
+  lines: (ctx) => (isStranger(ctx) ? boundariesBlock(ctx.me) : userProfileBlock(ctx.me, 'outing')),
 });
 promptSections.register({ name: 'shared-memory', modes: 'all', order: ORDER.sharedMemory, lines: (ctx) => sharedMemoryBlock(ctx.character) });
-promptSections.register({ name: 'square-situation', modes: ['square'], order: ORDER.situation, lines: (ctx) => squareSituationLines(ctx) });
+promptSections.register({ name: 'square-situation', modes: SQUARE, order: ORDER.situation, lines: (ctx) => squareSituationLines(ctx) });
 
 /* ── 记忆与秘密（只在羁绊层，商业承重墙；陌生人偶遇没有） ── */
-promptSections.register({ name: 'memory', modes: RELATION_MODES, order: ORDER.memory, lines: (ctx) => (isStranger(ctx) ? [] : memoryBlockFor(ctx.bond?.memory)) });
+promptSections.register({ name: 'memory', modes: BONDED_FAMILY, order: ORDER.memory, lines: (ctx) => memoryBlockFor(ctx.bond?.memory) });
+promptSections.register({ name: 'memory-outing', modes: OUTING, order: ORDER.memory, lines: (ctx) => (isStranger(ctx) ? [] : memoryBlockFor(ctx.bond?.memory)) });
+promptSections.register({ name: 'secrets', modes: BONDED_FAMILY, order: ORDER.secrets, lines: (ctx) => secretsBlock(ctx.character, levelInfo(ctx.bond?.affinity ?? 0).level) });
 promptSections.register({
-  name: 'secrets',
-  modes: RELATION_MODES,
+  name: 'secrets-outing',
+  modes: OUTING,
   order: ORDER.secrets,
   lines: (ctx) => (isStranger(ctx) ? [] : secretsBlock(ctx.character, levelInfo(ctx.bond?.affinity ?? 0).level)),
 });
 
 /* ── 分寸与追法的落地 ── */
+promptSections.register({ name: 'square-manner', modes: SQUARE, order: ORDER.manner, lines: () => SQUARE_MANNER });
 promptSections.register({ name: 'love-rules', modes: BONDED_FAMILY, order: ORDER.manner, lines: () => BONDED_LOVE_RULES });
-promptSections.register({ name: 'square-manner', modes: ['square'], order: ORDER.manner, lines: () => SQUARE_MANNER });
-promptSections.register({ name: 'outing-manner', modes: ['outing'], order: ORDER.manner, lines: () => OUTING_MANNER });
-promptSections.register({ name: 'stranger-manner', modes: ['outing'], order: ORDER.strangerManner, lines: (ctx) => (isStranger(ctx) ? OUTING_STRANGER_MANNER : []) });
-promptSections.register({
-  name: 'initiative',
-  modes: RELATION_MODES,
-  order: { default: ORDER.initiative, outing: ORDER.outingInitiative },
-  lines: (ctx) => (isStranger(ctx) ? [] : initiativeLine(ctx.character)),
-});
-promptSections.register({
-  name: 'stage',
-  modes: RELATION_MODES,
-  order: { default: ORDER.stage, outing: ORDER.outingStage },
-  lines: (ctx) => (isStranger(ctx) ? [] : [stageLine(ctx)]),
-});
+promptSections.register({ name: 'initiative', modes: BONDED_FAMILY, order: ORDER.initiative, lines: (ctx) => initiativeLine(ctx.character) });
+promptSections.register({ name: 'stage', modes: BONDED_FAMILY, order: ORDER.stage, lines: (ctx) => [stageLine(ctx)] });
+promptSections.register({ name: 'outing-manner', modes: OUTING, order: ORDER.manner, lines: () => OUTING_MANNER });
+promptSections.register({ name: 'stranger-manner', modes: OUTING, order: ORDER.strangerManner, lines: (ctx) => (isStranger(ctx) ? OUTING_STRANGER_MANNER : []) });
+// 外出里阶段感在主动性之前（与亲密相反）
+promptSections.register({ name: 'stage-outing', modes: OUTING, order: ORDER.outingStage, lines: (ctx) => (isStranger(ctx) ? [] : [stageLine(ctx)]) });
+promptSections.register({ name: 'initiative-outing', modes: OUTING, order: ORDER.outingInitiative, lines: (ctx) => (isStranger(ctx) ? [] : initiativeLine(ctx.character)) });
 
 /* ── 红线与输出格式（红线段对应 CLAUDE.md §9，勿删） ── */
 promptSections.register({ name: 'hard-rules', modes: 'all', order: ORDER.hardRules, lines: () => CHAT_HARD_RULES_OF() });
-promptSections.register({ name: 'output', modes: 'all', order: ORDER.output, lines: (_ctx, env) => outputFormatFor(env.mode) });
-promptSections.register({ name: 'length', modes: 'all', order: ORDER.length, lines: (_ctx, env) => lengthFor(env.mode) });
+promptSections.register({ name: 'output-chat', modes: ['square', 'bonded'], order: ORDER.output, lines: () => CHAT_OUTPUT_FORMAT });
+promptSections.register({ name: 'output-call', modes: ['call'], order: ORDER.output, lines: () => CALL_MANNER });
+promptSections.register({ name: 'output-note', modes: ['note'], order: ORDER.output, lines: () => HIS_NOTE_MANNER });
+promptSections.register({ name: 'output-outing', modes: OUTING, order: ORDER.output, lines: () => OUTING_OUTPUT_FORMAT });
+promptSections.register({ name: 'length-square', modes: SQUARE, order: ORDER.length, lines: () => [SQUARE_LENGTH] });
+promptSections.register({ name: 'length-bonded', modes: ['bonded'], order: ORDER.length, lines: () => BONDED_LENGTH });

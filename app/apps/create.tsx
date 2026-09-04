@@ -1,11 +1,11 @@
 /**
  * 创造（D-025 大改版；D-043 更名并加描述解析）：
  * 描述导入：写/粘贴一大段人设（≤2000 字）→「自动解析」由当前引擎整理成表单字段
- *          （prompt 在 content/prompts.ts 的 CHARACTER_PARSE_SYSTEM），无 key/失败回落规则解析；解析后仍可手改。
+ *          （prompt 在 content/prompts/create.ts 的 CHARACTER_PARSE_SYSTEM），无 key/失败回落规则解析；解析后仍可手改。
  * 基础：名字 → 性别（男/女/非二元）→ 长相描述 → 背景故事 → 立绘生成
  * 高级（默认收起）：种族 / 生日 / 口癖 / 喜欢 / 讨厌 / 确定关系的节奏（聊几句后 TA 开口）/
  *                 恋爱中的类型（content/characters.ts 的 LOVE_STYLES）/ MBTI / 其他聊天设定 / 日常作息
- * 全部设定进对话与生图 prompt（content/prompts.ts 的 characterProfileBlock / pursuitLine）。
+ * 全部设定进对话与生图 prompt（content/prompts/shared.ts 的 characterProfileBlock / pursuitLine）。
  * 审核最小拦截：挡真人明星与 IP 角色（红线 #1/#4，完整流程见 OPEN_QUESTIONS #7）——描述文本同样过拦截。
  */
 
@@ -241,7 +241,7 @@ export default function CreateScreen() {
     return n;
   };
 
-  /** 自动解析：引擎整理成 JSON（prompt 见 content/prompts.ts）；AI 不可用/失败回落规则解析并说明原因（D-069） */
+  /** 自动解析：引擎整理成 JSON（prompt 见 content/prompts/create.ts）；AI 不可用/失败回落规则解析并说明原因（D-069） */
   const parseDesc = async () => {
     const text = desc.trim();
     if (!text || parsing) return;

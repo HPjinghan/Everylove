@@ -48,7 +48,7 @@ features/      玩法：往插槽里注册；只 import core / lib / store / con
   adoption.ts    心动满的 offer（after 钩子，产品触发器）
   schedulers.ts  后台任务登记
 lib/           领域模块（引擎门面、记忆、外出、通话、媒体、语音……）；lib/chat.ts 是界面唯一的会话入口
-content/       角色、地点、日历数据；prompts.ts = 全部 prompt 文本
+content/       角色、地点、日历数据；prompts/ = 全部 prompt 文本，一用途一文件（index.ts 头部是索引，D-087）
 store/         zustand 单 store（切片是下一轮）
 app/           界面（expo-router）；只调 lib/ 与 features/ 的 send 函数，不直接碰引擎 / 记忆
 tests/         vitest：prompt 快照、回合管线、引擎工具函数
@@ -87,7 +87,7 @@ cardKinds.register({ type: 'redpacket', bubbleColor: '#E5533D', contextText: (c)
 export async function sendRedPacket(bondId, amount, note, ui) { /* sendCard + 这轮没拆就标「TA 没拆」 */ }
 ```
 
-规则文本 `RED_PACKET_RULE` 在 `content/prompts.ts`；玩法文件只声明「它进哪些模式、排第几」。
+规则文本 `RED_PACKET_RULE` 在 `content/prompts/red-packet.ts`；玩法文件只声明「它进哪些模式、排第几」。
 在 `features/index.ts` 注释掉这一行，红包的规则、暗号、卡片一起消失——这就是「可插拔」。
 
 ## 5. 菜谱
@@ -95,10 +95,10 @@ export async function sendRedPacket(bondId, amount, note, ui) { /* sendCard + �
 | 要加的东西 | 做法 |
 |---|---|
 | 一家新的聊天供应商（OpenAI / DeepSeek 官方 / 硅基流动） | `features/providers.ts` 加一个 `ChatProvider`（id / label / localKey / complete）并 register；代理侧在 `supabase/functions/ai` 加同名服务；`core/config.ts` 登记 key；`.env.example` 补一行 |
-| 一条要进多个模式的规则 | 文本写进 `content/prompts.ts`；`promptSections.register({ modes, order: ORDER.xxx, lines })`；跑 `npm test` 看快照 diff 是不是你想要的，再 `npx vitest -u` |
+| 一条要进多个模式的规则 | 文本写进 `content/prompts/` 对应用途的文件（都用的进 shared.ts）；`promptSections.register({ modes, order: ORDER.xxx, lines })`；跑 `npm test` 看快照 diff 是不是你想要的，再 `npx vitest -u` |
 | 一种新的会话模式（群聊、故事章节） | `EngineContext.mode` 加一个字面量；`features/modes.ts` 实现 `ConversationMode`；`features/prompts.ts` 里各分段的 `modes` 加上它（或它自己的分段）；界面用 `sendText({ mode, … })` |
 | 一种新的卡片（分享一首歌、送礼物） | 新建 `features/xxx.tsx`：`cardKinds.register`（contextText + render）+ `sendXxx()`；在 `features/index.ts` import；会话页的「+」面板加一项调用 `sendXxx` |
-| 模型能发出的一个新暗号（[送礼物]） | 暗号常量进 `content/prompts.ts`；`replyMarkers.register({ key, mark, apply })`；提示模型怎么用它 = 一段 promptSection |
+| 模型能发出的一个新暗号（[送礼物]） | 暗号常量进 `content/prompts/<玩法>.ts`；`replyMarkers.register({ key, mark, apply })`；提示模型怎么用它 = 一段 promptSection |
 | 一个回合后要做的事（成就、剧情触发） | `turnHooks.after.on(({ scope, ctx, reply, mode, ui }) => …)`；要改气泡本身用 `turnHooks.bubble.on` |
 | 一个后台调度器（TA 主动来找你、morning call） | `features/schedulers.ts` 里 `jobs.register({ id, on: ['launch','foreground'], run })` |
 | 一项工程配置 | `core/config.ts` 加字段（必须是字面量的 `process.env.EXPO_PUBLIC_XXX`），`.env.example` 补说明 |
@@ -109,14 +109,14 @@ export async function sendRedPacket(bondId, amount, note, ui) { /* sendCard + �
 1. **`core/` 不认识任何具体玩法**：出现「if 红包」「if 千帆」就是放错地方了。
 2. **界面只调 `lib/chat.ts` 与 `features/*` 的 send 函数**，不 import 引擎、记忆、约定识别。
 3. **新行为挂扩展点，不改管线**：`core/turn.ts` 加分支要在本文 §3 更新流程图并入档。
-4. **模型看得见的字**：系统 prompt 与共享块在 `content/prompts.ts`；玩法自己的一句话提示语（卡片进上下文的那句、发出时的舞台提示）随玩法文件——D-017 的「只改一个文件」指系统 prompt。
+4. **模型看得见的字**：全在 `content/prompts/` 目录，一用途一文件，一段只属于一个用途（一般对话与外出各自一份、立绘与拍照各自一份，不在段里按模式切换）；玩法自己的一句话提示语（卡片进上下文的那句、发出时的舞台提示）随玩法文件。
 5. **改到模型看到的字，快照必红**：`npm test` 是改 prompt 的第一道验收；只在确认 diff 是你想要的之后更新快照。
 6. **配置错误要响**：底座没启动就调用会抛「底座未启动」，不会静默空转。
 
 ## 7. 测试
 
 ```
-npm test              # vitest run：prompt 快照（14 份）、回合管线（假供应商 + 真 store）、引擎工具函数
+npm test              # vitest run：prompt 快照（对话 14 份 + 任务类 26 份）、回合管线（假供应商 + 真 store）、引擎工具函数
 npm run typecheck     # tsc --noEmit
 npm run lint          # expo lint
 ```

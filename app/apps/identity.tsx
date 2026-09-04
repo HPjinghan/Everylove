@@ -2,7 +2,7 @@
  * 我的身份（D-035）：TA 眼中的你。
  * - 默认身份：onboarding 时建立的那份，在这里补充完整（头像/昵称/性别/称呼/职业/取向/签名/完整设定）。
  * - 按角色身份：带 characterId 参数进来 = 为这个 TA 定制一份独立身份（初值抄默认），可随时恢复默认。
- * 全部字段除昵称外可空；没填的不进 prompt（content/prompts.ts 的 userProfileBlock）。
+ * 全部字段除昵称外可空；没填的不进 prompt（content/prompts/shared.ts 的 userProfileBlock）。
  */
 
 import { Image } from 'expo-image';

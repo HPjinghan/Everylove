@@ -11,7 +11,7 @@
  * 对外接口不变（updateBondMemory / bond.memory）。
  */
 
-import { buildMemoryExtractPrompt, MEMORY_EXTRACT_SYSTEM, outingMemoryContext } from '@/content/prompts';
+import { buildMemoryExtractPrompt, MEMORY_EXTRACT_SYSTEM, NOTES_MEMORY_CONTEXT, outingMemoryContext } from '@/content/prompts';
 import { completeText, HISTORY_ROUNDS } from '@/lib/engine';
 import type { BondMemory, ChatMessage } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -207,8 +207,7 @@ export async function absorbNotesMemory(
     memory,
     aged: [],
     recent,
-    context:
-      '下面不是聊天，而是她把手机递给 TA 时 TA 看到的她自己的记事本（她写给自己的话）。请把值得长期记住的事记进 facts（[她]，注明是记事本里写的），summary 原样保留；记事本里提到的其他真实的人只记「她和那个人的关系 / 发生了什么」，不记评价。',
+    context: NOTES_MEMORY_CONTEXT,
   });
   inflight.add(key);
   try {
