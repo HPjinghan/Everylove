@@ -14,7 +14,7 @@ import { WALLPAPERS } from '@/constants/apps';
 import { Romance, THEMES, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { aiRouteSync, engineLabel } from '@/lib/engine';
-import { ensurePortrait, imageKeyReady } from '@/lib/imagegen';
+import { ensurePortrait, imageKeyReady, portraitFor } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
 import { authConfigured, isSignedIn, onAuthChange, sessionLabel, signedInSession, signOut } from '@/lib/auth';
 import { t } from '@/lib/i18n';
@@ -60,15 +60,15 @@ export default function MeScreen() {
   const aiRoute = aiRouteSync();
   const themeId = useAppStore((s) => s.themeId);
 
-  /** 立绘（D-019）：为种子角色逐个生成（默认不自动，见 OPEN_QUESTIONS #14），或重画首个羁绊角色 */
+  /** 立绘（D-019/D-092）：种子角色已内置立绘，这里只补没有的（新加的种子）或重画首个羁绊角色（存本机、盖过内置） */
   const genSeedPortraits = () => {
     if (!imageKeyReady()) {
       Alert.alert('AI 不可用', '立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。');
       return;
     }
-    const missing = CHARACTERS.filter((c) => !useAppStore.getState().portraits[c.id]);
+    const missing = CHARACTERS.filter((c) => !portraitFor(c.id));
     if (!missing.length) {
-      Alert.alert('都有了', '6 位种子角色都已有立绘。要重画请用下面「重画」。');
+      Alert.alert('都有了', '种子角色都已有立绘（内置）。要重画请用下面「重画」。');
       return;
     }
     Alert.alert('后台生成中', `${missing.length} 位角色，逐个约 1 分钟。生成完交友卡面和会话头像会换成立绘。`);

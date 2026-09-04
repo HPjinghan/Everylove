@@ -37,7 +37,7 @@ import { authConfigured, signedInSession } from '@/lib/auth';
 import { t } from '@/lib/i18n';
 import { completeText, describeAiError } from '@/lib/engine';
 import { uid } from '@/lib/format';
-import { ensurePortrait, generatePortraitFor, imageKeyReady } from '@/lib/imagegen';
+import { generatePortraitFor, imageKeyReady } from '@/lib/imagegen';
 import { publishCharacter, unpublishCharacter } from '@/lib/pool';
 import type { Character } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
@@ -393,8 +393,8 @@ export default function CreateScreen() {
     const hadContacts = s.bonds.length > 0 || s.customCharacters.some((c) => !c.shared);
     character = await publishIfPublic(character);
     useAppStore.getState().addCustomCharacter(character);
+    // 形象必选（D-092）：发布前已保证 portraitUri 存在
     if (portraitUri) useAppStore.getState().setPortrait(id, portraitUri);
-    else if (imageKeyReady()) void ensurePortrait(id);
     // 自创角色直入通讯录（D-052 修订 D-047）：带「心动中」tag 的暧昧期——
     // 心动满 100 TA 才会想确定关系，那时才占槽、才开始羁绊等级
     useAppStore.getState().ensureSquareChat(id);
@@ -622,9 +622,9 @@ export default function CreateScreen() {
             maxLength={300}
           />
 
-          <Text style={styles.step}>{t('⑦ TA 的头像（可选）')}</Text>
+          <Text style={styles.step}>{t('⑦ TA 的形象 *')}</Text>
           <Text style={styles.stepHint}>
-            {t('不能上传真人照片。')}
+            {t('上传一张图，或生成立绘。不能上传真人照片。')}
           </Text>
           <Text style={styles.afterHint}>{t('画风：')}</Text>
           <View style={styles.chipRow}>
@@ -884,11 +884,17 @@ export default function CreateScreen() {
           ) : null}
 
           <Pressable
-            style={[styles.primaryBtn, (!name.trim() || ageStatus === 'minor') && styles.btnDisabled]}
-            disabled={!name.trim() || ageStatus === 'minor'}
+            style={[styles.primaryBtn, (!name.trim() || !portraitUri || ageStatus === 'minor') && styles.btnDisabled]}
+            disabled={!name.trim() || !portraitUri || ageStatus === 'minor'}
             onPress={submit}>
             <Text style={styles.primaryBtnText}>
-              {ageStatus === 'minor' ? t('未成年角色暂不能发布') : editing ? t('保存修改') : t('让 TA 醒来')}
+              {ageStatus === 'minor'
+                ? t('未成年角色暂不能发布')
+                : !portraitUri
+                  ? t('先给 TA 一个形象')
+                  : editing
+                    ? t('保存修改')
+                    : t('让 TA 醒来')}
             </Text>
           </Pressable>
           <Text style={styles.footnote}>{t('不能创造真人与 IP 角色 · 发布即默认同意创作规范')}</Text>

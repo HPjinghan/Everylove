@@ -16,6 +16,7 @@ import { Fonts, Romance, themed } from '@/constants/theme';
 import { planTimeLabel } from '@/lib/appointments';
 import { levelInfo } from '@/lib/bond';
 import { clockTime, timeAgo } from '@/lib/format';
+import { portraitFor } from '@/lib/imagegen';
 import { deliverDueHisNotes } from '@/lib/his-notes';
 import { t } from '@/lib/i18n';
 import type { Bond, Character } from '@/lib/types';
@@ -43,7 +44,9 @@ export function PhoneSheet({
   onViewed?: () => void;
 }) {
   const album = useAppStore((s) => s.album);
-  const portrait = useAppStore((s) => s.portraits[character.id]);
+  const storedPortrait = useAppStore((s) => s.portraits[character.id]);
+  // 立绘：她重画的优先，种子角色回落内置（D-092）；相册要 URI 字符串
+  const portrait = storedPortrait ?? portraitFor(character.id);
   const plans = useAppStore((s) => s.outingPlans);
   const viewed = useRef(false);
   useEffect(() => {

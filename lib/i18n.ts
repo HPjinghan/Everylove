@@ -27,6 +27,7 @@ export function t(zh: string, vars?: Record<string, string | number>): string {
 }
 
 const en: Record<string, string> = {
+  '⑦ TA 的形象 *': '⑦ Their look *', '上传一张图，或生成立绘。不能上传真人照片。': 'Upload an image or generate a portrait. No photos of real people.', '先给 TA 一个形象': 'Give them a look first',
   '生日': 'Birthday',
   '偏好': 'Filter', '滑卡': 'Cards', '列表': 'Grid',
   '先不滑了，随便逛逛 →': 'Skip for now, just look around →',
@@ -546,6 +547,7 @@ const en: Record<string, string> = {
 };
 
 const ja: Record<string, string> = {
+  '⑦ TA 的形象 *': '⑦ 見た目 *', '上传一张图，或生成立绘。不能上传真人照片。': '画像をアップするか、立ち絵を生成してください。実在の人物の写真は使えません。', '先给 TA 一个形象': 'まず見た目を決めて',
   '生日': '誕生日',
   '偏好': '好み', '滑卡': 'カード', '列表': 'リスト',
   '先不滑了，随便逛逛 →': 'あとにする、まず見て回る →',

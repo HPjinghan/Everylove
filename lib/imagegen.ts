@@ -7,8 +7,10 @@
  */
 
 import * as FileSystem from 'expo-file-system/legacy';
+import { Image, type ImageSourcePropType } from 'react-native';
 
-import { buildPortraitPrompt, imageModelFor } from '@/content/prompts';
+import { seedPortrait } from '@/content/portraits';
+import { buildPortraitPrompt, imageModelFor, PORTRAIT_NEGATIVE } from '@/content/prompts';
 // （外出拍照的 prompt 由调用方拼好传入，见 content/prompts/photo.ts 的 buildOutingPhotoPrompt，D-051）
 import { CONFIG } from '@/core/config';
 import { proxyJson, proxyReadySync } from '@/lib/proxy';
@@ -17,13 +19,6 @@ import type { Character } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
 export const QIANFAN_IMAGE_MODEL = CONFIG.qianfanImageModel;
-
-/**
- * 种子角色是否自动生成立绘（首次进入试聊时后台生成一张）。
- * 默认关：种子角色「试装无立绘、美术预算集中给相册」是既有产品口径，是否用生成立绘替代属产品决定
- * （OPEN_QUESTIONS #14）。开发者面板可手动为种子角色生成立绘试效果。
- */
-export const SEED_PORTRAITS_AUTO = false;
 
 /** 只读工程配置（开发者面板手填已下线，D-069） */
 function imageKey(): string {
@@ -54,7 +49,10 @@ const MUSE_MODEL_PREFIX = 'musesteamer';
 async function generateImage(prompt: string, subdir = 'portraits', model: string = QIANFAN_IMAGE_MODEL): Promise<string> {
   const key = imageKey();
   const muse = model.startsWith(MUSE_MODEL_PREFIX);
-  const body = muse ? { model, prompt, size: '1024x1024' } : { model, prompt, size: '1024x1024', n: 1 };
+  // qwen-image 带反向提示（D-092：别把名字画进画面）；蒸汽机不收该参数
+  const body = muse
+    ? { model, prompt, size: '1024x1024' }
+    : { model, prompt, size: '1024x1024', n: 1, negative_prompt: PORTRAIT_NEGATIVE };
   let data: { data?: { url?: string }[] };
   if (key) {
     const endpoint = muse
@@ -84,9 +82,21 @@ export async function generateScenePhoto(prompt: string, character?: Pick<Charac
 
 /* ────────────────────────────── 立绘（D-019） ────────────────────────────── */
 
-/** 当前角色的立绘本机 URI（没有则 undefined） */
+/**
+ * 角色立绘（D-092 起统一从这里取）：她自己生成 / 上传 / 重画的（store.portraits）优先，其次种子角色的内置立绘。
+ * portraitSource 给 <Image source>；portraitFor 给需要 URI 字符串的地方（相册、分享），内置资源经 resolveAssetSource 解成 URI。
+ */
+export function portraitSource(characterId: string, stored?: string): ImageSourcePropType | undefined {
+  const own = stored ?? useAppStore.getState().portraits[characterId];
+  if (own) return { uri: own };
+  return seedPortrait(characterId);
+}
+
 export function portraitFor(characterId: string): string | undefined {
-  return useAppStore.getState().portraits[characterId];
+  const own = useAppStore.getState().portraits[characterId];
+  if (own) return own;
+  const seed = seedPortrait(characterId);
+  return seed ? Image.resolveAssetSource(seed)?.uri : undefined;
 }
 
 /** 只生成、不入库：捏＋预览用（角色还没创建，先看一眼、可重生成） */
@@ -97,7 +107,7 @@ export async function generatePortraitFor(character: Character): Promise<string>
 const portraitInflight = new Set<string>();
 
 /**
- * 确保某角色有立绘：没有就生成并入库（后台、静默失败）。force=true 重生成。
+ * 确保某角色有立绘：没有（本机没生成过、也没有内置）就生成并入库（后台、静默失败）。force=true 重生成（结果存本机，盖过内置）。
  * 返回最终的立绘 URI；没 key / 失败返回 undefined。
  */
 export async function ensurePortrait(

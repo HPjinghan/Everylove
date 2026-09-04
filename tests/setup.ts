@@ -65,3 +65,6 @@ vi.mock('@/lib/weather', () => ({
 }));
 
 vi.mock('@/components/toast', () => ({ showToast: () => {} }));
+
+/** 内置立绘表（D-092）require 的是 jpg，node 里加载不了；测试不关心图 */
+vi.mock('@/content/portraits', () => ({ SEED_PORTRAITS: {}, seedPortrait: () => undefined }));

@@ -30,6 +30,7 @@ import { MingCute } from '@/components/mingcute';
 import { CHARACTERS } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
 import { heatLabel } from '@/lib/format';
+import { portraitSource } from '@/lib/imagegen';
 import { t } from '@/lib/i18n';
 import { refreshSharedPool } from '@/lib/pool';
 import { hasFreshSupply, rankDeck } from '@/lib/recommend';
@@ -49,11 +50,13 @@ const PREFS: { key: LovePref; label: string }[] = [
 
 /** 卡面：立绘铺满（无立绘用角色色渐变 + 大首字），底部渐变叠名字/身份/钩子/热度；compact = 瀑布流小卡 */
 function DeckCard({ c, compact }: { c: Character; compact?: boolean }) {
-  const portrait = useAppStore((s) => s.portraits[c.id]);
+  const stored = useAppStore((s) => s.portraits[c.id]);
+  // 她重画过的优先，种子角色回落内置立绘（D-092）
+  const portrait = portraitSource(c.id, stored);
   return (
     <View style={styles.cardImage}>
       {portrait ? (
-        <Image source={{ uri: portrait }} style={styles.cardImageFill} contentFit="cover" />
+        <Image source={portrait} style={styles.cardImageFill} contentFit="cover" />
       ) : (
         <LinearGradient colors={[c.colorSoft, c.color]} style={styles.cardImageFill}>
           <View style={styles.placeholderCenter}>

@@ -1,13 +1,13 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 
-import { useAppStore } from '@/store/app-store';
 import { themed } from '@/constants/theme';
+import { seedPortrait } from '@/content/portraits';
+import { useAppStore } from '@/store/app-store';
 
 /**
- * 角色头像：有立绘（D-019，生成后存本机）就显示立绘；没有则主色圆底 + 名字首字
- * （种子角色试装默认无立绘，美术预算集中给相册，见 CLAUDE.md §6）。
- * 传 characterId 会自动从 store 取立绘；传 uri 则直接用（捏＋预览用）。
+ * 角色头像：有立绘就显示立绘——她生成 / 上传 / 重画的（store.portraits）优先，种子角色回落内置立绘（D-092）；
+ * 都没有则主色圆底 + 名字首字。传 characterId 会自动取立绘；传 uri 则直接用（创造预览用）。
  */
 export function CharAvatar({
   name,
@@ -25,7 +25,8 @@ export function CharAvatar({
   uri?: string;
 }) {
   const stored = useAppStore((s) => (characterId ? s.portraits[characterId] : undefined));
-  const src = uri ?? stored;
+  const own = uri ?? stored;
+  const src = own ? { uri: own } : characterId ? seedPortrait(characterId) : undefined;
   return (
     <View
       style={[
@@ -35,7 +36,7 @@ export function CharAvatar({
       ]}>
       {src ? (
         <Image
-          source={{ uri: src }}
+          source={src}
           style={{ width: size, height: size, borderRadius: size / 2 }}
           contentFit="cover"
           transition={200}

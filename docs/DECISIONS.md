@@ -872,3 +872,16 @@
   1. **通话**：出声口由 iOS 音频类别决定（expo-audio：`allowsRecording:false` → `.playback` 走扬声器；`true` → `.playAndRecord` 走听筒），但原来只在 TA 每次开口前设一次，按钮只改了状态——TA 正在说话时切没有任何效果，要等下一句。改为：切换时若正在播放立刻 `setAudioModeAsync` 重设类别（播放中切类别会当场改出声口）；当前选择记在 ref 上，避免 `speak` 闭包拿到旧值。
   2. **录音条**：原来录音时只把输入框换成一条小 pill，左边相册 / 麦克风、右边「+」/ 发送都还在，中段太窄，「0:05 · 再点一下发送」被裁断像超框。改为录音中整行让给录音条：相册与「+」收起，麦克风变红，计时用 Fredoka，提示语放不下就尾部省略；麦克风与右侧发送键都是「停止并发送」。
 - **影响文件**：`app/call/[characterId].tsx`、`components/chat-thread.tsx`。
+
+## D-092 · 2026-09-04 · 种子角色内置立绘（随包分发，默认有形象）；创造页发布前必须 上传图 / 生成立绘 二选一（Harper 拍板）
+
+- **背景**：Harper「为所有原始角色生图并入库，也就是所有人看到角色默认有形象。在创造那边的也必须要生图 / 上传图像二选一」。这也就了结了 OPEN_QUESTIONS #14（种子角色要不要用生成立绘）。
+- **决策**：
+  1. **种子立绘随包分发**：`scripts/gen-seed-portraits.mts`（`node --import tsx`，用 App 同一套 `buildPortraitPrompt` / `imageModelFor`）为六位种子角色出图，落 `assets/portraits/<id>.jpg`；`content/portraits.ts` 按 id `require` 成 `SEED_PORTRAITS`。加种子角色 = 跑一次脚本、表里加一行；重画 = `--force`。
+  2. **取用统一**：`lib/imagegen.ts` 的 `portraitSource(characterId)`（给 `<Image source>`）与 `portraitFor(characterId)`（给要 URI 字符串的相册 / 分享，内置资源经 `Image.resolveAssetSource`）——她自己生成 / 上传 / 重画的（`store.portraits`）优先，种子角色回落内置。头像、交友卡面、TA 手机相册、开发者面板都走它；`SEED_PORTRAITS_AUTO` 删除。
+  3. **创造页形象必选**：第 ⑦ 步改为「TA 的形象 *」，上传一张图或生成立绘二选一；没有形象「让 TA 醒来」按钮不可点（文案「先给 TA 一个形象」）；发布后不再后台补生成。
+  4. **生图主体行不再写角色名**（实测 qwen-image 会把「沈之言」「江野」「洛小满」当文字画进衣服 / 画面，「画面内没有任何文字」压不住）：`comicSubjectLine` 改为「画面主角是一位男性 / 女性 / 一个角色：外貌」；并加反向提示 `PORTRAIT_NEGATIVE`（文字 / 字母 / 水印 / Q 版 / 全身 / 多人），App 内 qwen-image 生图与种子脚本都带（蒸汽机不收该参数）。立绘与外出拍照的快照随之更新（5 份）。
+  5. 千帆文生图按分钟限频（RPM）：种子脚本默认串行、429 等 25 秒重试；三张并发会立刻撞限。
+  6. 洛小满的外貌设定里「配帆布鞋」会把立绘拉成全身（两次都是），改为「宽大乐队 T 恤，元气直球」——外貌一句话里别写鞋 / 腿这类只在全身里出现的东西（创造页 hint 后续可补）。六张最终图都经人工看过：无文字、半身、特征齐。
+- **推翻 / 修订**：修订 D-006「种子角色只有文字与配色，无立绘」与 D-019 的 `SEED_PORTRAITS_AUTO`；修订 D-018 生图 prompt「用角色名指代 TA」→ 不写名字；OPEN_QUESTIONS #14 由本条了结。
+- **影响文件**：`scripts/gen-seed-portraits.mts`（新）、`assets/portraits/*.jpg`（新 6 张）、`content/portraits.ts`（新）、`content/prompts/image-common.ts`、`content/prompts/portrait.ts`、`content/characters.ts`（洛小满 look）、`tests/__snapshots__/prompts-tasks.test.ts.snap`、`tests/setup.ts`、`lib/imagegen.ts`、`components/char-avatar.tsx`、`app/apps/dating.tsx`、`components/his-phone.tsx`、`app/apps/settings.tsx`、`app/apps/create.tsx`、`lib/i18n.ts`、`package.json`（tsx）。

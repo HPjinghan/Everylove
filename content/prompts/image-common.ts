@@ -1,7 +1,7 @@
 /**
  * 生图共用：主体描述（TA 是谁、长什么样）与红线句。立绘在 portrait.ts，外出拍照在 photo.ts，两者只共用这里。
  * 文生图 prompt 的组织顺序（对扩散模型更友好）：画风 → 主体外貌 → 场景与动作 → 构图 → 质量词 → 红线；尽量正向描述。
- * 生图 prompt 里一律用角色名指代 TA，不用「他/她」——因为看画的用户也是「她」，会撞。
+ * 生图 prompt 里不写角色名（模型会把名字当文字画进画面，D-092 实测），也不用「他/她」（看画的用户也是「她」，会撞）：主体一律叫「主角」。
  */
 
 import type { Character } from '@/lib/types';
@@ -14,7 +14,7 @@ import { pronounFor } from './shared';
  */
 
 /**
- * 生图 prompt 里一律用角色名指代 TA，不用「他/她」——因为看画的用户也是「她」，会撞。
+ * 生图 prompt 里不写角色名（模型会把名字当文字画进画面，D-092 实测），也不用「他/她」（看画的用户也是「她」，会撞）：主体一律叫「主角」。
  * 性别只在主体行用「男性/女性」标一次；人外角色按 pronoun 判，没有就不标。
  */
 function genderWord(character: Character): string {
@@ -31,13 +31,13 @@ export function roleOnly(identity: string): string {
     .join('、');
 }
 
-/** 主体：TA 是谁、长什么样（look 没有时回落身份 + 风格标签；种族非人类时入画） */
+/** 主体：TA 长什么样（look 没有时回落身份 + 风格标签；种族非人类时入画）。不写名字：写了模型会把它画成文字（D-092） */
 export function comicSubjectLine(character: Character): string {
   const g = genderWord(character);
   const look = character.look || `${roleOnly(character.identity)}，${character.styleLabel ?? ''}`;
   const race =
     character.race && character.race !== '人类' ? `${character.race}，带有相应的种族特征；` : '';
-  return `画面主角是「${character.name}」${g ? `（${g}）` : ''}：${race}${look}。`;
+  return `画面主角是${g ? `一位${g}` : '一个角色'}：${race}${look}。`;
 }
 
 /** 画风 */

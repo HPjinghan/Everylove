@@ -29,6 +29,9 @@ export const PORTRAIT_STYLES: { id: NonNullable<Character['artStyle']>; label: s
 
 export const DEFAULT_PORTRAIT_STYLE: NonNullable<Character['artStyle']> = 'shojo';
 
+/** 反向提示（D-092）：不要把文字画进画面、不要 Q 版全身、不要多人。qwen-image 支持；蒸汽机不收这个参数 */
+export const PORTRAIT_NEGATIVE = '文字, 字, 字母, 水印, logo, 标题, Q版, 全身, 鞋子, 多人, 照片, 边框, 画框';
+
 export function portraitStyleFor(character: Pick<Character, 'artStyle'>) {
   return PORTRAIT_STYLES.find((s) => s.id === (character.artStyle ?? DEFAULT_PORTRAIT_STYLE)) ?? PORTRAIT_STYLES[1];
 }

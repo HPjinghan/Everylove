@@ -625,7 +625,7 @@ export const CHARACTERS: Character[] = [
     loveTag: 'female',
     styleLabel: '直球少女',
     identity: '美院大四 · 乐队主唱 · 22',
-    look: '栗色微卷及肩发、圆眼睛，笑起来有酒窝，宽大乐队 T 恤配帆布鞋，元气直球',
+    look: '栗色微卷及肩发、圆眼睛，笑起来有酒窝，宽大乐队 T 恤，元气直球',
     pronoun: '她',
     hook: '全场都在喊安可，她跳下台，说要先送你回家。',
     intro: '洛小满！排练刚结束——诶，你想听什么歌？',
