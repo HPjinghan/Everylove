@@ -2,7 +2,9 @@
  * 通话页（D-077）：全屏，像真的在打电话。
  * 流程：拨号 → TA 接起先开口（引擎通话模式 + 合成播放）→ 自动开始听她说（音量计断句）→ 识别 → TA 回 → 播放 → 再听……
  * 她的话与 TA 的话都进羁绊会话（viaCall）；挂断记「📞 m:ss」并触发记忆提取。
- * 免提 = 播放走扬声器（allowsRecording:false）；听筒 = 保持录音会话，iOS 会从听筒出声。
+ * 免提 = 播放走扬声器（iOS 类别 .playback）；听筒 = 录音类别 .playAndRecord，iOS 默认从听筒出声。
+ * 切换（D-091）：TA 正在说话就立刻重设音频类别（播放中切类别会当场改出声口），否则下一句开口时生效；
+ * 用 ref 记当前选择，免得 speak 闭包拿到旧值。
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -42,6 +44,7 @@ export default function CallScreen() {
 
   const [phase, setPhase] = useState<Phase>('dialing');
   const [speaker, setSpeaker] = useState(true);
+  const speakerRef = useRef(true);
   const [himLine, setHimLine] = useState('');
   const [herLine, setHerLine] = useState('');
   const [note, setNote] = useState('');
@@ -85,13 +88,13 @@ export default function CallScreen() {
         if (alive.current) void listen();
         return;
       }
-      await setAudioModeAsync({ allowsRecording: !speaker, playsInSilentMode: true });
+      await setAudioModeAsync({ allowsRecording: !speakerRef.current, playsInSilentMode: true });
       player.replace({ uri });
       player.seekTo(0);
       player.play();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [character, speaker]
+    [character]
   );
 
   /* ── 开始听她说 ── */
@@ -203,6 +206,18 @@ export default function CallScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [characterId]);
 
+  /** 免提 / 听筒（D-091）：TA 正在说话时立刻重设音频类别，不然要等下一句 */
+  const toggleSpeaker = () => {
+    const next = !speakerRef.current;
+    speakerRef.current = next;
+    setSpeaker(next);
+    if (phaseRef.current === 'speaking') {
+      void setAudioModeAsync({ allowsRecording: !next, playsInSilentMode: true }).catch((e) =>
+        console.warn('[call] 切换出声口失败：', e)
+      );
+    }
+  };
+
   const hangUp = () => {
     if (!bond) return;
     setPhaseSafe('ended');
@@ -257,7 +272,7 @@ export default function CallScreen() {
       </View>
 
       <View style={styles.controls}>
-        <Pressable style={styles.sideBtn} onPress={() => setSpeaker((v) => !v)}>
+        <Pressable style={styles.sideBtn} onPress={toggleSpeaker}>
           <Text style={[styles.sideBtnText, speaker && styles.sideBtnTextOn]}>{speaker ? t('免提') : t('听筒')}</Text>
         </Pressable>
         <Pressable style={styles.hangBtn} onPress={hangUp}>

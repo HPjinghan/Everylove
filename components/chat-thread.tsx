@@ -554,54 +554,66 @@ export function ChatThread({
           line && styles.inputBarLine,
           { paddingBottom: Math.max(insets.bottom, 10) },
         ]}>
-        {onSendImage ? (
-          <Pressable onPress={pickImage} hitSlop={6} disabled={inputDisabled}>
-            <MingCute name="pic" size={24} color={line ? '#8E97A3' : Romance.sub} />
-          </Pressable>
-        ) : null}
-        {onSendVoice ? (
-          <Pressable onPress={toggleRecord} hitSlop={6} disabled={inputDisabled}>
-            <MingCute name="mic" size={24} color={recording ? '#E0433C' : line ? '#8E97A3' : Romance.sub} />
-          </Pressable>
-        ) : null}
         {recording ? (
-          <View style={styles.recordingPill}>
-            <View style={styles.recordingDot} />
-            <Text style={styles.recordingText} numberOfLines={1} ellipsizeMode="clip">
-              0:{recordSecs.toString().padStart(2, '0')} · {t('再点一下发送')}
-            </Text>
-          </View>
+          <>
+            {/* 录音中（D-091）：整行让给录音条——相册与「+」先收起来；麦克风变红、右侧发送键都是「停止并发送」 */}
+            <Pressable onPress={() => void stopRecord()} hitSlop={6}>
+              <MingCute name="mic" size={24} color="#E0433C" />
+            </Pressable>
+            <View style={styles.recordingPill}>
+              <View style={styles.recordingDot} />
+              <Text style={styles.recordingTime}>0:{recordSecs.toString().padStart(2, '0')}</Text>
+              <Text style={styles.recordingText} numberOfLines={1} ellipsizeMode="tail">
+                {t('再点一下发送')}
+              </Text>
+            </View>
+            <Pressable onPress={() => void stopRecord()} hitSlop={8}>
+              <IconSymbol name="arrow.up.circle.fill" size={34} color={line ? LINE.brand : Romance.accent} />
+            </Pressable>
+          </>
         ) : (
-          <TextInput
-            style={[styles.input, line && styles.inputLine, inputDisabled && { opacity: 0.5 }]}
-            value={draft}
-            onChangeText={setDraft}
-            placeholder={placeholder ?? t('说点什么…')}
-            placeholderTextColor={Romance.faint}
-            editable={!inputDisabled}
-            onSubmitEditing={send}
-            returnKeyType="send"
-            submitBehavior="submit"
-          />
-        )}
-        {extras?.length ? (
-          <Pressable onPress={() => setExtrasOpen((v) => !v)} hitSlop={6} disabled={inputDisabled}>
-            <IconSymbol
-              name={extrasOpen ? 'xmark.circle' : 'plus.circle'}
-              size={26}
-              color={extrasOpen ? (line ? LINE.brand : Romance.accent) : line ? '#8E97A3' : Romance.sub}
+          <>
+            {onSendImage ? (
+              <Pressable onPress={pickImage} hitSlop={6} disabled={inputDisabled}>
+                <MingCute name="pic" size={24} color={line ? '#8E97A3' : Romance.sub} />
+              </Pressable>
+            ) : null}
+            {onSendVoice ? (
+              <Pressable onPress={toggleRecord} hitSlop={6} disabled={inputDisabled}>
+                <MingCute name="mic" size={24} color={line ? '#8E97A3' : Romance.sub} />
+              </Pressable>
+            ) : null}
+            <TextInput
+              style={[styles.input, line && styles.inputLine, inputDisabled && { opacity: 0.5 }]}
+              value={draft}
+              onChangeText={setDraft}
+              placeholder={placeholder ?? t('说点什么…')}
+              placeholderTextColor={Romance.faint}
+              editable={!inputDisabled}
+              onSubmitEditing={send}
+              returnKeyType="send"
+              submitBehavior="submit"
             />
-          </Pressable>
-        ) : null}
-        <Pressable onPress={send} hitSlop={8} disabled={inputDisabled}>
-          <IconSymbol
-            name="arrow.up.circle.fill"
-            size={34}
-            color={
-              draft.trim() && !inputDisabled ? (line ? LINE.brand : Romance.accent) : Romance.faint
-            }
-          />
-        </Pressable>
+            {extras?.length ? (
+              <Pressable onPress={() => setExtrasOpen((v) => !v)} hitSlop={6} disabled={inputDisabled}>
+                <IconSymbol
+                  name={extrasOpen ? 'xmark.circle' : 'plus.circle'}
+                  size={26}
+                  color={extrasOpen ? (line ? LINE.brand : Romance.accent) : line ? '#8E97A3' : Romance.sub}
+                />
+              </Pressable>
+            ) : null}
+            <Pressable onPress={send} hitSlop={8} disabled={inputDisabled}>
+              <IconSymbol
+                name="arrow.up.circle.fill"
+                size={34}
+                color={
+                  draft.trim() && !inputDisabled ? (line ? LINE.brand : Romance.accent) : Romance.faint
+                }
+              />
+            </Pressable>
+          </>
+        )}
       </View>
 
       {/* 「+」面板（D-081） */}
@@ -723,6 +735,7 @@ const styles = themed(() =>
       fontSize: 16,
       color: Romance.ink,
     },
+    // 录音条（D-091）：占满输入栏中段；计时用 Fredoka，提示语放不下就尾部省略，绝不撑破
     recordingPill: {
       flex: 1,
       minWidth: 0,
@@ -731,13 +744,13 @@ const styles = themed(() =>
       backgroundColor: '#FDEBEA',
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
       gap: 8,
       paddingHorizontal: 12,
       overflow: 'hidden',
     },
     recordingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0433C' },
-    recordingText: { fontSize: 13, color: '#C43A34', fontWeight: '600', flexShrink: 1 },
+    recordingTime: { fontFamily: Fonts.labelBold, fontSize: 14, color: '#C43A34' },
+    recordingText: { fontSize: 13, color: '#C43A34', flexShrink: 1 },
     extrasPanel: {
       flexDirection: 'row',
       flexWrap: 'wrap',
