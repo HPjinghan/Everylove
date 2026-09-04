@@ -3,7 +3,7 @@
  * 世界层：真实日期 + 节假日（中文盘中国节日，content/calendar.ts）；
  * 关系层：自动记录（领养纪念日、你的生日、一百天），不用用户动手；
  * 用户层：手动添加日程（考试/面试/出差），每条触发心跳三段式（lib/heartbeat.ts）。
- * v1 边界：不读系统日历（手动添加、数据最小化）；TA 自己也稀疏长几条日程。
+ * v1 边界：不读系统日历（手动添加、数据最小化）。日历只记安排与纪念日（D-090）：TA 经历的事在发生之后进记事本或 X，不作未来日程。
  */
 
 import { useMemo, useState } from 'react';
@@ -21,7 +21,6 @@ import {
 
 import { AppScreen } from '@/components/app-screen';
 import { dateKey, holidayFor, parseDateKey } from '@/content/calendar';
-import { scriptFor } from '@/content/characters';
 import { placeById } from '@/content/places';
 import { Romance, themed } from '@/constants/theme';
 import { clockTime, uid } from '@/lib/format';
@@ -33,7 +32,7 @@ const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 
 interface DayMark {
   label: string;
-  layer: 'world' | 'relation' | 'user' | 'him';
+  layer: 'world' | 'relation' | 'user';
 }
 
 export default function CalendarScreen() {
@@ -70,17 +69,6 @@ export default function CalendarScreen() {
       if (character?.birthday) {
         const [mm, dd] = character.birthday.split('-').map(Number);
         if (mm && dd) push(dateKey(new Date(ym.y, mm - 1, dd)), t('{name}的生日', { name: bond.name }), 'relation');
-      }
-      // TA 自己也稀疏长几条日程（按角色台词风格取样，只做展示）
-      if (character) {
-        const script = scriptFor(character);
-        const seed = bond.createdAt;
-        for (let i = 0; i < 2; i++) {
-          const d = new Date(seed);
-          d.setDate(d.getDate() + 5 + i * 11);
-          const line = script.bonded[i % script.bonded.length];
-          push(dateKey(d), `${bond.name}：${line.slice(0, 12)}…`, 'him');
-        }
       }
     }
     return marks;
@@ -260,14 +248,12 @@ const DOT: Record<DayMark['layer'], string> = {
   world: '#F5A623',
   relation: '#FF6B81',
   user: '#5B8DEF',
-  him: '#2EC4B6',
 };
 
 const LAYER_LABEL: Record<DayMark['layer'], string> = {
   world: '节日',
   relation: '纪念',
   user: '日程',
-  him: 'TA 的',
 };
 
 const styles = themed(() =>

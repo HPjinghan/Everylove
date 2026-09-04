@@ -9,7 +9,6 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { CharAvatar } from '@/components/char-avatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { scriptFor } from '@/content/characters';
 import { placeById } from '@/content/places';
 import { characterSecrets, messageContextText, unlockedSecretCount } from '@/content/prompts';
 import { Shape, Space } from '@/constants/design';
@@ -64,20 +63,13 @@ export function PhoneSheet({
   const secrets = characterSecrets(character);
   const unlockedSecrets = unlockedSecretCount(levelInfo(bond.affinity).level, secrets.length);
 
-  // 日历：和她的约定 + TA 自己稀疏的几条（与日历 App 的「TA 层」同一取样）+ TA 的生日
+  // 日历：和她的约定 + TA 的生日（只记安排与纪念日，D-090；TA 经历的事在记事本里）
   const calendar = useMemo(() => {
     const out: { at: number; text: string }[] = [];
     for (const p of plans) {
       if (p.characterId !== character.id || !p.at) continue;
       const place = placeById(p.placeId);
       if (place) out.push({ at: p.at, text: t('和{name}去{place}', { name: bond.nickname, place: t(place.name) }) });
-    }
-    const script = scriptFor(character);
-    for (let i = 0; i < 2; i++) {
-      const d = new Date(bond.createdAt);
-      d.setDate(d.getDate() + 5 + i * 11);
-      const line = script.bonded[i % script.bonded.length];
-      out.push({ at: d.getTime(), text: `${line.slice(0, 14)}…` });
     }
     if (character.birthday && /^\d{1,2}-\d{1,2}$/.test(character.birthday)) {
       const [mm, dd] = character.birthday.split('-').map(Number);
@@ -87,7 +79,7 @@ export function PhoneSheet({
       out.push({ at: bd, text: t('我的生日') });
     }
     return out.sort((a, b) => a.at - b.at).filter((e) => e.at > Date.now() - 86400_000).slice(0, 5);
-  }, [plans, character, bond.nickname, bond.createdAt]);
+  }, [plans, character, bond.nickname]);
 
   const messages = bond.messages.filter((m) => m.from !== 'system' && !m.recalled && messageContextText(m)).slice(-6);
   const photos = [
