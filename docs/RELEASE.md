@@ -23,6 +23,14 @@
   （语音音色 `EXPO_PUBLIC_SPEECH_TTS_VOICE_*`、`EXPO_PUBLIC_BAIDU_TTS_PER` 等按需同法添加。`.env.local` 不会被上传。）
 - **Supabase → Authentication → Providers → Apple → Client IDs** 追加 `com.kotoko.everylove`（逗号分隔，保留 `host.exp.Exponent` 给 Expo Go）。不加的话正式包里 Apple 登录会报 audience 不匹配。
 
+## 0.5 已完成的一次性配置（2026-09-04 首次发包记录）
+
+- **Apple Team = 公司的第二个组织账号**（同事的 App 所在的那个；第一个组织账号里 Admin 也看不到它，因为不是同一个 Team）。第一次 build 误用了第一个 Team，App ID 已从那边删除、在第二个 Team 重新登记；EAS 里第一个 Team 的旧证书未删（无害）。
+- EAS 已存：第二个 Team 的 Distribution Certificate + Provisioning Profile、**App Store Connect API Key**（以后 submit 不再登录 Apple）。推送密钥**没有生成**（本机通知用不着，做远程推送时 `eas credentials` 补，不用重新 build）。
+- App Store Connect 的 App 记录是**手动建的**（名称「全自动恋爱」、SKU `everylove`），**用户访问权限 = 限制访问**——只有名单里的人和 管理/财务/报告 职能能看到。
+- EAS production 环境变量：`EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY`；Supabase Apple provider 的 Client IDs 已加 `com.kotoko.everylove`。
+- 出口合规已在 app.json 预答（`ITSAppUsesNonExemptEncryption=false`），TestFlight 里不会再弹「缺少合规证明」。
+
 ## 1. 构建（每次发包）
 
 ```powershell
