@@ -48,7 +48,7 @@ features/      玩法：往插槽里注册；只 import core / lib / store / con
   adoption.ts    心动满的 offer（after 钩子，产品触发器）
   schedulers.ts  后台任务登记
 lib/           领域模块（引擎门面、记忆、外出、通话、媒体、语音……）；lib/chat.ts 是界面唯一的会话入口
-content/       角色、地点、日历数据；prompts/ = 全部 prompt 文本，一用途一文件（index.ts 头部是索引，D-087）
+content/       角色（characters/ = zh / en / ja 三个语言包 + index 汇总，D-093）、地点、日历数据；prompts/ = 全部 prompt 文本，一用途一文件（index.ts 头部是索引，D-087）
 store/         zustand 单 store（切片是下一轮）
 app/           界面（expo-router）；只调 lib/ 与 features/ 的 send 函数，不直接碰引擎 / 记忆
 tests/         vitest：prompt 快照、回合管线、引擎工具函数

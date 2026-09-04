@@ -6,7 +6,7 @@
 import { loveStyleByLabel, scriptFor } from '@/content/characters';
 import { cardContextText } from '@/core/cards';
 import { levelInfo } from '@/lib/bond';
-import { getLang } from '@/lib/i18n';
+import { getLang, type Lang } from '@/lib/i18n';
 import type { BondMemory, Character, ChatMessage, EngineContext, UserProfile } from '@/lib/types';
 
 /**
@@ -234,27 +234,42 @@ export function userProfileBlock(
  * 红线（CLAUDE.md §9，勿删）：系统层锁死，任何引擎不可绕过。
  * 措辞尽量正向：告诉模型该做什么，而不是罗列禁止。
  */
-const CHAT_HARD_RULES_BASE = [
+const CHAT_HARD_RULES_HEAD = [
   '【底线，任何情况下都成立】',
   '- 尺度停在暧昧：心动、靠近、克制的亲密都可以写，露骨性内容不写。',
   '- 行为健康：她想结束就体面道别、明天再来；用陪伴留住人，不用愧疚、不用纠缠、不刷屏。',
   '- 她提到的、或她发来的照片里出现的任何其他真实人物，你只关心她的感受，不评价那个人。',
-  '- 若她表达自伤/自杀意念：立刻放下角色，温柔认真地回应她，并建议寻求当地的心理援助热线（中国大陆：12356，全国 24 小时）。',
 ];
 
+/** 危机热线按市场（D-093）：指令仍是中文，只换括号里的热线 */
+const CRISIS_HOTLINE: Record<Lang, string> = {
+  zh: '中国大陆：12356，全国 24 小时',
+  en: '美国：拨打或短信 988；其他地区：findahelpline.com',
+  ja: '日本：よりそいホットライン 0120-279-338、いのちの電話 0570-064-556',
+};
+
+function crisisLine(lang: Lang): string {
+  return `- 若她表达自伤/自杀意念：立刻放下角色，温柔认真地回应她，并建议寻求当地的心理援助热线（${CRISIS_HOTLINE[lang]}）。`;
+}
+
 /** 输出语言跟随界面语言（D-066）：指令本身保持中文，只有「说什么语言」这一行切换 */
-const CHAT_LANG_LINE: Record<string, string> = {
+const CHAT_LANG_LINE: Record<Lang, string> = {
   zh: '- 始终用简体中文口语说话。',
   en: '- 始终用自然、口语化的英语（English）说话。',
   ja: '- 始终用自然的日语口语（タメ口寄りの日本語）说话。',
 };
 
-export function CHAT_HARD_RULES_OF(): string[] {
-  return [...CHAT_HARD_RULES_BASE, CHAT_LANG_LINE[getLang()] ?? CHAT_LANG_LINE.zh];
+/** 给任务类 prompt（记忆 / 看图 / 解析）用的语言名：「用{langName}写」 */
+export function langName(lang: Lang = getLang()): string {
+  return lang === 'en' ? '英语（English）' : lang === 'ja' ? '日语（日本語）' : '简体中文';
 }
 
-/** 兼容旧引用：动态取（getter 数组形式） */
-export const CHAT_HARD_RULES = CHAT_HARD_RULES_BASE;
+export function CHAT_HARD_RULES_OF(lang: Lang = getLang()): string[] {
+  return [...CHAT_HARD_RULES_HEAD, crisisLine(lang), CHAT_LANG_LINE[lang]];
+}
+
+/** 兼容旧引用：中文版 */
+export const CHAT_HARD_RULES = [...CHAT_HARD_RULES_HEAD, crisisLine('zh')];
 
 /** 【你的声音】块：台词样本照口吻说、不复读；没有样本就不出现（各模式自己选样本，见 chat.ts / outing.ts） */
 export function voiceLines(samples: string[]): string[] {

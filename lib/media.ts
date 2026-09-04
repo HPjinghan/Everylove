@@ -12,7 +12,7 @@ import { AudioQuality, IOSOutputFormat, RecordingPresets, type RecordingOptions 
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 
-import { IMAGE_CAPTION_SYSTEM, IMAGE_CAPTION_USER } from '@/content/prompts';
+import { imageCaptionSystem, IMAGE_CAPTION_USER } from '@/content/prompts';
 import { CONFIG } from '@/core/config';
 import { AiUnavailableError, aiRoute, envKey } from '@/lib/engine';
 import { getLang, t } from '@/lib/i18n';
@@ -155,7 +155,7 @@ export async function describeImage(uri: string): Promise<string> {
     model: QIANFAN_VISION_MODEL,
     max_tokens: 400,
     messages: [
-      { role: 'system', content: IMAGE_CAPTION_SYSTEM },
+      { role: 'system', content: imageCaptionSystem() },
       {
         role: 'user',
         content: [

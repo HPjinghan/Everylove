@@ -885,3 +885,15 @@
   6. 洛小满的外貌设定里「配帆布鞋」会把立绘拉成全身（两次都是），改为「宽大乐队 T 恤，元气直球」——外貌一句话里别写鞋 / 腿这类只在全身里出现的东西（创造页 hint 后续可补）。六张最终图都经人工看过：无文字、半身、特征齐。
 - **推翻 / 修订**：修订 D-006「种子角色只有文字与配色，无立绘」与 D-019 的 `SEED_PORTRAITS_AUTO`；修订 D-018 生图 prompt「用角色名指代 TA」→ 不写名字；OPEN_QUESTIONS #14 由本条了结。
 - **影响文件**：`scripts/gen-seed-portraits.mts`（新）、`assets/portraits/*.jpg`（新 6 张）、`content/portraits.ts`（新）、`content/prompts/image-common.ts`、`content/prompts/portrait.ts`、`content/characters.ts`（洛小满 look）、`tests/__snapshots__/prompts-tasks.test.ts.snap`、`tests/setup.ts`、`lib/imagegen.ts`、`components/char-avatar.tsx`、`app/apps/dating.tsx`、`components/his-phone.tsx`、`app/apps/settings.tsx`、`app/apps/create.tsx`、`lib/i18n.ts`、`package.json`（tsx）。
+
+## D-093 · 2026-09-04 · 内容层三语：六位种子角色各出英文 / 日文版、只分发给自己语言的用户；所有 prompt 的输出语言按界面语言（Harper 提出）
+
+- **背景**：Harper「给英语和日语都做相应的 6 个 NPC 的本地化，然后所有 prompt 都要根据用户选择的语言来要求输出。每个语言做出来的角色也只分发给自己的语言的用户」。此前 UI 三语（D-066）但内容全中文（OPEN_QUESTIONS #23）。
+- **决策**：
+  1. **`content/characters.ts` 拆成 `content/characters/` 目录**：`types.ts` / `zh.ts`（原内容原样搬入）/ `en.ts` / `ja.ts` / `index.ts`（汇总 + 按语言取用 + 系统层）。所有 `@/content/characters` 引用不变。
+  2. **每种语言一套种子角色，独立 id**（`shen-zhiyan-en` / `shen-zhiyan-ja` ……），`Character.lang` 标语言，立绘按原 id 共用（`seedPortrait` 去掉 -en / -ja 后缀回落）。英文 / 日文版不是逐字翻译而是按读者重写：名字（Ethan Shaw / Kai Rivers / Claire Sutton / Mia Locke / Vael / Fenna；篠宮 湊 / 神谷 蓮 / 白石 澄香 / 桜庭 小春 / 燭淵 / 玉藻）、身份、钩子、开场白、台词样本、offer、缔结后打招呼、人设、追法、X 种子动态；三种原型的自创兜底脚本与动态也各一套。`look` 仍是中文（只进生图 prompt）。脚本里自 D-046/D-069 起没有代码在用的字段（triggers / farewell / notifBody / commentReply / nicknamePresets）改为可选，英文 / 日文版不写。
+  3. **分发**：交友牌堆与广场偶遇只取 `seedCharactersFor(界面语言)`；共享池只发同语言的（`lang` 缺省按中文）；自创角色在创建时打上界面语言。查找表 `CHARACTERS` 含全部语言——已缔结 / 已配对的 TA 不随切换语言消失，只是不再出现在新供给里。`scriptFor` / `bondedPostsFor` 按角色自己的语言取（自创角色回落该语言的原型兜底；旧存档没打语言的按当前界面语言）。
+  4. **输出语言统一**：聊天 / 外出 / 通话 / 记事本 / 发帖 / 回帖已有语言行；新增——记忆提取（facts 与 summary 用界面语言写）、看图描述、创造解析（字段文字用描述的语言）改为按语言的函数（`memoryExtractSystem` / `imageCaptionSystem` / `characterParseSystem`）；约定识别加「对话可能是中英日」；红线里的危机热线按市场（中国 12356 / 美国 988 + findahelpline / 日本 よりそい・いのちの電話）；心跳三段式模板、外出开场白按语言各一套；**暗面路由三语触发**（中英日关键词合成一条正则）、回复按语言（`darkSideReply()`）；真人 / IP 拦截样例补英文日文名。
+  5. 快照：中文的记忆提取 / 解析 / 约定三份因加了语言行而更新；新增英文 / 日文快照与 `tests/localization.test.ts`（分发、脚本、兜底、暗面路由、心跳、开场白）。
+- **未做 / 待办**：内容是 Claude 初稿，女性向文案需要写手润色（OPEN_QUESTIONS #23 更新）；语音音色（百度只有中英）与日语 ASR 仍见 #25；地点名与钩子走 UI 词典（已三语），地点场景描写进 prompt 仍是中文（指令语言，按 D-066 口径不动）。
+- **影响文件**：`content/characters/{types,index,zh,en,ja}.ts`（新）、`content/characters.ts`（删）、`content/portraits.ts`、`content/prompts/{shared,memory,caption,create,appointment,heartbeat,outing,index}.ts`、`lib/types.ts`、`lib/engine.ts`、`lib/memory.ts`、`lib/media.ts`、`lib/pool.ts`、`store/app-store.ts`、`app/apps/{dating,create,moments}.tsx`、`app/outing/[placeId].tsx`、`tests/*`。

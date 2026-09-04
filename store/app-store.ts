@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { bondedPostsFor, CHARACTERS, scriptFor, SQUARE_POSTS } from '@/content/characters';
+import { bondedPostsFor, CHARACTERS, scriptFor, seedCharactersFor, SQUARE_POSTS } from '@/content/characters';
 import { uid } from '@/lib/format';
 import { applyThemeColors } from '@/constants/theme';
 import { bondLevel, levelLabel } from '@/lib/bond';
@@ -690,7 +690,8 @@ export const useAppStore = create<AppState>()(
           // 优先还没配对过的新面孔，其次配对过但没加好友的；口味（lovePref）优先。
           const bondedIds = new Set(state.bonds.map((b) => b.characterId));
           const matchedIds = new Set(Object.keys(state.squareChats));
-          const pool = [...state.customCharacters, ...CHARACTERS].filter(
+          // 种子角色只发本语言的一套（D-093）
+          const pool = [...state.customCharacters, ...seedCharactersFor(state.language)].filter(
             (c) => !c.teaser && !bondedIds.has(c.id)
           );
           const fresh = pool.filter((c) => !matchedIds.has(c.id));

@@ -6,6 +6,7 @@
 
 import { scriptFor } from '@/content/characters';
 import { ON_TIME_TOLERANCE_MIN } from '@/lib/appointments';
+import { getLang, type Lang } from '@/lib/i18n';
 import { levelInfo } from '@/lib/bond';
 import type { EngineContext } from '@/lib/types';
 
@@ -84,23 +85,70 @@ export const OUTING_OUTPUT_FORMAT = [
   '- 回复 1-3 句，口语、具体，不写小作文；不分成多条——你们面对面，不是在发消息。',
 ];
 
-/** 外出开场白（TA 先开口；离线模板，{place} 换地点名、{nickname} 换称呼、{minutes} 换迟到分钟数） */
-export const OUTING_OPENERS: Record<'date' | 'dateLate' | 'encounter' | 'stranger', string[]> = {
-  date: [
-    '（比约定时间早到了一会儿，看到你，朝你挥手）这里，{nickname}。……嗯，我说过我会来的。',
-    '（靠在{place}门口，看到你走近，站直了）来了？我刚到——才不是等了很久。',
-  ],
-  // 她迟到了（D-079）：TA 知道，按性格反应，但不愧疚绑架
-  dateLate: [
-    '（已经在{place}等了一会儿，看到你才把手机收起来）……来了。我还以为你不来了，{nickname}。',
-    '（靠在{place}门口，看你小跑过来，没说话，先把手里的东西递给你）晚了 {minutes} 分钟。……先喘口气，不急。',
-  ],
-  encounter: [
-    '（在{place}转过身，愣了一下，随即笑了）……{nickname}？真的是你。今天是什么好日子。',
-    '（本来在看别的，余光扫到你，停下来）等等——{nickname}？这么巧。既然遇到了，一起走走？',
-  ],
-  stranger: [
-    '（在你旁边站了一会儿，终于开口，指了指前面）那个……排这么长的队，应该很好吃吧？',
-    '（追着一张被风吹跑的纸片停在你脚边，抬头，有点不好意思）抱歉——踩到一下就好，谢谢。……你也一个人逛？',
-  ],
+/** 外出开场白（TA 先开口；离线模板，{place} 换地点名、{nickname} 换称呼、{minutes} 换迟到分钟数）；D-093 按界面语言取 */
+export type OutingOpenerKind = 'date' | 'dateLate' | 'encounter' | 'stranger';
+
+const OUTING_OPENERS_BY_LANG: Record<Lang, Record<OutingOpenerKind, string[]>> = {
+  zh: {
+    date: [
+      '（比约定时间早到了一会儿，看到你，朝你挥手）这里，{nickname}。……嗯，我说过我会来的。',
+      '（靠在{place}门口，看到你走近，站直了）来了？我刚到——才不是等了很久。',
+    ],
+    // 她迟到了（D-079）：TA 知道，按性格反应，但不愧疚绑架
+    dateLate: [
+      '（已经在{place}等了一会儿，看到你才把手机收起来）……来了。我还以为你不来了，{nickname}。',
+      '（靠在{place}门口，看你小跑过来，没说话，先把手里的东西递给你）晚了 {minutes} 分钟。……先喘口气，不急。',
+    ],
+    encounter: [
+      '（在{place}转过身，愣了一下，随即笑了）……{nickname}？真的是你。今天是什么好日子。',
+      '（本来在看别的，余光扫到你，停下来）等等——{nickname}？这么巧。既然遇到了，一起走走？',
+    ],
+    stranger: [
+      '（在你旁边站了一会儿，终于开口，指了指前面）那个……排这么长的队，应该很好吃吧？',
+      '（追着一张被风吹跑的纸片停在你脚边，抬头，有点不好意思）抱歉——踩到一下就好，谢谢。……你也一个人逛？',
+    ],
+  },
+  en: {
+    date: [
+      "(Got here a little early — spots you and waves) Over here, {nickname}. …Well. I said I'd come.",
+      "(Leaning by the door of the {place}; straightens up as you walk over) You're here? Just arrived myself — I did NOT wait that long.",
+    ],
+    dateLate: [
+      "(Been waiting at the {place} a while; only puts the phone away on seeing you) …There you are. I was starting to think you weren't coming, {nickname}.",
+      "(Leaning by the door of the {place}, watches you jog over, says nothing, just hands you what they're holding) {minutes} minutes late. …Catch your breath first. No rush.",
+    ],
+    encounter: [
+      "(Turns around in the {place}, freezes, then smiles) …{nickname}? It's really you. What a day.",
+      '(Was looking at something else; catches you in the corner of an eye and stops) Wait — {nickname}? Small world. Since we ran into each other, walk with me?',
+    ],
+    stranger: [
+      "(Stands next to you for a while, finally speaks, pointing ahead) That… the line's this long, it must be good, right?",
+      "(Chasing a piece of paper the wind blew; it stops at your feet; looks up, a bit sheepish) Sorry — just step on it for me, thanks. …You here on your own too?",
+    ],
+  },
+  ja: {
+    date: [
+      '（約束より少し早く着いて、君を見つけて手を振る）こっち、{nickname}。……うん、来るって言ったでしょ。',
+      '（{place}の入口にもたれていて、君が近づくと背筋を伸ばす）来た？今来たとこ——長く待ってなんかないから。',
+    ],
+    dateLate: [
+      '（{place}でしばらく待っていて、君を見てやっとスマホをしまう）……来た。もう来ないのかと思った、{nickname}。',
+      '（{place}の入口にもたれて、小走りで来る君を見て、何も言わず手にしていたものを渡す）{minutes}分遅刻。……まず息を整えて。急がなくていい。',
+    ],
+    encounter: [
+      '（{place}で振り向いて、一瞬固まって、それから笑う）……{nickname}？ほんとに君だ。今日はなんて日だ。',
+      '（別のものを見ていたが、視界の端に君を捉えて足を止める）待って——{nickname}？こんな偶然ある？せっかく会ったんだし、少し歩かない？',
+    ],
+    stranger: [
+      '（隣にしばらく立っていて、やっと口を開き、前を指す）あの……この行列、きっと美味しいんですよね？',
+      '（風に飛ばされた紙切れを追いかけて、それが君の足元で止まる。顔を上げて少し気まずそうに）すみません——ちょっと踏んで止めてもらえれば。……あなたも一人で？',
+    ],
+  },
 };
+
+/** 兼容旧引用：中文模板 */
+export const OUTING_OPENERS = OUTING_OPENERS_BY_LANG.zh;
+
+export function outingOpeners(lang: Lang = getLang()): Record<OutingOpenerKind, string[]> {
+  return OUTING_OPENERS_BY_LANG[lang];
+}

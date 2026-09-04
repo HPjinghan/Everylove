@@ -27,7 +27,7 @@ import {
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
-import { CHARACTERS } from '@/content/characters';
+import { CHARACTERS, seedCharactersFor } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
 import { heatLabel } from '@/lib/format';
 import { portraitSource } from '@/lib/imagegen';
@@ -95,6 +95,7 @@ export default function DatingScreen() {
   const bonds = useAppStore((s) => s.bonds);
   const squareChats = useAppStore((s) => s.squareChats);
   const lovePref = useAppStore((s) => s.lovePref);
+  const language = useAppStore((s) => s.language);
   const datingPasses = useAppStore((s) => s.datingPasses);
   const view = useAppStore((s) => s.datingView);
   const introDone = useAppStore((s) => s.introDone);
@@ -125,7 +126,8 @@ export default function DatingScreen() {
     // 偏好过滤（D-049）：口味不再只是排序加权，而是直接筛（「都可以」看全部）；
     // 共享池（D-060）：别人公开的角色合入同一池、同一套打分（本地已有同 id 的不重复）
     const remote = sharedPool.filter((c) => !customs.some((x) => x.id === c.id));
-    const pool = [...customs, ...CHARACTERS, ...remote].filter(
+    // 种子角色只发本语言的一套（D-093）；自创与共享池已按语言过滤
+    const pool = [...customs, ...seedCharactersFor(language), ...remote].filter(
       (c) =>
         !c.teaser &&
         !bondedIds.has(c.id) &&
@@ -142,7 +144,7 @@ export default function DatingScreen() {
       }),
       poolCount: pool.length,
     };
-  }, [customs, sharedPool, bondedIds, squareChats, swipedIds, lovePref, datingPasses]);
+  }, [customs, sharedPool, bondedIds, squareChats, swipedIds, lovePref, datingPasses, language]);
 
   // 全划完自动回流（D-042）：本次全滑过但池子还有人 → 重开一轮，不出空牌堆
   useEffect(() => {

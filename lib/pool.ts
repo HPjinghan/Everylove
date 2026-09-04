@@ -6,6 +6,7 @@
  */
 
 import { authConfigured, currentSession, getSupabase, signedInSession } from '@/lib/auth';
+import { getLang } from '@/lib/i18n';
 import type { Character } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
@@ -29,7 +30,8 @@ export async function refreshSharedPool(force = false): Promise<void> {
     const chars: Character[] = (data ?? [])
       .filter((r) => r.owner_id !== mine)
       .map((r) => ({ ...(r.data as Character), id: r.id as string, shared: true }))
-      .filter((c) => c.name && !c.teaser);
+      // 只发同语言的（D-093）；早期没打语言的按中文
+      .filter((c) => c.name && !c.teaser && (c.lang ?? 'zh') === getLang());
     useAppStore.getState().setSharedPool(chars);
   } catch (e) {
     console.warn('[pool] 共享池刷新失败（用缓存）：', e);

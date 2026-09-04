@@ -86,6 +86,8 @@ export interface Character {
   visibility?: 'private' | 'public';
   /** 来自共享角色池（别人创建的，D-060）：不算「你的创作」，配对可过期；缔结时快照进本地 */
   shared?: boolean;
+  /** 角色的语言（D-093）：种子角色各语言一份、只分发给该语言用户；自创角色 = 创建时的界面语言；缺省按当前界面语言 */
+  lang?: 'zh' | 'en' | 'ja';
 }
 
 /**

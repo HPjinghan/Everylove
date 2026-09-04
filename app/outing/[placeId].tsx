@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChatThread } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { OUTING_OPENERS } from '@/content/prompts';
+import { outingOpeners } from '@/content/prompts';
 import { placeById } from '@/content/places';
 import { Romance, themed } from '@/constants/theme';
 import { wait } from '@/core/turn';
@@ -63,7 +63,8 @@ export default function OutingSceneScreen() {
       const b = useAppStore.getState().bonds.find((x) => x.characterId === s.characterId);
       // 赴约迟到了（D-079）：开场就知道
       const late = s.kind === 'date' && (s.lateMinutes ?? 0) > ON_TIME_TOLERANCE_MIN;
-      const pool = late ? OUTING_OPENERS.dateLate : OUTING_OPENERS[s.kind];
+      const openers = outingOpeners();
+      const pool = late ? openers.dateLate : openers[s.kind];
       const line = pool[Math.floor(Math.random() * pool.length)]
         .replace(/\{place\}/g, place.name)
         .replace(/\{nickname\}/g, b?.nickname ?? '你')

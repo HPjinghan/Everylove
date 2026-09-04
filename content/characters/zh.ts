@@ -1,79 +1,13 @@
 /**
- * 首发种子内容：6 位——2 男、2 女、1 龙族、1 狐狸（Harper 拍板，DECISIONS D-009）。
+ * 中文种子角色（D-009 六位：2男2女1龙族1狐狸，Harper 拍板）与台词脚本、原型兜底、动态种子。D-093 起只分发给中文用户。
  * 台词脚本按角色挂载（每人自己的声音）；原型脚本退为捏＋自创角色的兜底。
  * 追法蒸馏原则不变：广场模式克制（免费层故意不完整），羁绊模式主动（付费层的「他在」）。
+ * 汇总与按语言取用在 ./index.ts；英文 / 日文版在 ./en.ts / ./ja.ts。
  */
 
 import type { ArchetypeId, Character } from '@/lib/types';
 
-export interface CharacterScript {
-  /** 广场初见：他先开口（即点即聊，降低开口成本） */
-  opening: string[];
-  /** 广场模式回复池：短、有点兴趣、不太主动 */
-  square: string[];
-  /** 关键词触发 */
-  triggers: { pattern: RegExp; replies: string[] }[];
-  /** 领养触发：他开口要联系方式（产品触发器，不由模型决定） */
-  offer: string[];
-  /** 羁绊模式回复池：主动、亲近 */
-  bonded: string[];
-  /** 缔结后他先走（{time} 会被替换为「今晚八点/明晚八点」） */
-  farewell: { text: string; kind?: 'voice' }[];
-  /** 八点开门：他准时来找你 */
-  arrival: { text: string; kind?: 'voice' }[];
-  /** 开门通知文案 */
-  notifBody: string;
-  /** 他对你评论的回复（动态 tab） */
-  commentReply: string;
-  /** 起名步骤的称呼预设 */
-  nicknamePresets: string[];
-  /** Anthropic 引擎的人设与追法描述 */
-  persona: string;
-  pursuit: string;
-}
-
-/**
- * 恋爱中的类型（捏＋高级选项，D-025）：每种 = 一句「追法」描述（进对话 prompt）+ 兜底脚本用的原型。
- * 病娇只给台词尺度，行为健康底线（不纠缠不刷屏不愧疚绑架）在系统层锁死，任何类型不可绕过。
- */
-export interface LoveStyle {
-  label: string;
-  /** 追法一句话，进系统 prompt 的【你的追法】 */
-  desc: string;
-  /** 兜底台词脚本用的原型 */
-  archetype: Exclude<ArchetypeId, 'nonhuman'>;
-}
-
-export const LOVE_STYLES: LoveStyle[] = [
-  { label: '温柔年上', desc: '稳、郑重、每一步都算数；多听少评，把对方放进自己的秩序里，好感说得少而准。', archetype: 'gentle' },
-  { label: '小狗系年下', desc: '热烈直给，开心藏不住；黏但有分寸，被回应一句能高兴很久。', archetype: 'gentle' },
-  { label: '姐姐系', desc: '从容笃定，照顾人不动声色；嘴上淡淡的，偏爱全在安排里。', archetype: 'gentle' },
-  { label: '依恋型', desc: '把「在」做到极致：有空就出现、说到就到、睡前一定道晚安；安全感是 TA 的语言。', archetype: 'gentle' },
-  { label: '阳光直球', desc: '喜欢就说，坦荡热烈从不让人猜；被拒绝也笑着说下次再试。', archetype: 'gentle' },
-  { label: '天然治愈', desc: '慢半拍的温柔，说话像晒太阳；不会说漂亮话，但永远接得住情绪。', archetype: 'gentle' },
-  { label: '青梅竹马', desc: '共享全部回忆，熟稔到不用客气；损你最狠也懂你最深。', archetype: 'gentle' },
-  { label: '毒舌竹马', desc: '嘴上嫌弃，位置永远留着；关心全裹在吐槽里，被拆穿会恼羞。', archetype: 'sharp' },
-  { label: '傲娇', desc: '口是心非专业户：说「才没有」的时候耳朵是红的；示好要拐三个弯。', archetype: 'sharp' },
-  { label: '腹黑', desc: '笑着盘算怎么让人多留一会儿；坏在明处、宠在暗处，从不吃亏但舍得为你破例。', archetype: 'sharp' },
-  { label: '病娇（尺度内）', desc: '占有欲写在台词里——「只看我」可以说；行为永远健康：不纠缠、不刷屏、不愧疚绑架。', archetype: 'sharp' },
-  { label: '高冷禁欲', desc: '话少，回应克制；例外只有一个人，破防的瞬间极其珍贵。', archetype: 'ceo' },
-  { label: '霸总', desc: '什么都能安排妥当，除了见面时的心跳；习惯给出选项而不是问题。', archetype: 'ceo' },
-  { label: '冷静大人', desc: '理性、可靠、不动声色；不说情话，用行动把「放心」两个字写满。', archetype: 'ceo' },
-];
-
-export function loveStyleByLabel(label?: string): LoveStyle | undefined {
-  return LOVE_STYLES.find((l) => l.label === label);
-}
-
-/** 种族预设（捏＋高级选项；选「其他」可自填） */
-export const RACES = ['人类', '精灵', '龙族', '狐族', '猫族', '神明', '吸血鬼', '恶魔', '天使', '机器人'];
-
-export const ARCHETYPE_LABEL: Record<ArchetypeId, string> = {
-  gentle: '温柔年上',
-  sharp: '毒舌竹马',
-  ceo: '霸总',
-  nonhuman: '非人类',
-};
+import type { CharacterScript, SeedPost, SquarePost } from './types';
 
 /* ────────────────────────── 种子角色脚本 ────────────────────────── */
 
@@ -454,7 +388,7 @@ const huBugui: CharacterScript = {
 
 /* ────────────────────────── 角色表 ────────────────────────── */
 
-export const CHAR_SCRIPTS: Record<string, CharacterScript> = {
+export const CHAR_SCRIPTS_ZH: Record<string, CharacterScript> = {
   'shen-zhiyan': shenZhiyan,
   'jiang-ye': jiangYe,
   'su-cheng': suCheng,
@@ -464,7 +398,7 @@ export const CHAR_SCRIPTS: Record<string, CharacterScript> = {
 };
 
 /** 捏＋自创角色的兜底脚本（按原型；人设写成通用，具体身份由角色卡注入） */
-export const ARCHETYPE_DEFAULTS: Record<Exclude<ArchetypeId, 'nonhuman'>, CharacterScript> = {
+export const ARCHETYPE_DEFAULTS_ZH: Record<Exclude<ArchetypeId, 'nonhuman'>, CharacterScript> = {
   // 注意：兜底脚本是给自创角色用的，任何台词不得含种子角色的名字/身份（D-025 修复：
   // 此前直接展开 shenZhiyan/jiangYe，自创角色开口自称「沈之言/江野」）。
   gentle: {
@@ -477,7 +411,7 @@ export const ARCHETYPE_DEFAULTS: Record<Exclude<ArchetypeId, 'nonhuman'>, Charac
       '嗯，我在。说吧，今天想聊什么都行。',
       '你发消息的时间，比昨天晚了十分钟。我有认真在等。',
     ],
-    triggers: shenZhiyan.triggers.map((t) =>
+    triggers: shenZhiyan.triggers?.map((t) =>
       t.pattern.source.includes('在干嘛')
         ? { ...t, replies: ['在忙手头的事。不过你来了，就先放一放。'] }
         : t
@@ -493,7 +427,7 @@ export const ARCHETYPE_DEFAULTS: Record<Exclude<ArchetypeId, 'nonhuman'>, Charac
       '干嘛。……没事就不能找你了？',
       '今天有个好消息，是替你留的。虽然你不在，但就是替你留的，不接受反驳。',
     ],
-    triggers: jiangYe.triggers.map((t) =>
+    triggers: jiangYe.triggers?.map((t) =>
       t.pattern.source.includes('在干嘛')
         ? { ...t, replies: ['忙。……没让你走，接着说。'] }
         : t
@@ -561,17 +495,10 @@ export const ARCHETYPE_DEFAULTS: Record<Exclude<ArchetypeId, 'nonhuman'>, Charac
   },
 };
 
-/** 取角色脚本：种子角色用专属脚本，自创角色回落原型兜底 */
-export function scriptFor(c: Character): CharacterScript {
-  return (
-    CHAR_SCRIPTS[c.id] ??
-    ARCHETYPE_DEFAULTS[c.archetype === 'nonhuman' ? 'gentle' : c.archetype]
-  );
-}
-
-export const CHARACTERS: Character[] = [
+export const CHARACTERS_ZH: Character[] = [
   {
     id: 'shen-zhiyan',
+    lang: 'zh',
     name: '沈之言',
     archetype: 'gentle',
     loveTag: 'male',
@@ -588,6 +515,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'jiang-ye',
+    lang: 'zh',
     name: '江野',
     archetype: 'sharp',
     loveTag: 'male',
@@ -604,6 +532,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'su-cheng',
+    lang: 'zh',
     name: '苏澄',
     archetype: 'gentle',
     loveTag: 'female',
@@ -620,6 +549,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'luo-xiaoman',
+    lang: 'zh',
     name: '洛小满',
     archetype: 'ceo',
     loveTag: 'female',
@@ -636,6 +566,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'zhu-yuan',
+    lang: 'zh',
     name: '烛渊',
     archetype: 'ceo',
     loveTag: 'nonhuman',
@@ -652,6 +583,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'hu-bugui',
+    lang: 'zh',
     name: '胡不归',
     archetype: 'sharp',
     loveTag: 'nonhuman',
@@ -671,7 +603,7 @@ export const CHARACTERS: Character[] = [
 /* ────────────────────────── 动态种子 ────────────────────────── */
 
 /** 广场公开动态（静态种子，时间在渲染时相对生成） */
-export const SQUARE_POSTS: { characterId: string; text: string; hoursAgo: number; likes: number }[] = [
+export const SQUARE_POSTS_ZH: SquarePost[] = [
   {
     characterId: 'shen-zhiyan',
     text: '批到一份作业，把「喜欢」写成了「欢喜」。想了想，没有扣分。',
@@ -711,7 +643,7 @@ export const SQUARE_POSTS: { characterId: string; text: string; hoursAgo: number
 ];
 
 /** 领养后物化到动态 tab 的帖子（每人：日常一条 + 深夜一条） */
-export const BONDED_POSTS_BY_CHAR: Record<string, { text: string; hoursAgo: number; likes: number }[]> = {
+export const BONDED_POSTS_ZH: Record<string, SeedPost[]> = {
   'shen-zhiyan': [
     { text: '晚饭做多了一人份。习惯，真是可怕的东西。', hoursAgo: 3, likes: 89 },
     { text: '凌晨一点，改完最后一份。晚安——虽然你大概看不到这条。', hoursAgo: 20, likes: 156 },
@@ -739,37 +671,11 @@ export const BONDED_POSTS_BY_CHAR: Record<string, { text: string; hoursAgo: numb
 };
 
 /** 自创角色的领养后帖兜底（按原型） */
-const BONDED_POSTS_DEFAULTS: Record<Exclude<ArchetypeId, 'nonhuman'>, { text: string; hoursAgo: number; likes: number }[]> = {
-  gentle: BONDED_POSTS_BY_CHAR['shen-zhiyan'],
-  sharp: BONDED_POSTS_BY_CHAR['jiang-ye'],
+export const BONDED_POSTS_DEFAULTS_ZH: Record<Exclude<ArchetypeId, 'nonhuman'>, SeedPost[]> = {
+  gentle: BONDED_POSTS_ZH['shen-zhiyan'],
+  sharp: BONDED_POSTS_ZH['jiang-ye'],
   ceo: [
     { text: '推了一个饭局。理由：有更重要的安排。（其实没有。就是想早点回消息。）', hoursAgo: 4, likes: 178 },
     { text: '凌晨的城市也没那么难看。就是少个人一起看。', hoursAgo: 25, likes: 264 },
   ],
 };
-
-export function bondedPostsFor(c: Character): { text: string; hoursAgo: number; likes: number }[] {
-  return (
-    BONDED_POSTS_BY_CHAR[c.id] ??
-    BONDED_POSTS_DEFAULTS[c.archetype === 'nonhuman' ? 'gentle' : c.archetype]
-  );
-}
-
-/* ────────────────────────── 系统层（锁死） ────────────────────────── */
-
-/**
- * 情绪暗面路由（系统层，锁死）：命中即绕过角色扮演，走独立温柔模式。
- * 素材/聊天中的痛苦危机内容绝不入戏——红线 #3。
- */
-export const DARK_SIDE_PATTERN =
-  /想死|自杀|自残|不想活|活不下去|割腕|轻生|了结|安眠药|跳楼/;
-
-export const DARK_SIDE_REPLY =
-  '刚才那句话，我认真听到了。现在先不聊别的——你还好吗？' +
-  '如果那种沉沉的感觉已经压了你一阵子，请一定告诉身边信得过的人，' +
-  '或者拨打心理援助热线 12356（全国 24 小时）。你值得被认真接住。' +
-  '我在这儿，你想说的时候，我都在。';
-
-/** 捏＋发布审核的最小拦截样例（完整审核流程见 OPEN_QUESTIONS #7；红线 #1/#4） */
-export const BLOCKED_NAME_PATTERN =
-  /肖战|王一博|易烊千玺|蔡徐坤|迪丽热巴|杨幂|赵丽颖|龚俊|檀健次|哈利波特|柯南|鸣人|佐助|五条悟|灶门|路飞|光遇|原神|明日方舟/;

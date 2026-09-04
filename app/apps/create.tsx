@@ -31,10 +31,10 @@ import {
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { BLOCKED_NAME_PATTERN, LOVE_STYLES, loveStyleByLabel, RACES } from '@/content/characters';
-import { CHARACTER_PARSE_SYSTEM, DEFAULT_PORTRAIT_STYLE, PORTRAIT_STYLES } from '@/content/prompts';
+import { characterParseSystem, DEFAULT_PORTRAIT_STYLE, PORTRAIT_STYLES } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
 import { authConfigured, signedInSession } from '@/lib/auth';
-import { t } from '@/lib/i18n';
+import { getLang, t } from '@/lib/i18n';
 import { completeText, describeAiError } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { generatePortraitFor, imageKeyReady } from '@/lib/imagegen';
@@ -253,7 +253,7 @@ export default function CreateScreen() {
     let parsed: Record<string, unknown> | null = null;
     let aiError: string | null = null;
     try {
-      const raw = await completeText(CHARACTER_PARSE_SYSTEM, text);
+      const raw = await completeText(characterParseSystem(), text);
       const jsonStr = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
       parsed = JSON.parse(jsonStr) as Record<string, unknown>;
     } catch (e) {
@@ -277,6 +277,8 @@ export default function CreateScreen() {
     const identitySrc = story.trim() || look.trim();
     return {
       id,
+      // 自创角色带创建时的界面语言（D-093）：共享池只发给同语言用户，兜底脚本也按它取
+      lang: getLang(),
       name: name.trim(),
       archetype: style?.archetype ?? 'gentle',
       loveTag: gender === 'nonbinary' ? 'nonbinary' : gender,

@@ -11,7 +11,7 @@
  * 对外接口不变（updateBondMemory / bond.memory）。
  */
 
-import { buildMemoryExtractPrompt, MEMORY_EXTRACT_SYSTEM, NOTES_MEMORY_CONTEXT, outingMemoryContext } from '@/content/prompts';
+import { buildMemoryExtractPrompt, memoryExtractSystem, NOTES_MEMORY_CONTEXT, outingMemoryContext } from '@/content/prompts';
 import { completeText, HISTORY_ROUNDS } from '@/lib/engine';
 import type { BondMemory, ChatMessage } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -105,7 +105,7 @@ export async function updateBondMemory(bondId: string, force = false): Promise<b
 
   inflight.add(bondId);
   try {
-    const raw = await completeText(MEMORY_EXTRACT_SYSTEM, userPrompt);
+    const raw = await completeText(memoryExtractSystem(), userPrompt);
     const parsed = parseMemoryJSON(raw);
     if (!parsed) {
       console.warn('[memory] 提取结果不是合法 JSON，跳过：', raw.slice(0, 120));
@@ -161,7 +161,7 @@ export async function absorbOutingMemory(
 
   inflight.add(key);
   try {
-    const raw = await completeText(MEMORY_EXTRACT_SYSTEM, userPrompt);
+    const raw = await completeText(memoryExtractSystem(), userPrompt);
     const parsed = parseMemoryJSON(raw);
     if (!parsed) {
       console.warn('[memory] 外出记忆结果不是合法 JSON，跳过：', raw.slice(0, 120));
@@ -211,7 +211,7 @@ export async function absorbNotesMemory(
   });
   inflight.add(key);
   try {
-    const raw = await completeText(MEMORY_EXTRACT_SYSTEM, userPrompt);
+    const raw = await completeText(memoryExtractSystem(), userPrompt);
     const parsed = parseMemoryJSON(raw);
     if (!parsed) return false;
     const latest = useAppStore.getState().bonds.find((b) => b.id === bondId)?.memory ?? memory;

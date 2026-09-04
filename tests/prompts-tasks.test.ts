@@ -17,11 +17,11 @@ import {
   buildPortraitPrompt,
   buildPostReplySystem,
   buildPostReplyUserPrompt,
-  CHARACTER_PARSE_SYSTEM,
+  characterParseSystem,
   heartbeatLine,
-  IMAGE_CAPTION_SYSTEM,
+  imageCaptionSystem,
   IMAGE_CAPTION_USER,
-  MEMORY_EXTRACT_SYSTEM,
+  memoryExtractSystem,
   missedDateUserLine,
   outingMemoryContext,
 } from '@/content/prompts';
@@ -34,7 +34,10 @@ const chat = history([
 ]);
 
 describe('记忆', () => {
-  it('提取系统指令', () => expect(MEMORY_EXTRACT_SYSTEM).toMatchSnapshot());
+  it('提取系统指令（中 / 英）', () => {
+    expect(memoryExtractSystem('zh')).toMatchSnapshot();
+    expect(memoryExtractSystem('en')).toMatchSnapshot();
+  });
   it('常规提取（有旧对话并入摘要）', () => {
     expect(
       buildMemoryExtractPrompt({
@@ -97,8 +100,9 @@ describe('生图', () => {
     expect(buildOutingPhotoPrompt(seed, { ...opts, kind: 'together', digest: '她：好冷\n主角：把外套给你' })).toMatchSnapshot();
     expect(buildOutingPhotoPrompt(custom, { ...opts, kind: 'solo' })).toMatchSnapshot();
   });
-  it('看图', () => {
-    expect(IMAGE_CAPTION_SYSTEM).toMatchSnapshot();
+  it('看图（中 / 日）', () => {
+    expect(imageCaptionSystem('zh')).toMatchSnapshot();
+    expect(imageCaptionSystem('ja')).toMatchSnapshot();
     expect(IMAGE_CAPTION_USER).toMatchSnapshot();
   });
 });
@@ -131,5 +135,8 @@ describe('心跳与创造', () => {
       heartbeatLine('after', '期末考', '小满', salt),
     ])).toMatchSnapshot();
   });
-  it('创造描述解析', () => expect(CHARACTER_PARSE_SYSTEM).toMatchSnapshot());
+  it('创造描述解析（中 / 英）', () => {
+    expect(characterParseSystem('zh')).toMatchSnapshot();
+    expect(characterParseSystem('en')).toMatchSnapshot();
+  });
 });

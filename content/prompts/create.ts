@@ -3,13 +3,17 @@
  */
 
 import { LOVE_STYLES } from '@/content/characters';
+import { getLang, type Lang } from '@/lib/i18n';
+
+import { langName } from './shared';
 
 /**
  * 「创造」App 的描述解析：用户写/粘贴 ≤2000 字的人设（自由文字、小说片段、角色卡都行），
  * 点「自动解析」由当前引擎整理成表单字段；无 key/失败回落规则解析（app/apps/create.tsx）。
  * 只输出 JSON；字段与长度上限对齐捏＋表单（D-025）。
  */
-export const CHARACTER_PARSE_SYSTEM = [
+export function characterParseSystem(lang: Lang = getLang()): string {
+  return [
   '你是恋爱互动应用「创造」功能的人设解析助手。用户会给你一大段角色描述（自由文字、小说片段或设定列表），请把它整理成结构化字段，只输出 JSON。',
   '',
   '字段（全部可选——描述里没有的就省略，绝不编造）：',
@@ -31,5 +35,7 @@ export const CHARACTER_PARSE_SYSTEM = [
   '- secrets：隐藏设定/剧情钩子（角色藏着的事，会随关系亲近逐渐解锁），每行一条、浅的在前深的在后，总共不超过 300 字',
   '',
   '规则：只依据描述本身，不补全、不脑补；描述里关于「用户/她」的内容不是角色字段，可归进 chatNotes 或 presetMemories（如「叫她小朋友」「小时候是邻居」）。',
+  `字段里的文字用她写描述时用的语言（当前界面语言：${langName(lang)}）；loveStyle 只填上面列出的选项原文。`,
   '只输出一个 JSON 对象：不要 markdown 代码块标记，不要任何其他文字。',
-].join('\n');
+  ].join('\n');
+}

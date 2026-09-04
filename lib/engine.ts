@@ -8,7 +8,7 @@
  * 取路 = 本地 key 直连 > 登录走服务端代理 > 不可用抛错；调用失败直接抛，界面把原因露出来（D-069）。
  */
 
-import { DARK_SIDE_PATTERN, DARK_SIDE_REPLY } from '@/content/characters';
+import { DARK_SIDE_PATTERN, darkSideReply } from '@/content/characters';
 import { buildChatSystemPrompt, messageContextText, OPENING_STAGE_LINE } from '@/content/prompts';
 import { stripReplyMarkers } from '@/core/markers';
 import { modes } from '@/core/modes';
@@ -141,7 +141,7 @@ export function stripStageDirections(texts: string[]): string[] {
 /** 系统层前置检查：命中暗面路由则绕过一切角色扮演 */
 export function darkSideCheck(userText: string): EngineReply | null {
   if (DARK_SIDE_PATTERN.test(userText)) {
-    return { texts: [DARK_SIDE_REPLY], darkSide: true };
+    return { texts: [darkSideReply()], darkSide: true };
   }
   return null;
 }

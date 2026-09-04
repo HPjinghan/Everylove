@@ -20,7 +20,7 @@ import {
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { DARK_SIDE_PATTERN, DARK_SIDE_REPLY } from '@/content/characters';
+import { DARK_SIDE_PATTERN, darkSideReply } from '@/content/characters';
 import { buildPostReplySystem, buildPostReplyUserPrompt } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
 import { completeText, describeAiError, splitBubbles, stripStageDirections } from '@/lib/engine';
@@ -41,7 +41,7 @@ async function generatePostReply(
   bond: Bond | undefined,
   userComment: string
 ): Promise<string> {
-  if (DARK_SIDE_PATTERN.test(userComment)) return DARK_SIDE_REPLY;
+  if (DARK_SIDE_PATTERN.test(userComment)) return darkSideReply();
   const raw = await completeText(
     buildPostReplySystem(character, bond, meForCharacter(character.id)),
     buildPostReplyUserPrompt({

@@ -4,9 +4,10 @@
  */
 
 import { appointmentAtLabel, ON_TIME_TOLERANCE_MIN } from '@/lib/appointments';
+import { getLang, type Lang } from '@/lib/i18n';
 import type { BondMemory, ChatMessage } from '@/lib/types';
 
-import { todayLine, transcript } from './shared';
+import { langName, todayLine, transcript } from './shared';
 
 /**
  * 记忆整理助手的系统指令；要求只输出 {"facts": [...], "summary": "..."}。
@@ -16,7 +17,8 @@ import { todayLine, transcript } from './shared';
  *   [答应] TA 答应过她的事
  *   [节点] 重要日期 / 关系里程碑
  */
-export const MEMORY_EXTRACT_SYSTEM = [
+export function memoryExtractSystem(lang: Lang = getLang()): string {
+  return [
   '你是恋爱互动应用里「TA」（虚构角色）的记忆整理助手。根据对话记录维护两样东西，只输出 JSON。',
   '',
   '1. facts：值得长期记住的事实，每条一句话、具体、第三人称（用「她」和 TA 的名字），不超过 40 字，并以四种前缀之一开头：',
@@ -25,6 +27,7 @@ export const MEMORY_EXTRACT_SYSTEM = [
   '   [答应] TA 答应过她的事',
   '   [节点] 重要日期（生日、纪念日）与关系里程碑',
   '   规则：',
+  `   - facts 与 summary 都用${langName(lang)}写（她用什么语言聊天，记忆就用什么语言）。`,
   '   - 把「现有 facts」和「最近对话」合并：重复的合一条，过时的更新，无关紧要的删掉；[约定] 和 [答应] 排最前，其余按重要性。最多 30 条。',
   '   - 相对时间一律换算成绝对日期（会告诉你今天的日期），例如今天是 2026-08-17 周一，那么「周五」→「2026-08-21 周五」，「下周三」→「2026-08-26 周三」。',
   '   - 只记对话里确实出现的事，不推测、不编造；她提到的其他真实人物只记「她和那个人的关系/发生了什么」，不记对那个人的评价。',
@@ -34,7 +37,8 @@ export const MEMORY_EXTRACT_SYSTEM = [
   '2. summary：把「已滑出对话窗口的更早对话」和旧 summary 合并成一段不超过 150 字的中文摘要，第三人称，只讲发生了什么、关系走到哪；没有更早对话时原样保留旧 summary（可为空字符串）。',
   '',
   '只输出 JSON，格式：{"facts": ["..."], "summary": "..."}，不要输出任何其他文字或代码块标记。',
-].join('\n');
+  ].join('\n');
+}
 
 /** 每次提取时喂给模型的内容 */
 export function buildMemoryExtractPrompt(input: {

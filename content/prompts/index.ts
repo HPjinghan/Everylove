@@ -21,12 +21,12 @@
  *   create.ts        创造描述解析
  *
  * 不在这里的：
- *   - 角色人设 persona / 追法 pursuit / 外貌 look / 人称 pronoun / 台词库 → content/characters.ts
+ *   - 角色人设 persona / 追法 pursuit / 外貌 look / 人称 pronoun / 台词库 → content/characters/（zh / en / ja 各一份，D-093）
  *   - 地点场景描写 → content/places.ts
  *   - 玩法自己的一句话提示语（卡片进上下文的那句、发出时的舞台提示）→ features/*.tsx（D-086）
  *   - 各段进哪些模式、排第几 → features/prompts.ts（core/prompt 分段表）
  *   - 模型 ID、max_tokens、图片尺寸等参数 → features/providers.ts、lib/engine.ts、lib/imagegen.ts
- *   - 暗面路由的触发词与回复 → content/characters.ts 的 DARK_SIDE_PATTERN / DARK_SIDE_REPLY
+ *   - 暗面路由的触发词与回复 → content/characters/index.ts 的 DARK_SIDE_PATTERN / darkSideReply（三语）
  *
  * 模型最终看到的整段字：tests/__snapshots__/prompts*.snap（npm test 会逐字校验）。标了「红线」的段落对应 CLAUDE.md §9，请勿删。
  */
