@@ -1,6 +1,6 @@
 /**
  * 我的身份（D-035）：TA 眼中的你。
- * - 默认身份：onboarding 时建立的那份，在这里补充完整（头像/昵称/性别/称呼/职业/取向/签名/完整设定）。
+ * - 默认身份：onboarding 时建立的那份，在这里补充完整（头像/昵称/性别/称呼/职业/取向/签名/生日/完整设定）。
  * - 按角色身份：带 characterId 参数进来 = 为这个 TA 定制一份独立身份（初值抄默认），可随时恢复默认。
  * 全部字段除昵称外可空；没填的不进 prompt（content/prompts/shared.ts 的 userProfileBlock）。
  */
@@ -192,6 +192,12 @@ export default function IdentityScreen() {
             hint={t('一句现在的状态')}
             value={draft.signature ?? ''}
             onChange={(t) => patch({ signature: t })}
+          />
+          <Field
+            label={t('生日')}
+            value={draft.birthday ?? ''}
+            onChange={(t) => patch({ birthday: t })}
+            placeholder={t('比如 05-20')}
           />
 
           <Text style={styles.sectionTitle}>{t('完整设定')}</Text>

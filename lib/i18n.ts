@@ -27,6 +27,7 @@ export function t(zh: string, vars?: Record<string, string | number>): string {
 }
 
 const en: Record<string, string> = {
+  '生日': 'Birthday',
   '偏好': 'Filter', '滑卡': 'Cards', '列表': 'Grid',
   '先不滑了，随便逛逛 →': 'Skip for now, just look around →',
 
@@ -545,6 +546,7 @@ const en: Record<string, string> = {
 };
 
 const ja: Record<string, string> = {
+  '生日': '誕生日',
   '偏好': '好み', '滑卡': 'カード', '列表': 'リスト',
   '先不滑了，随便逛逛 →': 'あとにする、まず見て回る →',
 

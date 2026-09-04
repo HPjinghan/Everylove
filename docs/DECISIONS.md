@@ -834,3 +834,23 @@
   5. 拆分用脚本按顶层声明切块、JSDoc 随声明走、原文逐字搬运（`scratchpad/split_prompts.py`，不进仓库）。
 - **推翻 / 修订**：D-017「只动这一个文件」→「只看这一个目录」，`index.ts` 头部是目录索引；D-086 的跨模式段函数删除。
 - **影响文件**：`content/prompts/*`（新 17 个）、`content/prompts.ts`（删）、`features/prompts.ts`（按模式分段）、`lib/memory.ts`、`scripts/gen-image-core.mjs`、`scripts/gen-image.mjs`、`tests/prompts-tasks.test.ts`（新）、`docs/ARCHITECTURE.md`、`CLAUDE.md`。
+
+## D-088 · 2026-09-04 · 缔结时不再问「TA 怎么称呼你」与生日：称呼 = 她在这个角色眼中的昵称，生日在建立身份时存进账户（Harper 提出）
+
+- **背景**：Harper「把契约的时候，他怎么称呼我？这个选项掉，并且我的生日这个在我创建的时候存到我的帐户里，不要在这个环节问」。
+- **决策**：
+  1. **缔结页只剩一问**：「在你的通讯录里，TA 叫——」（给 TA 起名，缺省角色名）→ 迁移仪式。称呼预设 chips、自定义称呼、生日输入全部拿掉。
+  2. **TA 对她的称呼**：`createBond` 不再收 nickname，取 `meForCharacter(characterId).nickname`（按角色定制的身份优先，其次默认身份；空则「你」）。仪式第三行「TA 给你的备注是——「昵称」」保留。角色台词库的 `nicknamePresets` 暂留（不再有界面使用）。
+  3. **生日进账户**：`UserProfile.birthday`（MM-DD）——onboarding 加一个可跳过的「生日」项，「设置 → 我的身份」可补可改；缔结时抄一份到 `Bond.birthday` 作旧存档回落。读取处（亲密 prompt 的生日行、日历「你的生日」、TA 主页）一律以身份为准、bond 回落。
+- **推翻 / 修订**：修订 D-011 的领养流「起名 / 互相称呼 / 生日」三问 → 只剩起名。
+- **影响文件**：`lib/types.ts`（UserProfile.birthday）、`store/app-store.ts`（createBond）、`app/adopt/[characterId].tsx`、`app/onboarding.tsx`、`app/apps/identity.tsx`、`app/apps/calendar.tsx`、`app/bond/[bondId].tsx`、`content/prompts/chat.ts`（birthdayLine）、`lib/i18n.ts`（生日 en/ja）。
+
+## D-089 · 2026-09-04 · 聊天 prompt 更口语更短：加「像真人打字」一行、长度收紧到 1-2 句；模型已是 deepseek-v4-pro（Harper 提出）
+
+- **背景**：Harper「现在在聊天的 Prompt，讲话不太自然，而且段落有点长，看一下用的模型是什么？如果 4.0 的话改成 4.0pro」。查证：工程默认与 `.env.local` 都是 `deepseek-v4-pro`（千帆模型 ID），无 Claude key，所以聊天走的就是 V4 Pro——模型不用换，改 prompt。
+- **决策**（只动一般对话，外出 / 通话 / 记事本不动）：
+  1. `CHAT_OUTPUT_FORMAT` 加一行：像真人在手机上打字——短句、口语、可以不完整，一句话说一件事；不排比、不堆比喻、不总结、不升华、不用书面语和成语连用；一条消息就是随手打的一两句，不写成一段话。
+  2. 长度：初识「1-2 句，每句都短」；亲密「1-3 句」→「1-2 句，每句都短」，仍可空行拆两条，两条加起来不超过三句。
+  3. 「怎么爱她」的「先接住再展开」→「先接住，再说一句自己的」，加「不替她总结」——「展开」是段落变长的源头之一。
+  4. 快照按新文本更新（6 份：初识 ×2、亲密 ×2、通话、记事本），其余 34 份不变。
+- **影响文件**：`content/prompts/chat.ts`、`tests/__snapshots__/prompts.test.ts.snap`。

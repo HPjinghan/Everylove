@@ -61,8 +61,10 @@ export default function CalendarScreen() {
       const hundred = new Date(bond.createdAt);
       hundred.setDate(hundred.getDate() + 99);
       push(dateKey(hundred), t('一百天'), 'relation');
-      if (bond.birthday) {
-        const [mm, dd] = bond.birthday.split('-').map(Number);
+      // 她的生日以身份为准（D-088），旧存档回落缔结时抄下的那份
+      const myBirthday = useAppStore.getState().me?.birthday ?? bond.birthday;
+      if (myBirthday) {
+        const [mm, dd] = myBirthday.split('-').map(Number);
         push(dateKey(new Date(ym.y, mm - 1, dd)), t('你的生日'), 'relation');
       }
       if (character?.birthday) {

@@ -112,10 +112,11 @@ interface AppState {
     msgs: ChatMessage[],
     opts?: { userTurn?: boolean; offered?: boolean; heartDelta?: number }
   ) => void;
+  /** 缔结（D-088）：TA 对她的称呼 = 她在这个角色眼中的昵称，生日抄自身份；两者不再在缔结时问 */
   createBond: (input: {
     characterId: string;
     name: string;
-    nickname: string;
+    nickname?: string;
     birthday?: string;
   }) => string;
   appendBond: (
@@ -329,8 +330,11 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      createBond: ({ characterId, name, nickname, birthday }) => {
+      createBond: ({ characterId, name, nickname: nicknameInput, birthday: birthdayInput }) => {
         const state = get();
+        const me = meForCharacter(characterId);
+        const nickname = (nicknameInput ?? me?.nickname ?? '').trim() || '你';
+        const birthday = birthdayInput ?? me?.birthday;
         const character =
           CHARACTERS.find((c) => c.id === characterId) ??
           state.customCharacters.find((c) => c.id === characterId) ??

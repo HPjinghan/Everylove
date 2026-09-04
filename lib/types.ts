@@ -104,6 +104,8 @@ export interface UserProfile {
   pronoun?: string;
   /** 职业：角色必须稳定记住 */
   occupation?: string;
+  /** 她的生日 MM-DD（D-088：建立身份时填，进日历关系层与亲密 prompt；缔结时不再问） */
+  birthday?: string;
   /** 情感取向（如「喜欢女生」） */
   orientation?: string;
   /** 个性签名：一句现在的状态 */
@@ -210,7 +212,7 @@ export interface Bond {
   name: string;
   /** 他对用户的称呼 */
   nickname: string;
-  /** 用户生日 MM-DD，可空 */
+  /** 用户生日 MM-DD（D-088 起为缔结时从她的身份抄下的快照；读取以身份为准，这里只作旧存档回落） */
   birthday?: string;
   createdAt: number;
   /** 羁绊值（XP，D-029）：等级与阶段名由 lib/bond.ts 的成长曲线推导 */

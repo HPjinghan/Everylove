@@ -1,6 +1,7 @@
 /**
  * 领养流：缔结关系的仪式（交友配对 = 交换联系方式；自创角色 = 确定关系，D-052）。
- * 槽位判定 → 起名/称呼/生日 → 迁移仪式动画 → 直接开聊（开门/推送步已随 D-046 下线）。
+ * 槽位判定 → 给 TA 起名 → 迁移仪式动画 → 直接开聊（开门/推送步已随 D-046 下线；称呼与生日不再问，D-088：
+ * TA 叫她的名字 = 她的昵称，生日在「我的身份」里）。
  * 首个羁绊免费，加槽付费（试装不开付费）——商业承重墙；自创角色同样占槽（D-052 修订 D-047）。
  */
 
@@ -21,12 +22,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharAvatar } from '@/components/char-avatar';
-import { scriptFor } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
 import { authConfigured, signedInSession } from '@/lib/auth';
 import { slotLimit, slotLimitLabel } from '@/lib/bond';
 import { t } from '@/lib/i18n';
-import { findCharacter, useAppStore } from '@/store/app-store';
+import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
 type Step = 'slot' | 'names' | 'ceremony';
 
@@ -40,16 +40,13 @@ export default function AdoptScreen() {
 
   const [step, setStep] = useState<Step>('slot');
   const [hisName, setHisName] = useState(character?.name ?? '');
-  const [nickname, setNickname] = useState('');
-  const [customNickname, setCustomNickname] = useState('');
-  const [birthday, setBirthday] = useState('');
 
   if (!character) return <Redirect href="/" />;
 
-  const script = scriptFor(character);
   // 缔结即占槽（D-052）；槽位上限随订阅计划（D-063）：free 1 / pro 5 / max 不限
   const slotFree = bonds.length < slotLimit(plan);
-  const finalNickname = (customNickname.trim() || nickname).trim();
+  // TA 叫她的名字 = 她在这个角色眼中的昵称（D-088）
+  const finalNickname = meForCharacter(character.id)?.nickname?.trim() || '你';
 
   const finish = async () => {
     // 强制登录判定（D-062）：这是不是第一次把人添加进通讯录
@@ -58,8 +55,6 @@ export default function AdoptScreen() {
     useAppStore.getState().createBond({
       characterId: character.id,
       name: hisName.trim() || character.name,
-      nickname: finalNickname || '你',
-      birthday: birthday.trim() || undefined,
     });
     if (!hadContacts && authConfigured() && !(await signedInSession())) {
       router.replace({ pathname: '/auth', params: { force: '1' } });
@@ -136,46 +131,8 @@ export default function AdoptScreen() {
               placeholderTextColor={Romance.faint}
               maxLength={12}
             />
-            <Text style={styles.h2}>{t('TA 会怎么叫你？')}</Text>
-            <View style={styles.presetRow}>
-              {script.nicknamePresets.map((p) => (
-                <Pressable
-                  key={p}
-                  style={[styles.preset, nickname === p && !customNickname && styles.presetActive]}
-                  onPress={() => {
-                    setNickname(p);
-                    setCustomNickname('');
-                  }}>
-                  <Text
-                    style={[
-                      styles.presetText,
-                      nickname === p && !customNickname && styles.presetTextActive,
-                    ]}>
-                    {p}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <TextInput
-              style={styles.input}
-              value={customNickname}
-              onChangeText={setCustomNickname}
-              placeholder={t('或者，告诉他你想被怎么叫')}
-              placeholderTextColor={Romance.faint}
-              maxLength={8}
-            />
-            <Text style={styles.h2}>{t('你的生日（可以不说）')}</Text>
-            <TextInput
-              style={styles.input}
-              value={birthday}
-              onChangeText={setBirthday}
-              placeholder={t('比如 05-20')}
-              placeholderTextColor={Romance.faint}
-              maxLength={5}
-            />
             <Pressable
-              style={[styles.primaryBtn, !finalNickname && styles.btnDisabled]}
-              disabled={!finalNickname}
+              style={styles.primaryBtn}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 setStep('ceremony');
@@ -188,7 +145,7 @@ export default function AdoptScreen() {
         {step === 'ceremony' && (
           <Ceremony
             hisName={hisName.trim() || character.name}
-            nickname={finalNickname || '你'}
+            nickname={finalNickname}
             color={character.color}
             characterId={character.id}
             custom={!!character.custom}
@@ -316,16 +273,6 @@ const styles = themed(() =>
       color: Romance.ink,
       marginTop: 10,
     },
-    presetRow: { flexDirection: 'row', gap: 8 },
-    preset: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 18,
-      paddingHorizontal: 16,
-      paddingVertical: 9,
-    },
-    presetActive: { backgroundColor: Romance.accent },
-    presetText: { fontSize: 14, color: Romance.sub },
-    presetTextActive: { color: '#fff', fontWeight: '600' },
     primaryBtn: {
       backgroundColor: Romance.accent,
       borderRadius: 26,
@@ -334,7 +281,6 @@ const styles = themed(() =>
       marginTop: 28,
       alignSelf: 'center',
     },
-    btnDisabled: { opacity: 0.4 },
     primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
     secondaryBtn: {
       backgroundColor: Romance.line,

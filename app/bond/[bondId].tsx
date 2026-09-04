@@ -31,7 +31,7 @@ import { bondScope, sendImage, sendText, sendVoice } from '@/lib/chat';
 import { daysTogether } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { levelInfo } from '@/lib/bond';
-import { findCharacter, useAppStore } from '@/store/app-store';
+import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
 export default function BondScreen() {
   const { bondId } = useLocalSearchParams<{ bondId: string }>();
@@ -56,6 +56,7 @@ export default function BondScreen() {
 
   const scope = bondScope(bond.id);
   const ui = { typing: setTyping };
+  const myBirthday = meForCharacter(character.id)?.birthday ?? bond.birthday;
 
   const onSend = (text: string, replyTo?: ReplyRef) => void sendText(scope, text, { replyTo, ui });
   const onSendVoice = (uri: string, durationMs: number) => void sendVoice(scope, uri, durationMs, ui);
@@ -198,10 +199,10 @@ export default function BondScreen() {
                 {new Date(bond.createdAt).toLocaleDateString('zh-CN')} {t('交换联系方式')}
               </Text>
             </View>
-            {bond.birthday && (
+            {myBirthday && (
               <View style={styles.profileRow}>
                 <Text style={styles.profileRowLabel}>{t('你的生日')}</Text>
-                <Text style={styles.profileRowValue}>{bond.birthday}</Text>
+                <Text style={styles.profileRowValue}>{myBirthday}</Text>
               </View>
             )}
             {characterSecrets(character).length > 0 && (

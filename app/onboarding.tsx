@@ -1,7 +1,7 @@
 /**
  * Onboarding（D-035；D-080 并成一步）：语言 →「先让 TA 们认识你」。
  * 昵称与「更倾向于和什么样的人建立关系」必填（后者既是全性向声明，也是交友推荐的口味过滤，原独立一步「你想被谁爱？」并入此处）；
- * 其余（性别/称呼/职业）都可跳过，完整设定稍后在 设置 → 我的身份 里补充，也能为单个角色使用不同身份。
+ * 其余（性别/称呼/职业/生日）都可跳过，完整设定稍后在 设置 → 我的身份 里补充，也能为单个角色使用不同身份。
  */
 
 import { useRouter } from 'expo-router';
@@ -54,6 +54,7 @@ export default function OnboardingScreen() {
   const [gender, setGender] = useState<NonNullable<UserProfile['gender']>>('unspecified');
   const [pronoun, setPronoun] = useState('');
   const [occupation, setOccupation] = useState('');
+  const [birthday, setBirthday] = useState('');
 
   if (step === 'lang') {
     return (
@@ -86,6 +87,7 @@ export default function OnboardingScreen() {
       gender,
       pronoun: pronoun.trim() || undefined,
       occupation: occupation.trim() || undefined,
+      birthday: birthday.trim() || undefined,
     });
     useAppStore.getState().completeOnboarding(pref);
     router.replace('/');
@@ -171,6 +173,18 @@ export default function OnboardingScreen() {
             placeholder={t('可不填')}
             placeholderTextColor={Romance.faint}
             maxLength={20}
+          />
+        </View>
+
+        <View style={styles.meField}>
+          <Text style={styles.meLabel}>{t('生日')}</Text>
+          <TextInput
+            style={styles.meInput}
+            value={birthday}
+            onChangeText={setBirthday}
+            placeholder={t('比如 05-20')}
+            placeholderTextColor={Romance.faint}
+            maxLength={5}
           />
         </View>
 
