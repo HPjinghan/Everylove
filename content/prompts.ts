@@ -630,11 +630,11 @@ export const OUTING_OPENERS: Record<'date' | 'dateLate' | 'encounter' | 'strange
 };
 
 /** 分发器：引擎只调这一个 */
-export function buildChatSystemPrompt(ctx: EngineContext): string {
+export function buildChatSystemPrompt(ctx: EngineContext, now: Date = new Date()): string {
   if (ctx.mode === 'square') return buildSquareSystemPrompt(ctx);
-  if (ctx.mode === 'outing') return buildOutingSystemPrompt(ctx);
-  if (ctx.mode === 'call') return buildCallSystemPrompt(ctx);
-  return buildBondedSystemPrompt(ctx);
+  if (ctx.mode === 'outing') return buildOutingSystemPrompt(ctx, now);
+  if (ctx.mode === 'call') return buildCallSystemPrompt(ctx, now);
+  return buildBondedSystemPrompt(ctx, now);
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
