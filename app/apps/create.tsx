@@ -11,8 +11,8 @@
 
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -30,6 +30,7 @@ import {
 
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
+import { showToast } from '@/components/toast';
 import { BLOCKED_NAME_PATTERN, LOVE_STYLES, loveStyleByLabel, RACES } from '@/content/characters';
 import { characterParseSystem, DEFAULT_PORTRAIT_STYLE, PORTRAIT_STYLES } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
@@ -37,9 +38,10 @@ import { authConfigured, signedInSession } from '@/lib/auth';
 import { getLang, t } from '@/lib/i18n';
 import { completeText, describeAiError } from '@/lib/engine';
 import { uid } from '@/lib/format';
+import { generateCharacterLines } from '@/lib/character-lines';
 import { generatePortraitFor, imageKeyReady } from '@/lib/imagegen';
 import { publishCharacter, unpublishCharacter } from '@/lib/pool';
-import type { Character } from '@/lib/types';
+import type { Character, CharacterLines } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
 /** 描述导入的最大长度（D-043） */
@@ -120,6 +122,26 @@ const MBTI_LIST = [
   'ISTP', 'ISFP', 'ESTP', 'ESFP',
 ];
 
+const EMPTY_LINES: CharacterLines = { opening: [], offer: [], arrival: [] };
+
+/** 一组台词：一行一条（D-094） */
+function LinesField({ label, value, onChange }: { label: string; value: string[]; onChange: (v: string[]) => void }) {
+  return (
+    <View>
+      <Text style={styles.linesLabel}>{label}</Text>
+      <TextInput
+        style={[styles.input, styles.inputMultiline]}
+        value={value.join('\n')}
+        onChangeText={(text) => onChange(text.split('\n'))}
+        placeholder={t('可不填')}
+        placeholderTextColor={Romance.faint}
+        multiline
+        maxLength={400}
+      />
+    </View>
+  );
+}
+
 function Chip({
   label,
   active,
@@ -138,6 +160,8 @@ function Chip({
 
 export default function CreateScreen() {
   const router = useRouter();
+  // 从「我创建的」列表页带 edit=<id> 进来 → 回填表单（D-095）
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
   const customs = useAppStore((s) => s.customCharacters);
 
   // ── 编辑已创建的（D-050） ──
@@ -159,6 +183,10 @@ export default function CreateScreen() {
   const [palette, setPalette] = useState(0);
   const [portraitUri, setPortraitUri] = useState<string | undefined>();
   const [generating, setGenerating] = useState(false);
+  // TA 的台词（D-094）：发布时模型写一次；编辑已创建的角色时可改、可让 TA 重写
+  const [lines, setLines] = useState<CharacterLines | null>(null);
+  const [linesBusy, setLinesBusy] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   // 立绘画风（D-076）：注入生图 prompt 第一行；动漫走蒸汽机、其余走 Qwen
   const [artStyle, setArtStyle] = useState<(typeof PORTRAIT_STYLES)[number]['id']>(DEFAULT_PORTRAIT_STYLE);
 
@@ -279,6 +307,7 @@ export default function CreateScreen() {
       id,
       // 自创角色带创建时的界面语言（D-093）：共享池只发给同语言用户，兜底脚本也按它取
       lang: getLang(),
+      lines: lines ?? undefined,
       name: name.trim(),
       archetype: style?.archetype ?? 'gentle',
       loveTag: gender === 'nonbinary' ? 'nonbinary' : gender,
@@ -390,6 +419,12 @@ export default function CreateScreen() {
     const id = uid('c');
     let character = draftCharacter(id);
     if (!character) return;
+    // TA 的台词（D-094）：按人设写一次；写不成先用原型兜底，之后可在「我创建的」里让 TA 重写
+    setPublishing(true);
+    const written = await generateCharacterLines(character);
+    setPublishing(false);
+    if (written) character = { ...character, lines: written };
+    else showToast(t('台词先用通用版，可在「我创建的」里改'));
     // 强制登录判定（D-062）：这是不是第一次把人添加进通讯录
     const s = useAppStore.getState();
     const hadContacts = s.bonds.length > 0 || s.customCharacters.some((c) => !c.shared);
@@ -421,7 +456,19 @@ export default function CreateScreen() {
     setBirthMonth(null); setBirthDay(null); setCatchphrase('');
     setLikes(''); setDislikes(''); setOfferTurns(4); setLoveStyle(undefined);
     setMbti(undefined); setInitiative('mid'); setPresetMemories(''); setTaboos(''); setSecrets('');
-    setChatNotes(''); setSchedule(''); setAdvancedOpen(false);
+    setChatNotes(''); setSchedule(''); setAdvancedOpen(false); setLines(null);
+  };
+
+  /** 编辑时让 TA 按当前表单重写一遍台词（D-094）；写不成保留原来的 */
+  const rewriteLines = async () => {
+    if (linesBusy) return;
+    const draft = draftCharacter(editing?.id ?? 'draft');
+    if (!draft) return;
+    setLinesBusy(true);
+    const written = await generateCharacterLines({ ...draft, lines: undefined });
+    setLinesBusy(false);
+    if (written) setLines(written);
+    else showToast(t('没写成，先保留原来的'));
   };
 
   /** 编辑已创建的角色（D-050）：全部字段回填进表单 */
@@ -463,6 +510,7 @@ export default function CreateScreen() {
     setSecrets(c.secrets ?? '');
     setChatNotes(c.chatNotes ?? '');
     setSchedule(c.schedule ?? '');
+    setLines(c.lines ?? null);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setAdvancedOpen(true);
   };
@@ -471,6 +519,14 @@ export default function CreateScreen() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setAdvancedOpen((v) => !v);
   };
+
+  const mineCount = customs.filter((c) => !c.shared).length;
+
+  useEffect(() => {
+    if (!edit) return;
+    const c = useAppStore.getState().customCharacters.find((x) => x.id === edit && !x.shared);
+    if (c) loadForEdit(c);
+  }, [edit]);
 
   return (
     <AppScreen title={t("创造")}>
@@ -483,26 +539,15 @@ export default function CreateScreen() {
           keyboardShouldPersistTaps="handled">
           <Text style={styles.subtitle}>{t('创造一个只属于你的 TA')}</Text>
 
-          {/* ───────── 我创建的（D-050）：点编辑回填表单 ───────── */}
-          {customs.filter((c) => !c.shared).length > 0 && (
-            <View>
-              <Text style={styles.step}>{t('我创建的')}（{customs.filter((c) => !c.shared).length}）</Text>
-              {customs.filter((c) => !c.shared).map((c) => (
-                <View key={c.id} style={styles.mineRow}>
-                  <CharAvatar name={c.name} color={c.color} size={40} characterId={c.id} />
-                  <View style={styles.mineText}>
-                    <Text style={styles.mineName}>{c.name}</Text>
-                    <Text style={styles.mineSub} numberOfLines={1}>
-                      {c.visibility === 'public' ? t('公开') : t('私密')} · {c.identity}
-                    </Text>
-                  </View>
-                  <Pressable style={styles.mineEditBtn} onPress={() => loadForEdit(c)}>
-                    <Text style={styles.mineEditText}>{t('编辑')}</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          )}
+          {/* 我创建的（D-095）：列表搬去独立页面，这里只留一行入口 */}
+          {mineCount > 0 && !editing ? (
+            <Pressable style={styles.mineRow} onPress={() => router.push('/apps/my-characters' as never)}>
+              <Text style={styles.mineName}>
+                {t('我创建的')}（{mineCount}）
+              </Text>
+              <Text style={styles.mineEditText}>{t('查看')} ›</Text>
+            </Pressable>
+          ) : null}
           {editing ? (
             <View style={styles.editingBanner}>
               <Text style={styles.editingText}>{t('正在编辑「{name}」——改完点底部保存', { name: editing.name })}</Text>
@@ -870,6 +915,59 @@ export default function CreateScreen() {
             </View>
           ) : null}
 
+          {/* TA 的台词（D-094）：只在编辑已创建的角色时显示——发布时模型已写好一份，这里可逐条改、可让 TA 重写 */}
+          {editing ? (
+            <View>
+              <Text style={styles.step}>{t('TA 的台词')}</Text>
+              <Text style={styles.stepHint}>{t('每行一条')}</Text>
+              <LinesField
+                label={t('开场白')}
+                value={lines?.opening ?? []}
+                onChange={(v) => setLines({ ...(lines ?? EMPTY_LINES), opening: v })}
+              />
+              <LinesField
+                label={t('想确定关系时')}
+                value={lines?.offer ?? []}
+                onChange={(v) => setLines({ ...(lines ?? EMPTY_LINES), offer: v })}
+              />
+              <LinesField
+                label={t('确定关系后的第一句')}
+                value={lines?.arrival ?? []}
+                onChange={(v) => setLines({ ...(lines ?? EMPTY_LINES), arrival: v })}
+              />
+              <Text style={styles.linesLabel}>{t('一句话人设')}</Text>
+              <TextInput
+                style={[styles.input, styles.inputMultiline]}
+                value={lines?.persona ?? ''}
+                onChangeText={(v) => setLines({ ...(lines ?? EMPTY_LINES), persona: v })}
+                placeholder={t('可不填')}
+                placeholderTextColor={Romance.faint}
+                multiline
+                maxLength={120}
+              />
+              <Text style={styles.linesLabel}>{t('追法')}</Text>
+              <TextInput
+                style={[styles.input, styles.inputMultiline]}
+                value={lines?.pursuit ?? ''}
+                onChangeText={(v) => setLines({ ...(lines ?? EMPTY_LINES), pursuit: v })}
+                placeholder={t('可不填')}
+                placeholderTextColor={Romance.faint}
+                multiline
+                maxLength={160}
+              />
+              <Pressable style={[styles.secondaryBtn, linesBusy && styles.btnDisabled]} disabled={linesBusy} onPress={rewriteLines}>
+                {linesBusy ? (
+                  <View style={styles.btnRow}>
+                    <ActivityIndicator color={Romance.accent} />
+                    <Text style={styles.secondaryBtnText}>{t('正在写…')}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.secondaryBtnText}>{t('让 TA 重新写一遍')}</Text>
+                )}
+              </Pressable>
+            </View>
+          ) : null}
+
           {/* 预览 + 醒来 */}
           {name.trim() ? (
             <View style={styles.previewCard}>
@@ -886,17 +984,19 @@ export default function CreateScreen() {
           ) : null}
 
           <Pressable
-            style={[styles.primaryBtn, (!name.trim() || !portraitUri || ageStatus === 'minor') && styles.btnDisabled]}
-            disabled={!name.trim() || !portraitUri || ageStatus === 'minor'}
+            style={[styles.primaryBtn, (!name.trim() || !portraitUri || ageStatus === 'minor' || publishing) && styles.btnDisabled]}
+            disabled={!name.trim() || !portraitUri || ageStatus === 'minor' || publishing}
             onPress={submit}>
             <Text style={styles.primaryBtnText}>
-              {ageStatus === 'minor'
-                ? t('未成年角色暂不能发布')
-                : !portraitUri
-                  ? t('先给 TA 一个形象')
-                  : editing
-                    ? t('保存修改')
-                    : t('让 TA 醒来')}
+              {publishing
+                ? t('正在给 TA 写台词…')
+                : ageStatus === 'minor'
+                  ? t('未成年角色暂不能发布')
+                  : !portraitUri
+                    ? t('先给 TA 一个形象')
+                    : editing
+                      ? t('保存修改')
+                      : t('让 TA 醒来')}
             </Text>
           </Pressable>
           <Text style={styles.footnote}>{t('不能创造真人与 IP 角色 · 发布即默认同意创作规范')}</Text>
@@ -963,6 +1063,7 @@ const styles = themed(() =>
       color: Romance.ink,
     },
     inputMultiline: { minHeight: 68, textAlignVertical: 'top' },
+    linesLabel: { fontSize: 13, fontWeight: '600', color: Romance.ink, marginTop: 12, marginBottom: 6 },
     inputStory: { minHeight: 100, textAlignVertical: 'top' },
     inputDesc: { minHeight: 130, textAlignVertical: 'top' },
     descFoot: {
@@ -1041,9 +1142,11 @@ const styles = themed(() =>
     pickerRowActive: { color: Romance.accent, fontWeight: '700' },
     portraitBtnRow: { flexDirection: 'row', gap: 10 },
     portraitBtn: { flex: 1 },
+    // 入口行（D-095）：左「我创建的（N）」右「查看 ›」
     mineRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
       gap: 10,
       backgroundColor: '#FFFFFF',
       borderRadius: 18,

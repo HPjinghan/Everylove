@@ -27,6 +27,8 @@ export function t(zh: string, vars?: Record<string, string | number>): string {
 }
 
 const en: Record<string, string> = {
+  '查看': 'View', '还没有创造过 TA': "You haven't created anyone yet", '去创造一个': 'Create one', '已缔结': 'Bonded',
+  'TA 的台词': 'Their lines', '每行一条': 'One per line', '开场白': 'Opening lines', '想确定关系时': 'When asking to make it official', '确定关系后的第一句': 'First messages after it\'s official', '一句话人设': 'Who they are, in one line', '追法': 'How they pursue', '让 TA 重新写一遍': 'Have them rewrite', '正在写…': 'Writing…', '正在给 TA 写台词…': 'Writing their lines…', '台词先用通用版，可在「我创建的」里改': 'Using default lines for now; edit them under "My creations"', '没写成，先保留原来的': "Couldn't write them; keeping the current ones",
   '⑦ TA 的形象 *': '⑦ Their look *', '上传一张图，或生成立绘。不能上传真人照片。': 'Upload an image or generate a portrait. No photos of real people.', '先给 TA 一个形象': 'Give them a look first',
   '生日': 'Birthday',
   '偏好': 'Filter', '滑卡': 'Cards', '列表': 'Grid',
@@ -547,6 +549,8 @@ const en: Record<string, string> = {
 };
 
 const ja: Record<string, string> = {
+  '查看': '見る', '还没有创造过 TA': 'まだ誰も作っていません', '去创造一个': '作ってみる', '已缔结': '契約済み',
+  'TA 的台词': 'セリフ', '每行一条': '1行に1つ', '开场白': '最初のひとこと', '想确定关系时': '関係をはっきりさせたいとき', '确定关系后的第一句': '関係が決まった後の最初のメッセージ', '一句话人设': 'ひとことで人物像', '追法': '距離の詰め方', '让 TA 重新写一遍': '書き直してもらう', '正在写…': '書いています…', '正在给 TA 写台词…': 'セリフを書いています…', '台词先用通用版，可在「我创建的」里改': 'ひとまず共通のセリフを使います。「作ったキャラ」から編集できます', '没写成，先保留原来的': '書けませんでした。今のままにします',
   '⑦ TA 的形象 *': '⑦ 見た目 *', '上传一张图，或生成立绘。不能上传真人照片。': '画像をアップするか、立ち絵を生成してください。実在の人物の写真は使えません。', '先给 TA 一个形象': 'まず見た目を決めて',
   '生日': '誕生日',
   '偏好': '好み', '滑卡': 'カード', '列表': 'リスト',

@@ -81,10 +81,28 @@ export function langOf(c: Pick<Character, 'lang'>): Lang {
   return c.lang ?? getLang();
 }
 
-/** 取角色脚本：种子角色用自己语言的专属脚本，自创角色回落该语言的原型兜底 */
+const nonEmpty = (v: string[] | undefined) => (v ?? []).map((s) => s.trim()).filter(Boolean);
+
+/**
+ * 取角色脚本：种子角色用自己语言的专属脚本；自创角色用 TA 自己的台词（D-094，发布时模型写 / 创作者改），
+ * 没有或某一组为空的，回落该语言的原型兜底。
+ */
 export function scriptFor(c: Character): CharacterScript {
   const pack = PACKS[langOf(c)];
-  return pack.CHAR_SCRIPTS[c.id] ?? pack.ARCHETYPE_DEFAULTS[c.archetype === 'nonhuman' ? 'gentle' : c.archetype];
+  const base = pack.CHAR_SCRIPTS[c.id] ?? pack.ARCHETYPE_DEFAULTS[c.archetype === 'nonhuman' ? 'gentle' : c.archetype];
+  const own = c.lines;
+  if (!own) return base;
+  const opening = nonEmpty(own.opening);
+  const offer = nonEmpty(own.offer);
+  const arrival = nonEmpty(own.arrival);
+  return {
+    ...base,
+    opening: opening.length ? opening : base.opening,
+    offer: offer.length ? offer : base.offer,
+    arrival: arrival.length ? arrival.map((text) => ({ text })) : base.arrival,
+    persona: own.persona?.trim() || base.persona,
+    pursuit: own.pursuit?.trim() || base.pursuit,
+  };
 }
 
 /** 广场公开动态的种子（全部语言；X 只显示已缔结 TA 的时间线，多出来的不会露出） */

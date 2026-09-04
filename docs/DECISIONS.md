@@ -897,3 +897,19 @@
   5. 快照：中文的记忆提取 / 解析 / 约定三份因加了语言行而更新；新增英文 / 日文快照与 `tests/localization.test.ts`（分发、脚本、兜底、暗面路由、心跳、开场白）。
 - **未做 / 待办**：内容是 Claude 初稿，女性向文案需要写手润色（OPEN_QUESTIONS #23 更新）；语音音色（百度只有中英）与日语 ASR 仍见 #25；地点名与钩子走 UI 词典（已三语），地点场景描写进 prompt 仍是中文（指令语言，按 D-066 口径不动）。
 - **影响文件**：`content/characters/{types,index,zh,en,ja}.ts`（新）、`content/characters.ts`（删）、`content/portraits.ts`、`content/prompts/{shared,memory,caption,create,appointment,heartbeat,outing,index}.ts`、`lib/types.ts`、`lib/engine.ts`、`lib/memory.ts`、`lib/media.ts`、`lib/pool.ts`、`store/app-store.ts`、`app/apps/{dating,create,moments}.tsx`、`app/outing/[placeId].tsx`、`tests/*`。
+
+## D-094 · 2026-09-04 · 自创角色的台词：发布时模型按人设写一次（开场白 / 想确定关系时 / 确定关系后的前三条 / 一句人设 / 追法），「我创建的 → 编辑」可改可重写（Harper 提出）
+
+- **背景**：Harper 问「开场白、台词样本、要联系方式的三句、缔结后打招呼的三条，用户创建的是不是就没有了」——此前自创角色走原型兜底，三个上屏处说的都是按恋爱类型归到温柔 / 毒舌 / 霸总的模板话，与人设不搭且同原型千人一面。Harper：「多调一次，然后在角色后期的设置页，这些都支持创作者修改」。
+- **决策**：
+  1. `Character.lines`（`CharacterLines`：opening / offer / arrival 三组 + persona / pursuit 两句）。`scriptFor` 逐项用它覆盖原型兜底，某组为空仍回落。种子角色不变。
+  2. **发布时写一次**：`lib/character-lines.ts` 的 `generateCharacterLines`——按角色卡（`buildCharacterLinesUser`）+ 台词写手指令（`characterLinesSystem`，用角色自己的语言，D-093）调一次 `completeText`，解析 JSON、剥（）舞台提示、截长、限条数；三组缺一组算失败。发布按钮期间显示「正在给 TA 写台词…」；写不成（AI 不可用 / 解析失败）不卡发布，轻提示「台词先用通用版，可在『我创建的』里改」。
+  3. **编辑页可改**：「我创建的 → 编辑」多一段「TA 的台词」——三组各一个多行框（一行一条）、一句话人设、追法，另有「让 TA 重新写一遍」按当前表单重写。保存走 `updateCustomCharacter`，公开角色随共享池上传。
+  4. 台词样本（初识 / 亲密的【你的声音】）仍不给自创角色（D-025 口径）；persona / pursuit 生成后进 prompt 的【你是谁】【你的追法】，比原型通用句更贴人设。
+- **影响文件**：`lib/types.ts`、`content/characters/index.ts`（scriptFor）、`content/prompts/create.ts`、`lib/character-lines.ts`（新）、`app/apps/create.tsx`、`lib/i18n.ts`、`tests/character-lines.test.ts`（新）、`tests/prompts-tasks.test.ts`。
+
+## D-095 · 2026-09-04 · 「我创建的」从创造页顶部搬出：独立列表页 + 创造页一行入口，编辑带参数回填（Harper 提出）
+
+- **背景**：Harper「『我创建的 → 编辑』这一步 UI 也要改，不要现在那样所有我创建的都放在最上面，多了会不好看」。
+- **决策**：新页 `app/apps/my-characters.tsx`（AppScreen「我创建的」）：每行立绘头像、名字、身份、状态标签（心动中 / 已缔结）、公开 / 私密、「编辑」；空态给「去创造一个」。入口两处——创造页顶部一行「我创建的（N） 查看 ›」（编辑中不显示）、设置 → 我的创作 → 创造的角色。「编辑」= `router.push('/apps/create?edit=<id>')`，创造页读参数回填（D-050 全部字段 + D-094 台词）。
+- **影响文件**：`app/apps/my-characters.tsx`（新）、`app/apps/create.tsx`、`app/apps/settings.tsx`、`lib/i18n.ts`。

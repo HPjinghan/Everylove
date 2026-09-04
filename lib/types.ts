@@ -88,6 +88,22 @@ export interface Character {
   shared?: boolean;
   /** 角色的语言（D-093）：种子角色各语言一份、只分发给该语言用户；自创角色 = 创建时的界面语言；缺省按当前界面语言 */
   lang?: 'zh' | 'en' | 'ja';
+  /** TA 自己的台词（D-094）：发布时模型按人设写一次，创作者可改；没有则回落原型兜底（content/characters scriptFor） */
+  lines?: CharacterLines;
+}
+
+/** 自创角色的台词（D-094）：三组会上屏的话 + 进 prompt 的一句人设与追法 */
+export interface CharacterLines {
+  /** 开场白：她第一次点开对话时 TA 先说的 */
+  opening: string[];
+  /** 心动满了、想和她确定关系时说的话（递进三条） */
+  offer: string[];
+  /** 确定关系后 TA 发来的前几条 */
+  arrival: string[];
+  /** 一句话「TA 是谁」（进 prompt 的【你是谁】） */
+  persona?: string;
+  /** 一句话「TA 怎么追人」（进 prompt 的【你的追法】） */
+  pursuit?: string;
 }
 
 /**

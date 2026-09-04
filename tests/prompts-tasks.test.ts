@@ -10,6 +10,7 @@ import {
   APPOINTMENT_EXTRACT_SYSTEM,
   buildAppointmentExtractPrompt,
   buildCharacterPostSystem,
+  buildCharacterLinesUser,
   buildCharacterPostUserPrompt,
   buildMemoryExtractPrompt,
   buildOutingPhotoPrompt,
@@ -17,6 +18,7 @@ import {
   buildPortraitPrompt,
   buildPostReplySystem,
   buildPostReplyUserPrompt,
+  characterLinesSystem,
   characterParseSystem,
   heartbeatLine,
   imageCaptionSystem,
@@ -138,5 +140,10 @@ describe('心跳与创造', () => {
   it('创造描述解析（中 / 英）', () => {
     expect(characterParseSystem('zh')).toMatchSnapshot();
     expect(characterParseSystem('en')).toMatchSnapshot();
+  });
+  it('TA 的台词（中 / 日）+ 角色卡', () => {
+    expect(characterLinesSystem('zh')).toMatchSnapshot();
+    expect(characterLinesSystem('ja')).toMatchSnapshot();
+    expect(buildCharacterLinesUser(custom)).toMatchSnapshot();
   });
 });

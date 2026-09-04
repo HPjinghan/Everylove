@@ -310,7 +310,7 @@ export default function MeScreen() {
       </Section>
 
       <Section title={t("我的创作")}>
-        <Row label={t("创造的角色")} value={`${customs.filter((c) => !c.shared).length}`} />
+        <Row label={t("创造的角色")} value={`${customs.filter((c) => !c.shared).length}`} onPress={() => router.push('/apps/my-characters' as never)} />
         <Row label={t("热度 · 分成")} value={t("敬请期待")} dim />
       </Section>
 
