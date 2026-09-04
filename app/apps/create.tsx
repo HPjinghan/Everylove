@@ -33,7 +33,7 @@ import { CharAvatar } from '@/components/char-avatar';
 import { BLOCKED_NAME_PATTERN, LOVE_STYLES, loveStyleByLabel, RACES } from '@/content/characters';
 import { CHARACTER_PARSE_SYSTEM, DEFAULT_PORTRAIT_STYLE, PORTRAIT_STYLES } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
-import { authConfigured, currentSession } from '@/lib/auth';
+import { authConfigured, signedInSession } from '@/lib/auth';
 import { t } from '@/lib/i18n';
 import { completeText, describeAiError } from '@/lib/engine';
 import { uid } from '@/lib/format';
@@ -399,7 +399,7 @@ export default function CreateScreen() {
     // 心动满 100 TA 才会想确定关系，那时才占槽、才开始羁绊等级
     useAppStore.getState().ensureSquareChat(id);
     resetForm();
-    if (!hadContacts && authConfigured() && !(await currentSession())) {
+    if (!hadContacts && authConfigured() && !(await signedInSession())) {
       // 首次入册 → 强制登录（D-062）：TA 值得一个存得住的家
       router.replace({ pathname: '/auth', params: { force: '1' } });
       return;

@@ -1,6 +1,6 @@
 # 发包手册（TestFlight / Expo Go 试装）
 
-两条分发通道（D-059 / D-085）：
+两条分发通道（D-059 / D-087）：
 
 | 通道 | 给谁 | 命令 | 渠道 |
 |---|---|---|---|
@@ -29,6 +29,7 @@
 - EAS 已存：第二个 Team 的 Distribution Certificate + Provisioning Profile、**App Store Connect API Key**（以后 submit 不再登录 Apple）。推送密钥**没有生成**（本机通知用不着，做远程推送时 `eas credentials` 补，不用重新 build）。
 - App Store Connect 的 App 记录是**手动建的**（名称「全自动恋爱」、SKU `everylove`），**用户访问权限 = 限制访问**——只有名单里的人和 管理/财务/报告 职能能看到。
 - EAS production 环境变量：`EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY`；Supabase Apple provider 的 Client IDs 已加 `com.kotoko.everylove`。
+- Supabase Auth 已开 **Anonymous sign-ins**（D-088）：分发包没本地 key，游客靠匿名会话走服务端代理；关掉它 = 没登录的人聊不了。
 - 出口合规已在 app.json 预答（`ITSAppUsesNonExemptEncryption=false`），TestFlight 里不会再弹「缺少合规证明」。
 
 ## 1. 构建（每次发包）
@@ -59,6 +60,14 @@ npx eas-cli submit -p ios --latest --profile production
 
 ## 3. 之后改动怎么发
 
-- **只改了 JS / 文案 / 资源**：`npx eas-cli update --channel production --message "..."`，TestFlight 包下次冷启动拿到。
+- **只改了 JS / 文案 / 资源**：热更，TestFlight 包下次冷启动拿到。**必须置空 AI key 再打包**（`expo export` 会读 `.env.local`），并在发布前 grep 校验，Git Bash 里：
+
+  ```bash
+  EXPO_PUBLIC_ANTHROPIC_API_KEY= EXPO_PUBLIC_QIANFAN_API_KEY= EXPO_PUBLIC_SPEECH_API_KEY= npx expo export --platform ios
+  grep -l "bce-v3|sk-ant-" dist/_expo/static/js/ios/*.js && echo "有 key 泄漏，别发！" || echo "干净"
+  npx eas-cli@latest update --channel production --platform ios --skip-bundler --message "..."
+  ```
+
+  Expo Go 朋友那条同理，把 `--channel production` 换成 `--channel preview`。
 - **动了 `app.json` 插件、原生依赖（新的 expo-* 原生模块、react-native-maps 之类）、SDK**：必须重新 `build` + `submit`，**不要**只推 update（runtimeVersion 用的是 sdkVersion 策略，同 runtime 的旧包会拿到不兼容的 JS）。
 - 朋友的 Expo Go 试装照旧 `--channel preview`，两个渠道互不影响。

@@ -16,7 +16,7 @@ import { CHARACTERS } from '@/content/characters';
 import { aiRouteSync, engineLabel } from '@/lib/engine';
 import { ensurePortrait, imageKeyReady } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
-import { authConfigured, currentSession, onAuthChange, sessionLabel, signOut } from '@/lib/auth';
+import { authConfigured, isSignedIn, onAuthChange, sessionLabel, signedInSession, signOut } from '@/lib/auth';
 import { t } from '@/lib/i18n';
 import { slotLimitLabel } from '@/lib/bond';
 import { deleteCloudData, restoreSnapshot, uploadSnapshot } from '@/lib/sync';
@@ -151,8 +151,8 @@ export default function MeScreen() {
 
   useEffect(() => {
     if (!authConfigured()) return;
-    currentSession().then(setSession);
-    return onAuthChange(setSession);
+    signedInSession().then(setSession);
+    return onAuthChange((s) => setSession(isSignedIn(s) ? s : null));
   }, []);
 
   const doBackupNow = async () => {

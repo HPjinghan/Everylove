@@ -5,7 +5,7 @@
  * - 审核暂缺：Harper 后续接平台（发布仍过本地真人/IP 拦截，红线 #1/#4 的最低线）
  */
 
-import { authConfigured, currentSession, getSupabase } from '@/lib/auth';
+import { authConfigured, currentSession, getSupabase, signedInSession } from '@/lib/auth';
 import type { Character } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
@@ -39,7 +39,7 @@ export async function refreshSharedPool(force = false): Promise<void> {
 /** 发布/更新一个公开角色；未登录或失败返回 false */
 export async function publishCharacter(c: Character): Promise<boolean> {
   const sb = getSupabase();
-  const session = await currentSession();
+  const session = await signedInSession();
   if (!sb || !session) return false;
   const { error } = await sb.from('shared_characters').upsert({
     id: c.id,
@@ -57,7 +57,7 @@ export async function publishCharacter(c: Character): Promise<boolean> {
 /** 转私密/删除：从共享池撤下 */
 export async function unpublishCharacter(id: string): Promise<boolean> {
   const sb = getSupabase();
-  if (!sb || !(await currentSession())) return false;
+  if (!sb || !(await signedInSession())) return false;
   const { error } = await sb.from('shared_characters').delete().eq('id', id);
   return !error;
 }

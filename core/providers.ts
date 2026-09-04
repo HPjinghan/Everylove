@@ -66,7 +66,7 @@ export async function chatRoute(p: ChatProvider = currentChatProvider()): Promis
 /** 没有任何可用取路时抛出：界面直接把原因露出来（D-069） */
 export class AiUnavailableError extends Error {
   constructor() {
-    super(t('未配置 AI：.env.local 没有 key，也未登录（服务端代理不可用）'));
+    super(t('未配置 AI：.env.local 没有 key，服务端代理也没连上'));
     this.name = 'AiUnavailableError';
   }
 }

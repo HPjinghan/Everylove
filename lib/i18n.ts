@@ -377,7 +377,7 @@ const en: Record<string, string> = {
   '{n} 小时前': '{n}h ago',
   '{n} 天前': '{n}d ago',
   // AI 取路与失败露出（D-069）
-  '未配置 AI：.env.local 没有 key，也未登录（服务端代理不可用）': 'AI not configured: no key in .env.local and not signed in (server proxy unavailable)',
+  '未配置 AI：.env.local 没有 key，服务端代理也没连上': 'AI not configured: no key in .env.local and the server proxy could not be reached',
   '模型调用失败，TA 这条没回上：{reason}': 'Model call failed, no reply to this one: {reason}',
   'TA 这条没回上': 'No reply this time',
   '模型调用失败：{reason}': 'Model call failed: {reason}',
@@ -895,7 +895,7 @@ const ja: Record<string, string> = {
   '{n} 小时前': '{n}時間前',
   '{n} 天前': '{n}日前',
   // AI 取路与失败露出（D-069）
-  '未配置 AI：.env.local 没有 key，也未登录（服务端代理不可用）': 'AI未設定：.env.localにkeyがなく、ログインもしていません（サーバー経由は利用不可）',
+  '未配置 AI：.env.local 没有 key，服务端代理也没连上': 'AI未設定：.env.localにkeyがなく、サーバー経由にも接続できません',
   '模型调用失败，TA 这条没回上：{reason}': 'モデル呼び出しに失敗、この返事は届きませんでした：{reason}',
   'TA 这条没回上': '返事が届きませんでした',
   '模型调用失败：{reason}': 'モデル呼び出しに失敗：{reason}',

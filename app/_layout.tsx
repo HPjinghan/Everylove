@@ -15,7 +15,8 @@ import '@/features';
 import { ToastHost } from '@/components/toast';
 import { applyThemeColors, Romance } from '@/constants/theme';
 import { runJobs } from '@/core/jobs';
-import { authConfigured } from '@/lib/auth';
+import { currentChatProvider } from '@/core/providers';
+import { authConfigured, ensureGuestSession } from '@/lib/auth';
 import { setLang } from '@/lib/i18n';
 import { initCloudSync } from '@/lib/sync';
 import '@/lib/notifications';
@@ -60,6 +61,8 @@ export default function RootLayout() {
   // 云同步（D-054/D-057 云端为主）：标脏防抖上传、退后台冲刷、启动/登录/回线对账
   useEffect(() => {
     if (!hydrated || !authConfigured()) return;
+    // 分发包没有本地 key：先把游客身份备好，第一句话不用等匿名登录（D-088）
+    if (!currentChatProvider().localKey()) void ensureGuestSession();
     return initCloudSync();
   }, [hydrated]);
 

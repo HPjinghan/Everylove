@@ -11,7 +11,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 
-import { currentSession, getSupabase, onAuthChange } from '@/lib/auth';
+import { getSupabase, isSignedIn, onAuthChange, signedInSession } from '@/lib/auth';
 import { useAppStore } from '@/store/app-store';
 
 /** zustand persist 的存储键（store/app-store.ts 的 name） */
@@ -51,7 +51,7 @@ function saveMeta(): void {
 /** 上传当前本地快照（覆盖云端） */
 export async function uploadSnapshot(): Promise<'ok' | 'no-session' | 'fail'> {
   const sb = getSupabase();
-  const session = await currentSession();
+  const session = await signedInSession();
   if (!sb || !session) return 'no-session';
   try {
     const raw = await AsyncStorage.getItem(STORE_KEY);
@@ -76,7 +76,7 @@ export async function uploadSnapshot(): Promise<'ok' | 'no-session' | 'fail'> {
 /** 云端快照的更新时间；没有则 null */
 export async function cloudSnapshotAt(): Promise<number | null> {
   const sb = getSupabase();
-  const session = await currentSession();
+  const session = await signedInSession();
   if (!sb || !session) return null;
   const { data, error } = await sb
     .from('snapshots')
@@ -90,7 +90,7 @@ export async function cloudSnapshotAt(): Promise<number | null> {
 /** 用云端快照覆盖本机并重新水合（调用方先向用户确认——这会覆盖本机数据） */
 export async function restoreSnapshot(): Promise<boolean> {
   const sb = getSupabase();
-  const session = await currentSession();
+  const session = await signedInSession();
   if (!sb || !session) return false;
   const { data, error } = await sb
     .from('snapshots')
@@ -117,7 +117,7 @@ export async function restoreSnapshot(): Promise<boolean> {
 /** 删除云端数据（App Store 要求账号可删；试装先删数据 + 退出，账号本体删除待服务端函数） */
 export async function deleteCloudData(): Promise<boolean> {
   const sb = getSupabase();
-  const session = await currentSession();
+  const session = await signedInSession();
   if (!sb || !session) return false;
   const { error } = await sb.from('snapshots').delete().eq('user_id', session.user.id);
   if (error) {
@@ -134,7 +134,7 @@ export async function deleteCloudData(): Promise<boolean> {
  */
 export async function reconcileNow(): Promise<'pulled' | 'pushed' | 'noop'> {
   await loadMeta();
-  const session = await currentSession();
+  const session = await signedInSession();
   if (!session) return 'noop';
   const cloudAt = await cloudSnapshotAt();
   if (cloudAt == null) {
@@ -174,7 +174,7 @@ export function initCloudSync(): () => void {
   });
 
   const unsubAuth = onAuthChange((session) => {
-    if (session) void reconcileNow();
+    if (isSignedIn(session)) void reconcileNow();
   });
 
   const appStateSub = AppState.addEventListener('change', (s) => {

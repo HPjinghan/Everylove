@@ -771,7 +771,7 @@
   7. **真实地图发位置**：`components/location-picker.tsx`——`react-native-maps`（iOS Apple 地图，Expo Go 自带）全屏；已授权就直接落到当前位置，否则不打扰；定位按钮请求权限（拒绝也无妨）；点地图 / 拖标选点；顶部搜索走 Nominatim（OSM 免费接口，带 UA 与语言），候选点选；选点后 `expo-location` 反地理编码出一行名字 + 一行地址；发送 = 位置卡片带经纬度，气泡里嵌一小块不可交互的地图。app.json 加 expo-location 权限文案（dev build 用；Expo Go 用自带的）。
 - **影响文件**：`package.json`（react-native-maps、@expo-google-fonts/fredoka）、`app.json`、`constants/theme.ts`（Fonts.label/labelBold）、`app/_layout.tsx`、`app/index.tsx`、`components/app-screen.tsx`、`components/chat-thread.tsx`、`components/card.tsx`（新）、`components/time-picker.tsx`（新）、`components/phone-lock.tsx`（新）、`components/location-picker.tsx`（新）、`components/chat-extras.tsx`（InviteSheet 两步、LocationSheet 删、PhoneSheet 只剩内容）、`app/bond/[bondId].tsx`、`app/apps/outing.tsx`、`lib/types.ts`、`lib/engine.ts`、`content/prompts.ts`、`lib/i18n.ts`。
 
-## D-085 · 2026-09-03 · TestFlight 构建管线：EAS Build production 档 + bundle id + iOS 权限文案（Harper 提出）
+## D-087 · 2026-09-03 · TestFlight 构建管线：EAS Build production 档 + bundle id + iOS 权限文案（Harper 提出；原编号 D-085 与记事本条目撞号，2026-09-04 改为 D-087）
 
 - **决策**：正式测试通道按 D-059 预留的口径落地——**EAS Build（云端）→ `eas submit` → TestFlight**，Windows 上可全程发包。工程侧：
   1. `eas.json`：`production` 档（channel `production`、EAS 环境 `production`、构建号远程自增 `appVersionSource: remote`）+ `submit.production`；不加 development/simulator 档（dev build 何时切见 OPEN_QUESTIONS #26）。
@@ -811,4 +811,14 @@
 - **推翻 / 修订**：修订 D-017（见 5）；D-085 的 `lib/chat.ts` 公共层 API（`respondAsHim` / `sendCardAndRespond` / `applyReplyEffects`）由管线取代；D-004 的「ChatEngine 接口」落成 `ChatProvider` 接缝。
 - **下一轮**：store 切片、语音 / 生图接缝、记忆接缝、i18n 按玩法拆（见 ARCHITECTURE.md §8）。
 - **影响文件**：`core/*`（新 11 个）、`features/*`（新 14 个）、`tests/*`（新）、`vitest.config.ts`（新）、`docs/ARCHITECTURE.md`（新）、`components/card-bubble.tsx`（新）、`lib/engine.ts`（门面）、`lib/chat.ts`（会话层 API）、`lib/call.ts`、`lib/outing.ts`（爽约走管线）、`lib/tts.ts` / `lib/media.ts` / `lib/imagegen.ts` / `lib/auth.ts`（读 CONFIG）、`lib/types.ts`、`content/prompts.ts`（builder → 分段函数）、`components/chat-thread.tsx`（卡片走注册表）、`app/_layout.tsx`（import features + runJobs）、`app/bond/[bondId].tsx` / `app/chat/[characterId].tsx` / `app/outing/[placeId].tsx` / `app/apps/phones.tsx` / `app/call/[characterId].tsx`、`package.json`（vitest、test / typecheck 脚本）。
-- **补记（2026-09-04，首次发包走通）**：Apple Team 选定为**公司第二个组织账号**（Harper 加入后重打，第一次 build 用错 Team 的 App ID 已删）；App Store Connect 记录手动创建并设**限制访问**（只让名单内的人看到，Admin/财务/报告例外——这是「只有特定的人能看到」在公司账号下能做到的上限，Ad Hoc 分发是不碰 App Store Connect 的替代路）；submit 走 EAS 托管的 App Store Connect API Key；推送密钥暂不生成。构建号 2 已上传 TestFlight。配置细节记在 `docs/RELEASE.md` §0.5。
+- **补记（2026-09-04，首次发包走通）**：Apple Team 选定为**公司第二个组织账号**（Harper 加入后重打，第一次 build 用错 Team 的 App ID 已删）；App Store Connect 记录手动创建并设**限制访问**（只让名单内的人看到，Admin/财务/报告例外——这是「只有特定的人能看到」在公司账号下能做到的上限，Ad Hoc 分发是不碰 App Store Connect 的替代路）；submit 走 EAS 托管的 App Store Connect API Key；推送密钥暂不生成。构建号 2 已上传 TestFlight。配置细节记在 `docs/RELEASE.md` §0.5。（本条原编号 D-085，撞号后改 D-087）
+
+## D-088 · 2026-09-04 · 分发包的游客身份：没本地 key 时自动匿名登录，服务端代理按匿名用户限量；匿名不算登录（Harper 报障后定）
+
+- **背景**：TestFlight 构建号 2 装上一聊就报「未配置 AI」。拆包核对：Supabase 配置在、AI key 没泄；根因是分发包 AI 只能走服务端代理（D-057），代理要登录态，而登录墙在「第一次加人之后」（D-062）——试聊全在墙前，游客等于没 AI。Expo Go 试装（D-059）同样受影响，只是朋友多半先登过录。
+- **决策**：**游客身份 = Supabase 匿名会话**。`lib/auth.ts` 新增 `ensureGuestSession()`（没任何会话时 `signInAnonymously()` 一次，并发去重、失败返回 null 不打扰），`lib/proxy.ts` 在 `proxyAvailable` / `proxyJson` 没会话时自动调用，`app/_layout.tsx` 在**没有本地 key** 时启动即预热（开发机有 key 不建匿名用户）。代理端 `getUser` 对匿名 JWT 同样生效、`ai_usage` 按匿名用户 id 限量（每人每日 500 不变）。
+- **匿名不算登录**：新增 `isSignedIn()` / `signedInSession()`——登录墙（缔结 / 创造入册）、设置页账号区、云备份（`lib/sync.ts` 全部改用；匿名用户不上传快照，「登录只为云备份」语义不变）、共享池发布 / 撤下只认真账号。之后 Apple / 邮箱登录直接换成正式用户（匿名用户弃用，本地数据不动，登录时的恢复 / 覆盖流程照旧）。
+- **修订**：D-054「匿名账号暂不做」——现在做了，但只作代理凭证，不是用户可见的账号形态；D-062 登录墙位置不变。
+- **配置**：Supabase → Authentication → Sign In / Providers → **Anonymous sign-ins 开启**（Supabase 自带每 IP 每小时 30 次匿名登录限流；滥用风险留给正式版加验证码）。
+- **发版**：JS 改动，走 `eas update --channel production`（不重打包）；发布前 `expo export` 置空 AI key 并 grep 校验，再 `--skip-bundler` 发布（流程写进 `docs/RELEASE.md` §3）。错误文案改为「未配置 AI：.env.local 没有 key，服务端代理也没连上」（en/ja 同步）。
+- **影响文件**：`lib/auth.ts`、`lib/proxy.ts`、`lib/sync.ts`、`lib/pool.ts`、`app/_layout.tsx`、`app/adopt/[characterId].tsx`、`app/apps/create.tsx`、`app/apps/settings.tsx`、`core/providers.ts`、`lib/i18n.ts`、`.env.example`、`docs/RELEASE.md`。

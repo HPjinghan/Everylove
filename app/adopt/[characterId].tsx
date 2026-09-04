@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CharAvatar } from '@/components/char-avatar';
 import { scriptFor } from '@/content/characters';
 import { Romance, themed } from '@/constants/theme';
-import { authConfigured, currentSession } from '@/lib/auth';
+import { authConfigured, signedInSession } from '@/lib/auth';
 import { slotLimit, slotLimitLabel } from '@/lib/bond';
 import { t } from '@/lib/i18n';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -61,7 +61,7 @@ export default function AdoptScreen() {
       nickname: finalNickname || '你',
       birthday: birthday.trim() || undefined,
     });
-    if (!hadContacts && authConfigured() && !(await currentSession())) {
+    if (!hadContacts && authConfigured() && !(await signedInSession())) {
       router.replace({ pathname: '/auth', params: { force: '1' } });
       return;
     }
