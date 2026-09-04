@@ -60,14 +60,19 @@ npx eas-cli submit -p ios --latest --profile production
 
 ## 3. 之后改动怎么发
 
-- **只改了 JS / 文案 / 资源**：热更，TestFlight 包下次冷启动拿到。**必须置空 AI key 再打包**（`expo export` 会读 `.env.local`），并在发布前 grep 校验，Git Bash 里：
+- **只改了 JS / 文案 / 资源**：热更，TestFlight 包下次冷启动拿到（第一次打开后台下载、第二次打开生效）。**打包时不能带 AI key**（`expo export` 默认会读 `.env.local`），所以用 `EXPO_NO_DOTENV=1` 跳过 env 文件、只把 Supabase 公开配置手工传入，导出后 grep 校验再发布。PowerShell（项目根目录）：
 
-  ```bash
-  EXPO_PUBLIC_ANTHROPIC_API_KEY= EXPO_PUBLIC_QIANFAN_API_KEY= EXPO_PUBLIC_SPEECH_API_KEY= npx expo export --platform ios
-  grep -l "bce-v3|sk-ant-" dist/_expo/static/js/ios/*.js && echo "有 key 泄漏，别发！" || echo "干净"
-  npx eas-cli@latest update --channel production --platform ios --skip-bundler --message "..."
+  ```powershell
+  $lines = Get-Content .env.local
+  $env:EXPO_NO_DOTENV = '1'
+  $env:EXPO_PUBLIC_SUPABASE_URL = (($lines | ? { $_ -match '^EXPO_PUBLIC_SUPABASE_URL=' }) -replace '^[^=]+=','').Trim('"')
+  $env:EXPO_PUBLIC_SUPABASE_ANON_KEY = (($lines | ? { $_ -match '^EXPO_PUBLIC_SUPABASE_ANON_KEY=' }) -replace '^[^=]+=','').Trim('"')
+  npx expo export --platform ios --max-workers 4
+  Select-String -Path dist_expostaticjsios* -Pattern 'bce-v3|sk-ant-' -List   # 有输出 = 泄漏，别发
+  npx eas-cli@latest update --channel production --platform ios --skip-bundler --non-interactive --message "..."
   ```
 
-  Expo Go 朋友那条同理，把 `--channel production` 换成 `--channel preview`。
+  Expo Go 朋友那条同理，`--channel production` 换成 `--channel preview`。导出如果在 90% 左右报 worker 被 SIGTERM，多半是机器上还挂着别的 node 进程（如没退出的 vitest），杀掉再跑。
+
 - **动了 `app.json` 插件、原生依赖（新的 expo-* 原生模块、react-native-maps 之类）、SDK**：必须重新 `build` + `submit`，**不要**只推 update（runtimeVersion 用的是 sdkVersion 策略，同 runtime 的旧包会拿到不兼容的 JS）。
 - 朋友的 Expo Go 试装照旧 `--channel preview`，两个渠道互不影响。
