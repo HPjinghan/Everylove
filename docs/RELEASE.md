@@ -32,6 +32,12 @@
 - Supabase Auth 已开 **Anonymous sign-ins**（D-088）：分发包没本地 key，游客靠匿名会话走服务端代理；关掉它 = 没登录的人聊不了。
 - 出口合规已在 app.json 预答（`ITSAppUsesNonExemptEncryption=false`），TestFlight 里不会再弹「缺少合规证明」。
 
+- App Store Connect 的 App 编号 `6808620565`（ascAppId）已写进 `eas.json` 的 submit 档——从此**一条命令从构建到上传**、无人值守：
+
+  ```powershell
+  npx eas-cli@latest build -p ios --profile production --non-interactive --auto-submit
+  ```
+
 ## 1. 构建（每次发包）
 
 ```powershell
