@@ -545,6 +545,14 @@ const en: Record<string, string> = {
   'TA 看了你的手机': 'They looked at your phone',
   'TA 拿起了你的手机': 'They picked up your phone',
   '…': '…',
+  // 已有账号直接登录（D-096）
+  '欢迎回来': 'Welcome back',
+  '登录之后，TA 和你们的故事会回到这部手机上。': 'Sign in and they come back to this phone, story and all.',
+  '这个账号里已经有存档': 'This account already has a save',
+  '把云端的 TA 们接回这部手机，还是用这部手机上的覆盖云端？': 'Bring them back from the cloud to this phone, or overwrite the cloud with what is on this phone?',
+  '用本机覆盖云端': 'Overwrite cloud with this phone',
+  '接回云端的': 'Bring back from the cloud',
+  '登录好了，先让 TA 们认识你吧': 'Signed in. Now let them get to know you.',
   // __EN_END__
 };
 
@@ -1067,6 +1075,14 @@ const ja: Record<string, string> = {
   'TA 看了你的手机': 'スマホを見られました',
   'TA 拿起了你的手机': 'スマホを手に取りました',
   '…': '…',
+  // 已有账号直接登录（D-096）
+  '欢迎回来': 'おかえりなさい',
+  '登录之后，TA 和你们的故事会回到这部手机上。': 'ログインすれば、あの人とふたりの物語がこのスマホに戻ってくる。',
+  '这个账号里已经有存档': 'このアカウントにはセーブデータがあります',
+  '把云端的 TA 们接回这部手机，还是用这部手机上的覆盖云端？': 'クラウドのあの人たちをこのスマホに戻す？それともこのスマホの内容でクラウドを上書きする？',
+  '用本机覆盖云端': 'このスマホで上書き',
+  '接回云端的': 'クラウドから戻す',
+  '登录好了，先让 TA 们认识你吧': 'ログイン完了。まずは自己紹介から。',
   // __JA_END__
 };
 

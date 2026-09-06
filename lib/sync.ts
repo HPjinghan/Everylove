@@ -2,6 +2,8 @@
  * 云同步（D-054 快照 v0 → D-057 云端为主）：数据尽量存云端，本地 AsyncStorage 是工作缓存。
  * - 登录态下：store 变化 15s 防抖自动上传；App 退后台立即冲刷；启动/登录时对账（reconcile）——
  *   云端更新且本地无未同步改动 → 静默拉下来；本地有改动 → 本地覆盖云端（正在用的设备赢）。
+ * - **新设备 / 换账号（D-096）**：这台手机还没和这个账号对过账时，本机不许覆盖云端——
+ *   本机是空的（还没认识 TA）→ 静默把云端接回来；本机已有关系 → 返回 conflict，由登录界面问她「接回云端 / 用本机覆盖」。
  * - 离线/未登录：一切照旧跑在本地缓存上，回线后按上面规则补同步。
  * 同步单位 = zustand persist 的整份快照（含聊天/记忆，按最高敏感级）。
  * 服务端只有一张表 snapshots（建表 SQL 见 docs/supabase-setup.sql，RLS 只许本人读写）。
@@ -27,6 +29,8 @@ export function lastSyncTime(): number | null {
 interface SyncMeta {
   lastSyncedAt: number;
   dirty: boolean;
+  /** 上次对账的账号（D-096）：换账号登录 = 这台手机对新账号而言是「新设备」 */
+  userId?: string;
 }
 
 let meta: SyncMeta = { lastSyncedAt: 0, dirty: false };
@@ -65,6 +69,7 @@ export async function uploadSnapshot(): Promise<'ok' | 'no-session' | 'fail'> {
     lastSyncAt = Date.now();
     meta.lastSyncedAt = lastSyncAt;
     meta.dirty = false;
+    meta.userId = session.user.id;
     saveMeta();
     return 'ok';
   } catch (e) {
@@ -110,6 +115,7 @@ export async function restoreSnapshot(): Promise<boolean> {
   lastSyncAt = Date.now();
   meta.lastSyncedAt = lastSyncAt;
   meta.dirty = false;
+  meta.userId = session.user.id;
   saveMeta();
   return true;
 }
@@ -128,30 +134,80 @@ export async function deleteCloudData(): Promise<boolean> {
   return true;
 }
 
+export type ReconcilePlan = 'push-first' | 'pull' | 'push' | 'conflict' | 'noop';
+
 /**
- * 对账（D-057 云端为主）：云端更新且本地干净 → 静默恢复云端；本地有未同步改动 → 上传覆盖
- * （正在用的设备赢——她手里这台永远不丢字）。登录时、启动时、回线时都可调用。
+ * 对账决策（纯函数，D-057 + D-096）——测试锁定：
+ * - 云端没有备份 → 把本机第一份传上去；
+ * - 这台手机没和这个账号对过账（新手机 / 重装 / 换账号）→ 本机不许覆盖云端：本机空 → 拉云端；本机有关系 → conflict 交给界面问；
+ * - 之后照 D-057：本机有未同步改动 → 推（正在用的设备赢）；云端更新 → 拉；否则不动。
  */
-export async function reconcileNow(): Promise<'pulled' | 'pushed' | 'noop'> {
+export function planReconcile(input: {
+  cloudAt: number | null;
+  meta: SyncMeta;
+  userId: string;
+  localFresh: boolean;
+}): ReconcilePlan {
+  const { cloudAt, meta: m, userId, localFresh } = input;
+  if (cloudAt == null) return 'push-first';
+  // 没记过账号的旧存档（D-096 之前同步过的）视为同一账号，不打扰老用户
+  const neverSyncedHere = m.lastSyncedAt === 0 || (m.userId !== undefined && m.userId !== userId);
+  if (neverSyncedHere) return localFresh ? 'pull' : 'conflict';
+  if (m.dirty) return 'push';
+  if (cloudAt > m.lastSyncedAt + 1500) return 'pull';
+  return 'noop';
+}
+
+/** 本机「还是空的」：没建过关系（羁绊 / 自创角色都没有）——试聊记录属于免费层，本就会过期，不算 */
+export function localIsFresh(): boolean {
+  const s = useAppStore.getState();
+  return !s.onboarded || (s.bonds.length === 0 && !s.customCharacters.some((c) => !c.shared));
+}
+
+export type ReconcileResult = 'pulled' | 'pushed' | 'conflict' | 'noop';
+
+let reconcileInflight: Promise<ReconcileResult> | null = null;
+
+/**
+ * 对账（D-057 云端为主；D-096 新设备以云端为准）。登录时、启动时、回线时都可调用；同一时刻只跑一份。
+ * 返回 conflict 时什么都没动——登录界面负责问她并调 resolveConflict。
+ */
+export function reconcileNow(): Promise<ReconcileResult> {
+  if (reconcileInflight) return reconcileInflight;
+  reconcileInflight = doReconcile().finally(() => {
+    reconcileInflight = null;
+  });
+  return reconcileInflight;
+}
+
+async function doReconcile(): Promise<ReconcileResult> {
   await loadMeta();
   const session = await signedInSession();
   if (!session) return 'noop';
   const cloudAt = await cloudSnapshotAt();
-  if (cloudAt == null) {
-    // 云端还没有备份：把本机第一份传上去
-    const r = await uploadSnapshot();
-    return r === 'ok' ? 'pushed' : 'noop';
+  const plan = planReconcile({ cloudAt, meta, userId: session.user.id, localFresh: localIsFresh() });
+  switch (plan) {
+    case 'push-first':
+    case 'push': {
+      const r = await uploadSnapshot();
+      return r === 'ok' ? 'pushed' : 'noop';
+    }
+    case 'pull': {
+      const ok = await restoreSnapshot();
+      if (ok) console.log('[sync] 云端较新，已静默恢复');
+      return ok ? 'pulled' : 'noop';
+    }
+    case 'conflict':
+      return 'conflict';
+    default:
+      return 'noop';
   }
-  if (meta.dirty) {
-    const r = await uploadSnapshot();
-    return r === 'ok' ? 'pushed' : 'noop';
-  }
-  if (cloudAt > meta.lastSyncedAt + 1500) {
-    const ok = await restoreSnapshot();
-    if (ok) console.log('[sync] 云端较新，已静默恢复');
-    return ok ? 'pulled' : 'noop';
-  }
-  return 'noop';
+}
+
+/** 新设备上本机与云端都有关系时（conflict），她选一边：接回云端 / 用本机覆盖云端 */
+export async function resolveConflict(choice: 'use-cloud' | 'keep-local'): Promise<boolean> {
+  if (choice === 'use-cloud') return restoreSnapshot();
+  return (await uploadSnapshot()) === 'ok';
 }
 
 /**

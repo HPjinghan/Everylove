@@ -2,6 +2,7 @@
  * Onboarding（D-035；D-080 并成一步）：语言 →「先让 TA 们认识你」。
  * 昵称与「更倾向于和什么样的人建立关系」必填（后者既是全性向声明，也是交友推荐的口味过滤，原独立一步「你想被谁爱？」并入此处）；
  * 其余（性别/称呼/职业/生日）都可跳过，完整设定稍后在 设置 → 我的身份 里补充，也能为单个角色使用不同身份。
+ * 第一步底部「已有账号？登录」（D-096）：换了手机的老用户直接登录把 TA 们接回来，不重走新手流（语言还没选，所以三语并排）。
  */
 
 import { useRouter } from 'expo-router';
@@ -19,6 +20,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Romance, themed } from '@/constants/theme';
+import { authConfigured } from '@/lib/auth';
 import { t, type Lang } from '@/lib/i18n';
 import type { LovePref, UserProfile } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
@@ -73,6 +75,14 @@ export default function OnboardingScreen() {
             </Pressable>
           ))}
         </View>
+        {authConfigured() ? (
+          <Pressable
+            style={styles.signIn}
+            hitSlop={12}
+            onPress={() => router.push({ pathname: '/auth', params: { restore: '1' } })}>
+            <Text style={styles.signInText}>已有账号？登录 · Sign in · ログイン</Text>
+          </Pressable>
+        ) : null}
       </View>
     );
   }
@@ -216,6 +226,8 @@ const styles = themed(() =>
       justifyContent: 'space-between',
     },
     optionLabel: { fontSize: 18, fontWeight: '600', color: Romance.ink },
+    signIn: { marginTop: 'auto', alignSelf: 'center', paddingVertical: 18 },
+    signInText: { fontSize: 14, fontWeight: '600', color: Romance.sub },
     meContent: { flexGrow: 1 },
     meField: { marginTop: 22 },
     meLabel: { fontSize: 14, fontWeight: '600', color: Romance.ink },

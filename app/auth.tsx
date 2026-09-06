@@ -2,8 +2,10 @@
  * 登录（D-062）：独立界面。
  * - 常规入口：设置 → 账号 · 云端；可返回
  * - 强制点（force=1）：第一次把人添加进通讯录之后——TA 值得一个存得住的家；无返回键
+ * - 已有账号（restore=1，D-096）：onboarding 第一步底部「已有账号？登录」——新手机上把 TA 们接回来，不重走新手流
  * 登录方式：Apple（主打）+ 邮箱验证码（需项目配 SMTP，见 D-054 补记）。
- * 成功后回桌面；云同步的对账由 initCloudSync 的 onAuthChange 自动完成。
+ * 成功后先对账（reconcileNow）再走：云端有存档、本机是空的 → 静默接回 → 落桌面；
+ * 本机与云端都有关系 → 问她「接回云端 / 用本机覆盖」；云端没存档 → 本机第一份传上去、照常继续。
  */
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,6 +24,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { showToast } from '@/components/toast';
 import { Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import {
@@ -30,10 +33,13 @@ import {
   signInWithApple,
   verifyEmailOtp,
 } from '@/lib/auth';
+import { reconcileNow, resolveConflict } from '@/lib/sync';
+import { useAppStore } from '@/store/app-store';
 
 export default function AuthScreen() {
-  const { force } = useLocalSearchParams<{ force?: string }>();
+  const { force, restore } = useLocalSearchParams<{ force?: string; restore?: string }>();
   const forced = force === '1';
+  const restoring = restore === '1';
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -42,14 +48,49 @@ export default function AuthScreen() {
   const [otpSent, setOtpSent] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const done = () => router.replace('/');
+  /** 不登录了：从 onboarding 来的回 onboarding，其余回桌面 */
+  const leave = () => {
+    if (restoring) {
+      if (router.canGoBack()) router.back();
+      else router.replace('/onboarding');
+      return;
+    }
+    router.replace('/');
+  };
+
+  /** 到站：桌面自己会按存档决定落哪（还没认识 TA 的账号 → onboarding） */
+  const arrive = () => {
+    if (restoring && !useAppStore.getState().onboarded) showToast(t('登录好了，先让 TA 们认识你吧'));
+    router.replace('/');
+  };
+
+  /** 登录成功之后（D-096）：先对账再走——新设备上云端有存档就接回来；本机与云端都有关系时问她选一边 */
+  const afterSignIn = async () => {
+    const r = await reconcileNow();
+    if (r !== 'conflict') {
+      arrive();
+      return;
+    }
+    Alert.alert(
+      t('这个账号里已经有存档'),
+      t('把云端的 TA 们接回这部手机，还是用这部手机上的覆盖云端？'),
+      [
+        {
+          text: t('用本机覆盖云端'),
+          style: 'destructive',
+          onPress: () => void resolveConflict('keep-local').then(arrive),
+        },
+        { text: t('接回云端的'), onPress: () => void resolveConflict('use-cloud').then(arrive) },
+      ]
+    );
+  };
 
   const doApple = async () => {
     if (busy) return;
     setBusy(true);
     try {
       await signInWithApple();
-      done();
+      await afterSignIn();
     } catch (e) {
       const err = e as { code?: string; message?: string };
       if (err.code !== 'ERR_REQUEST_CANCELED') {
@@ -70,7 +111,7 @@ export default function AuthScreen() {
         Alert.alert(t('验证码已发出'), t('去邮箱看看（也翻翻垃圾箱）。'));
       } else {
         await verifyEmailOtp(email.trim(), otp.trim());
-        done();
+        await afterSignIn();
       }
     } catch (e) {
       Alert.alert(otpSent ? t('验证失败') : t('发送失败'), (e as Error).message ?? t('稍后再试。'));
@@ -84,7 +125,7 @@ export default function AuthScreen() {
       <View style={[styles.screen, styles.center, { paddingTop: insets.top }]}>
         <Text style={styles.title}>{t('账号服务未配置')}</Text>
         <Text style={styles.sub}>在 .env.local 配好 Supabase 后重启（docs/supabase-setup.sql）。</Text>
-        <Pressable style={styles.ghostBtn} onPress={done}>
+        <Pressable style={styles.ghostBtn} onPress={leave}>
           <Text style={styles.ghostBtnText}>{t('返回')}</Text>
         </Pressable>
       </View>
@@ -151,8 +192,8 @@ export default function AuthScreen() {
         </Pressable>
 
         {!forced ? (
-          <Pressable style={styles.ghostBtn} onPress={done}>
-            <Text style={styles.ghostBtnText}>{t('先不了')}</Text>
+          <Pressable style={styles.ghostBtn} onPress={leave}>
+            <Text style={styles.ghostBtnText}>{restoring ? t('返回') : t('先不了')}</Text>
           </Pressable>
         ) : null}
         <Text style={styles.footnote}>{t('数据按最高敏感级对待 · 只有你自己能读到你的存档')}</Text>
