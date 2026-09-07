@@ -11,12 +11,12 @@ import { cardKinds } from '@/core/cards';
 import { replyMarkers } from '@/core/markers';
 import { ORDER, promptSections } from '@/core/prompt';
 import { sendCard, type TurnUi } from '@/core/turn';
-import { BONDED_FAMILY } from '@/features/prompts';
+import { BONDED_CHAT } from '@/features/prompts';
 import { t } from '@/lib/i18n';
 import { useAppStore } from '@/store/app-store';
 
 /* ── prompt：常驻一条红包规则（之前没拆的聊到了也能拆） ── */
-promptSections.register({ name: 'red-packet', modes: BONDED_FAMILY, order: ORDER.redPacket, lines: () => [RED_PACKET_RULE] });
+promptSections.register({ name: 'red-packet', modes: BONDED_CHAT, order: ORDER.redPacket, lines: () => [RED_PACKET_RULE] });
 
 /* ── 暗号：[拆红包] → 最近一个没拆的红包标「已领取」 ── */
 replyMarkers.register({

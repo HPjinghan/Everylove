@@ -10,12 +10,12 @@ import { cardKinds } from '@/core/cards';
 import { replyMarkers } from '@/core/markers';
 import { ORDER, promptSections } from '@/core/prompt';
 import { sendCard, sysMsg, type TurnUi } from '@/core/turn';
-import { BONDED_FAMILY } from '@/features/prompts';
+import { BONDED_CHAT } from '@/features/prompts';
 import { t } from '@/lib/i18n';
 import { useAppStore } from '@/store/app-store';
 
 /* ── prompt：TA 知道自己的密码，她要看时由 TA 决定 ── */
-promptSections.register({ name: 'phone', modes: BONDED_FAMILY, order: ORDER.phone, lines: (ctx) => phoneBlock(ctx) });
+promptSections.register({ name: 'phone', modes: BONDED_CHAT, order: ORDER.phone, lines: (ctx) => phoneBlock(ctx) });
 
 /* ── 暗号：[解锁手机] → 解锁 + 系统条（聊天里、电话里都一样） ── */
 replyMarkers.register({

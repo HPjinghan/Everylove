@@ -1,12 +1,12 @@
 /**
- * Prompt 快照（D-086）：四种对话模式 + TA 的记事本，装配出的系统 prompt 逐字锁定。
+ * Prompt 快照（D-086）：四种对话模式 + TA 的记事本（D-098 起记事本自己一套装配 + 用户消息），装配出的系统 prompt 逐字锁定。
  * 目的：底座重构（分段表装配）必须与旧的手工拼接逐字一致；之后任何改动只要碰到模型看到的字，快照就会红。
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import '@/features';
 
-import { buildChatSystemPrompt, buildHisNoteSystem, messageContextText } from '@/content/prompts';
+import { buildChatSystemPrompt, buildHisNoteSystem, buildHisNoteUserPrompt, messageContextText } from '@/content/prompts';
 import { setLang } from '@/lib/i18n';
 import {
   bondedCtx,
@@ -45,6 +45,25 @@ describe('系统 prompt 装配', () => {
   });
   it('TA 的记事本', () => {
     expect(buildHisNoteSystem(noteCtx, NOW)).toMatchSnapshot();
+  });
+  it('TA 的记事本：不带她的资料卡与聊天规则，带自己的生活（D-098）', () => {
+    const sys = buildHisNoteSystem(noteCtx, NOW);
+    expect(sys).toContain('【你自己的生活】');
+    expect(sys).toContain('【她的边界，优先级最高】');
+    expect(sys).toContain('【你记得的事】');
+    for (const gone of ['【关于她】', '【你的追法】', '【怎么爱她】', '【你的手机】', '【红包】', '主动联系强度']) {
+      expect(sys).not.toContain(gone);
+    }
+  });
+  it('TA 的记事本：用户消息（天气 + 最近几条 + 这一条写不写她）', () => {
+    const recent = [
+      { id: 'hn1', text: '系里开了一下午会，散会时天都黑了。', at: new Date(2026, 8, 3, 19).getTime() },
+      { id: 'hn2', text: '老周借的那本《陶庵梦忆》还没还我。', at: new Date(2026, 8, 4, 22).getTime() },
+    ];
+    const weather = '今天多云，气温 22℃ 上下';
+    expect(buildHisNoteUserPrompt({ now: NOW, weather, recent, aboutHer: false })).toMatchSnapshot();
+    expect(buildHisNoteUserPrompt({ now: NOW, weather, recent, aboutHer: true })).toMatchSnapshot();
+    expect(buildHisNoteUserPrompt({ now: NOW, weather, recent: [], aboutHer: false })).toMatchSnapshot();
   });
   it('外出：赴约准时', () => {
     expect(buildChatSystemPrompt(outingDateCtx, NOW)).toMatchSnapshot();
