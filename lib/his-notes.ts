@@ -3,12 +3,13 @@
  * - 频率：I 比 E 更爱写本子（与发帖相反），NF 最多、ST 最少；无 MBTI 默认 1 条/天；间隔 ±35% 抖动
  * - 与发帖同机制：启动 / 回前台 / 打开 TA 的手机时补写；一条都没有时立刻写第一条（本子不空着）；错过再久只补 1 条
  * - 内容（D-098）：系统 prompt 走记事本专用装配（content/prompts/his-notes.ts）；用户消息带今天的天气、本子里最近几条（生活接得上）
- *   和「这一条写不写她」——七成只写自己的日子（HIS_NOTE_ABOUT_HER）。AI 不可用 / 失败 = 这次不写
+ *   和「这一条写不写她」——按她在 TA 心里的分量掷硬币（lib/her-share.ts，D-099）。AI 不可用 / 失败 = 这次不写
  */
 
-import { buildHisNoteSystem, buildHisNoteUserPrompt, HIS_NOTE_ABOUT_HER, HIS_NOTE_USER } from '@/content/prompts';
+import { buildHisNoteSystem, buildHisNoteUserPrompt, HIS_NOTE_USER } from '@/content/prompts';
 import { bondedContext } from '@/lib/chat';
 import { completeText, splitBubbles, stripStageDirections } from '@/lib/engine';
+import { rollAboutHer } from '@/lib/her-share';
 import type { Bond, Character } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -68,7 +69,7 @@ async function generateNote(character: Character, bond: Bond): Promise<string | 
     now,
     weather: weatherLine(now),
     recent: (bond.notes ?? []).slice(-HIS_NOTE_RECENT),
-    aboutHer: Math.random() < HIS_NOTE_ABOUT_HER,
+    aboutHer: rollAboutHer(character),
   });
   try {
     const raw = await completeText(buildHisNoteSystem(ctx, now), user, 240);

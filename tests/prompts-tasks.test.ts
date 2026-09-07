@@ -88,6 +88,18 @@ describe('X', () => {
     expect(buildCharacterPostSystem(seed, bondBase)).toMatchSnapshot();
     expect(buildCharacterPostSystem(custom, undefined)).toMatchSnapshot();
     expect(buildCharacterPostUserPrompt(NOW)).toMatchSnapshot();
+    expect(
+      buildCharacterPostUserPrompt(NOW, {
+        aboutHer: false,
+        recentPosts: ['系里的樱花开了半树。', '今天的茶泡过头了。'],
+        recentNotes: ['老周借的那本《陶庵梦忆》还没还我。'],
+      })
+    ).toMatchSnapshot();
+  });
+  it('发帖：她的影子出现多少按分量（D-099）', () => {
+    expect(buildCharacterPostSystem({ ...seed, loveStyle: '依恋型', mbti: 'INFP' }, bondBase)).toContain('常有她的影子');
+    expect(buildCharacterPostSystem({ ...seed, loveStyle: '冷静大人', mbti: 'INTJ' }, bondBase)).toContain('大多数帖子和她无关');
+    expect(buildCharacterPostSystem(seed, bondBase)).toContain('可以有你们生活的影子');
   });
 });
 

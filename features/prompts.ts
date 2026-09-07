@@ -20,7 +20,7 @@ import {
   CHAT_HARD_RULES_OF,
   CHAT_OUTPUT_FORMAT,
   characterProfileBlock,
-  HIS_NOTE_LIFE,
+  hisNoteLifeLines,
   HIS_NOTE_MANNER,
   initiativeLine,
   memoryBlockFor,
@@ -108,8 +108,8 @@ promptSections.register({ name: 'love-rules', modes: BONDED_CHAT, order: ORDER.m
 promptSections.register({ name: 'initiative', modes: BONDED_CHAT, order: ORDER.initiative, lines: (ctx) => initiativeLine(ctx.character) });
 promptSections.register({ name: 'stage', modes: BONDED_CHAT, order: ORDER.stage, lines: (ctx) => [stageLine(ctx)] });
 promptSections.register({ name: 'outing-manner', modes: OUTING, order: ORDER.manner, lines: () => OUTING_MANNER });
-// 记事本：TA 自己的生活（D-098）——和聊天的「怎么爱她」占同一个槽位
-promptSections.register({ name: 'note-life', modes: NOTE, order: ORDER.manner, lines: () => HIS_NOTE_LIFE });
+// 记事本：TA 自己的生活（D-098；她出现多少按分量 D-099）——和聊天的「怎么爱她」占同一个槽位
+promptSections.register({ name: 'note-life', modes: NOTE, order: ORDER.manner, lines: (ctx) => hisNoteLifeLines(ctx.character) });
 promptSections.register({ name: 'stranger-manner', modes: OUTING, order: ORDER.strangerManner, lines: (ctx) => (isStranger(ctx) ? OUTING_STRANGER_MANNER : []) });
 // 外出里阶段感在主动性之前（与亲密相反）
 promptSections.register({ name: 'stage-outing', modes: OUTING, order: ORDER.outingStage, lines: (ctx) => (isStranger(ctx) ? [] : [stageLine(ctx)]) });

@@ -4,11 +4,13 @@
  * - 与心跳同机制：App 启动 / 回前台补投（deliverDuePosts）；错过再久也只补 1 条（时间线不炸屏）
  * - 内容由当前引擎生成（人设 + 追法 + 时段 + 天气 + 羁绊记忆；prompt 见 content/prompts/social.ts），
  *   AI 不可用 / 失败 = 这一条不发（记 warn，下个周期再试；D-069 起没有脚本回落）
+ * - 她的影子出现多少按分量（D-099）：每条发前 rollAboutHer 掷硬币；最近发过的几条 + 记事本里的日子一起给模型（不重复、同一个人的生活）
  * - 只有缔结的 TA 发帖（X 只看羁绊层的时间线，D-027）
  */
 
 import { buildCharacterPostSystem, buildCharacterPostUserPrompt } from '@/content/prompts';
 import { completeText, splitBubbles, stripStageDirections } from '@/lib/engine';
+import { rollAboutHer } from '@/lib/her-share';
 import type { Character } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
@@ -24,6 +26,8 @@ export const MBTI_POSTS_PER_DAY: Record<string, number> = {
   ISFJ: 0.8, INTJ: 0.6, ISTP: 0.5, ISTJ: 0.5,
 };
 export const DEFAULT_POSTS_PER_DAY = 1;
+/** 发新帖时给模型看最近几条帖 / 几条记事本 */
+export const POST_RECENT = 4;
 
 /** 下一条帖子的间隔：24h / 每日条数，±35% 抖动（别像闹钟一样准点发帖） */
 export function postIntervalMs(c: Character): number {
@@ -61,12 +65,14 @@ export async function deliverDuePosts(now = Date.now()): Promise<number> {
 
 /** 引擎生成一条帖子文本；不可用/失败返回 null（这次不发） */
 async function generatePostText(character: Character, bondId: string): Promise<string | null> {
-  const { bonds } = useAppStore.getState();
+  const { bonds, posts } = useAppStore.getState();
   const bond = bonds.find((b) => b.id === bondId);
+  const recentPosts = posts.filter((p) => p.characterId === character.id).slice(-POST_RECENT).map((p) => p.text);
+  const recentNotes = (bond?.notes ?? []).slice(-POST_RECENT).map((n) => n.text);
   try {
     const raw = await completeText(
       buildCharacterPostSystem(character, bond),
-      buildCharacterPostUserPrompt(),
+      buildCharacterPostUserPrompt(new Date(), { aboutHer: rollAboutHer(character), recentPosts, recentNotes }),
       200
     );
     const line = stripStageDirections(splitBubbles(raw, 1, character.name))[0];

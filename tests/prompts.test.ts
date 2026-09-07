@@ -46,6 +46,14 @@ describe('系统 prompt 装配', () => {
   it('TA 的记事本', () => {
     expect(buildHisNoteSystem(noteCtx, NOW)).toMatchSnapshot();
   });
+  it('TA 的记事本：她出现多少按分量（D-099）', () => {
+    const devoted = { ...noteCtx, character: { ...noteCtx.character, loveStyle: '依恋型', mbti: 'INFP' } };
+    const cool = { ...noteCtx, character: { ...noteCtx.character, loveStyle: '冷静大人', mbti: 'INTJ' } };
+    expect(buildHisNoteSystem(devoted, NOW)).toContain('她占了你心思的大半');
+    expect(buildHisNoteSystem(devoted, NOW)).toContain('她会常常冒出来');
+    expect(buildHisNoteSystem(cool, NOW)).toContain('不是这本子的主题');
+    expect(buildHisNoteSystem(cool, NOW)).toContain('她偶尔出现，一笔带过');
+  });
   it('TA 的记事本：不带她的资料卡与聊天规则，带自己的生活（D-098）', () => {
     const sys = buildHisNoteSystem(noteCtx, NOW);
     expect(sys).toContain('【你自己的生活】');
