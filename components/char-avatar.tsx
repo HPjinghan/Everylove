@@ -1,13 +1,14 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 
-import { themed } from '@/constants/theme';
+import { Shape } from '@/constants/design';
+import { Fonts, themed } from '@/constants/theme';
 import { seedPortrait } from '@/content/portraits';
 import { useAppStore } from '@/store/app-store';
 
 /**
- * 角色头像：有立绘就显示立绘——她生成 / 上传 / 重画的（store.portraits）优先，种子角色回落内置立绘（D-092）；
- * 都没有则主色圆底 + 名字首字。传 characterId 会自动取立绘；传 uri 则直接用（创造预览用）。
+ * 角色头像（D-100 纸面：方块 r6，角色色底 + 衬线单字）：有立绘就显示立绘——她生成 / 上传 / 重画的（store.portraits）优先，
+ * 种子角色回落内置立绘（D-092）；都没有则角色色底 + 名字首字。传 characterId 会自动取立绘；传 uri 则直接用（创造预览用）。
  */
 export function CharAvatar({
   name,
@@ -28,21 +29,11 @@ export function CharAvatar({
   const own = uri ?? stored;
   const src = own ? { uri: own } : characterId ? seedPortrait(characterId) : undefined;
   return (
-    <View
-      style={[
-        styles.circle,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: color },
-        style,
-      ]}>
+    <View style={[styles.box, { width: size, height: size, backgroundColor: color }, style]}>
       {src ? (
-        <Image
-          source={src}
-          style={{ width: size, height: size, borderRadius: size / 2 }}
-          contentFit="cover"
-          transition={200}
-        />
+        <Image source={src} style={{ width: size, height: size }} contentFit="cover" transition={200} />
       ) : (
-        <Text style={[styles.letter, { fontSize: size * 0.42 }]}>{name.slice(0, 1)}</Text>
+        <Text style={[styles.letter, { fontSize: size * 0.44 }]}>{name.slice(0, 1)}</Text>
       )}
     </View>
   );
@@ -50,13 +41,15 @@ export function CharAvatar({
 
 const styles = themed(() =>
   StyleSheet.create({
-    circle: {
+    box: {
+      borderRadius: Shape.radius,
       alignItems: 'center',
       justifyContent: 'center',
       overflow: 'hidden',
     },
     letter: {
       color: '#FFFFFF',
+      fontFamily: Fonts.initial,
       fontWeight: '600',
     },
   })

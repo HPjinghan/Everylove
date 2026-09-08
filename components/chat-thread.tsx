@@ -1,15 +1,13 @@
 /**
- * 共用聊天线程：广场试聊与羁绊会话都用它。
- * variant='line'（D-027）：羁绊会话模拟 LINE 样式——蓝灰聊天背景、白色收信气泡、
- * 浅绿发信气泡（深色文字）、气泡旁小字时间与「已读」、深色半透明系统胶囊、绿色发送键。
+ * 共用聊天线程（D-100 纸面）：试聊、羁绊会话、外出场景都用它。
+ * 纸面规格：聊天流底 accentSoft + 120px 涂鸦壁纸（components/paper-bg）；TA 的气泡白 r6/6/6/2、我的气泡 primary 白字 r6/6/2/6，
+ * 内距 9×13、最大宽 72%、正文 15/22；时间戳 Fredoka 11 muted（我的消息之后 TA 说过话即「已读」）；
+ * 系统条 ink 底白字 12 r6，tone='hint' 的系统消息是白底 accent 字；输入栏白底 1.5px 上沿：+ / mic / paper 色输入框 38 高 / 相册（有字时换成发送）。
  *
- * LINE 对齐的消息能力（D-030）：
- * - 文本 / 图片（相册选图）/ 语音（录音发送、点按播放）/「+」面板（D-081：调用方给项目——外出邀请 / 查手机 / 红包 / 位置）
- * - 卡片消息（kind 'card'，D-081）：邀请 / 红包 / 位置 以卡片气泡呈现
- * - 引用：长按 → 引用，气泡上方带被引摘要
- * - 撤回：长按自己的消息（24h 内）→ 双方可见「你撤回了一条消息」占位，内容清空
- * - 删除：长按任意消息 → 仅本地移除、无占位（LINE 的「删除只对自己生效」）
- * TA 的语音仍为占位形态（点开看文字），供应商未定见 OPEN_QUESTIONS #6。
+ * 消息能力（D-030 / D-073 / D-081 / D-091）：
+ * - 文本 / 图片（相册选图）/ 语音（录音发送、点按播放）/「+」面板（调用方给项目——外出邀请 / 查手机 / 红包 / 位置）
+ * - 卡片消息（kind 'card'）：怎么画由 core/cards 的注册表决定
+ * - 引用：长按 → 引用，气泡上方带被引摘要；撤回：长按自己的消息（24h 内）→ 双方可见占位；删除：仅本地移除
  */
 
 import {
@@ -38,6 +36,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CardShell } from '@/components/card-bubble';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
+import { ChatWallpaper } from '@/components/paper-bg';
 import { PhotoViewer, Polaroid, type ViewerShot } from '@/components/polaroid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
@@ -51,15 +50,6 @@ import { synthesizeVoice, ttsReady } from '@/lib/tts';
 import type { ChatMessage } from '@/lib/types';
 import { findCharacter } from '@/store/app-store';
 
-/** LINE 拟真配色（variant='line'） */
-const LINE = {
-  bg: '#8CABD9',
-  me: '#9CE769',
-  him: '#FFFFFF',
-  brand: '#06C755',
-};
-
-export type ChatVariant = 'default' | 'line';
 export type ReplyRef = { from: ChatMessage['from']; text: string };
 /** 「+」面板的一项（D-081）：调用方决定有哪些 */
 export type ChatExtra = {
@@ -69,7 +59,7 @@ export type ChatExtra = {
   onPress: () => void;
 };
 
-/** 撤回时限（LINE：24 小时内可撤回） */
+/** 撤回时限（24 小时内可撤回） */
 export const RECALL_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /** 卡片气泡（D-081）：怎么画由卡片种类注册表决定（core/cards，各玩法注册；D-086）；没注册的画一张只有标题的通用卡 */
@@ -80,8 +70,8 @@ function CardBody({ msg, dark }: { msg: ChatMessage; dark: boolean }) {
 }
 
 /**
- * TA 的语音（D-048）：点按走千帆 TTS 真实发声（按句缓存）；
- * 没配 key 或合成失败时回落原来的占位形态（点开看文字）。
+ * TA 的语音（D-048 / D-074）：点按走 TTS 真实发声（按句缓存）；
+ * 没配 key 或合成失败时回落占位形态（点开看文字）。
  */
 function VoiceBubble({
   text,
@@ -147,10 +137,8 @@ function VoiceBubble({
           <Text style={styles.voiceHint}>
             {status === 'failed'
               ? t('语音暂时没接通 · 点这里看文字')
-              : canSpeak
-                ? status === 'loading'
-                  ? t('TA 在开嗓…')
-                  : t('看文字')
+              : canSpeak && status === 'loading'
+                ? t('TA 在开嗓…')
                 : t('看文字')}
           </Text>
         </Pressable>
@@ -194,7 +182,6 @@ function Bubble({
   color,
   name,
   characterId,
-  variant = 'default',
   read,
   onLongPress,
   onOpenPhoto,
@@ -203,14 +190,12 @@ function Bubble({
   color: string;
   name: string;
   characterId?: string;
-  variant?: ChatVariant;
-  /** LINE 模式：我的消息是否显示「已读」（TA 回过话即视为已读） */
+  /** 我的消息是否显示「已读」（TA 回过话即视为已读） */
   read?: boolean;
   onLongPress?: (msg: ChatMessage) => void;
   /** 拍立得点开看大图（D-056） */
   onOpenPhoto?: (shot: ViewerShot) => void;
 }) {
-  const line = variant === 'line';
   // 拍立得（D-056）：生成的照片居中呈现——照片不是谁「说」的话，是你们的东西
   if (msg.kind === 'image' && msg.imageUri && msg.polaroid) {
     return (
@@ -228,57 +213,51 @@ function Bubble({
   if (msg.from === 'system') {
     return (
       <View style={styles.systemRow}>
-        <Text style={[styles.systemText, line && styles.systemTextLine]}>{msg.text}</Text>
+        <Text style={msg.tone === 'hint' ? styles.hintText : styles.systemText}>{msg.text}</Text>
       </View>
     );
   }
   const mine = msg.from === 'me';
-  // 撤回占位（LINE：居中灰字，无内容）
+  // 撤回占位：居中小字，无内容
   if (msg.recalled) {
     return (
       <View style={styles.systemRow}>
-        <Text style={[styles.recalledText, line && styles.recalledTextLine]}>
+        <Text style={styles.recalledText}>
           {mine ? t('你撤回了一条消息') : t('{name} 撤回了一条消息', { name })}
         </Text>
       </View>
     );
   }
-  const meta = line ? (
+  const meta = (
     <View style={[styles.metaCol, mine ? styles.metaColMe : styles.metaColHim]}>
       {mine && read ? <Text style={styles.metaText}>{t('已读')}</Text> : null}
       <Text style={styles.metaText}>{clockTime(msg.at)}</Text>
     </View>
-  ) : null;
-  const bubbleBg = mine
-    ? { backgroundColor: line ? LINE.me : Romance.bubbleMe, borderBottomRightRadius: Shape.radiusTail }
-    : { backgroundColor: line ? LINE.him : Romance.bubbleHim, borderBottomLeftRadius: Shape.radiusTail };
-  const textDark = !mine || line;
+  );
+  const textDark = !mine;
+  const tint = textDark ? Romance.ink : '#FFFFFF';
   const bubbleTint = msg.kind === 'card' && msg.card ? cardKinds.get(msg.card.type)?.bubbleColor : undefined;
   return (
     <View style={[styles.msgRow, mine ? styles.msgRowMe : styles.msgRowHim]}>
-      {!mine && (
-        <CharAvatar name={name} color={color} size={32} style={styles.msgAvatar} characterId={characterId} />
-      )}
+      {!mine && <CharAvatar name={name} color={color} size={Space.avatar.bubble} characterId={characterId} />}
       {mine ? meta : null}
       <Pressable
         onLongPress={onLongPress ? () => onLongPress(msg) : undefined}
         delayLongPress={350}
-        style={[styles.bubble, line && styles.bubbleLine, bubbleBg, bubbleTint ? { backgroundColor: bubbleTint } : null]}>
+        style={[styles.bubble, mine ? styles.bubbleMe : styles.bubbleHim, bubbleTint ? { backgroundColor: bubbleTint } : null]}>
         {msg.replyTo ? (
-          <View style={styles.quote}>
-            <Text style={styles.quoteName}>{msg.replyTo.from === 'me' ? t('你') : name}</Text>
-            <Text style={styles.quoteText} numberOfLines={1}>
+          <View style={[styles.quote, !textDark && styles.quoteLight]}>
+            <Text style={[styles.quoteName, !textDark && styles.quoteTextLight]}>
+              {msg.replyTo.from === 'me' ? t('你') : name}
+            </Text>
+            <Text style={[styles.quoteText, !textDark && styles.quoteTextLight]} numberOfLines={1}>
               {msg.replyTo.text}
             </Text>
           </View>
         ) : null}
         {msg.kind === 'voice' && msg.audioUri ? (
           <View>
-            <AudioVoiceBubble
-              uri={msg.audioUri}
-              durationMs={msg.durationMs}
-              tint={textDark ? Romance.ink : '#FFFFFF'}
-            />
+            <AudioVoiceBubble uri={msg.audioUri} durationMs={msg.durationMs} tint={tint} />
             {/* 她的语音识别结果（D-073）：小字回显；识别中 / 没听清给提示 */}
             {msg.mediaStatus === 'pending' ? (
               <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>{t('识别中…')}</Text>
@@ -294,8 +273,8 @@ function Bubble({
           <VoiceBubble text={msg.text} color={color} characterId={characterId} />
         ) : msg.kind === 'image' && msg.imageUri ? (
           <View>
-            <Image source={{ uri: msg.imageUri }} style={styles.comicImage} contentFit="cover" />
-            {msg.text ? <Text style={styles.comicCaption}>{msg.text}</Text> : null}
+            <Image source={{ uri: msg.imageUri }} style={styles.photo} contentFit="cover" />
+            {msg.text ? <Text style={[styles.photoCaption, !textDark && styles.mediaHintLight]}>{msg.text}</Text> : null}
             {/* 她的照片（D-073）：TA 看图中 / 没看清给提示；描述本身不上屏 */}
             {msg.mediaStatus === 'pending' ? (
               <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>{t('TA 在看…')}</Text>
@@ -306,7 +285,7 @@ function Bubble({
         ) : msg.kind === 'card' && msg.card ? (
           <CardBody msg={msg} dark={textDark} />
         ) : (
-          <Text style={[styles.bubbleText, !textDark && { color: '#FFFFFF' }]}>{msg.text}</Text>
+          <Text style={[styles.bubbleText, !textDark && styles.bubbleTextMe]}>{msg.text}</Text>
         )}
       </Pressable>
       {!mine ? meta : null}
@@ -330,7 +309,6 @@ export function ChatThread({
   inputDisabled,
   placeholder,
   characterId,
-  variant = 'default',
   extras,
 }: {
   messages: ChatMessage[];
@@ -347,14 +325,14 @@ export function ChatThread({
   onRecall?: (msg: ChatMessage) => void;
   /** 删除（本地移除） */
   onDelete?: (msg: ChatMessage) => void;
+  /** 聊天流最顶端（最早消息之前）的一块内容 */
   banner?: ReactNode;
+  /** 输入栏上方的一块内容（试聊的 offer 卡、外出的拍照按钮） */
   cta?: ReactNode;
   inputDisabled?: boolean;
   placeholder?: string;
   /** 有立绘时头像显示立绘（D-019） */
   characterId?: string;
-  /** 'line'：羁绊会话的 LINE 拟真样式（D-027） */
-  variant?: ChatVariant;
   /** 「+」面板的项目（D-081）；不传则没有「+」 */
   extras?: ChatExtra[];
 }) {
@@ -371,7 +349,6 @@ export function ChatThread({
   const recordStartAt = useRef(0);
 
   const data = [...messages].reverse();
-  const line = variant === 'line';
 
   useEffect(
     () => () => {
@@ -380,7 +357,7 @@ export function ChatThread({
     []
   );
 
-  // LINE「已读」：我的消息之后 TA 说过话，就算已读
+  // 「已读」：我的消息之后 TA 说过话，就算已读
   let lastHimAt = -1;
   messages.forEach((m, i) => {
     if (m.from === 'him') lastHimAt = i;
@@ -399,7 +376,7 @@ export function ChatThread({
     onSend(text, ref);
   };
 
-  /** 长按菜单：引用 / 撤回（自己的、24h 内）/ 删除（LINE 规则） */
+  /** 长按菜单：引用 / 撤回（自己的、24h 内）/ 删除 */
   const openActions = (msg: ChatMessage) => {
     const excerpt =
       msg.kind === 'image'
@@ -484,58 +461,52 @@ export function ChatThread({
     }
   };
 
+  const hasDraft = draft.trim().length > 0 && !inputDisabled;
+  const iconColor = inputDisabled ? Romance.faint : Romance.ink;
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <FlatList
-        inverted
-        data={data}
-        keyExtractor={(m) => m.id}
-        renderItem={({ item }) => (
-          <Bubble
-            msg={item}
-            color={color}
-            name={name}
-            characterId={characterId}
-            variant={variant}
-            read={readIds.has(item.id)}
-            onLongPress={openActions}
-            onOpenPhoto={setViewingShot}
-          />
-        )}
-        style={line ? { backgroundColor: LINE.bg } : undefined}
-        contentContainerStyle={styles.listContent}
-        ListFooterComponent={banner ? <View style={styles.bannerWrap}>{banner}</View> : null}
-        ListHeaderComponent={
-          typing ? (
-            <View style={[styles.msgRow, styles.msgRowHim]}>
-              <CharAvatar
-                name={name}
-                color={color}
-                size={32}
-                style={styles.msgAvatar}
-                characterId={characterId}
-              />
-              <View
-                style={[
-                  styles.bubble,
-                  line && styles.bubbleLine,
-                  { backgroundColor: line ? LINE.him : Romance.bubbleHim },
-                ]}>
-                <Text style={styles.typingText}>{typingLabel ?? t('正在输入…')}</Text>
+      <View style={styles.listWrap}>
+        <ChatWallpaper />
+        <FlatList
+          inverted
+          data={data}
+          keyExtractor={(m) => m.id}
+          renderItem={({ item }) => (
+            <Bubble
+              msg={item}
+              color={color}
+              name={name}
+              characterId={characterId}
+              read={readIds.has(item.id)}
+              onLongPress={openActions}
+              onOpenPhoto={setViewingShot}
+            />
+          )}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          ListFooterComponent={banner ? <View style={styles.bannerWrap}>{banner}</View> : null}
+          ListHeaderComponent={
+            typing ? (
+              <View style={[styles.msgRow, styles.msgRowHim]}>
+                <CharAvatar name={name} color={color} size={Space.avatar.bubble} characterId={characterId} />
+                <View style={[styles.bubble, styles.bubbleHim]}>
+                  <Text style={styles.typingText}>{typingLabel ?? t('正在输入…')}</Text>
+                </View>
               </View>
-            </View>
-          ) : null
-        }
-        keyboardDismissMode="interactive"
-      />
+            ) : null
+          }
+          keyboardDismissMode="interactive"
+        />
+      </View>
       <PhotoViewer shot={viewingShot} onClose={() => setViewingShot(null)} />
       {cta}
 
       {/* 引用预览条 */}
       {replyTo ? (
-        <View style={[styles.replyBar, line && styles.replyBarLine]}>
+        <View style={styles.replyBar}>
           <View style={styles.replyBody}>
             <Text style={styles.replyName}>{t('回复')} {replyTo.from === 'me' ? t('自己') : name}</Text>
             <Text style={styles.replyText} numberOfLines={1}>
@@ -543,22 +514,17 @@ export function ChatThread({
             </Text>
           </View>
           <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
-            <MingCute name="close" size={18} color={Romance.faint} />
+            <MingCute name="close" size={18} color={Romance.sub} />
           </Pressable>
         </View>
       ) : null}
 
-      <View
-        style={[
-          styles.inputBar,
-          line && styles.inputBarLine,
-          { paddingBottom: Math.max(insets.bottom, 10) },
-        ]}>
+      <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         {recording ? (
           <>
-            {/* 录音中（D-091）：整行让给录音条——相册与「+」先收起来；麦克风变红、右侧发送键都是「停止并发送」 */}
+            {/* 录音中（D-091）：整行让给录音条——「+」与相册先收起来；麦克风变 accent、右侧发送键都是「停止并发送」 */}
             <Pressable onPress={() => void stopRecord()} hitSlop={6}>
-              <MingCute name="mic" size={24} color="#E0433C" />
+              <MingCute name="mic" size={Space.iconBar} color={Romance.accentStrong} />
             </Pressable>
             <View style={styles.recordingPill}>
               <View style={styles.recordingDot} />
@@ -567,58 +533,49 @@ export function ChatThread({
                 {t('再点一下发送')}
               </Text>
             </View>
-            <Pressable onPress={() => void stopRecord()} hitSlop={8}>
-              <IconSymbol name="arrow.up.circle.fill" size={34} color={line ? LINE.brand : Romance.accent} />
+            <Pressable onPress={() => void stopRecord()} hitSlop={8} style={styles.sendBtn}>
+              <IconSymbol name="arrow.up" size={18} color="#FFFFFF" />
             </Pressable>
           </>
         ) : (
           <>
-            {onSendImage ? (
-              <Pressable onPress={pickImage} hitSlop={6} disabled={inputDisabled}>
-                <MingCute name="pic" size={24} color={line ? '#8E97A3' : Romance.sub} />
+            {extras?.length ? (
+              <Pressable onPress={() => setExtrasOpen((v) => !v)} hitSlop={6} disabled={inputDisabled}>
+                <MingCute name={extrasOpen ? 'close' : 'plus'} size={Space.iconBar} color={extrasOpen ? Romance.accent : iconColor} />
               </Pressable>
             ) : null}
             {onSendVoice ? (
               <Pressable onPress={toggleRecord} hitSlop={6} disabled={inputDisabled}>
-                <MingCute name="mic" size={24} color={line ? '#8E97A3' : Romance.sub} />
+                <MingCute name="mic" size={Space.iconBar} color={iconColor} />
               </Pressable>
             ) : null}
             <TextInput
-              style={[styles.input, line && styles.inputLine, inputDisabled && { opacity: 0.5 }]}
+              style={[styles.input, inputDisabled && styles.inputDisabled]}
               value={draft}
               onChangeText={setDraft}
               placeholder={placeholder ?? t('说点什么…')}
-              placeholderTextColor={Romance.faint}
+              placeholderTextColor={Romance.sub}
               editable={!inputDisabled}
               onSubmitEditing={send}
               returnKeyType="send"
               submitBehavior="submit"
             />
-            {extras?.length ? (
-              <Pressable onPress={() => setExtrasOpen((v) => !v)} hitSlop={6} disabled={inputDisabled}>
-                <IconSymbol
-                  name={extrasOpen ? 'xmark.circle' : 'plus.circle'}
-                  size={26}
-                  color={extrasOpen ? (line ? LINE.brand : Romance.accent) : line ? '#8E97A3' : Romance.sub}
-                />
+            {hasDraft ? (
+              <Pressable onPress={send} hitSlop={8} style={styles.sendBtn}>
+                <IconSymbol name="arrow.up" size={18} color="#FFFFFF" />
+              </Pressable>
+            ) : onSendImage ? (
+              <Pressable onPress={pickImage} hitSlop={6} disabled={inputDisabled}>
+                <MingCute name="pic" size={Space.iconBar} color={iconColor} />
               </Pressable>
             ) : null}
-            <Pressable onPress={send} hitSlop={8} disabled={inputDisabled}>
-              <IconSymbol
-                name="arrow.up.circle.fill"
-                size={34}
-                color={
-                  draft.trim() && !inputDisabled ? (line ? LINE.brand : Romance.accent) : Romance.faint
-                }
-              />
-            </Pressable>
           </>
         )}
       </View>
 
       {/* 「+」面板（D-081） */}
       {extrasOpen && extras?.length ? (
-        <View style={[styles.extrasPanel, line && styles.inputBarLine, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View style={[styles.extrasPanel, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           {extras.map((x) => (
             <Pressable
               key={x.key}
@@ -627,8 +584,8 @@ export function ChatThread({
                 setExtrasOpen(false);
                 x.onPress();
               }}>
-              <View style={[styles.extraIcon, line && styles.extraIconLine]}>
-                <IconSymbol name={x.icon} size={26} color={line ? '#3C4653' : Romance.ink} />
+              <View style={styles.extraIcon}>
+                <IconSymbol name={x.icon} size={26} color={Romance.ink} />
               </View>
               <Text style={styles.extraLabel} numberOfLines={1}>
                 {x.label}
@@ -644,85 +601,98 @@ export function ChatThread({
 const styles = themed(() =>
   StyleSheet.create({
     flex: { flex: 1 },
-    listContent: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 },
+    listWrap: { flex: 1, backgroundColor: Romance.accentSoft },
+    list: { backgroundColor: 'transparent' },
+    listContent: { paddingHorizontal: Space.screen, paddingTop: 12, paddingBottom: 8 },
     bannerWrap: { marginBottom: 10 },
-    msgRow: { flexDirection: 'row', marginVertical: 5, alignItems: 'flex-end' },
+    msgRow: { flexDirection: 'row', marginVertical: 6, alignItems: 'flex-end', gap: Space.inline },
     msgRowHim: { justifyContent: 'flex-start' },
     msgRowMe: { justifyContent: 'flex-end' },
-    msgAvatar: { marginRight: 8 },
-    // 设计系统气泡（D-084）：r6 / 尾角 2、内距 9×13、最大宽 72%、无描边无阴影
+    // 设计系统气泡（D-084 / D-100）：r6 / 尾角 2、内距 9×13、最大宽 72%、无描边无阴影
     bubble: {
       maxWidth: Space.bubbleMaxWidth,
       borderRadius: Shape.radius,
       paddingHorizontal: Space.bubbleX,
       paddingVertical: Space.bubbleY,
     },
-    bubbleText: { fontSize: 16, lineHeight: 23, color: Romance.ink },
+    bubbleHim: { backgroundColor: Romance.bubbleHim, borderBottomLeftRadius: Shape.radiusTail },
+    bubbleMe: { backgroundColor: Romance.bubbleMe, borderBottomRightRadius: Shape.radiusTail },
+    bubbleText: { fontSize: 15, lineHeight: 22, color: Romance.ink },
+    bubbleTextMe: { color: '#FFFFFF' },
     typingText: { fontSize: 14, color: Romance.sub },
-    systemRow: { alignItems: 'center', marginVertical: 10 },
+    systemRow: { alignItems: 'center', marginVertical: 8 },
     polaroidRow: { alignItems: 'center', marginVertical: 12 },
-    systemTextLine: { backgroundColor: 'rgba(20,30,50,0.35)', color: '#FFFFFF' },
-    recalledText: { fontSize: 12, color: Romance.faint },
-    recalledTextLine: { color: 'rgba(255,255,255,0.85)' },
+    // 系统条：ink 底白字 r6；hint：白底 accent 字
+    systemText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: '#FFFFFF',
+      backgroundColor: Romance.ink,
+      paddingHorizontal: 12,
+      paddingVertical: 3,
+      borderRadius: Shape.radius,
+      overflow: 'hidden',
+      textAlign: 'center',
+    },
+    hintText: {
+      fontSize: 12,
+      color: Romance.accentStrong,
+      backgroundColor: Romance.card,
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: Shape.radius,
+      overflow: 'hidden',
+      textAlign: 'center',
+    },
+    recalledText: { fontSize: 12, color: Romance.sub },
     quote: {
       borderLeftWidth: 3,
-      borderLeftColor: 'rgba(0,0,0,0.18)',
-      backgroundColor: 'rgba(0,0,0,0.06)',
-      borderRadius: 8,
+      borderLeftColor: Romance.line,
+      backgroundColor: Romance.accentSoft,
+      borderRadius: Shape.radiusInner,
       paddingHorizontal: 8,
       paddingVertical: 5,
       marginBottom: 6,
     },
-    quoteName: { fontSize: 11, fontWeight: '700', color: 'rgba(0,0,0,0.55)' },
-    quoteText: { fontSize: 12, color: 'rgba(0,0,0,0.55)', marginTop: 1 },
+    quoteLight: { borderLeftColor: 'rgba(255,255,255,0.6)', backgroundColor: 'rgba(255,255,255,0.18)' },
+    quoteName: { fontSize: 11, fontWeight: '600', color: Romance.sub },
+    quoteText: { fontSize: 12, color: Romance.sub, marginTop: 1 },
+    quoteTextLight: { color: 'rgba(255,255,255,0.85)' },
     metaCol: { justifyContent: 'flex-end', paddingBottom: 2 },
-    metaColMe: { alignItems: 'flex-end', marginRight: 6 },
-    metaColHim: { alignItems: 'flex-start', marginLeft: 6 },
-    metaText: { fontFamily: Fonts.label, fontSize: 11, color: 'rgba(255,255,255,0.95)', lineHeight: 14 },
-    bubbleLine: { borderRadius: Shape.radius },
-    inputBarLine: { backgroundColor: '#FFFFFF' },
-    inputLine: { backgroundColor: Romance.bg },
-    systemText: {
-      fontSize: 12,
-      color: Romance.sub,
-      backgroundColor: Romance.line,
-      paddingHorizontal: 12,
-      paddingVertical: 5,
-      borderRadius: 10,
-      overflow: 'hidden',
-    },
-    comicImage: { width: 220, height: 220, borderRadius: 16, backgroundColor: Romance.line },
-    comicCaption: { fontSize: 13, color: Romance.sub, marginTop: 8, lineHeight: 19 },
+    metaColMe: { alignItems: 'flex-end' },
+    metaColHim: { alignItems: 'flex-start' },
+    metaText: { fontFamily: Fonts.label, fontSize: 11, color: Romance.sub, lineHeight: 14 },
+    photo: { width: 220, height: 220, borderRadius: Shape.radiusInner, backgroundColor: Romance.line },
+    photoCaption: { fontSize: 13, color: Romance.sub, marginTop: 8, lineHeight: 19 },
     voiceRow: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: 2 },
     voiceBar: { width: 3, borderRadius: 2, opacity: 0.75 },
-    voiceDuration: { fontSize: 13, marginLeft: 6, fontWeight: '500' },
-    voiceHint: { fontSize: 11, color: Romance.faint, marginTop: 4 },
+    voiceDuration: { fontFamily: Fonts.label, fontSize: 13, marginLeft: 6 },
+    voiceHint: { fontSize: 11, color: Romance.sub, marginTop: 4 },
     voiceTranscript: { fontSize: 14, color: Romance.sub, marginTop: 6, lineHeight: 20 },
-    mediaHint: { fontSize: 11, color: Romance.faint, marginTop: 4 },
+    mediaHint: { fontSize: 11, color: Romance.sub, marginTop: 4 },
     mediaHintLight: { color: 'rgba(255,255,255,0.82)' },
     mediaTranscript: { fontSize: 13, color: Romance.sub, marginTop: 5, lineHeight: 18 },
     replyBar: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      paddingHorizontal: 14,
+      paddingHorizontal: Space.screen,
       paddingVertical: 8,
       backgroundColor: Romance.bg,
-      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopWidth: 1,
       borderTopColor: Romance.line,
     },
-    replyBarLine: { backgroundColor: '#F7F9FC', borderTopColor: '#E5E9F0' },
     replyBody: { flex: 1 },
-    replyName: { fontSize: 11, fontWeight: '700', color: Romance.accent },
+    replyName: { fontSize: 11, fontWeight: '600', color: Romance.accent },
     replyText: { fontSize: 12, color: Romance.sub, marginTop: 1 },
+    // 输入栏：白底、一条 1.5px 上沿
     inputBar: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      paddingHorizontal: 14,
-      paddingTop: 8,
-      backgroundColor: Romance.bg,
-      // 设计系统（D-084）：输入栏一条 1.5px 上沿线
+      gap: Space.inlineLoose,
+      paddingHorizontal: Space.screen,
+      paddingTop: 10,
+      backgroundColor: Romance.card,
       borderTopWidth: Shape.stroke,
       borderTopColor: Romance.stroke,
     },
@@ -730,10 +700,19 @@ const styles = themed(() =>
       flex: 1,
       height: Space.inputHeight,
       borderRadius: Shape.radius,
-      backgroundColor: '#FFFFFF',
-      paddingHorizontal: 16,
-      fontSize: 16,
+      backgroundColor: Romance.bg,
+      paddingHorizontal: 14,
+      fontSize: 14,
       color: Romance.ink,
+    },
+    inputDisabled: { opacity: 0.5 },
+    sendBtn: {
+      width: Space.inputHeight,
+      height: Space.inputHeight,
+      borderRadius: Shape.radius,
+      backgroundColor: Romance.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     // 录音条（D-091）：占满输入栏中段；计时用 Fredoka，提示语放不下就尾部省略，绝不撑破
     recordingPill: {
@@ -741,33 +720,32 @@ const styles = themed(() =>
       minWidth: 0,
       height: Space.inputHeight,
       borderRadius: Shape.radius,
-      backgroundColor: '#FDEBEA',
+      backgroundColor: Romance.bg,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
       paddingHorizontal: 12,
       overflow: 'hidden',
     },
-    recordingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0433C' },
-    recordingTime: { fontFamily: Fonts.labelBold, fontSize: 14, color: '#C43A34' },
-    recordingText: { fontSize: 13, color: '#C43A34', flexShrink: 1 },
+    recordingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Romance.accentStrong },
+    recordingTime: { fontFamily: Fonts.labelBold, fontSize: 14, color: Romance.accentStrong },
+    recordingText: { fontSize: 13, color: Romance.accentStrong, flexShrink: 1 },
     extrasPanel: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      paddingHorizontal: 14,
+      paddingHorizontal: Space.screen,
       paddingTop: 12,
-      backgroundColor: Romance.bg,
+      backgroundColor: Romance.card,
     },
     extraTile: { width: '25%', alignItems: 'center', paddingVertical: 8 },
     extraIcon: {
       width: 58,
       height: 58,
       borderRadius: Shape.radius,
-      backgroundColor: '#FFFFFF',
+      backgroundColor: Romance.bg,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    extraIconLine: { backgroundColor: '#F1F3F6' },
     extraLabel: { fontSize: 11, color: Romance.sub, marginTop: 6 },
   })
 );

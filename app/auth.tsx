@@ -1,11 +1,12 @@
 /**
- * 登录（D-062）：独立界面。
+ * 登录（D-062；D-100 纸面）：独立界面。
  * - 常规入口：设置 → 账号 · 云端；可返回
  * - 强制点（force=1）：第一次把人添加进通讯录之后——TA 值得一个存得住的家；无返回键
  * - 已有账号（restore=1，D-096）：onboarding 第一步底部「已有账号？登录」——新手机上把 TA 们接回来，不重走新手流
  * 登录方式：Apple（主打）+ 邮箱验证码（需项目配 SMTP，见 D-054 补记）。
  * 成功后先对账（reconcileNow）再走：云端有存档、本机是空的 → 静默接回 → 落桌面；
  * 本机与云端都有关系 → 问她「接回云端 / 用本机覆盖」；云端没存档 → 本机第一份传上去、照常继续。
+ * 纸面：paper 底 + 菱格；66 白图块内 cloud 图标；Apple 按钮 ink 底 r6（不用纯黑）；输入框 Input、主按钮 Button；无阴影。
  */
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -19,12 +20,16 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/button';
+import { Input } from '@/components/input';
+import { MingCute } from '@/components/mingcute';
+import { DiamondBackground } from '@/components/paper-bg';
 import { showToast } from '@/components/toast';
+import { Shape } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import {
@@ -123,82 +128,89 @@ export default function AuthScreen() {
   if (!authConfigured()) {
     return (
       <View style={[styles.screen, styles.center, { paddingTop: insets.top }]}>
+        <DiamondBackground />
         <Text style={styles.title}>{t('账号服务未配置')}</Text>
         <Text style={styles.sub}>在 .env.local 配好 Supabase 后重启（docs/supabase-setup.sql）。</Text>
-        <Pressable style={styles.ghostBtn} onPress={leave}>
-          <Text style={styles.ghostBtnText}>{t('返回')}</Text>
-        </Pressable>
+        <Button label={t('返回')} variant="secondary" onPress={leave} style={styles.ghostBtn} />
       </View>
     );
   }
 
+  const emailDisabled = busy || !email.trim() || (otpSent && !otp.trim());
+
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + 70, paddingBottom: insets.bottom + 24 },
-        ]}
-        keyboardShouldPersistTaps="handled">
-        <Text style={styles.emoji}>☁️</Text>
-        <Text style={styles.title}>{t('把 TA 存进云端')}</Text>
-        <Text style={styles.sub}>
-          {forced
-            ? t('TA 已经在你的通讯录里了。') + '\n' + t('登录之后，换手机也不会失去 TA 和你们的故事。')
-            : t('登录之后，TA 和你们的故事换手机也不会失去。')}
-        </Text>
+    <View style={styles.screen}>
+      <DiamondBackground />
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={[
+            styles.content,
+            { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 24 },
+          ]}
+          keyboardShouldPersistTaps="handled">
+          <View style={styles.tile}>
+            <MingCute name="cloud" size={34} color={Romance.ink} />
+          </View>
+          <Text style={styles.title}>{t('把 TA 存进云端')}</Text>
+          <Text style={styles.sub}>
+            {forced
+              ? t('TA 已经在你的通讯录里了。') + '\n' + t('登录之后，换手机也不会失去 TA 和你们的故事。')
+              : t('登录之后，TA 和你们的故事换手机也不会失去。')}
+          </Text>
 
-        <Pressable style={[styles.appleBtn, busy && styles.dim]} disabled={busy} onPress={doApple}>
-          {busy ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <Text style={styles.appleBtnText}> {t('用 Apple 登录')}</Text>
-          )}
-        </Pressable>
-
-        <View style={styles.orRow}>
-          <View style={styles.orLine} />
-          <Text style={styles.orText}>{t('或用邮箱')}</Text>
-          <View style={styles.orLine} />
-        </View>
-
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          placeholder={t('邮箱地址')}
-          placeholderTextColor={Romance.faint}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-        />
-        {otpSent ? (
-          <TextInput
-            style={styles.input}
-            value={otp}
-            onChangeText={setOtp}
-            placeholder={t('邮箱里的 6 位验证码')}
-            placeholderTextColor={Romance.faint}
-            keyboardType="number-pad"
-            onSubmitEditing={doEmail}
-          />
-        ) : null}
-        <Pressable
-          style={[styles.emailBtn, (busy || !email.trim() || (otpSent && !otp.trim())) && styles.dim]}
-          disabled={busy || !email.trim() || (otpSent && !otp.trim())}
-          onPress={doEmail}>
-          <Text style={styles.emailBtnText}>{otpSent ? t('验证并登录') : t('发送验证码')}</Text>
-        </Pressable>
-
-        {!forced ? (
-          <Pressable style={styles.ghostBtn} onPress={leave}>
-            <Text style={styles.ghostBtnText}>{restoring ? t('返回') : t('先不了')}</Text>
+          <Pressable
+            style={({ pressed }) => [styles.appleBtn, busy && styles.dim, pressed && !busy && styles.pressed]}
+            disabled={busy}
+            onPress={doApple}>
+            {busy ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.appleBtnText}> {t('用 Apple 登录')}</Text>
+            )}
           </Pressable>
-        ) : null}
-        <Text style={styles.footnote}>{t('数据按最高敏感级对待 · 只有你自己能读到你的存档')}</Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+          <View style={styles.orRow}>
+            <View style={styles.orLine} />
+            <Text style={styles.orText}>{t('或用邮箱')}</Text>
+            <View style={styles.orLine} />
+          </View>
+
+          <Input
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            placeholder={t('邮箱地址')}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+          />
+          {otpSent ? (
+            <Input
+              style={styles.input}
+              value={otp}
+              onChangeText={setOtp}
+              placeholder={t('邮箱里的 6 位验证码')}
+              keyboardType="number-pad"
+              onSubmitEditing={doEmail}
+            />
+          ) : null}
+          <Button
+            label={otpSent ? t('验证并登录') : t('发送验证码')}
+            disabled={emailDisabled}
+            onPress={doEmail}
+            style={styles.emailBtn}
+          />
+
+          {!forced ? (
+            <Pressable style={styles.ghost} onPress={leave}>
+              <Text style={styles.ghostText}>{restoring ? t('返回') : t('先不了')}</Text>
+            </Pressable>
+          ) : null}
+          <Text style={styles.footnote}>{t('数据按最高敏感级对待 · 只有你自己能读到你的存档')}</Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -208,48 +220,38 @@ const styles = themed(() =>
     screen: { flex: 1, backgroundColor: Romance.bg },
     center: { alignItems: 'center', justifyContent: 'center', padding: 32 },
     content: { paddingHorizontal: 32, alignItems: 'center' },
-    emoji: { fontSize: 46 },
-    title: { fontSize: 26, fontWeight: '800', color: Romance.ink, marginTop: 14, textAlign: 'center' },
-    sub: {
-      fontSize: 14,
-      color: Romance.sub,
-      textAlign: 'center',
-      lineHeight: 21,
-      marginTop: 10,
-      marginBottom: 30,
+    // 66 白色图块（无描边）内 cloud 图标
+    tile: {
+      width: 66,
+      height: 66,
+      borderRadius: Shape.radius,
+      backgroundColor: Romance.card,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
+    title: { fontSize: 26, fontWeight: '600', color: Romance.ink, marginTop: 16, textAlign: 'center' },
+    sub: { fontSize: 14, lineHeight: 21, color: Romance.sub, textAlign: 'center', marginTop: 10 },
+    // Apple 登录：ink 底 r6 白字（不用纯黑）
     appleBtn: {
       alignSelf: 'stretch',
-      backgroundColor: '#000000',
-      borderRadius: 24,
-      paddingVertical: 15,
-      alignItems: 'center',
-    },
-    appleBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-    orRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 18, alignSelf: 'stretch' },
-    orLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Romance.line },
-    orText: { fontSize: 12, color: Romance.faint },
-    input: {
-      alignSelf: 'stretch',
-      backgroundColor: '#FFFFFF',
-      borderRadius: 18,
-      paddingHorizontal: 16,
-      paddingVertical: 13,
-      fontSize: 15,
-      color: Romance.ink,
-      marginBottom: 10,
-    },
-    emailBtn: {
-      alignSelf: 'stretch',
-      backgroundColor: Romance.accent,
-      borderRadius: 24,
+      backgroundColor: Romance.ink,
+      borderRadius: Shape.radius,
       paddingVertical: 14,
       alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 30,
     },
-    emailBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-    dim: { opacity: 0.5 },
-    ghostBtn: { marginTop: 18, padding: 10 },
-    ghostBtnText: { fontSize: 13, color: Romance.sub },
-    footnote: { fontSize: 11, color: Romance.faint, marginTop: 26, textAlign: 'center' },
+    appleBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+    dim: { opacity: 0.4 },
+    pressed: { opacity: 0.8 },
+    orRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 18, alignSelf: 'stretch' },
+    orLine: { flex: 1, height: 1, backgroundColor: Romance.line },
+    orText: { fontSize: 12, color: Romance.sub },
+    input: { alignSelf: 'stretch', marginBottom: 10 },
+    emailBtn: { alignSelf: 'stretch' },
+    ghost: { marginTop: 18, padding: 10 },
+    ghostText: { fontSize: 13, color: Romance.sub },
+    ghostBtn: { marginTop: 18 },
+    footnote: { fontSize: 11, color: Romance.sub, marginTop: 26, textAlign: 'center' },
   })
 );

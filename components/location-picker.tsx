@@ -1,7 +1,8 @@
 /**
- * 发送位置（D-084）：真实世界的地图（react-native-maps，iOS 走 Apple 地图）。
+ * 发送位置（D-084；D-100 纸面 token 迁移）：真实世界的地图（react-native-maps，iOS 走 Apple 地图）。
  * 三种拿坐标的方式：定位（expo-location，拒绝也没关系）/ 在地图上点选或拖标 / 搜索一个地方（Nominatim，OSM 免费接口）。
  * 选定后反地理编码出一行名字 + 一行地址，连同经纬度交给调用方落成位置卡片。
+ * 图标图块 / 搜索框白底 r6 无描边；搜索结果是 Card；底栏白底 1.5px 上沿、发送用 Button。
  */
 
 import * as Location from 'expo-location';
@@ -19,7 +20,10 @@ import {
 import MapView, { Marker, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/button';
+import { Card } from '@/components/card';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Shape, Space } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { getLang, t } from '@/lib/i18n';
 
@@ -189,7 +193,7 @@ export function LocationPicker({
               value={query}
               onChangeText={setQuery}
               placeholder={t('搜索地点')}
-              placeholderTextColor={Romance.faint}
+              placeholderTextColor={Romance.sub}
               returnKeyType="search"
               onSubmitEditing={search}
             />
@@ -202,11 +206,11 @@ export function LocationPicker({
             </Pressable>
           </View>
           {busy === 'search' ? (
-            <View style={styles.hits}>
+            <Card style={styles.hits}>
               <ActivityIndicator color={Romance.accent} />
-            </View>
+            </Card>
           ) : hits.length ? (
-            <View style={styles.hits}>
+            <Card padded={false} style={styles.hits}>
               {hits.map((h, i) => (
                 <Pressable
                   key={`${h.lat},${h.lon},${i}`}
@@ -223,7 +227,7 @@ export function LocationPicker({
                   </Text>
                 </Pressable>
               ))}
-            </View>
+            </Card>
           ) : null}
         </View>
 
@@ -239,9 +243,7 @@ export function LocationPicker({
                   {label?.subtitle ?? `${pin.lat.toFixed(4)}, ${pin.lon.toFixed(4)}`}
                 </Text>
               </View>
-              <Pressable style={[styles.sendBtn, !label && styles.btnDisabled]} disabled={!label} onPress={send}>
-                <Text style={styles.sendText}>{t('发送位置')}</Text>
-              </Pressable>
+              <Button label={t('发送位置')} disabled={!label} onPress={send} />
             </>
           ) : (
             <Text style={styles.hintText}>{mapH ? t('点地图上的一个地方') : ' '}</Text>
@@ -255,63 +257,45 @@ export function LocationPicker({
 const styles = themed(() =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Romance.bg },
-    top: { position: 'absolute', left: 0, right: 0, top: 0, paddingHorizontal: 12, gap: 8 },
-    searchRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    top: { position: 'absolute', left: 0, right: 0, top: 0, paddingHorizontal: 12, gap: Space.inline },
+    searchRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inline },
+    // 图标图块 / 输入框：白底 r6，无描边
     iconBtn: {
       width: 40,
       height: 40,
-      borderRadius: 6,
-      backgroundColor: '#FFFFFF',
-      borderWidth: 1.5,
-      borderColor: Romance.stroke,
+      borderRadius: Shape.radius,
+      backgroundColor: Romance.card,
       alignItems: 'center',
       justifyContent: 'center',
     },
     search: {
       flex: 1,
       height: 40,
-      borderRadius: 6,
-      backgroundColor: '#FFFFFF',
-      borderWidth: 1.5,
-      borderColor: Romance.stroke,
+      borderRadius: Shape.radius,
+      backgroundColor: Romance.card,
       paddingHorizontal: 12,
       fontSize: 15,
       color: Romance.ink,
     },
-    hits: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 6,
-      borderWidth: 1.5,
-      borderColor: Romance.stroke,
-      paddingVertical: 4,
-    },
-    hit: { paddingHorizontal: 12, paddingVertical: 9 },
+    hits: { paddingVertical: 4 },
+    hit: { paddingHorizontal: Space.cardX, paddingVertical: 9 },
     hitTitle: { fontSize: 14, fontWeight: '600', color: Romance.ink },
     hitSub: { fontSize: 11, color: Romance.sub, marginTop: 1 },
+    // 底栏：白底 + 1.5px 上沿（输入栏同款）
     bottom: {
       position: 'absolute',
       left: 0,
       right: 0,
       bottom: 0,
       padding: 12,
-      gap: 10,
-      backgroundColor: '#FFFFFF',
-      borderTopWidth: 1.5,
+      gap: Space.inlineLoose,
+      backgroundColor: Romance.card,
+      borderTopWidth: Shape.stroke,
       borderTopColor: Romance.stroke,
     },
     picked: { gap: 2 },
-    pickedTitle: { fontSize: 16, fontWeight: '700', color: Romance.ink },
+    pickedTitle: { fontSize: 16, fontWeight: '600', color: Romance.ink },
     pickedSub: { fontSize: 12, color: Romance.sub },
-    sendBtn: {
-      backgroundColor: Romance.accent,
-      borderRadius: 6,
-      borderWidth: 1.5,
-      borderColor: Romance.stroke,
-      paddingVertical: 14,
-      alignItems: 'center',
-    },
-    sendText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-    btnDisabled: { opacity: 0.4 },
     hintText: { textAlign: 'center', fontSize: 13, color: Romance.sub, paddingVertical: 6 },
   })
 );

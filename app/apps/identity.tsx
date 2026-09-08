@@ -1,8 +1,9 @@
 /**
- * 我的身份（D-035）：TA 眼中的你。
+ * 我的身份（D-035；D-100 纸面）：TA 眼中的你。
  * - 默认身份：onboarding 时建立的那份，在这里补充完整（头像/昵称/性别/称呼/职业/取向/签名/生日/完整设定）。
  * - 按角色身份：带 characterId 参数进来 = 为这个 TA 定制一份独立身份（初值抄默认），可随时恢复默认。
  * 全部字段除昵称外可空；没填的不进 prompt（content/prompts/shared.ts 的 userProfileBlock）。
+ * 界面：头像 84 r6 白底 + accent 首字 30/600（衬线）、「更换头像」12/600 primary；字段同 onboarding（Field + Input + Chip）。
  */
 
 import { Image } from 'expo-image';
@@ -17,13 +18,19 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
+import { Button } from '@/components/button';
+import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
-import { Romance, themed } from '@/constants/theme';
+import { Chip } from '@/components/chip';
+import { Field, Input } from '@/components/input';
+import { Shape, Space } from '@/constants/design';
+import { Fonts, Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { t } from '@/lib/i18n';
 import type { UserProfile } from '@/lib/types';
@@ -36,13 +43,16 @@ const GENDERS: { key: NonNullable<UserProfile['gender']>; label: string }[] = [
   { key: 'nonbinary', label: '非二元' },
 ];
 
-function Field({
+/** 文本字段：Field + Input；numeric = 值是数字（生日）时用 Fredoka */
+function TextField({
   label,
   hint,
   value,
   onChange,
   multiline,
   placeholder,
+  numeric,
+  style,
 }: {
   label: string;
   hint?: string;
@@ -50,20 +60,19 @@ function Field({
   onChange: (t: string) => void;
   multiline?: boolean;
   placeholder?: string;
+  numeric?: boolean;
+  style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      {hint ? <Text style={styles.fieldHint}>{hint}</Text> : null}
-      <TextInput
-        style={[styles.input, multiline && styles.inputMulti]}
+    <Field label={label} hint={hint} style={style}>
+      <Input
         value={value}
         onChangeText={onChange}
         placeholder={placeholder ?? t('可不填')}
-        placeholderTextColor={Romance.faint}
         multiline={multiline}
+        style={numeric && value ? styles.inputNumeric : undefined}
       />
-    </View>
+    </Field>
   );
 }
 
@@ -140,92 +149,88 @@ export default function IdentityScreen() {
               <Image source={{ uri: draft.avatarUri }} style={styles.avatar} contentFit="cover" />
             ) : (
               <View style={[styles.avatar, styles.avatarEmpty]}>
-                <Text style={styles.avatarEmptyText}>{draft.nickname.trim().slice(0, 1) || t('我')}</Text>
+                <Text style={styles.avatarInitial}>{draft.nickname.trim().slice(0, 1) || t('我')}</Text>
               </View>
             )}
             <Text style={styles.avatarAction}>{draft.avatarUri ? t('更换头像') : t('选一张头像')}</Text>
           </Pressable>
 
-          <Field
+          <TextField
             label={t('昵称 *')}
             hint={t('角色看到的名字')}
             value={draft.nickname}
-            onChange={(t) => patch({ nickname: t })}
+            onChange={(v) => patch({ nickname: v })}
             placeholder={t('必填')}
           />
 
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>{t('性别')}</Text>
+          <Field label={t('性别')}>
             <View style={styles.chips}>
-              {GENDERS.map((g) => {
-                const active = (draft.gender ?? 'unspecified') === g.key;
-                return (
-                  <Pressable
-                    key={g.key}
-                    style={[styles.chip, active && styles.chipActive]}
-                    onPress={() => patch({ gender: g.key })}>
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(g.label)}</Text>
-                  </Pressable>
-                );
-              })}
+              {GENDERS.map((g) => (
+                <Chip
+                  key={g.key}
+                  label={t(g.label)}
+                  selected={(draft.gender ?? 'unspecified') === g.key}
+                  onPress={() => patch({ gender: g.key })}
+                />
+              ))}
             </View>
-          </View>
+          </Field>
 
-          <Field
+          <TextField
             label={t('称呼 / 代词')}
             value={draft.pronoun ?? ''}
-            onChange={(t) => patch({ pronoun: t })}
+            onChange={(v) => patch({ pronoun: v })}
           />
-          <Field
+          <TextField
             label={t('职业')}
             value={draft.occupation ?? ''}
-            onChange={(t) => patch({ occupation: t })}
+            onChange={(v) => patch({ occupation: v })}
           />
-          <Field
+          <TextField
             label={t('情感取向')}
             hint={t('例如：喜欢女生')}
             value={draft.orientation ?? ''}
-            onChange={(t) => patch({ orientation: t })}
+            onChange={(v) => patch({ orientation: v })}
           />
-          <Field
+          <TextField
             label={t('个性签名')}
             hint={t('一句现在的状态')}
             value={draft.signature ?? ''}
-            onChange={(t) => patch({ signature: t })}
+            onChange={(v) => patch({ signature: v })}
           />
-          <Field
+          <TextField
             label={t('生日')}
             value={draft.birthday ?? ''}
-            onChange={(t) => patch({ birthday: t })}
+            onChange={(v) => patch({ birthday: v })}
             placeholder={t('比如 05-20')}
+            numeric
           />
 
           <Text style={styles.sectionTitle}>{t('完整设定')}</Text>
-          <Field
+          <TextField
             label={t('背景')}
             hint={t('成长背景、家庭或当前生活背景等稳定事实')}
             value={draft.background ?? ''}
-            onChange={(t) => patch({ background: t })}
+            onChange={(v) => patch({ background: v })}
             multiline
+            style={styles.firstField}
           />
-          <Field
+          <TextField
             label={t('关于我')}
             hint={t('身份、经历、性格、兴趣……')}
             value={draft.about ?? ''}
-            onChange={(t) => patch({ about: t })}
+            onChange={(v) => patch({ about: v })}
             multiline
           />
-          <Field
+          <TextField
             label={t('我的边界')}
             hint={t('不希望角色替你决定、猜测或触碰的内容')}
             value={draft.boundaries ?? ''}
-            onChange={(t) => patch({ boundaries: t })}
+            onChange={(v) => patch({ boundaries: v })}
             multiline
           />
 
-          <Pressable style={styles.saveBtn} onPress={save}>
-            <Text style={styles.saveBtnText}>{t('保存')}</Text>
-          </Pressable>
+          <Button label={t('保存')} style={styles.saveBtn} onPress={save} />
 
           {characterId ? (
             meByCharacter[characterId] ? (
@@ -239,24 +244,26 @@ export default function IdentityScreen() {
               {bonds.map((b) => (
                 <Pressable
                   key={b.id}
-                  style={styles.charRow}
                   onPress={() =>
                     router.push({ pathname: '/apps/identity', params: { characterId: b.characterId } })
                   }>
-                  <CharAvatar
-                    name={b.name}
-                    color={colorOf(b.characterId)}
-                    size={40}
-                    characterId={b.characterId}
-                  />
-                  <View style={styles.charRowText}>
-                    <Text style={styles.charRowName}>{b.name}</Text>
-                    <Text style={styles.charRowSub}>
-                      {meByCharacter[b.characterId]
-                        ? t('独立身份 ·「{n}」', { n: meByCharacter[b.characterId].nickname })
-                        : t('使用默认身份')}
-                    </Text>
-                  </View>
+                  <Card style={styles.charRow}>
+                    <CharAvatar
+                      name={b.name}
+                      color={colorOf(b.characterId)}
+                      size={40}
+                      characterId={b.characterId}
+                    />
+                    <View style={styles.charRowText}>
+                      <Text style={styles.charRowName}>{b.name}</Text>
+                      <Text style={styles.charRowSub}>
+                        {meByCharacter[b.characterId]
+                          ? t('独立身份 ·「{n}」', { n: meByCharacter[b.characterId].nickname })
+                          : t('使用默认身份')}
+                      </Text>
+                    </View>
+                    <Text style={styles.charRowChevron}>›</Text>
+                  </Card>
                 </Pressable>
               ))}
             </View>
@@ -271,78 +278,49 @@ const styles = themed(() =>
   StyleSheet.create({
     flex: { flex: 1 },
     screen: { flex: 1, backgroundColor: Romance.bg },
+    // 表单类页面左右留白按设计稿 18
     content: { padding: 18, paddingBottom: 60 },
     scopeHint: {
       fontSize: 12,
       color: Romance.accent,
       backgroundColor: Romance.accentSoft,
-      borderRadius: 12,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      marginBottom: 14,
+      borderRadius: Shape.radius,
+      paddingHorizontal: Space.cardX,
+      paddingVertical: Space.inline,
+      marginBottom: Space.screen,
       overflow: 'hidden',
     },
-    avatarWrap: { alignItems: 'center', marginBottom: 18 },
-    avatar: { width: 84, height: 84, borderRadius: 42 },
+    avatarWrap: { alignItems: 'center' },
+    avatar: { width: 84, height: 84, borderRadius: Shape.radius },
     avatarEmpty: {
-      backgroundColor: Romance.accentSoft,
+      backgroundColor: Romance.card,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    avatarEmptyText: { fontSize: 30, fontWeight: '700', color: Romance.accent },
-    avatarAction: { fontSize: 12, color: Romance.accent, marginTop: 8, fontWeight: '600' },
-    field: { marginBottom: 14 },
-    fieldLabel: { fontSize: 14, fontWeight: '600', color: Romance.ink },
-    fieldHint: { fontSize: 11, color: Romance.faint, marginTop: 2 },
-    input: {
-      marginTop: 8,
-      backgroundColor: '#FFFFFF',
-      borderRadius: 16,
-      paddingHorizontal: 14,
-      paddingVertical: 11,
-      fontSize: 15,
-      color: Romance.ink,
-    },
-    inputMulti: { minHeight: 88, textAlignVertical: 'top' },
-    chips: { flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' },
-    chip: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 16,
-      paddingHorizontal: 16,
-      paddingVertical: 9,
-    },
-    chipActive: { backgroundColor: Romance.accent },
-    chipText: { fontSize: 13, color: Romance.sub },
-    chipTextActive: { color: '#FFFFFF', fontWeight: '600' },
+    avatarInitial: { fontFamily: Fonts.initial, fontSize: 30, fontWeight: '600', color: Romance.accentStrong },
+    avatarAction: { fontSize: 12, fontWeight: '600', color: Romance.accent, marginTop: Space.inline },
+    inputNumeric: { fontFamily: Fonts.label },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.inline },
     sectionTitle: {
       fontSize: 13,
       fontWeight: '600',
       color: Romance.sub,
-      marginTop: 10,
-      marginBottom: 8,
+      marginTop: 28,
     },
-    saveBtn: {
-      backgroundColor: Romance.accent,
-      borderRadius: 22,
-      paddingVertical: 14,
-      alignItems: 'center',
-      marginTop: 8,
-    },
-    saveBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-    restoreBtn: { alignItems: 'center', marginTop: 16, padding: 8 },
+    firstField: { marginTop: Space.inline },
+    saveBtn: { marginTop: 28 },
+    restoreBtn: { alignItems: 'center', marginTop: 16, padding: Space.inline },
     restoreBtnText: { fontSize: 13, color: Romance.sub },
-    perChar: { marginTop: 22 },
+    perChar: { marginTop: Space.inline },
     charRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
-      backgroundColor: '#FFFFFF',
-      borderRadius: 18,
-      padding: 12,
-      marginTop: 8,
+      gap: Space.inlineLoose,
+      marginTop: Space.inline,
     },
     charRowText: { flex: 1 },
-    charRowName: { fontSize: 14, fontWeight: '600', color: Romance.ink },
+    charRowName: { fontSize: 15, fontWeight: '600', color: Romance.ink },
     charRowSub: { fontSize: 12, color: Romance.sub, marginTop: 2 },
+    charRowChevron: { fontSize: 18, color: Romance.sub },
   })
 );

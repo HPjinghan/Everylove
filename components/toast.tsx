@@ -1,5 +1,5 @@
 /**
- * 轻提示（D-079）：全局一条，顶部淡入、两秒多后淡出；任何地方 showToast() 即可（照片洗好了……）。
+ * 轻提示（D-079；D-100 纸面：ink 底白字 r6、无阴影）：全局一条，顶部淡入、两秒多后淡出；任何地方 showToast() 即可。
  * 宿主 <ToastHost /> 挂在根布局；不在树上时 showToast 静默。
  */
 
@@ -7,7 +7,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { themed } from '@/constants/theme';
+import { Shape } from '@/constants/design';
+import { Romance, themed } from '@/constants/theme';
 
 let emit: ((text: string) => void) | null = null;
 
@@ -52,15 +53,11 @@ const styles = themed(() =>
       position: 'absolute',
       alignSelf: 'center',
       maxWidth: '82%',
-      backgroundColor: 'rgba(58,33,38,0.88)',
-      borderRadius: 18,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      shadowColor: '#000',
-      shadowOpacity: 0.12,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 3 },
+      backgroundColor: Romance.ink,
+      borderRadius: Shape.radius,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
     },
-    text: { color: '#FFFFFF', fontSize: 13, fontWeight: '600', textAlign: 'center' },
+    text: { color: '#FFFFFF', fontSize: 13, fontWeight: '500', textAlign: 'center' },
   })
 );

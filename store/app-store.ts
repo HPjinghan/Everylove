@@ -15,7 +15,7 @@ import { uid } from '@/lib/format';
 import { applyThemeColors } from '@/constants/theme';
 import { bondLevel, levelLabel } from '@/lib/bond';
 import { setLang } from '@/lib/i18n';
-import { DEFAULT_DOCK } from '@/constants/apps';
+import { DEFAULT_DOCK, DEFAULT_WALLPAPER } from '@/constants/apps';
 import { placeById } from '@/content/places';
 import { appointmentAtLabel, minutesLate, planIsOpen } from '@/lib/appointments';
 import { randomPasscode } from '@/lib/phone';
@@ -101,6 +101,8 @@ interface AppState {
   setDatingView: (v: 'swipe' | 'grid') => void;
   /** 交友左滑：记一笔略过（略过不是拉黑，冷却后回流牌堆，D-041） */
   markDatingPass: (characterId: string) => void;
+  /** 交友略过撤销（D-100）：3 秒内点「撤销」把冷却记录抹掉，卡回牌顶 */
+  unmarkDatingPass: (characterId: string) => void;
   setMe: (p: UserProfile) => void;
   /** 为单个角色设置独立身份；传 undefined = 恢复使用默认身份 */
   setMeForCharacter: (characterId: string, p?: UserProfile) => void;
@@ -129,6 +131,8 @@ interface AppState {
   ensurePhoneCode: (bondId: string) => string;
   /** 查手机（D-082）：拿到密码后解锁，之后随时能看 */
   setPhoneUnlocked: (bondId: string) => void;
+  /** 「+」面板预告已插过（D-100） */
+  markBondHintSeen: (bondId: string) => void;
   /** LINE 规则（D-030）：撤回=占位+清内容（仅自己的消息、24h 内，界面侧把关）；删除=本地移除任意消息 */
   recallMessage: (scope: { bondId?: string; characterId?: string }, msgId: string) => void;
   /** 就地更新一条消息（D-073：语音识别 / 看图结果回填） */
@@ -208,7 +212,7 @@ const initialData = {
   desktopOrder: [] as string[],
   desktopSlots: {} as Record<string, number>,
   desktopDock: DEFAULT_DOCK,
-  wallpaper: 'dawn',
+  wallpaper: DEFAULT_WALLPAPER,
   themeId: 'peach',
   userEvents: [] as CalendarEvent[],
   postSchedule: {} as Record<string, number>,
@@ -241,6 +245,11 @@ export const useAppStore = create<AppState>()(
 
       markDatingPass: (characterId) =>
         set({ datingPasses: { ...get().datingPasses, [characterId]: Date.now() } }),
+      unmarkDatingPass: (characterId) => {
+        const next = { ...get().datingPasses };
+        delete next[characterId];
+        set({ datingPasses: next });
+      },
 
       setMe: (p) => set({ me: p }),
       setMeForCharacter: (characterId, p) => {
@@ -450,6 +459,10 @@ export const useAppStore = create<AppState>()(
       setPhoneUnlocked: (bondId) =>
         set({
           bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, phoneUnlocked: true } : b)),
+        }),
+      markBondHintSeen: (bondId) =>
+        set({
+          bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, hintPlusSeen: true } : b)),
         }),
 
       recallMessage: ({ bondId, characterId }, msgId) => {

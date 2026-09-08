@@ -1,5 +1,6 @@
 /**
- * 通话页（D-077）：全屏，像真的在打电话。
+ * 通话页（D-077；D-100 纸面）：全屏，像真的在打电话。深底是设计稿指定的唯一 palette 外常量；
+ * 头像 132 r6、侧键 72 r6 白 12%、挂断 80 r6 accent 底（不再用红）图标转 135°；时长数字 Fredoka。
  * 流程：拨号 → TA 接起先开口（引擎通话模式 + 合成播放）→ 自动开始听她说（音量计断句）→ 识别 → TA 回 → 播放 → 再听……
  * 她的话与 TA 的话都进羁绊会话（viaCall）；挂断记「📞 m:ss」并触发记忆提取。
  * 免提 = 播放走扬声器（iOS 类别 .playback）；听筒 = 录音类别 .playAndRecord，iOS 默认从听筒出声。
@@ -22,7 +23,8 @@ import {
 
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
-import { Romance, themed } from '@/constants/theme';
+import { Shape } from '@/constants/design';
+import { Fonts, Romance, themed } from '@/constants/theme';
 import { VAD, callPickupLine, callReply, formatCallDuration, logCall } from '@/lib/call';
 import { describeAiError } from '@/lib/engine';
 import { t } from '@/lib/i18n';
@@ -34,6 +36,9 @@ import { findCharacter, useAppStore } from '@/store/app-store';
 type Phase = 'dialing' | 'connecting' | 'speaking' | 'listening' | 'thinking' | 'ended';
 
 const RECORDING = { ...ASR_RECORDING, isMeteringEnabled: true };
+
+/** 设计稿指定的通话深底（D-100）：全 App 唯一允许的 palette 外常量 */
+const CALL_BG = '#1C1A1E';
 
 export default function CallScreen() {
   const { characterId } = useLocalSearchParams<{ characterId: string }>();
@@ -248,12 +253,17 @@ export default function CallScreen() {
       <View style={styles.top}>
         <CharAvatar name={bond.name} color={character.color} size={132} characterId={character.id} />
         <Text style={styles.name}>{bond.name}</Text>
-        <Text style={styles.status}>
-          {statusText}
-          {connectedAt.current ? ` · ${formatCallDuration(elapsed)}` : ''}
-        </Text>
+        <View style={styles.statusRow}>
+          <Text style={styles.status}>{statusText}</Text>
+          {connectedAt.current ? (
+            <>
+              <Text style={styles.status}> · </Text>
+              <Text style={styles.statusTime}>{formatCallDuration(elapsed)}</Text>
+            </>
+          ) : null}
+        </View>
         {phase === 'thinking' || phase === 'connecting' ? (
-          <ActivityIndicator color="#FFFFFF" style={{ marginTop: 8 }} />
+          <ActivityIndicator color="#FFFFFF" style={styles.spinner} />
         ) : null}
       </View>
 
@@ -264,9 +274,7 @@ export default function CallScreen() {
         {phase === 'listening' ? (
           <View style={styles.meter}>
             <View style={[styles.meterDot, speechStarted.current && styles.meterDotOn]} />
-            <Text style={styles.meterText}>
-              {speechStarted.current ? t('听到了') : t('说话吧')}
-            </Text>
+            <Text style={styles.meterText}>{speechStarted.current ? t('听到了') : t('说话吧')}</Text>
           </View>
         ) : null}
       </View>
@@ -276,7 +284,9 @@ export default function CallScreen() {
           <Text style={[styles.sideBtnText, speaker && styles.sideBtnTextOn]}>{speaker ? t('免提') : t('听筒')}</Text>
         </Pressable>
         <Pressable style={styles.hangBtn} onPress={hangUp}>
-          <MingCute name="phone" size={30} color="#FFFFFF" />
+          <View style={styles.hangIcon}>
+            <MingCute name="phoneSimple" size={30} color="#FFFFFF" />
+          </View>
         </Pressable>
         <Pressable
           style={[styles.sideBtn, phase !== 'listening' && styles.sideBtnDisabled]}
@@ -294,38 +304,42 @@ export default function CallScreen() {
 
 const styles = themed(() =>
   StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#1C1A1E', paddingHorizontal: 24, justifyContent: 'space-between' },
+    screen: { flex: 1, backgroundColor: CALL_BG, paddingHorizontal: 24, justifyContent: 'space-between' },
     top: { alignItems: 'center', gap: 10, marginTop: 24 },
     name: { fontSize: 26, fontWeight: '600', color: '#FFFFFF', marginTop: 8 },
+    statusRow: { flexDirection: 'row', alignItems: 'baseline' },
     status: { fontSize: 14, color: 'rgba(255,255,255,0.65)' },
+    statusTime: { fontFamily: Fonts.label, fontSize: 14, color: 'rgba(255,255,255,0.65)' },
+    spinner: { marginTop: 8 },
     captions: { flex: 1, justifyContent: 'flex-end', gap: 10, paddingVertical: 24 },
     himLine: { fontSize: 17, lineHeight: 26, color: '#FFFFFF' },
     herLine: { fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.55)' },
     note: { fontSize: 12, color: Romance.accent },
     meter: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-    meterDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.25)' },
-    meterDotOn: { backgroundColor: '#3EB489' },
+    meterDot: { width: 10, height: 10, borderRadius: Shape.radiusInner, backgroundColor: 'rgba(255,255,255,0.25)' },
+    meterDotOn: { backgroundColor: Romance.accent },
     meterText: { fontSize: 12, color: 'rgba(255,255,255,0.5)' },
     controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
+    // 侧键：72 r6 白 12%；挂断：80 r6 accent 底，只转图标不转方块
     sideBtn: {
       width: 72,
       height: 72,
-      borderRadius: 36,
+      borderRadius: Shape.radius,
       backgroundColor: 'rgba(255,255,255,0.12)',
       alignItems: 'center',
       justifyContent: 'center',
     },
     sideBtnDisabled: { opacity: 0.35 },
     sideBtnText: { color: '#FFFFFF', fontSize: 13 },
-    sideBtnTextOn: { fontWeight: '700' },
+    sideBtnTextOn: { fontWeight: '600' },
     hangBtn: {
       width: 80,
       height: 80,
-      borderRadius: 40,
-      backgroundColor: '#E5484D',
+      borderRadius: Shape.radius,
+      backgroundColor: Romance.accentStrong,
       alignItems: 'center',
       justifyContent: 'center',
-      transform: [{ rotate: '135deg' }],
     },
+    hangIcon: { transform: [{ rotate: '135deg' }] },
   })
 );

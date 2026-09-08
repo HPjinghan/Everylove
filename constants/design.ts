@@ -5,7 +5,8 @@
  * 一句话：粉色纸面、菱形暗纹、墨色细描边、无阴影、4–6px 小圆角。结构性元素（顶栏、聊天流）通底不加框，
  * 只有内容卡片和主按钮保留 1.5px 描边。Fredoka 负责数字与标签，系统字体负责正文，保证中文可读。
  *
- * 现状：本文件先作为**规格来源**落地（token 即代码，界面逐屏改造时引用它）；各屏尚未按它重做（见 DECISIONS D-083）。
+ * D-100：全部 27 屏已按 design/Everylove Paper UI.html 重做——界面只引这里与 Romance token，不手写圆角 / 阴影 / 字号 / hex。
+ * 背景图案的实现在 components/paper-bg.tsx（DiamondBackground / ChatWallpaper）。
  */
 
 /** 形状 · 描边 · 阴影 */
@@ -78,6 +79,12 @@ export const Space = {
   /** 图标：图块内 30，栏内 22–24 */
   iconTile: 30,
   iconBar: 24,
+  /** 桌面页码点（D-100）：Dock 上方 14、直径 6 */
+  pageDot: 6,
+  pageDotGap: 14,
+  /** Dock（D-100）：高 102、距底 26 */
+  dockHeight: 102,
+  dockBottom: 26,
   avatar: { card: 54, row: 36, bubble: 32 },
 } as const;
 
@@ -122,4 +129,14 @@ export const AVATAR_COLORS: Record<string, string> = {
   沈: '#3E5C6B',
   胡: '#A8354D',
   苏: '#7A4257',
+  // 纸面全屏设计稿新增（D-100）
+  江: '#2F6B5E',
+  烛: '#8A4B2B',
+  洛: '#6B5B8E',
 };
+
+/** TA 的手机里的记事本卡（D-100）：唯一的米色纸面，只用在这一处 */
+export const NOTE_PAPER = { bg: '#FFFBEA', ink: '#5B4A2E' } as const;
+
+/** 拍立得倾角（D-100）：±0.6–1.8°，按 key 稳定取一个 */
+export const POLAROID_TILTS = [-1.8, -1.5, -1.2, -1, -0.6, 0.6, 0.8, 1.2, 1.4, 1.8] as const;

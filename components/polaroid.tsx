@@ -1,5 +1,6 @@
 /**
- * 拍立得（D-056）：生成照片的统一呈现——白框相纸 + 下方手写字，微微歪着（每张的倾角由 key 决定）。
+ * 拍立得（D-056；D-100 纸面）：生成照片的统一呈现——白框相纸 1.5px ink 描边 r6、内距 6/6/16、照片区 1:1（r4）、
+ * 下方 Fredoka 10 muted 手写字，微微歪着（±0.6–1.8°，倾角由 key 决定）；无阴影。
  * 会话流里居中（不是对话气泡——照片不是谁「说」的话，是你们的东西）；相册同框。
  * PhotoViewer：点开看大图 + 分享（expo-sharing 调系统分享面板）。
  */
@@ -8,14 +9,16 @@ import { Image } from 'expo-image';
 import * as Sharing from 'expo-sharing';
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Romance, themed } from '@/constants/theme';
+import { Button } from '@/components/button';
+import { POLAROID_TILTS, Shape } from '@/constants/design';
+import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 
-/** 每张照片一个稳定的小倾角（-2° ~ 2°），像随手贴在桌上 */
+/** 每张照片一个稳定的小倾角（±0.6–1.8°），像随手贴在桌上 */
 export function tiltFor(key: string): number {
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
-  return (Math.abs(h) % 5) - 2;
+  return POLAROID_TILTS[Math.abs(h) % POLAROID_TILTS.length];
 }
 
 export function Polaroid({
@@ -34,24 +37,19 @@ export function Polaroid({
   onPress?: () => void;
   onLongPress?: () => void;
 }) {
-  const pad = Math.max(6, Math.round(width * 0.045));
-  const img = width - pad * 2;
-  const small = width < 140;
+  const pad = 6;
+  const img = width - pad * 2 - Shape.stroke * 2;
   const rotate = tiltKey ? `${tiltFor(tiltKey)}deg` : '0deg';
   return (
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={350}
-      style={[styles.frame, { width, padding: pad, transform: [{ rotate }] }]}>
-      <Image source={{ uri }} style={{ width: img, height: img, backgroundColor: '#ECECEC' }} contentFit="cover" />
-      <View style={[styles.foot, { height: small ? pad * 2 : 34 }]}>
-        {caption && !small ? (
-          <Text style={styles.caption} numberOfLines={1}>
-            {caption}
-          </Text>
-        ) : null}
-      </View>
+      style={[styles.frame, { width, transform: [{ rotate }] }]}>
+      <Image source={{ uri }} style={[styles.photo, { width: img, height: img }]} contentFit="cover" />
+      <Text style={styles.caption} numberOfLines={1}>
+        {caption ?? ' '}
+      </Text>
     </Pressable>
   );
 }
@@ -80,12 +78,8 @@ export function PhotoViewer({ shot, onClose }: { shot: ViewerShot | null; onClos
               <Polaroid uri={shot.uri} caption={shot.caption} width={300} />
             </Pressable>
             <View style={styles.viewerBtns}>
-              <Pressable style={styles.viewerBtn} onPress={share}>
-                <Text style={styles.viewerBtnText}>{t('分享')}</Text>
-              </Pressable>
-              <Pressable style={[styles.viewerBtn, styles.viewerBtnDim]} onPress={onClose}>
-                <Text style={styles.viewerBtnText}>{t('关闭')}</Text>
-              </Pressable>
+              <Button label={t('分享')} onPress={share} size="md" />
+              <Button label={t('关闭')} onPress={onClose} size="md" variant="secondary" />
             </View>
           </>
         ) : null}
@@ -97,30 +91,24 @@ export function PhotoViewer({ shot, onClose }: { shot: ViewerShot | null; onClos
 const styles = themed(() =>
   StyleSheet.create({
     frame: {
-      backgroundColor: '#FFFFFF',
-      shadowColor: '#000',
-      shadowOpacity: 0.18,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 3,
+      backgroundColor: Romance.card,
+      borderWidth: Shape.stroke,
+      borderColor: Romance.stroke,
+      borderRadius: Shape.radius,
+      paddingTop: 6,
+      paddingHorizontal: 6,
+      paddingBottom: 16,
+      alignItems: 'center',
     },
-    foot: { alignItems: 'center', justifyContent: 'center' },
-    caption: { fontSize: 12, color: '#6B5B4E', fontStyle: 'italic' },
+    photo: { borderRadius: Shape.radiusInner, backgroundColor: Romance.bg },
+    caption: { fontFamily: Fonts.label, fontSize: 10, color: Romance.sub, marginTop: 6, textAlign: 'center' },
     viewer: {
       flex: 1,
-      backgroundColor: 'rgba(20,12,14,0.94)',
+      backgroundColor: withAlpha(Romance.ink, 0.92),
       alignItems: 'center',
       justifyContent: 'center',
       padding: 18,
     },
     viewerBtns: { flexDirection: 'row', gap: 14, marginTop: 26 },
-    viewerBtn: {
-      backgroundColor: Romance.accent,
-      borderRadius: 22,
-      paddingHorizontal: 30,
-      paddingVertical: 12,
-    },
-    viewerBtnDim: { backgroundColor: 'rgba(255,255,255,0.18)' },
-    viewerBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   })
 );

@@ -1,28 +1,23 @@
 /**
- * X（原朋友圈，D-053 推特模式改版）：缔结契约（领养）的 TA 们的时间线（D-027 口径不变）。
- * - 推特式行布局：头像 + 名字 + @handle + 相对时间，正文，回复/喜欢操作行，细线分隔
+ * X（原朋友圈，D-053 推特模式改版；D-100 纸面）：缔结契约（领养）的 TA 们的时间线（D-027 口径不变）。
+ * - 白通栏、行间 1px line：头像 40、名 15/600 + @handle 13 muted、正文 15/21、动作行 Fredoka 12 muted（已赞 primary）
+ * - 回复缩进、头像 26；「我的头像」= paper 底 accent 首字（不是角色色）；评论输入框 paper r6
  * - 回复实装模型（D-053）：她评论 → TA 用当前引擎真的回一条（带人设/关系/记忆），
  *   暗面路由前置（红线 #3：评论区也不例外）；AI 不可用/失败不回帖、弹窗露出原因（D-069 起没有脚本回落）
  * - 加好友前的公开帖只能看（免费层口径不变）
  */
 
 import { useState } from 'react';
-import {
-  Alert,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
+import { MingCute } from '@/components/mingcute';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Shape, Space } from '@/constants/design';
+import { Fonts, Romance, themed } from '@/constants/theme';
 import { DARK_SIDE_PATTERN, darkSideReply } from '@/content/characters';
 import { buildPostReplySystem, buildPostReplyUserPrompt } from '@/content/prompts';
-import { Romance, themed } from '@/constants/theme';
 import { completeText, describeAiError, splitBubbles, stripStageDirections } from '@/lib/engine';
 import { timeAgo } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -105,20 +100,16 @@ function PostRow({ post }: { post: Post }) {
             style={styles.action}
             onPress={() => canComment && setCommentOpen((v) => !v)}
             disabled={!canComment}>
-            <IconSymbol name="bubble.right" size={16} color={Romance.faint} />
-            <Text style={styles.actionText}>
-              {canComment ? post.comments.length || '' : t('只能看看')}
-            </Text>
+            <MingCute name="chat" size={15} color={Romance.sub} />
+            {canComment ? (
+              <Text style={styles.actionCount}>{post.comments.length || ''}</Text>
+            ) : (
+              <Text style={styles.actionLabel}>{t('只能看看')}</Text>
+            )}
           </Pressable>
           <Pressable style={styles.action} onPress={() => useAppStore.getState().toggleLike(post.id)}>
-            <IconSymbol
-              name={post.liked ? 'heart.fill' : 'heart'}
-              size={16}
-              color={post.liked ? Romance.accent : Romance.faint}
-            />
-            <Text style={[styles.actionText, post.liked && { color: Romance.accent }]}>
-              {post.likes}
-            </Text>
+            <MingCute name="heart" size={15} color={post.liked ? Romance.accent : Romance.sub} />
+            <Text style={[styles.actionCount, post.liked && styles.actionCountOn]}>{post.likes || ''}</Text>
           </Pressable>
         </View>
 
@@ -126,12 +117,7 @@ function PostRow({ post }: { post: Post }) {
         {post.comments.map((cm) => (
           <View key={cm.id} style={styles.reply}>
             {cm.from === 'him' ? (
-              <CharAvatar
-                name={displayName}
-                color={character.color}
-                size={26}
-                characterId={character.id}
-              />
+              <CharAvatar name={displayName} color={character.color} size={26} characterId={character.id} />
             ) : (
               <View style={styles.myAvatar}>
                 <Text style={styles.myAvatarText}>{myName.slice(0, 1)}</Text>
@@ -151,12 +137,7 @@ function PostRow({ post }: { post: Post }) {
         ))}
         {replying ? (
           <View style={styles.reply}>
-            <CharAvatar
-              name={displayName}
-              color={character.color}
-              size={26}
-              characterId={character.id}
-            />
+            <CharAvatar name={displayName} color={character.color} size={26} characterId={character.id} />
             <Text style={styles.replyTyping}>{t('{name} 正在回复…', { name: displayName })}</Text>
           </View>
         ) : null}
@@ -168,7 +149,7 @@ function PostRow({ post }: { post: Post }) {
               value={commentDraft}
               onChangeText={setCommentDraft}
               placeholder={t('发布你的回复')}
-              placeholderTextColor={Romance.faint}
+              placeholderTextColor={Romance.sub}
               onSubmitEditing={submitComment}
               returnKeyType="send"
             />
@@ -176,7 +157,7 @@ function PostRow({ post }: { post: Post }) {
               <IconSymbol
                 name="arrow.up.circle.fill"
                 size={28}
-                color={commentDraft.trim() && !replying ? '#1D9BF0' : Romance.faint}
+                color={commentDraft.trim() && !replying ? Romance.accent : Romance.sub}
               />
             </Pressable>
           </View>
@@ -191,9 +172,7 @@ export default function FeedScreen() {
   const bonds = useAppStore((s) => s.bonds);
   // 只看缔结契约的 TA（D-027）：领养后帖 + 这些角色的公开帖
   const bondedCharIds = new Set(bonds.map((b) => b.characterId));
-  const sorted = posts
-    .filter((p) => bondedCharIds.has(p.characterId))
-    .sort((a, b) => b.at - a.at);
+  const sorted = posts.filter((p) => bondedCharIds.has(p.characterId)).sort((a, b) => b.at - a.at);
 
   return (
     <AppScreen title="X">
@@ -206,10 +185,7 @@ export default function FeedScreen() {
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>🕊️</Text>
-            <Text style={styles.emptyText}>
-              {t('时间线还是空的。')}
-            </Text>
+            <Text style={styles.emptyText}>{t('时间线还是空的。')}</Text>
           </View>
         }
       />
@@ -219,57 +195,54 @@ export default function FeedScreen() {
 
 const styles = themed(() =>
   StyleSheet.create({
-    feed: { backgroundColor: '#FFFFFF' },
+    // 白通栏：列表底白、行间 1px line
+    feed: { backgroundColor: Romance.card },
     list: { paddingBottom: 24 },
-    separator: { height: StyleSheet.hairlineWidth, backgroundColor: '#E8ECEF' },
+    separator: { height: 1, backgroundColor: Romance.line },
     row: {
       flexDirection: 'row',
-      gap: 10,
-      paddingHorizontal: 14,
+      gap: Space.inlineLoose,
+      paddingHorizontal: Space.screen,
       paddingVertical: 12,
-      backgroundColor: '#FFFFFF',
     },
-    rowBody: { flex: 1 },
+    rowBody: { flex: 1, minWidth: 0 },
     headLine: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-    name: { fontSize: 15, fontWeight: '700', color: '#0F1419', flexShrink: 1 },
-    handle: { fontSize: 13, color: '#536471', flexShrink: 1 },
+    name: { fontSize: 15, fontWeight: '600', color: Romance.ink, flexShrink: 1 },
+    handle: { fontSize: 13, color: Romance.sub, flexShrink: 1 },
     lockedMeta: { fontSize: 11, color: Romance.faint, marginTop: 1 },
-    body: { fontSize: 15, color: '#0F1419', lineHeight: 21, marginTop: 3 },
+    body: { fontSize: 15, lineHeight: 21, color: Romance.ink, marginTop: 3 },
     actions: { flexDirection: 'row', gap: 46, marginTop: 10 },
     action: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 34 },
-    actionText: { fontSize: 12, color: '#536471' },
-    reply: {
-      flexDirection: 'row',
-      gap: 8,
-      marginTop: 12,
-      paddingLeft: 2,
-    },
+    actionCount: { fontFamily: Fonts.label, fontSize: 12, color: Romance.sub },
+    actionCountOn: { color: Romance.accent },
+    actionLabel: { fontSize: 12, color: Romance.sub },
+    reply: { flexDirection: 'row', gap: Space.inline, marginTop: 12 },
     replyBody: { flex: 1 },
-    replyName: { fontSize: 13, fontWeight: '700', color: '#0F1419' },
-    replyHandle: { fontSize: 12, fontWeight: '400', color: '#536471' },
-    replyText: { fontSize: 14, color: '#0F1419', lineHeight: 20, marginTop: 1 },
-    replyTyping: { fontSize: 13, color: '#536471', alignSelf: 'center' },
+    replyName: { fontSize: 13, fontWeight: '600', color: Romance.ink },
+    replyHandle: { fontSize: 12, fontWeight: '400', color: Romance.sub },
+    replyText: { fontSize: 14, lineHeight: 20, color: Romance.ink, marginTop: 1 },
+    replyTyping: { fontSize: 13, color: Romance.sub, alignSelf: 'center' },
+    // 我的头像：paper 底 + accent 首字（不是角色色）
     myAvatar: {
       width: 26,
       height: 26,
-      borderRadius: 13,
-      backgroundColor: Romance.accentSoft,
+      borderRadius: Shape.radius,
+      backgroundColor: Romance.bg,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    myAvatarText: { fontSize: 12, fontWeight: '700', color: Romance.accent },
-    commentBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+    myAvatarText: { fontSize: 12, fontWeight: '600', color: Romance.accentStrong },
+    commentBar: { flexDirection: 'row', alignItems: 'center', gap: Space.inline, marginTop: 10 },
     commentInput: {
       flex: 1,
       height: 36,
-      borderRadius: 18,
-      backgroundColor: '#EFF3F4',
+      borderRadius: Shape.radius,
+      backgroundColor: Romance.bg,
       paddingHorizontal: 14,
       fontSize: 14,
-      color: '#0F1419',
+      color: Romance.ink,
     },
     empty: { alignItems: 'center', paddingVertical: 70 },
-    emptyEmoji: { fontSize: 38 },
-    emptyText: { fontSize: 13, color: '#536471', textAlign: 'center', lineHeight: 20, marginTop: 10 },
+    emptyText: { fontSize: 13, color: Romance.sub, textAlign: 'center', lineHeight: 20 },
   })
 );

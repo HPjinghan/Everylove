@@ -1,12 +1,14 @@
 /**
- * 约时间（D-084）：日期 chip（今天 / 明天 / 后天 / 之后四天）× 时段 chip（上午 10:00 … 夜里 21:00）→ 时间戳。
- * 今天已经过去的时段不出现。外出邀请（会话「+」）与外出页「约 TA」共用。
+ * 约时间（D-084；D-100 纸面 token 迁移）：日期 chip（今天 / 明天 / 后天 / 之后四天）× 时段 chip（上午 10:00 … 夜里 21:00）→ 时间戳。
+ * chips 用 Chip、确认用 Button。今天已经过去的时段不出现。外出邀请（会话「+」）与外出页「约 TA」共用。
  */
 
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { Romance, themed } from '@/constants/theme';
+import { Button } from '@/components/button';
+import { Chip } from '@/components/chip';
+import { themed } from '@/constants/theme';
 import { planTimeLabel } from '@/lib/appointments';
 import { t } from '@/lib/i18n';
 
@@ -51,37 +53,29 @@ export function TimePicker({ onPick }: { onPick: (at: number) => void }) {
   return (
     <View style={styles.wrap}>
       <View style={styles.chips}>
-        {days.map((d) => {
-          const active = d.offset === dayOffset;
-          return (
-            <Pressable
-              key={d.offset}
-              style={[styles.chip, active && styles.chipActive]}
-              onPress={() => {
-                setDayOffset(d.offset);
-                setSlot(null);
-              }}>
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>{d.label}</Text>
-            </Pressable>
-          );
-        })}
+        {days.map((d) => (
+          <Chip
+            key={d.offset}
+            label={d.label}
+            selected={d.offset === dayOffset}
+            onPress={() => {
+              setDayOffset(d.offset);
+              setSlot(null);
+            }}
+          />
+        ))}
       </View>
       <View style={styles.chips}>
-        {slots.map((s) => {
-          const active = s.i === slot;
-          return (
-            <Pressable key={s.i} style={[styles.chip, active && styles.chipActive]} onPress={() => setSlot(s.i)}>
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(s.label)}</Text>
-            </Pressable>
-          );
-        })}
+        {slots.map((s) => (
+          <Chip key={s.i} label={t(s.label)} selected={s.i === slot} onPress={() => setSlot(s.i)} />
+        ))}
       </View>
-      <Pressable
-        style={[styles.primaryBtn, !chosen && styles.btnDisabled]}
+      <Button
+        label={chosen ? planTimeLabel(chosen.at) : t('选个时间')}
         disabled={!chosen}
-        onPress={() => chosen && onPick(chosen.at)}>
-        <Text style={styles.primaryBtnText}>{chosen ? planTimeLabel(chosen.at) : t('选个时间')}</Text>
-      </Pressable>
+        style={styles.submit}
+        onPress={() => chosen && onPick(chosen.at)}
+      />
     </View>
   );
 }
@@ -90,20 +84,6 @@ const styles = themed(() =>
   StyleSheet.create({
     wrap: { gap: 12 },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    chip: { backgroundColor: '#FFFFFF', borderRadius: 6, paddingHorizontal: 14, paddingVertical: 9 },
-    chipActive: { backgroundColor: Romance.accent },
-    chipText: { fontSize: 13, color: Romance.sub },
-    chipTextActive: { color: '#FFFFFF', fontWeight: '600' },
-    primaryBtn: {
-      marginTop: 4,
-      backgroundColor: Romance.accent,
-      borderRadius: 6,
-      borderWidth: 1.5,
-      borderColor: Romance.stroke,
-      paddingVertical: 15,
-      alignItems: 'center',
-    },
-    primaryBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-    btnDisabled: { opacity: 0.4 },
+    submit: { marginTop: 4 },
   })
 );

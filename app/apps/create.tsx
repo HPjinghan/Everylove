@@ -1,5 +1,5 @@
 /**
- * 创造（D-025 大改版；D-043 更名并加描述解析）：
+ * 创造（D-025 大改版；D-043 更名并加描述解析；D-100 纸面）：
  * 描述导入：写/粘贴一大段人设（≤2000 字）→「自动解析」由当前引擎整理成表单字段
  *          （prompt 在 content/prompts/create.ts 的 CHARACTER_PARSE_SYSTEM），无 key/失败回落规则解析；解析后仍可手改。
  * 基础：名字 → 性别（男/女/非二元）→ 长相描述 → 背景故事 → 立绘生成
@@ -7,6 +7,7 @@
  *                 恋爱中的类型（content/characters.ts 的 LOVE_STYLES）/ MBTI / 其他聊天设定 / 日常作息
  * 全部设定进对话与生图 prompt（content/prompts/shared.ts 的 characterProfileBlock / pursuitLine）。
  * 审核最小拦截：挡真人明星与 IP 角色（红线 #1/#4，完整流程见 OPEN_QUESTIONS #7）——描述文本同样过拦截。
+ * 界面：字段一律 Field + Input、选项一律 Chip、按钮一律 Button、卡片一律 Card；顶栏右「我创建的」进列表页。
  */
 
 import { Image } from 'expo-image';
@@ -24,16 +25,20 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
-import { AppScreen } from '@/components/app-screen';
+import { AppScreen, HeaderAction } from '@/components/app-screen';
+import { Button } from '@/components/button';
+import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
+import { Chip } from '@/components/chip';
+import { Field, Input } from '@/components/input';
 import { showToast } from '@/components/toast';
+import { Shape, Space } from '@/constants/design';
+import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { BLOCKED_NAME_PATTERN, LOVE_STYLES, loveStyleByLabel, RACES } from '@/content/characters';
 import { characterParseSystem, DEFAULT_PORTRAIT_STYLE, PORTRAIT_STYLES } from '@/content/prompts';
-import { Romance, themed } from '@/constants/theme';
 import { authConfigured, signedInSession } from '@/lib/auth';
 import { getLang, t } from '@/lib/i18n';
 import { completeText, describeAiError } from '@/lib/engine';
@@ -46,6 +51,9 @@ import { useAppStore } from '@/store/app-store';
 
 /** 描述导入的最大长度（D-043） */
 const DESC_MAX = 2000;
+
+/** 主题色块选中外圈：ink 2.5、留 2（同设置页主题点） */
+const SWATCH_RING = { width: 2.5, gap: 2 };
 
 /**
  * 规则解析（无 key / 引擎失败时的回落）：认「标签：内容」式的行，MBTI 直接正则；
@@ -127,33 +135,39 @@ const EMPTY_LINES: CharacterLines = { opening: [], offer: [], arrival: [] };
 /** 一组台词：一行一条（D-094） */
 function LinesField({ label, value, onChange }: { label: string; value: string[]; onChange: (v: string[]) => void }) {
   return (
-    <View>
-      <Text style={styles.linesLabel}>{label}</Text>
-      <TextInput
-        style={[styles.input, styles.inputMultiline]}
+    <Field label={label}>
+      <Input
         value={value.join('\n')}
         onChangeText={(text) => onChange(text.split('\n'))}
         placeholder={t('可不填')}
-        placeholderTextColor={Romance.faint}
         multiline
         maxLength={400}
       />
-    </View>
+    </Field>
   );
 }
 
-function Chip({
+/** 选项 chip：label 过 t()，active → selected */
+function OptionChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return <Chip label={t(label)} selected={active} onPress={onPress} />;
+}
+
+/** 三选一的小卡（节奏 / 主动强度）：白底 r6，选中 primary 白字 */
+function PaceCard({
   label,
+  hint,
   active,
   onPress,
 }: {
   label: string;
+  hint: string;
   active: boolean;
   onPress: () => void;
 }) {
   return (
-    <Pressable style={[styles.chip, active && styles.chipActive]} onPress={onPress}>
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(label)}</Text>
+    <Pressable style={[styles.paceCard, active && styles.paceCardOn]} onPress={onPress}>
+      <Text style={[styles.paceLabel, active && styles.paceLabelOn]}>{t(label)}</Text>
+      <Text style={[styles.paceHint, active && styles.paceHintOn]}>{t(hint)}</Text>
     </Pressable>
   );
 }
@@ -162,7 +176,6 @@ export default function CreateScreen() {
   const router = useRouter();
   // 从「我创建的」列表页带 edit=<id> 进来 → 回填表单（D-095）
   const { edit } = useLocalSearchParams<{ edit?: string }>();
-  const customs = useAppStore((s) => s.customCharacters);
 
   // ── 编辑已创建的（D-050） ──
   const [editing, setEditing] = useState<Character | null>(null);
@@ -520,16 +533,26 @@ export default function CreateScreen() {
     setAdvancedOpen((v) => !v);
   };
 
-  const mineCount = customs.filter((c) => !c.shared).length;
-
   useEffect(() => {
     if (!edit) return;
     const c = useAppStore.getState().customCharacters.find((x) => x.id === edit && !x.shared);
     if (c) loadForEdit(c);
   }, [edit]);
 
+  const publishLabel = publishing
+    ? t('正在给 TA 写台词…')
+    : ageStatus === 'minor'
+      ? t('未成年角色暂不能发布')
+      : !portraitUri
+        ? t('先给 TA 一个形象')
+        : editing
+          ? t('保存修改')
+          : t('让 TA 醒来');
+
   return (
-    <AppScreen title={t("创造")}>
+    <AppScreen
+      title={t('创造')}
+      right={<HeaderAction label={t('我创建的')} onPress={() => router.push('/apps/my-characters' as never)} />}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -539,15 +562,6 @@ export default function CreateScreen() {
           keyboardShouldPersistTaps="handled">
           <Text style={styles.subtitle}>{t('创造一个只属于你的 TA')}</Text>
 
-          {/* 我创建的（D-095）：列表搬去独立页面，这里只留一行入口 */}
-          {mineCount > 0 && !editing ? (
-            <Pressable style={styles.mineRow} onPress={() => router.push('/apps/my-characters' as never)}>
-              <Text style={styles.mineName}>
-                {t('我创建的')}（{mineCount}）
-              </Text>
-              <Text style={styles.mineEditText}>{t('查看')} ›</Text>
-            </Pressable>
-          ) : null}
           {editing ? (
             <View style={styles.editingBanner}>
               <Text style={styles.editingText}>{t('正在编辑「{name}」——改完点底部保存', { name: editing.name })}</Text>
@@ -563,61 +577,51 @@ export default function CreateScreen() {
           ) : null}
 
           {/* ───────── 描述导入（D-043） ───────── */}
-          <Text style={styles.step}>{t('用一段话描述 TA（可选）')}</Text>
-          <Text style={styles.stepHint}>
-            {t('小说片段、角色卡、脑子里的画面都行，最多 {n} 字。', { n: DESC_MAX })}
-          </Text>
-          <TextInput
-            style={[styles.input, styles.inputDesc]}
-            value={desc}
-            onChangeText={setDesc}
-            placeholder={t('银灰色头发的年轻外科医生，毒舌但心软。父母常年在国外，一个人住在老城区……')}
-            placeholderTextColor={Romance.faint}
-            multiline
-            maxLength={DESC_MAX}
-          />
+          <Field
+            label={t('用一段话描述 TA（可选）')}
+            hint={t('小说片段、角色卡、脑子里的画面都行，最多 {n} 字。', { n: DESC_MAX })}>
+            <Input
+              value={desc}
+              onChangeText={setDesc}
+              placeholder={t('银灰色头发的年轻外科医生，毒舌但心软。父母常年在国外，一个人住在老城区……')}
+              multiline
+              maxLength={DESC_MAX}
+            />
+          </Field>
           <View style={styles.descFoot}>
             <Text style={styles.descCount}>
               {desc.length}/{DESC_MAX}
             </Text>
-            <Pressable
-              style={[styles.parseBtn, (!desc.trim() || parsing) && styles.btnDisabled]}
-              disabled={!desc.trim() || parsing}
-              onPress={parseDesc}>
-              {parsing ? (
-                <View style={styles.btnRow}>
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                  <Text style={styles.parseBtnText}>{t('解析中…')}</Text>
-                </View>
-              ) : (
-                <Text style={styles.parseBtnText}>{t('自动解析')}</Text>
-              )}
-            </Pressable>
+            <View style={styles.btnRow}>
+              {parsing ? <ActivityIndicator color={Romance.accent} size="small" /> : null}
+              <Button
+                label={parsing ? t('解析中…') : t('自动解析')}
+                size="sm"
+                disabled={!desc.trim() || parsing}
+                onPress={parseDesc}
+              />
+            </View>
           </View>
 
           {/* ───────── 基础 ───────── */}
-          <Text style={styles.step}>{t('① TA 叫什么')}</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder={t('给 TA 一个名字')}
-            placeholderTextColor={Romance.faint}
-            maxLength={12}
-          />
+          <Field label={t('① TA 叫什么')}>
+            <Input value={name} onChangeText={setName} placeholder={t('给 TA 一个名字')} maxLength={12} />
+          </Field>
 
-          <Text style={styles.step}>{t('② TA 的性别')}</Text>
-          <View style={styles.chipRow}>
-            {GENDERS.map((g) => (
-              <Chip key={g.key} label={g.label} active={gender === g.key} onPress={() => setGender(g.key)} />
-            ))}
-          </View>
+          <Field label={t('② TA 的性别')}>
+            <View style={styles.chipRow}>
+              {GENDERS.map((g) => (
+                <OptionChip key={g.key} label={g.label} active={gender === g.key} onPress={() => setGender(g.key)} />
+              ))}
+            </View>
+          </Field>
 
-          <Text style={styles.step}>{t('③ 年龄状态')}</Text>
-          <View style={styles.chipRow}>
-            <Chip label={t("确认成年")} active={ageStatus === 'adult'} onPress={() => setAgeStatus('adult')} />
-            <Chip label={t("未成年")} active={ageStatus === 'minor'} onPress={() => setAgeStatus('minor')} />
-          </View>
+          <Field label={t('③ 年龄状态')}>
+            <View style={styles.chipRow}>
+              <OptionChip label={t('确认成年')} active={ageStatus === 'adult'} onPress={() => setAgeStatus('adult')} />
+              <OptionChip label={t('未成年')} active={ageStatus === 'minor'} onPress={() => setAgeStatus('minor')} />
+            </View>
+          </Field>
           {ageStatus === 'minor' ? (
             <Text style={styles.minorNotice}>
               {t('未成年角色不开放恋爱互动，暂时不能发布。')}
@@ -626,87 +630,83 @@ export default function CreateScreen() {
             <Text style={styles.afterHint}>{t('发布即确认 TA 是成年人。')}</Text>
           )}
 
-          <Text style={styles.step}>{t('④ 谁能遇到 TA')}</Text>
-          <View style={styles.chipRow}>
-            <Chip label={t("私密")} active={visibility === 'private'} onPress={() => setVisibility('private')} />
-            <Chip label={t("公开")} active={visibility === 'public'} onPress={() => setVisibility('public')} />
-          </View>
+          <Field label={t('④ 谁能遇到 TA')}>
+            <View style={styles.chipRow}>
+              <OptionChip label={t('私密')} active={visibility === 'private'} onPress={() => setVisibility('private')} />
+              <OptionChip label={t('公开')} active={visibility === 'public'} onPress={() => setVisibility('public')} />
+            </View>
+          </Field>
           <Text style={styles.afterHint}>
             {visibility === 'public'
               ? t('公开：其他人也能遇到 TA（需要登录）。')
               : t('私密：只有你能遇到 TA。')}
           </Text>
 
-          <Text style={styles.step}>{t('⑤ TA 长什么样')}</Text>
-          <TextInput
-            style={[styles.input, styles.inputMultiline]}
-            value={look}
-            onChangeText={setLook}
-            placeholder={t('银灰色头发，眼下有一颗泪痣，笑起来很凶……')}
-            placeholderTextColor={Romance.faint}
-            multiline
-            maxLength={60}
-          />
+          <Field label={t('⑤ TA 长什么样')}>
+            <Input
+              value={look}
+              onChangeText={setLook}
+              placeholder={t('银灰色头发，眼下有一颗泪痣，笑起来很凶……')}
+              multiline
+              maxLength={60}
+              style={styles.inputShort}
+            />
+          </Field>
           <Text style={styles.afterHint}>{t('TA 的主题色：')}</Text>
           <View style={styles.paletteRow}>
             {PALETTES.map((p, i) => (
               <Pressable
                 key={i}
                 onPress={() => setPalette(i)}
-                style={[styles.swatch, { backgroundColor: p.color }, palette === i && styles.swatchActive]}
+                style={[styles.swatchRing, palette === i && styles.swatchRingOn]}>
+                <View style={[styles.swatch, { backgroundColor: p.color }]} />
+              </Pressable>
+            ))}
+          </View>
+
+          <Field label={t('⑥ TA 的背景故事')}>
+            <Input
+              value={story}
+              onChangeText={setStory}
+              placeholder={t('TA 是谁、从哪里来、身上背着什么故事……')}
+              multiline
+              maxLength={300}
+            />
+          </Field>
+
+          <Field label={t('⑦ TA 的形象 *')} hint={t('上传一张图，或生成立绘。不能上传真人照片。')}>
+            <Text style={styles.subLabel}>{t('画风：')}</Text>
+            <View style={styles.chipRow}>
+              {PORTRAIT_STYLES.map((s) => (
+                <OptionChip key={s.id} label={t(s.label)} active={artStyle === s.id} onPress={() => setArtStyle(s.id)} />
+              ))}
+            </View>
+            <Text style={styles.afterHint}>
+              {artStyle === 'anime'
+                ? t('出图约 10 秒。')
+                : t('出图约 1 分钟。')}
+            </Text>
+            {portraitUri ? (
+              <Image source={{ uri: portraitUri }} style={styles.portrait} contentFit="cover" />
+            ) : null}
+            <View style={styles.portraitBtnRow}>
+              <Button
+                label={portraitUri ? t('换一张') : t('上传头像')}
+                variant="secondary"
+                size="md"
+                style={styles.portraitBtn}
+                onPress={uploadAvatar}
               />
-            ))}
-          </View>
-
-          <Text style={styles.step}>{t('⑥ TA 的背景故事')}</Text>
-          <TextInput
-            style={[styles.input, styles.inputStory]}
-            value={story}
-            onChangeText={setStory}
-            placeholder={t('TA 是谁、从哪里来、身上背着什么故事……')}
-            placeholderTextColor={Romance.faint}
-            multiline
-            maxLength={300}
-          />
-
-          <Text style={styles.step}>{t('⑦ TA 的形象 *')}</Text>
-          <Text style={styles.stepHint}>
-            {t('上传一张图，或生成立绘。不能上传真人照片。')}
-          </Text>
-          <Text style={styles.afterHint}>{t('画风：')}</Text>
-          <View style={styles.chipRow}>
-            {PORTRAIT_STYLES.map((s) => (
-              <Chip key={s.id} label={t(s.label)} active={artStyle === s.id} onPress={() => setArtStyle(s.id)} />
-            ))}
-          </View>
-          <Text style={styles.afterHint}>
-            {artStyle === 'anime'
-              ? t('出图约 10 秒。')
-              : t('出图约 1 分钟。')}
-          </Text>
-          {portraitUri ? (
-            <Image source={{ uri: portraitUri }} style={styles.portrait} contentFit="cover" />
-          ) : null}
-          <View style={styles.portraitBtnRow}>
-            <Pressable style={[styles.secondaryBtn, styles.portraitBtn]} onPress={uploadAvatar}>
-              <Text style={styles.secondaryBtnText}>{portraitUri ? t('换一张') : t('上传头像')}</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.secondaryBtn, styles.portraitBtn, (!name.trim() || generating) && styles.btnDisabled]}
-              disabled={!name.trim() || generating}
-              onPress={genPortrait}>
-              {generating ? (
-                <View style={styles.btnRow}>
-                  <ActivityIndicator color={Romance.accent} />
-                  <Text style={styles.secondaryBtnText}>{t('生成中…')}</Text>
-                </View>
-              ) : (
-                <Text style={styles.secondaryBtnText}>
-                  {imageKeyReady() ? t('生成立绘') : t('生成立绘（AI 不可用）')}
-                </Text>
-              )}
-            </Pressable>
-          </View>
+              <Button
+                label={generating ? t('生成中…') : imageKeyReady() ? t('生成立绘') : t('生成立绘（AI 不可用）')}
+                variant="outline"
+                size="md"
+                style={styles.portraitBtn}
+                disabled={!name.trim() || generating}
+                onPress={genPortrait}
+              />
+            </View>
+          </Field>
 
           {/* ───────── 高级选项（收起） ───────── */}
           <Pressable style={styles.advToggle} onPress={toggleAdvanced}>
@@ -716,210 +716,190 @@ export default function CreateScreen() {
 
           {advancedOpen ? (
             <View>
-              <Text style={styles.step}>{t('种族')}</Text>
-              <View style={styles.chipRow}>
-                {[...RACES, '其他'].map((r) => (
-                  <Chip key={r} label={r} active={race === r} onPress={() => setRace(r)} />
-                ))}
-              </View>
-              {race === '其他' ? (
-                <TextInput
-                  style={[styles.input, styles.raceCustomInput]}
-                  value={raceCustom}
-                  onChangeText={setRaceCustom}
-                  placeholder={t('如：半人马')}
-                  placeholderTextColor={Romance.faint}
-                  maxLength={10}
-                />
-              ) : null}
-
-              <Text style={styles.step}>{t('TA 的生日')}</Text>
-              <View style={styles.chipRow}>
-                <Pressable style={styles.ddBtn} onPress={() => setPickerOpen('month')}>
-                  <Text style={[styles.ddText, !birthMonth && { color: Romance.faint }]}>
-                    {birthMonth ? t('{n} 月', { n: birthMonth }) : t('月份 ▾')}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.ddBtn, !birthMonth && styles.btnDisabled]}
-                  disabled={!birthMonth}
-                  onPress={() => setPickerOpen('day')}>
-                  <Text style={[styles.ddText, !birthDay && { color: Romance.faint }]}>
-                    {birthDay ? t('{n} 日', { n: birthDay }) : t('日期 ▾')}
-                  </Text>
-                </Pressable>
-                {birthMonth ? (
-                  <Pressable
-                    style={styles.ddClear}
-                    onPress={() => {
-                      setBirthMonth(null);
-                      setBirthDay(null);
-                    }}>
-                    <Text style={styles.ddClearText}>{t('清除')}</Text>
-                  </Pressable>
+              <Field label={t('种族')}>
+                <View style={styles.chipRow}>
+                  {[...RACES, '其他'].map((r) => (
+                    <OptionChip key={r} label={r} active={race === r} onPress={() => setRace(r)} />
+                  ))}
+                </View>
+                {race === '其他' ? (
+                  <Input
+                    style={styles.raceCustomInput}
+                    value={raceCustom}
+                    onChangeText={setRaceCustom}
+                    placeholder={t('如：半人马')}
+                    maxLength={10}
+                  />
                 ) : null}
-              </View>
+              </Field>
 
-              <Text style={styles.step}>{t('口癖')}</Text>
-              <Text style={styles.stepHint}>{t('TA 挂在嘴边的话。')}</Text>
-              <TextInput
-                style={styles.input}
-                value={catchphrase}
-                onChangeText={setCatchphrase}
-                placeholder="「……真拿你没办法」"
-                placeholderTextColor={Romance.faint}
-                maxLength={20}
-              />
-
-              <Text style={styles.step}>{t('喜欢')}</Text>
-              <TextInput
-                style={styles.input}
-                value={likes}
-                onChangeText={setLikes}
-                placeholder={t('黑咖啡、下雨天、猫……')}
-                placeholderTextColor={Romance.faint}
-                maxLength={40}
-              />
-
-              <Text style={styles.step}>{t('讨厌')}</Text>
-              <TextInput
-                style={styles.input}
-                value={dislikes}
-                onChangeText={setDislikes}
-                placeholder={t('香菜、迟到、被拍头……')}
-                placeholderTextColor={Romance.faint}
-                maxLength={40}
-              />
-
-              <Text style={styles.step}>{t('确定关系的节奏')}</Text>
-              <View style={styles.chipRow}>
-                {OFFER_PACES.map((p) => (
-                  <Pressable
-                    key={p.turns}
-                    style={[styles.paceCard, offerTurns === p.turns && styles.paceCardActive]}
-                    onPress={() => setOfferTurns(p.turns)}>
-                    <Text style={[styles.paceLabel, offerTurns === p.turns && { color: '#fff' }]}>
-                      {t(p.label)}
-                    </Text>
-                    <Text style={[styles.paceHint, offerTurns === p.turns && { color: '#FFE3EC' }]}>
-                      {t(p.hint)}
+              <Field label={t('TA 的生日')}>
+                <View style={styles.chipRow}>
+                  <Pressable style={styles.ddBtn} onPress={() => setPickerOpen('month')}>
+                    <Text style={[styles.ddText, !birthMonth && styles.ddTextEmpty]}>
+                      {birthMonth ? t('{n} 月', { n: birthMonth }) : t('月份 ▾')}
                     </Text>
                   </Pressable>
-                ))}
-              </View>
-
-              <Text style={styles.step}>{t('TA 在恋爱中的类型')}</Text>
-              <View style={styles.chipRow}>
-                {LOVE_STYLES.map((l) => (
-                  <Chip
-                    key={l.label}
-                    label={l.label}
-                    active={loveStyle === l.label}
-                    onPress={() => setLoveStyle(loveStyle === l.label ? undefined : l.label)}
-                  />
-                ))}
-              </View>
-              {style ? <Text style={styles.styleDesc}>{style.desc}</Text> : null}
-
-              <Text style={styles.step}>MBTI</Text>
-              <View style={styles.chipRow}>
-                {MBTI_LIST.map((m) => (
-                  <Chip
-                    key={m}
-                    label={m}
-                    active={mbti === m}
-                    onPress={() => setMbti(mbti === m ? undefined : m)}
-                  />
-                ))}
-              </View>
-
-              <Text style={styles.step}>{t('主动联系强度')}</Text>
-              <View style={styles.chipRow}>
-                {INITIATIVES.map((it) => (
                   <Pressable
-                    key={it.key}
-                    style={[styles.paceCard, initiative === it.key && styles.paceCardActive]}
-                    onPress={() => setInitiative(it.key)}>
-                    <Text style={[styles.paceLabel, initiative === it.key && { color: '#fff' }]}>
-                      {t(it.label)}
-                    </Text>
-                    <Text style={[styles.paceHint, initiative === it.key && { color: '#FFE3EC' }]}>
-                      {t(it.hint)}
+                    style={[styles.ddBtn, !birthMonth && styles.btnDisabled]}
+                    disabled={!birthMonth}
+                    onPress={() => setPickerOpen('day')}>
+                    <Text style={[styles.ddText, !birthDay && styles.ddTextEmpty]}>
+                      {birthDay ? t('{n} 日', { n: birthDay }) : t('日期 ▾')}
                     </Text>
                   </Pressable>
-                ))}
-              </View>
+                  {birthMonth ? (
+                    <Pressable
+                      style={styles.ddClear}
+                      onPress={() => {
+                        setBirthMonth(null);
+                        setBirthDay(null);
+                      }}>
+                      <Text style={styles.ddClearText}>{t('清除')}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </Field>
 
-              <Text style={styles.step}>{t('预设共同记忆')}</Text>
-              <Text style={styles.stepHint}>
-                {t('你们「早就认识」的部分，一行一条。')}
-              </Text>
-              <TextInput
-                style={[styles.input, styles.inputMultiline]}
-                value={presetMemories}
-                onChangeText={setPresetMemories}
-                placeholder={'高中同桌三年，TA 总抄你的笔记\n去年冬天一起看过一场雪'}
-                placeholderTextColor={Romance.faint}
-                multiline
-                maxLength={200}
-              />
+              <Field label={t('口癖')} hint={t('TA 挂在嘴边的话。')}>
+                <Input
+                  value={catchphrase}
+                  onChangeText={setCatchphrase}
+                  placeholder="「……真拿你没办法」"
+                  maxLength={20}
+                />
+              </Field>
 
-              <Text style={styles.step}>{t('禁忌 / 边界')}</Text>
-              <Text style={styles.stepHint}>{t('TA 不做的事、回避的话题。')}</Text>
-              <TextInput
-                style={[styles.input, styles.inputMultiline]}
-                value={taboos}
-                onChangeText={setTaboos}
-                placeholder="不谈家里的事；不喝酒；被问到左手的疤会岔开话题……"
-                placeholderTextColor={Romance.faint}
-                multiline
-                maxLength={120}
-              />
+              <Field label={t('喜欢')}>
+                <Input
+                  value={likes}
+                  onChangeText={setLikes}
+                  placeholder={t('黑咖啡、下雨天、猫……')}
+                  maxLength={40}
+                />
+              </Field>
 
-              <Text style={styles.step}>{t('隐藏设定 / 剧情钩子')}</Text>
-              <Text style={styles.stepHint}>
-                {t('TA 藏着的事，一行一条、浅的在前。')}
-              </Text>
-              <TextInput
-                style={[styles.input, styles.inputMultiline]}
-                value={secrets}
-                onChangeText={setSecrets}
-                placeholder={'其实注册交友软件只是为了找一个人\n左手的疤是替别人挡下来的\n真实身份是……'}
-                placeholderTextColor={Romance.faint}
-                multiline
-                maxLength={300}
-              />
+              <Field label={t('讨厌')}>
+                <Input
+                  value={dislikes}
+                  onChangeText={setDislikes}
+                  placeholder={t('香菜、迟到、被拍头……')}
+                  maxLength={40}
+                />
+              </Field>
 
-              <Text style={styles.step}>{t('其他关于聊天的设定')}</Text>
-              <TextInput
-                style={[styles.input, styles.inputMultiline]}
-                value={chatNotes}
-                onChangeText={setChatNotes}
-                placeholder="如：会用一点方言；不主动发语音；叫我「小朋友」……"
-                placeholderTextColor={Romance.faint}
-                multiline
-                maxLength={120}
-              />
+              <Field label={t('确定关系的节奏')}>
+                <View style={styles.chipRow}>
+                  {OFFER_PACES.map((p) => (
+                    <PaceCard
+                      key={p.turns}
+                      label={p.label}
+                      hint={p.hint}
+                      active={offerTurns === p.turns}
+                      onPress={() => setOfferTurns(p.turns)}
+                    />
+                  ))}
+                </View>
+              </Field>
 
-              <Text style={styles.step}>{t('日常作息')}</Text>
-              <Text style={styles.stepHint}>{t('TA 的一天怎么过。')}</Text>
-              <TextInput
-                style={[styles.input, styles.inputMultiline]}
-                value={schedule}
-                onChangeText={setSchedule}
-                placeholder="早八晚六上班，周三晚上健身，习惯凌晨一点睡……"
-                placeholderTextColor={Romance.faint}
-                multiline
-                maxLength={120}
-              />
+              <Field label={t('TA 在恋爱中的类型')}>
+                <View style={styles.chipRow}>
+                  {LOVE_STYLES.map((l) => (
+                    <OptionChip
+                      key={l.label}
+                      label={l.label}
+                      active={loveStyle === l.label}
+                      onPress={() => setLoveStyle(loveStyle === l.label ? undefined : l.label)}
+                    />
+                  ))}
+                </View>
+                {style ? <Text style={styles.styleDesc}>{style.desc}</Text> : null}
+              </Field>
+
+              <Field label="MBTI">
+                <View style={styles.chipRow}>
+                  {MBTI_LIST.map((m) => (
+                    <OptionChip
+                      key={m}
+                      label={m}
+                      active={mbti === m}
+                      onPress={() => setMbti(mbti === m ? undefined : m)}
+                    />
+                  ))}
+                </View>
+              </Field>
+
+              <Field label={t('主动联系强度')}>
+                <View style={styles.chipRow}>
+                  {INITIATIVES.map((it) => (
+                    <PaceCard
+                      key={it.key}
+                      label={it.label}
+                      hint={it.hint}
+                      active={initiative === it.key}
+                      onPress={() => setInitiative(it.key)}
+                    />
+                  ))}
+                </View>
+              </Field>
+
+              <Field label={t('预设共同记忆')} hint={t('你们「早就认识」的部分，一行一条。')}>
+                <Input
+                  value={presetMemories}
+                  onChangeText={setPresetMemories}
+                  placeholder={'高中同桌三年，TA 总抄你的笔记\n去年冬天一起看过一场雪'}
+                  multiline
+                  maxLength={200}
+                />
+              </Field>
+
+              <Field label={t('禁忌 / 边界')} hint={t('TA 不做的事、回避的话题。')}>
+                <Input
+                  value={taboos}
+                  onChangeText={setTaboos}
+                  placeholder="不谈家里的事；不喝酒；被问到左手的疤会岔开话题……"
+                  multiline
+                  maxLength={120}
+                />
+              </Field>
+
+              <Field label={t('隐藏设定 / 剧情钩子')} hint={t('TA 藏着的事，一行一条、浅的在前。')}>
+                <Input
+                  value={secrets}
+                  onChangeText={setSecrets}
+                  placeholder={'其实注册交友软件只是为了找一个人\n左手的疤是替别人挡下来的\n真实身份是……'}
+                  multiline
+                  maxLength={300}
+                />
+              </Field>
+
+              <Field label={t('其他关于聊天的设定')}>
+                <Input
+                  value={chatNotes}
+                  onChangeText={setChatNotes}
+                  placeholder="如：会用一点方言；不主动发语音；叫我「小朋友」……"
+                  multiline
+                  maxLength={120}
+                />
+              </Field>
+
+              <Field label={t('日常作息')} hint={t('TA 的一天怎么过。')}>
+                <Input
+                  value={schedule}
+                  onChangeText={setSchedule}
+                  placeholder="早八晚六上班，周三晚上健身，习惯凌晨一点睡……"
+                  multiline
+                  maxLength={120}
+                />
+              </Field>
             </View>
           ) : null}
 
           {/* TA 的台词（D-094）：只在编辑已创建的角色时显示——发布时模型已写好一份，这里可逐条改、可让 TA 重写 */}
           {editing ? (
             <View>
-              <Text style={styles.step}>{t('TA 的台词')}</Text>
-              <Text style={styles.stepHint}>{t('每行一条')}</Text>
+              <Text style={styles.sectionTitle}>{t('TA 的台词')}</Text>
+              <Text style={styles.sectionHint}>{t('每行一条')}</Text>
               <LinesField
                 label={t('开场白')}
                 value={lines?.opening ?? []}
@@ -935,42 +915,38 @@ export default function CreateScreen() {
                 value={lines?.arrival ?? []}
                 onChange={(v) => setLines({ ...(lines ?? EMPTY_LINES), arrival: v })}
               />
-              <Text style={styles.linesLabel}>{t('一句话人设')}</Text>
-              <TextInput
-                style={[styles.input, styles.inputMultiline]}
-                value={lines?.persona ?? ''}
-                onChangeText={(v) => setLines({ ...(lines ?? EMPTY_LINES), persona: v })}
-                placeholder={t('可不填')}
-                placeholderTextColor={Romance.faint}
-                multiline
-                maxLength={120}
+              <Field label={t('一句话人设')}>
+                <Input
+                  value={lines?.persona ?? ''}
+                  onChangeText={(v) => setLines({ ...(lines ?? EMPTY_LINES), persona: v })}
+                  placeholder={t('可不填')}
+                  multiline
+                  maxLength={120}
+                />
+              </Field>
+              <Field label={t('追法')}>
+                <Input
+                  value={lines?.pursuit ?? ''}
+                  onChangeText={(v) => setLines({ ...(lines ?? EMPTY_LINES), pursuit: v })}
+                  placeholder={t('可不填')}
+                  multiline
+                  maxLength={160}
+                />
+              </Field>
+              <Button
+                label={linesBusy ? t('正在写…') : t('让 TA 重新写一遍')}
+                variant="outline"
+                size="md"
+                style={styles.rewriteBtn}
+                disabled={linesBusy}
+                onPress={rewriteLines}
               />
-              <Text style={styles.linesLabel}>{t('追法')}</Text>
-              <TextInput
-                style={[styles.input, styles.inputMultiline]}
-                value={lines?.pursuit ?? ''}
-                onChangeText={(v) => setLines({ ...(lines ?? EMPTY_LINES), pursuit: v })}
-                placeholder={t('可不填')}
-                placeholderTextColor={Romance.faint}
-                multiline
-                maxLength={160}
-              />
-              <Pressable style={[styles.secondaryBtn, linesBusy && styles.btnDisabled]} disabled={linesBusy} onPress={rewriteLines}>
-                {linesBusy ? (
-                  <View style={styles.btnRow}>
-                    <ActivityIndicator color={Romance.accent} />
-                    <Text style={styles.secondaryBtnText}>{t('正在写…')}</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.secondaryBtnText}>{t('让 TA 重新写一遍')}</Text>
-                )}
-              </Pressable>
             </View>
           ) : null}
 
           {/* 预览 + 醒来 */}
           {name.trim() ? (
-            <View style={styles.previewCard}>
+            <Card style={styles.previewCard}>
               <CharAvatar name={name.trim()} color={PALETTES[palette].color} size={44} uri={portraitUri} />
               <View style={styles.previewText}>
                 <Text style={styles.previewName}>{name.trim()}</Text>
@@ -980,30 +956,20 @@ export default function CreateScreen() {
                     .join(' · ')}
                 </Text>
               </View>
-            </View>
+            </Card>
           ) : null}
 
-          <Pressable
-            style={[styles.primaryBtn, (!name.trim() || !portraitUri || ageStatus === 'minor' || publishing) && styles.btnDisabled]}
+          <Button
+            label={publishLabel}
+            style={styles.primaryBtn}
             disabled={!name.trim() || !portraitUri || ageStatus === 'minor' || publishing}
-            onPress={submit}>
-            <Text style={styles.primaryBtnText}>
-              {publishing
-                ? t('正在给 TA 写台词…')
-                : ageStatus === 'minor'
-                  ? t('未成年角色暂不能发布')
-                  : !portraitUri
-                    ? t('先给 TA 一个形象')
-                    : editing
-                      ? t('保存修改')
-                      : t('让 TA 醒来')}
-            </Text>
-          </Pressable>
+            onPress={submit}
+          />
           <Text style={styles.footnote}>{t('不能创造真人与 IP 角色 · 发布即默认同意创作规范')}</Text>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* 生日下拉选单（D-045） */}
+      {/* 生日下拉选单（D-045）：paper 底的底部面板，月 / 日按 chip 选 */}
       <Modal
         visible={pickerOpen !== null}
         transparent
@@ -1012,16 +978,17 @@ export default function CreateScreen() {
         <Pressable style={styles.pickerMask} onPress={() => setPickerOpen(null)}>
           <Pressable style={styles.pickerSheet} onPress={() => {}}>
             <Text style={styles.pickerTitle}>{pickerOpen === 'month' ? t('选择月份') : t('选择日期')}</Text>
-            <ScrollView style={styles.pickerList}>
+            <ScrollView contentContainerStyle={styles.pickerGrid}>
               {(pickerOpen === 'month'
                 ? MONTH_OPTIONS
                 : Array.from({ length: daysInMonth(birthMonth ?? 1) }, (_, i) => i + 1)
               ).map((n) => {
                 const active = (pickerOpen === 'month' ? birthMonth : birthDay) === n;
                 return (
-                  <Pressable
+                  <Chip
                     key={n}
-                    style={styles.pickerRow}
+                    label={pickerOpen === 'month' ? t('{n} 月', { n }) : t('{n} 日', { n })}
+                    selected={active}
                     onPress={() => {
                       if (pickerOpen === 'month') {
                         setBirthMonth(n);
@@ -1031,11 +998,8 @@ export default function CreateScreen() {
                         setBirthDay(n);
                         setPickerOpen(null);
                       }
-                    }}>
-                    <Text style={[styles.pickerRowText, active && styles.pickerRowActive]}>
-                      {pickerOpen === 'month' ? t('{n} 月', { n }) : t('{n} 日', { n })}
-                    </Text>
-                  </Pressable>
+                    }}
+                  />
                 );
               })}
             </ScrollView>
@@ -1050,196 +1014,142 @@ const styles = themed(() =>
   StyleSheet.create({
     flex: { flex: 1 },
     screen: { flex: 1, backgroundColor: Romance.bg },
+    // 表单类页面左右留白按设计稿 18
     content: { paddingHorizontal: 18, paddingBottom: 40 },
-    subtitle: { fontSize: 13, color: Romance.sub, marginTop: 8 },
-    step: { fontSize: 15, fontWeight: '600', color: Romance.ink, marginTop: 22, marginBottom: 10 },
-    stepHint: { fontSize: 12, color: Romance.sub, marginTop: -6, marginBottom: 10, lineHeight: 18 },
-    input: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 16,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      fontSize: 14,
-      color: Romance.ink,
+    subtitle: { fontSize: 13, color: Romance.sub, marginTop: Space.inlineLoose },
+    editingBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Space.inlineLoose,
+      backgroundColor: Romance.accentSoft,
+      borderRadius: Shape.radius,
+      paddingHorizontal: Space.cardX,
+      paddingVertical: Space.cardY,
+      marginTop: Space.inlineLoose,
     },
-    inputMultiline: { minHeight: 68, textAlignVertical: 'top' },
-    linesLabel: { fontSize: 13, fontWeight: '600', color: Romance.ink, marginTop: 12, marginBottom: 6 },
-    inputStory: { minHeight: 100, textAlignVertical: 'top' },
-    inputDesc: { minHeight: 130, textAlignVertical: 'top' },
+    editingText: { flex: 1, fontSize: 12, fontWeight: '600', color: Romance.accent },
+    editingCancel: { fontSize: 12, color: Romance.sub },
     descFoot: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginTop: 8,
+      marginTop: Space.inline,
     },
-    descCount: { fontSize: 11, color: Romance.faint },
-    parseBtn: {
-      backgroundColor: Romance.accent,
-      borderRadius: 18,
-      paddingHorizontal: 20,
-      paddingVertical: 10,
-    },
-    parseBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    chip: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 18,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderWidth: 1.5,
-      borderColor: 'transparent',
-    },
-    chipActive: { backgroundColor: Romance.accentSoft, borderColor: Romance.accent },
-    chipText: { fontSize: 13, color: Romance.sub, fontWeight: '500' },
-    chipTextActive: { color: Romance.accent, fontWeight: '700' },
-    afterHint: { fontSize: 11, color: Romance.faint, marginTop: 10, lineHeight: 16 },
+    descCount: { fontFamily: Fonts.label, fontSize: 11, color: Romance.sub },
+    btnRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inline },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.inline },
+    inputShort: { minHeight: 64 },
+    afterHint: { fontSize: 11, color: Romance.sub, marginTop: Space.inline, lineHeight: 16 },
     minorNotice: {
       fontSize: 12,
-      color: '#B3453C',
-      backgroundColor: '#FDEBEA',
-      borderRadius: 12,
-      padding: 12,
-      marginTop: 10,
+      color: Romance.danger,
+      backgroundColor: Romance.accentSoft,
+      borderRadius: Shape.radius,
+      paddingHorizontal: Space.cardX,
+      paddingVertical: Space.cardY,
+      marginTop: Space.inline,
       lineHeight: 18,
     },
-    raceCustomInput: { marginTop: 10 },
+    subLabel: { fontSize: 13, fontWeight: '500', color: Romance.ink, marginBottom: Space.inline },
+    paletteRow: { flexDirection: 'row', gap: Space.inline, marginTop: Space.inline },
+    swatchRing: {
+      borderWidth: SWATCH_RING.width,
+      borderColor: 'transparent',
+      padding: SWATCH_RING.gap,
+      borderRadius: Shape.radius + SWATCH_RING.gap + SWATCH_RING.width,
+    },
+    swatchRingOn: { borderColor: Romance.ink },
+    swatch: { width: 32, height: 32, borderRadius: Shape.radius },
+    portrait: { width: 180, height: 180, borderRadius: Shape.radius, alignSelf: 'center', marginTop: Space.inlineLoose },
+    portraitBtnRow: { flexDirection: 'row', gap: Space.inlineLoose, marginTop: Space.inlineLoose },
+    portraitBtn: { flex: 1 },
+    advToggle: {
+      marginTop: 26,
+      backgroundColor: Romance.card,
+      borderRadius: Shape.radius,
+      padding: Space.screen,
+      alignItems: 'center',
+    },
+    advToggleText: { fontSize: 14, fontWeight: '600', color: Romance.accent },
+    advToggleHint: { fontSize: 11, color: Romance.sub, marginTop: 3 },
+    raceCustomInput: { marginTop: Space.inlineLoose },
     ddBtn: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 16,
+      backgroundColor: Romance.card,
+      borderRadius: Shape.radius,
       paddingHorizontal: 18,
       paddingVertical: 11,
     },
-    ddText: { fontSize: 14, color: Romance.ink, fontWeight: '500' },
-    ddClear: { justifyContent: 'center', paddingHorizontal: 8 },
-    ddClearText: { fontSize: 12, color: Romance.faint },
+    ddText: { fontSize: 14, fontWeight: '500', color: Romance.ink },
+    ddTextEmpty: { color: Romance.sub },
+    ddClear: { justifyContent: 'center', paddingHorizontal: Space.inline },
+    ddClearText: { fontSize: 12, color: Romance.sub },
+    btnDisabled: { opacity: 0.4 },
+    paceCard: {
+      flex: 1,
+      backgroundColor: Romance.card,
+      borderRadius: Shape.radius,
+      paddingVertical: Space.cardX,
+      paddingHorizontal: Space.cardY,
+      alignItems: 'center',
+    },
+    paceCardOn: { backgroundColor: Romance.accent },
+    paceLabel: { fontSize: 14, fontWeight: '600', color: Romance.ink },
+    paceLabelOn: { color: '#FFFFFF' },
+    paceHint: { fontSize: 10, color: Romance.sub, marginTop: 3 },
+    paceHintOn: { color: 'rgba(255,255,255,0.8)' },
+    styleDesc: {
+      fontSize: 12,
+      color: Romance.accent,
+      backgroundColor: Romance.accentSoft,
+      borderRadius: Shape.radius,
+      paddingHorizontal: Space.cardX,
+      paddingVertical: Space.cardY,
+      marginTop: Space.inlineLoose,
+      lineHeight: 18,
+    },
+    sectionTitle: { fontSize: 15, fontWeight: '600', color: Romance.ink, marginTop: 28 },
+    sectionHint: { fontSize: 11, color: Romance.sub, marginTop: 2 },
+    rewriteBtn: { marginTop: Space.cardX },
+    previewCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Space.inlineLoose,
+      marginTop: 24,
+    },
+    previewText: { flex: 1 },
+    previewName: { fontSize: 15, fontWeight: '600', color: Romance.ink },
+    previewHook: { fontSize: 12, color: Romance.sub, marginTop: 2 },
+    primaryBtn: { marginTop: Space.screen },
+    footnote: { textAlign: 'center', fontSize: 11, color: Romance.sub, marginTop: Space.cardX },
+    // 生日选单：ink 45% 遮罩 + paper 底面板（1.5px ink 上沿，同输入栏）
     pickerMask: {
       flex: 1,
-      backgroundColor: 'rgba(59,33,38,0.4)',
+      backgroundColor: withAlpha(Romance.ink, 0.45),
       justifyContent: 'flex-end',
     },
     pickerSheet: {
       backgroundColor: Romance.bg,
-      borderTopLeftRadius: 26,
-      borderTopRightRadius: 26,
+      borderTopLeftRadius: Shape.radius,
+      borderTopRightRadius: Shape.radius,
+      borderTopWidth: Shape.stroke,
+      borderTopColor: Romance.stroke,
       paddingTop: 18,
       paddingBottom: 30,
       maxHeight: '60%',
     },
     pickerTitle: {
       fontSize: 15,
-      fontWeight: '700',
+      fontWeight: '600',
       color: Romance.ink,
       textAlign: 'center',
-      marginBottom: 8,
+      marginBottom: Space.cardX,
     },
-    pickerList: { paddingHorizontal: 20 },
-    pickerRow: {
-      paddingVertical: 12,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: Romance.line,
-    },
-    pickerRowText: { fontSize: 15, color: Romance.ink, textAlign: 'center' },
-    pickerRowActive: { color: Romance.accent, fontWeight: '700' },
-    portraitBtnRow: { flexDirection: 'row', gap: 10 },
-    portraitBtn: { flex: 1 },
-    // 入口行（D-095）：左「我创建的（N）」右「查看 ›」
-    mineRow: {
+    pickerGrid: {
       flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 10,
-      backgroundColor: '#FFFFFF',
-      borderRadius: 18,
-      padding: 10,
-      marginBottom: 8,
+      flexWrap: 'wrap',
+      gap: Space.inline,
+      paddingHorizontal: 18,
+      paddingBottom: Space.inlineLoose,
     },
-    mineText: { flex: 1 },
-    mineName: { fontSize: 14, fontWeight: '600', color: Romance.ink },
-    mineSub: { fontSize: 11, color: Romance.faint, marginTop: 1 },
-    mineEditBtn: {
-      backgroundColor: Romance.accentSoft,
-      borderRadius: 14,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-    },
-    mineEditText: { fontSize: 12, fontWeight: '700', color: Romance.accent },
-    editingBanner: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      backgroundColor: Romance.accentSoft,
-      borderRadius: 14,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      marginTop: 4,
-    },
-    editingText: { flex: 1, fontSize: 12, color: Romance.accent, fontWeight: '600' },
-    editingCancel: { fontSize: 12, color: Romance.sub },
-    paletteRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
-    swatch: { width: 32, height: 32, borderRadius: 16 },
-    swatchActive: { borderWidth: 3, borderColor: Romance.ink },
-    paceCard: {
-      flex: 1,
-      backgroundColor: '#FFFFFF',
-      borderRadius: 18,
-      paddingVertical: 12,
-      paddingHorizontal: 10,
-      alignItems: 'center',
-    },
-    paceCardActive: { backgroundColor: Romance.accent },
-    paceLabel: { fontSize: 14, fontWeight: '700', color: Romance.ink },
-    paceHint: { fontSize: 10, color: Romance.faint, marginTop: 3 },
-    styleDesc: {
-      fontSize: 12,
-      color: Romance.accent,
-      backgroundColor: Romance.accentSoft,
-      borderRadius: 14,
-      padding: 12,
-      marginTop: 10,
-      lineHeight: 18,
-    },
-    advToggle: {
-      marginTop: 26,
-      backgroundColor: '#FFFFFF',
-      borderRadius: 18,
-      padding: 14,
-      alignItems: 'center',
-    },
-    advToggleText: { fontSize: 14, fontWeight: '700', color: Romance.accent },
-    advToggleHint: { fontSize: 11, color: Romance.faint, marginTop: 3 },
-    previewCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      backgroundColor: '#FFFFFF',
-      borderRadius: 20,
-      padding: 14,
-      marginTop: 24,
-    },
-    previewText: { flex: 1 },
-    previewName: { fontSize: 16, fontWeight: '700', color: Romance.ink },
-    previewHook: { fontSize: 12, color: Romance.sub, marginTop: 3 },
-    primaryBtn: {
-      marginTop: 14,
-      backgroundColor: Romance.accent,
-      borderRadius: 26,
-      paddingVertical: 15,
-      alignItems: 'center',
-    },
-    btnDisabled: { opacity: 0.4 },
-    primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-    secondaryBtn: {
-      marginTop: 10,
-      borderRadius: 20,
-      paddingVertical: 13,
-      alignItems: 'center',
-      backgroundColor: '#FFFFFF',
-      borderWidth: 1,
-      borderColor: Romance.accent,
-    },
-    secondaryBtnText: { color: Romance.accent, fontSize: 15, fontWeight: '600' },
-    btnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    portrait: { width: 180, height: 180, borderRadius: 26, alignSelf: 'center', marginBottom: 4 },
-    footnote: { textAlign: 'center', fontSize: 11, color: Romance.faint, marginTop: 12 },
   })
 );

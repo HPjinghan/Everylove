@@ -190,6 +190,8 @@ export interface ChatMessage {
   viaCall?: boolean;
   /** kind === 'card' 时的卡片内容（D-081） */
   card?: ChatCard;
+  /** 系统消息的语气（D-100）：hint = 白底 accent 字的轻提示（如 LV1 的「+」面板预告），默认是墨色系统条 */
+  tone?: 'hint';
 }
 
 /** 广场搭话记录：不入消息 tab，会过期（免费层商业承重墙） */
@@ -254,6 +256,8 @@ export interface Bond {
   phoneUnlocked?: boolean;
   /** TA 的记事本（D-085）：lib/his-notes.ts 按 MBTI 频率写，最多 HIS_NOTES_MAX 条 */
   notes?: HisNote[];
+  /** LV1 首次进会话时的「+」面板预告已插过（D-100，只出现一次） */
+  hintPlusSeen?: boolean;
 }
 
 export interface PostComment {

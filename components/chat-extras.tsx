@@ -1,16 +1,22 @@
 /**
- * 会话「+」面板的玩法（D-081/D-084）：外出邀请（地点 → 时间）/ 红包。
+ * 会话「+」面板的玩法（D-081/D-084；D-100 纸面 token 迁移）：外出邀请（地点 → 时间）/ 红包。
+ * 地点行用 Card、金额 chips 用 Chip、输入用 Input、提交用 Button；红包不再用红，金额是白卡里的 accent Fredoka。
  * 位置在 components/location-picker.tsx（真实地图）；查手机的锁屏在 components/phone-lock.tsx（iPhone 式）、
  * 解锁后的内容在 components/his-phone.tsx（记事本 / 日历 / Message / 相册，D-085）。
  */
 
 import { useState, type ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Button } from '@/components/button';
+import { Card } from '@/components/card';
+import { Chip } from '@/components/chip';
+import { Input } from '@/components/input';
 import { TimePicker } from '@/components/time-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Space } from '@/constants/design';
+import { Fonts, Romance, themed } from '@/constants/theme';
 import { PLACES, type Place } from '@/content/places';
-import { Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 
 export type ExtraSheet = 'invite' | 'phone' | 'redpacket' | 'location' | null;
@@ -45,6 +51,20 @@ function Sheet({
   );
 }
 
+function PlaceRow({ place, onPress }: { place: Place; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress}>
+      <Card style={styles.row}>
+        <Text style={styles.rowEmoji}>{place.emoji}</Text>
+        <View style={styles.rowBody}>
+          <Text style={styles.rowTitle}>{t(place.name)}</Text>
+          <Text style={styles.rowSub}>{t(place.hook)}</Text>
+        </View>
+      </Card>
+    </Pressable>
+  );
+}
+
 /* ── 外出邀请：选地点 → 选时间（D-084） ── */
 
 export function InviteSheet({
@@ -65,13 +85,7 @@ export function InviteSheet({
     <Sheet visible={visible} title={place ? t('约在什么时候？') : t('约 TA 去哪儿？')} onClose={close}>
       {place ? (
         <>
-          <Pressable style={styles.row} onPress={() => setPlace(null)}>
-            <Text style={styles.rowEmoji}>{place.emoji}</Text>
-            <View style={styles.rowBody}>
-              <Text style={styles.rowTitle}>{t(place.name)}</Text>
-              <Text style={styles.rowSub}>{t(place.hook)}</Text>
-            </View>
-          </Pressable>
+          <PlaceRow place={place} onPress={() => setPlace(null)} />
           <TimePicker
             onPick={(at) => {
               const p = place;
@@ -81,15 +95,7 @@ export function InviteSheet({
           />
         </>
       ) : (
-        SPOTS.map((p) => (
-          <Pressable key={p.id} style={styles.row} onPress={() => setPlace(p)}>
-            <Text style={styles.rowEmoji}>{p.emoji}</Text>
-            <View style={styles.rowBody}>
-              <Text style={styles.rowTitle}>{t(p.name)}</Text>
-              <Text style={styles.rowSub}>{t(p.hook)}</Text>
-            </View>
-          </Pressable>
-        ))
+        SPOTS.map((p) => <PlaceRow key={p.id} place={p} onPress={() => setPlace(p)} />)
       )}
     </Sheet>
   );
@@ -116,52 +122,40 @@ export function RedPacketSheet({
 
   return (
     <Sheet visible={visible} title={t('红包')} onClose={onClose}>
-      <View style={styles.redCard}>
-        <Text style={styles.redAmount}>¥ {ok ? value!.toFixed(2) : '0.00'}</Text>
-      </View>
+      <Card style={styles.amountCard}>
+        <Text style={styles.amount}>¥ {ok ? value!.toFixed(2) : '0.00'}</Text>
+      </Card>
       <View style={styles.chips}>
-        {RED_PACKET_PRESETS.map((n) => {
-          const active = !custom.trim() && amount === n;
-          return (
-            <Pressable
-              key={n}
-              style={[styles.chip, active && styles.chipActive]}
-              onPress={() => {
-                setAmount(n);
-                setCustom('');
-              }}>
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>{n.toFixed(2)}</Text>
-            </Pressable>
-          );
-        })}
+        {RED_PACKET_PRESETS.map((n) => (
+          <Chip
+            key={n}
+            label={n.toFixed(2)}
+            selected={!custom.trim() && amount === n}
+            onPress={() => {
+              setAmount(n);
+              setCustom('');
+            }}
+          />
+        ))}
       </View>
-      <TextInput
-        style={styles.input}
+      <Input
         value={custom}
         onChangeText={(v) => setCustom(v.replace(/[^\d.]/g, ''))}
         placeholder={t('或者自己填个数')}
-        placeholderTextColor={Romance.faint}
         keyboardType="decimal-pad"
         maxLength={7}
       />
-      <TextInput
-        style={styles.input}
-        value={note}
-        onChangeText={setNote}
-        placeholder={t('留一句话')}
-        placeholderTextColor={Romance.faint}
-        maxLength={30}
-      />
-      <Pressable
-        style={[styles.primaryBtn, styles.primaryBtnRed, !ok && styles.btnDisabled]}
+      <Input value={note} onChangeText={setNote} placeholder={t('留一句话')} maxLength={30} />
+      <Button
+        label={t('塞进红包')}
         disabled={!ok}
+        style={styles.submit}
         onPress={() => {
           onSend(value!, note.trim() || t('给你的'));
           setNote('');
           setCustom('');
-        }}>
-        <Text style={styles.primaryBtnText}>{t('塞进红包')}</Text>
-      </Pressable>
+        }}
+      />
     </Sheet>
   );
 }
@@ -169,58 +163,19 @@ export function RedPacketSheet({
 const styles = themed(() =>
   StyleSheet.create({
     sheet: { flex: 1, backgroundColor: Romance.bg },
-    sheetHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingTop: 18,
-      paddingBottom: 10,
-    },
-    sheetTitle: { fontSize: 16, fontWeight: '700', color: Romance.ink },
+    sheetHeader: { alignItems: 'center', justifyContent: 'center', paddingTop: 18, paddingBottom: 10 },
+    sheetTitle: { fontSize: 16, fontWeight: '600', color: Romance.ink },
     sheetClose: { position: 'absolute', right: 16, top: 14, padding: 6 },
-    sheetBody: { paddingHorizontal: 20, paddingBottom: 40, gap: 10 },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      backgroundColor: '#FFFFFF',
-      borderRadius: 18,
-      paddingHorizontal: 16,
-      paddingVertical: 13,
-    },
+    sheetBody: { paddingHorizontal: Space.screen, paddingBottom: 40, gap: 10 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     rowEmoji: { fontSize: 24 },
     rowBody: { flex: 1 },
     rowTitle: { fontSize: 15, fontWeight: '600', color: Romance.ink },
     rowSub: { fontSize: 12, color: Romance.sub, marginTop: 2 },
-    redCard: {
-      backgroundColor: '#E5533D',
-      borderRadius: 20,
-      paddingVertical: 28,
-      alignItems: 'center',
-    },
-    redAmount: { color: '#FFE9B8', fontSize: 30, fontWeight: '800' },
+    // 金额：白卡 + accent Fredoka（不再用红）
+    amountCard: { paddingVertical: 28, alignItems: 'center' },
+    amount: { fontFamily: Fonts.labelBold, fontSize: 30, color: Romance.accentStrong },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    chip: { backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 9 },
-    chipActive: { backgroundColor: '#E5533D' },
-    chipText: { fontSize: 13, color: Romance.sub },
-    chipTextActive: { color: '#FFFFFF', fontWeight: '600' },
-    input: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 18,
-      paddingHorizontal: 16,
-      paddingVertical: 13,
-      fontSize: 16,
-      color: Romance.ink,
-    },
-    primaryBtn: {
-      marginTop: 6,
-      backgroundColor: Romance.accent,
-      borderRadius: 24,
-      paddingVertical: 15,
-      alignItems: 'center',
-    },
-    primaryBtnRed: { backgroundColor: '#E5533D' },
-    primaryBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-    btnDisabled: { opacity: 0.4 },
+    submit: { marginTop: 6 },
   })
 );

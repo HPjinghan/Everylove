@@ -1,8 +1,9 @@
 /**
- * 领养流：缔结关系的仪式（交友配对 = 交换联系方式；自创角色 = 确定关系，D-052）。
+ * 领养流：缔结关系的仪式（交友配对 = 交换联系方式；自创角色 = 确定关系，D-052；D-100 纸面）。
  * 槽位判定 → 给 TA 起名 → 迁移仪式动画 → 直接开聊（开门/推送步已随 D-046 下线；称呼与生日不再问，D-088：
  * TA 叫她的名字 = 她的昵称，生日在「我的身份」里）。
  * 首个羁绊免费，加槽付费（试装不开付费）——商业承重墙；自创角色同样占槽（D-052 修订 D-047）。
+ * 纸面：paper 底 + 菱格；居中头像 84、标题 22、槽位卡 = 白卡描边（数字 Fredoka）、主按钮 Button、「再想想」13 muted；无阴影。
  */
 
 import * as Haptics from 'expo-haptics';
@@ -16,13 +17,16 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/button';
+import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
-import { Romance, themed } from '@/constants/theme';
+import { Input } from '@/components/input';
+import { DiamondBackground } from '@/components/paper-bg';
+import { Fonts, Romance, themed } from '@/constants/theme';
 import { authConfigured, signedInSession } from '@/lib/auth';
 import { slotLimit, slotLimitLabel } from '@/lib/bond';
 import { t } from '@/lib/i18n';
@@ -65,95 +69,108 @@ export default function AdoptScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
-        ]}
-        keyboardShouldPersistTaps="handled">
-        {step === 'slot' && (
-          <View style={styles.center}>
-            <CharAvatar name={character.name} color={character.color} size={84} characterId={character.id} />
-            <Text style={styles.h1}>
-              {character.custom ? t('和{name}确定关系', { name: character.name }) : t('和{name}交换联系方式', { name: character.name })}
-            </Text>
-            {slotFree ? (
-              <>
-                <View style={styles.slotCard}>
-                  <Text style={styles.slotFree}>
-                    {bonds.length === 0
-                      ? t('首个羁绊 · 免费')
-                      : `${t('羁绊槽位')} ${bonds.length + 1}/${slotLimitLabel(plan)}`}
-                  </Text>
-                </View>
-                <Pressable style={styles.primaryBtn} onPress={() => setStep('names')}>
-                  <Text style={styles.primaryBtnText}>{t('开始缔结')}</Text>
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <View style={styles.slotCard}>
-                  <Text style={styles.slotFull}>
-                    {t('羁绊槽位已满')} · {bonds.length}/{slotLimitLabel(plan)}
-                  </Text>
-                  <Text style={styles.slotDesc}>
-                    {t('开通 Pro 或 Max，增加羁绊槽位')}
-                  </Text>
-                </View>
-                <Pressable
-                  style={styles.primaryBtn}
-                  onPress={() => router.push('/apps/settings')}>
-                  <Text style={styles.primaryBtnText}>{t('去看订阅')}</Text>
-                </Pressable>
-                <Pressable style={styles.secondaryBtn} onPress={() => router.back()}>
-                  <Text style={styles.secondaryBtnText}>{t('先回去聊聊')}</Text>
-                </Pressable>
-              </>
-            )}
-            <Pressable onPress={() => router.back()} style={styles.cancelLink}>
-              <Text style={styles.cancelLinkText}>{t('再想想')}</Text>
-            </Pressable>
-          </View>
-        )}
+    <View style={styles.screen}>
+      <DiamondBackground />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={[
+            styles.content,
+            { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 60 },
+          ]}
+          keyboardShouldPersistTaps="handled">
+          {step === 'slot' && (
+            <View style={styles.center}>
+              <CharAvatar name={character.name} color={character.color} size={84} characterId={character.id} />
+              <Text style={styles.h1}>
+                {character.custom
+                  ? t('和{name}确定关系', { name: character.name })
+                  : t('和{name}交换联系方式', { name: character.name })}
+              </Text>
+              {slotFree ? (
+                <>
+                  <Card style={styles.slotCard}>
+                    <Text style={styles.slotFree}>
+                      {bonds.length === 0 ? (
+                        t('首个羁绊 · 免费')
+                      ) : (
+                        <>
+                          {t('羁绊槽位')}{' '}
+                          <Text style={styles.slotNum}>
+                            {bonds.length + 1}/{slotLimitLabel(plan)}
+                          </Text>
+                        </>
+                      )}
+                    </Text>
+                  </Card>
+                  <Button label={t('开始缔结')} onPress={() => setStep('names')} style={styles.primaryBtn} />
+                </>
+              ) : (
+                <>
+                  <Card style={styles.slotCard}>
+                    <Text style={styles.slotFull}>
+                      {t('羁绊槽位已满')} ·{' '}
+                      <Text style={styles.slotNumMuted}>
+                        {bonds.length}/{slotLimitLabel(plan)}
+                      </Text>
+                    </Text>
+                    <Text style={styles.slotDesc}>{t('开通 Pro 或 Max，增加羁绊槽位')}</Text>
+                  </Card>
+                  <Button
+                    label={t('去看订阅')}
+                    onPress={() => router.push('/apps/settings')}
+                    style={styles.primaryBtn}
+                  />
+                  <Button
+                    label={t('先回去聊聊')}
+                    variant="secondary"
+                    onPress={() => router.back()}
+                    style={styles.secondaryBtn}
+                  />
+                </>
+              )}
+              <Pressable onPress={() => router.back()} style={styles.cancelLink} hitSlop={8}>
+                <Text style={styles.cancelLinkText}>{t('再想想')}</Text>
+              </Pressable>
+            </View>
+          )}
 
-        {step === 'names' && (
-          <View>
-            <Text style={styles.h1}>{t('在你的通讯录里，TA 叫——')}</Text>
-            <TextInput
-              style={styles.input}
-              value={hisName}
-              onChangeText={setHisName}
-              placeholder={character.name}
-              placeholderTextColor={Romance.faint}
-              maxLength={12}
+          {step === 'names' && (
+            <View>
+              <Text style={styles.h1}>{t('在你的通讯录里，TA 叫——')}</Text>
+              <Input
+                style={styles.nameInput}
+                value={hisName}
+                onChangeText={setHisName}
+                placeholder={character.name}
+                maxLength={12}
+              />
+              <Button
+                label={t('交换')}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setStep('ceremony');
+                }}
+                style={styles.primaryBtn}
+              />
+            </View>
+          )}
+
+          {step === 'ceremony' && (
+            <Ceremony
+              hisName={hisName.trim() || character.name}
+              nickname={finalNickname}
+              color={character.color}
+              characterId={character.id}
+              custom={!!character.custom}
+              onDone={finish}
             />
-            <Pressable
-              style={styles.primaryBtn}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                setStep('ceremony');
-              }}>
-              <Text style={styles.primaryBtnText}>{t('交换')}</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {step === 'ceremony' && (
-          <Ceremony
-            hisName={hisName.trim() || character.name}
-            nickname={finalNickname}
-            color={character.color}
-            characterId={character.id}
-            custom={!!character.custom}
-            onDone={finish}
-          />
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -225,11 +242,7 @@ function Ceremony({
         ]}>
         ♥
       </Animated.Text>
-      {done && (
-        <Pressable style={styles.primaryBtn} onPress={onDone}>
-          <Text style={styles.primaryBtnText}>{t('去看看你们的手机')}</Text>
-        </Pressable>
-      )}
+      {done && <Button label={t('去看看你们的手机')} onPress={onDone} style={styles.primaryBtn} />}
     </View>
   );
 }
@@ -240,62 +253,27 @@ const styles = themed(() =>
     screen: { flex: 1, backgroundColor: Romance.bg },
     content: { paddingHorizontal: 28, flexGrow: 1, justifyContent: 'center' },
     center: { alignItems: 'center' },
-    h1: {
-      fontSize: 22,
-      fontWeight: '700',
-      color: Romance.ink,
-      marginTop: 20,
-      textAlign: 'center',
-    },
-    h2: { fontSize: 15, fontWeight: '600', color: Romance.ink, marginTop: 22, marginBottom: 8 },
+    h1: { fontSize: 22, fontWeight: '600', color: Romance.ink, marginTop: 20, textAlign: 'center' },
+    // 槽位卡：白卡描边，居中一行；数字 Fredoka
     slotCard: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 24,
-      padding: 18,
-      marginTop: 18,
+      alignSelf: 'stretch',
       alignItems: 'center',
+      marginTop: 18,
+      paddingVertical: 16,
+      paddingHorizontal: 22,
     },
-    slotFree: { fontSize: 15, fontWeight: '700', color: Romance.accent },
-    slotFull: { fontSize: 15, fontWeight: '700', color: Romance.sub },
-    slotDesc: {
-      fontSize: 13,
-      color: Romance.sub,
-      lineHeight: 20,
-      marginTop: 8,
-      textAlign: 'center',
-    },
-    input: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 18,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      fontSize: 16,
-      color: Romance.ink,
-      marginTop: 10,
-    },
-    primaryBtn: {
-      backgroundColor: Romance.accent,
-      borderRadius: 26,
-      paddingHorizontal: 40,
-      paddingVertical: 13,
-      marginTop: 28,
-      alignSelf: 'center',
-    },
-    primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-    secondaryBtn: {
-      backgroundColor: Romance.line,
-      borderRadius: 26,
-      paddingHorizontal: 32,
-      paddingVertical: 13,
-      marginTop: 28,
-    },
-    secondaryBtnText: { color: Romance.sub, fontSize: 15, fontWeight: '600' },
+    slotFree: { fontSize: 15, fontWeight: '600', color: Romance.accentStrong, textAlign: 'center' },
+    slotNum: { fontFamily: Fonts.labelBold, fontSize: 15, color: Romance.accentStrong },
+    slotFull: { fontSize: 15, fontWeight: '600', color: Romance.sub, textAlign: 'center' },
+    slotNumMuted: { fontFamily: Fonts.labelBold, fontSize: 15, color: Romance.sub },
+    slotDesc: { fontSize: 13, lineHeight: 20, color: Romance.sub, marginTop: 8, textAlign: 'center' },
+    nameInput: { marginTop: 10 },
+    primaryBtn: { marginTop: 28, alignSelf: 'center', paddingHorizontal: 40 },
+    secondaryBtn: { marginTop: 14, alignSelf: 'center', paddingHorizontal: 32 },
     cancelLink: { marginTop: 18, alignSelf: 'center' },
-    cancelLinkText: { fontSize: 13, color: Romance.faint },
+    cancelLinkText: { fontSize: 13, color: Romance.sub },
     ceremonyLines: { marginTop: 30, gap: 14, alignItems: 'center' },
-    ceremonyLine: { fontSize: 16, color: Romance.ink },
+    ceremonyLine: { fontSize: 16, color: Romance.ink, textAlign: 'center' },
     ceremonyHeart: { fontSize: 34, color: Romance.accent, marginTop: 22 },
-    pushClock: { fontSize: 56, fontWeight: '200', color: Romance.ink, letterSpacing: 2 },
-    pushSub: { fontSize: 15, color: Romance.sub, marginTop: 10 },
   })
 );

@@ -4,6 +4,7 @@
  * 来源文件：chat_3 / flower_2 / heart / contacts_2 / photo_album / calendar_2 / magic_hat / settings_3 / sparkles_2
  *          / phone_call / phone / emoji / pic / mic / close / fire / search
  * location 例外：Material Symbols 的 place（Apache-2.0，MingCute 无同款 filled 定位针）。
+ * plus / pencil / lock / cloud（D-100 纸面设计稿补的四个简单图标：add_fill / edit_fill / lock_fill / cloud_fill 的简化路径）。
  */
 
 import Svg, { Path } from 'react-native-svg';
@@ -31,6 +32,11 @@ const PATHS = {
   notebook: ['M6 2H18A2.5 2.5 0 0 1 20.5 4.5V19.5A2.5 2.5 0 0 1 18 22H6A2.5 2.5 0 0 1 3.5 19.5V4.5A2.5 2.5 0 0 1 6 2ZM7.5 7.5V9.5H16.5V7.5ZM7.5 11.5V13.5H16.5V11.5ZM7.5 15.5V17.5H13V15.5Z'],
   // 查手机（D-085，手绘）：手机壳 + 屏幕里一只眼睛
   phoneEye: ['M8 1.5H16A2.5 2.5 0 0 1 18.5 4V20A2.5 2.5 0 0 1 16 22.5H8A2.5 2.5 0 0 1 5.5 20V4A2.5 2.5 0 0 1 8 1.5ZM7.5 5V19H16.5V5ZM10.5 20.25V21H13.5V20.25Z', 'M12 8.5C14.4 8.5 16.1 10.4 16.8 11.6C16.9 11.85 16.9 12.15 16.8 12.4C16.1 13.6 14.4 15.5 12 15.5C9.6 15.5 7.9 13.6 7.2 12.4C7.1 12.15 7.1 11.85 7.2 11.6C7.9 10.4 9.6 8.5 12 8.5ZM12 10.4A1.6 1.6 0 0 0 12 13.6A1.6 1.6 0 0 0 12 10.4Z'],
+  // 纸面设计稿（D-100）补的四个：「+」面板、记事本新建、锁屏、登录
+  plus: ['M12 4a1 1 0 0 1 1 1v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5a1 1 0 0 1 1-1z'],
+  pencil: ['M4 16.5V20h3.5L18 9.5 14.5 6 4 16.5zM16 4.5 19.5 8l1.3-1.3a1 1 0 0 0 0-1.4L18.7 3.2a1 1 0 0 0-1.4 0L16 4.5z'],
+  lock: ['M12 2a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v3h6V7a3 3 0 0 0-3-3z'],
+  cloud: ['M7 19a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 10.5 4.25 4.25 0 0 1 17.5 19H7z'],
 } as const;
 
 export type MingCuteName = keyof typeof PATHS;

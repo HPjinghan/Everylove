@@ -553,6 +553,34 @@ const en: Record<string, string> = {
   '用本机覆盖云端': 'Overwrite cloud with this phone',
   '接回云端的': 'Bring back from the cloud',
   '登录好了，先让 TA 们认识你吧': 'Signed in. Now let them get to know you.',
+  // 桌面未读横幅多人合并（D-100）：名字之间的连接符
+  '、': ', ',
+  // 相册 / 日历 / 外出 / 天气纸面重做（D-100）：约定条与赴约
+  '赴约 ›': 'Go ›',
+  '还有 {n} 个约定': '{n} more plans',
+  '取消约定': 'Cancel this plan',
+  '和{name}约在{place}的这次约定会取消。': 'Your plan with {name} at {place} will be called off.',
+  '和{name}': 'with {name}',
+  '使用当前位置': 'Use current location',
+  // 记事本编辑 / 查手机二次确认（D-100 纸面：Notes / Phones / Phone lock / His phone）
+  '标题': 'Title',
+  '让{name}看你的手机？': 'Let {name} see your phone?',
+  'TA 会读到：记事本的全部内容、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。': "They'll read all of your notes and your recent chats with others, then message you. This can't be undone.",
+  '让 TA 看': 'Let them',
+  // 设置：槽位超额（D-100 交互改动 9）
+  '超出的羁绊不会消失，但不能再新增': 'Bonds over the limit stay, but no new ones can be added',
+  // 首十分钟漏斗纸面重做（D-100）
+  '昵称': 'Nickname',
+  '配对 · 3 天不聊会过期': 'Matches · fade after 3 quiet days',
+  '人心动': 'hearts',
+  '慢慢看，不急': 'Take your time.',
+  '已略过一位': 'Passed on one',
+  '撤销': 'Undo',
+  '还剩 {n} 天': '{n}d left',
+  '心动满了，TA 先开了口': 'Hearts full. They spoke first.',
+  // 纸面全屏重做 · 会话 / TA 的主页（D-100）
+  '试试「+」里的外出邀请，把相处从屏幕里拿出来': 'Try the outing invite under "+" and take this off the screen',
+  'TA 的主页': 'Their page',
   // __EN_END__
 };
 
@@ -1083,6 +1111,34 @@ const ja: Record<string, string> = {
   '用本机覆盖云端': 'このスマホで上書き',
   '接回云端的': 'クラウドから戻す',
   '登录好了，先让 TA 们认识你吧': 'ログイン完了。まずは自己紹介から。',
+  // 桌面未读横幅多人合并（D-100）：名字之间的连接符
+  '、': '、',
+  // 相册 / 日历 / 外出 / 天气纸面重做（D-100）：约定条与赴约
+  '赴约 ›': '会いに行く ›',
+  '还有 {n} 个约定': 'あと {n} 件の約束',
+  '取消约定': '約束を取り消す',
+  '和{name}约在{place}的这次约定会取消。': '{place}での{name}との約束を取り消します。',
+  '和{name}': '{name}と',
+  '使用当前位置': '現在地を使う',
+  // 记事本编辑 / 查手机二次确认（D-100 纸面：Notes / Phones / Phone lock / His phone）
+  '标题': 'タイトル',
+  '让{name}看你的手机？': '{name} にスマホを見せる？',
+  'TA 会读到：记事本的全部内容、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。': 'メモの全部と、ほかの人との最近のやりとりを読まれます。読み終えたらメッセージが届きます。取り消しはできません。',
+  '让 TA 看': '見せる',
+  // 设置：槽位超额（D-100 交互改动 9）
+  '超出的羁绊不会消失，但不能再新增': '上限を超えた絆は消えませんが、新しく増やすことはできません',
+  // 首十分钟漏斗纸面重做（D-100）
+  '昵称': 'ニックネーム',
+  '配对 · 3 天不聊会过期': 'マッチ · 3日話さないと消える',
+  '人心动': '人がときめき中',
+  '慢慢看，不急': 'ゆっくりどうぞ。',
+  '已略过一位': '1人スキップ',
+  '撤销': '取り消す',
+  '还剩 {n} 天': 'あと {n} 日',
+  '心动满了，TA 先开了口': 'ときめきが満ちて、向こうから切り出した',
+  // 纸面全屏重做 · 会话 / TA 的主页（D-100）
+  '试试「+」里的外出邀请，把相处从屏幕里拿出来': '「+」のおでかけ招待で、ふたりの時間を画面の外へ',
+  'TA 的主页': 'プロフィール',
   // __JA_END__
 };
 

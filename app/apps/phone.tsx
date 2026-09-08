@@ -1,15 +1,18 @@
 /**
- * 电话（D-030；D-077 真通话）：显示可通话的人 = 加好友（缔结契约）的 TA 们。
+ * 电话（D-030；D-077 真通话；D-100 纸面）：显示可通话的人 = 加好友（缔结契约）的 TA 们。
+ * 白卡描边行：头像 48、名 15/600、副文 12 muted（LV 数字 Fredoka）、右侧 42 primary + 1.5 描边方块内 phoneSimple 20 白。
  * 拨打 → 全屏通话页 app/call/[characterId]（管线式：识别 → 引擎通话模式 → 合成，见 lib/call.ts）。
  */
 
-import { FlatList, Pressable, StyleSheet, Text, View, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
+import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
-import { Romance, themed } from '@/constants/theme';
+import { Shape, Space } from '@/constants/design';
+import { Fonts, Romance, themed } from '@/constants/theme';
 import { levelInfo } from '@/lib/bond';
 import { callReady } from '@/lib/call';
 import { t } from '@/lib/i18n';
@@ -28,15 +31,13 @@ export default function PhoneScreen() {
   };
 
   return (
-    <AppScreen title={t("电话")}>
+    <AppScreen title={t('电话')}>
       {bonds.length === 0 ? (
         <View style={styles.empty}>
-          <View style={styles.emptyIcon}>
-            <MingCute name="phone" size={34} color="#3EB489" />
+          <View style={styles.emptyTile}>
+            <MingCute name="phoneSimple" size={Space.iconTile} color={Romance.ink} />
           </View>
-          <Text style={styles.emptyText}>
-            {t('还没有可通话的人。')}
-          </Text>
+          <Text style={styles.emptyText}>{t('还没有可通话的人。')}</Text>
         </View>
       ) : (
         <FlatList
@@ -45,13 +46,12 @@ export default function PhoneScreen() {
           contentContainerStyle={styles.list}
           renderItem={({ item }) => {
             const c = findCharacter(item.characterId);
+            const lv = levelInfo(item.affinity);
             return (
-              <View style={styles.row}>
+              <Card style={styles.row}>
                 <Pressable
                   style={styles.rowMain}
-                  onPress={() =>
-                    router.push({ pathname: '/bond/[bondId]', params: { bondId: item.id } })
-                  }>
+                  onPress={() => router.push({ pathname: '/bond/[bondId]', params: { bondId: item.id } })}>
                   <CharAvatar
                     name={item.name}
                     color={c?.color ?? Romance.accent}
@@ -59,14 +59,18 @@ export default function PhoneScreen() {
                     characterId={item.characterId}
                   />
                   <View style={styles.rowText}>
-                    <Text style={styles.rowName}>{item.name}</Text>
-                    <Text style={styles.rowSub}>{`${t('羁绊')} LV${levelInfo(item.affinity).level} · ${t(levelInfo(item.affinity).name)}`}</Text>
+                    <Text style={styles.rowName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text style={styles.rowSub} numberOfLines={1}>
+                      {t('羁绊')} <Text style={styles.rowSubNum}>LV{lv.level}</Text> · {t(lv.name)}
+                    </Text>
                   </View>
                 </Pressable>
                 <Pressable style={styles.callBtn} onPress={() => call(item.characterId)} hitSlop={6}>
-                  <MingCute name="phone" size={22} color="#FFFFFF" />
+                  <MingCute name="phoneSimple" size={20} color="#FFFFFF" />
                 </Pressable>
-              </View>
+              </Card>
             );
           }}
         />
@@ -77,34 +81,30 @@ export default function PhoneScreen() {
 
 const styles = themed(() =>
   StyleSheet.create({
-    list: { padding: 14 },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      backgroundColor: '#FFFFFF',
-      borderRadius: 20,
-      padding: 12,
-      marginBottom: 8,
-    },
+    list: { padding: Space.screen, paddingBottom: 40, gap: 8 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     rowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
     rowText: { flex: 1 },
     rowName: { fontSize: 15, fontWeight: '600', color: Romance.ink },
     rowSub: { fontSize: 12, color: Romance.sub, marginTop: 2 },
+    rowSubNum: { fontFamily: Fonts.label },
+    // 拨打：primary 底 + 1.5 描边的方块（主动作，和主按钮同一套描边）
     callBtn: {
       width: 42,
       height: 42,
-      borderRadius: 21,
-      backgroundColor: '#3EB489',
+      borderRadius: Shape.radius,
+      backgroundColor: Romance.accent,
+      borderWidth: Shape.stroke,
+      borderColor: Romance.stroke,
       alignItems: 'center',
       justifyContent: 'center',
     },
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80, gap: 14 },
-    emptyIcon: {
+    emptyTile: {
       width: 64,
       height: 64,
-      borderRadius: 24,
-      backgroundColor: '#D5F2E3',
+      borderRadius: Shape.radius,
+      backgroundColor: Romance.card,
       alignItems: 'center',
       justifyContent: 'center',
     },

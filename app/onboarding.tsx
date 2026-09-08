@@ -1,8 +1,9 @@
 /**
- * Onboarding（D-035；D-080 并成一步）：语言 →「先让 TA 们认识你」。
+ * Onboarding（D-035；D-080 并成一步；D-100 纸面）：语言 →「先让 TA 们认识你」。
  * 昵称与「更倾向于和什么样的人建立关系」必填（后者既是全性向声明，也是交友推荐的口味过滤，原独立一步「你想被谁爱？」并入此处）；
  * 其余（性别/称呼/职业/生日）都可跳过，完整设定稍后在 设置 → 我的身份 里补充，也能为单个角色使用不同身份。
  * 第一步底部「已有账号？登录」（D-096）：换了手机的老用户直接登录把 TA 们接回来，不重走新手流（语言还没选，所以三语并排）。
+ * 纸面：paper 底 + 菱格暗纹；字段用 Field / Input，选项用 Chip，主按钮 Button——无阴影、无描边输入框、r6。
  */
 
 import { useRouter } from 'expo-router';
@@ -14,11 +15,15 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/button';
+import { Chip } from '@/components/chip';
+import { Field, Input } from '@/components/input';
+import { DiamondBackground } from '@/components/paper-bg';
+import { Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { authConfigured } from '@/lib/auth';
 import { t, type Lang } from '@/lib/i18n';
@@ -61,18 +66,19 @@ export default function OnboardingScreen() {
   if (step === 'lang') {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 80, paddingBottom: insets.bottom }]}>
-        <Text style={styles.question}>选择语言{'\n'}Language · 言語</Text>
+        <DiamondBackground />
+        <Text style={styles.title}>选择语言{'\n'}Language · 言語</Text>
         <View style={styles.options}>
           {LANGS.map((l) => (
-            <Pressable
+            <Button
               key={l.key}
-              style={styles.option}
+              label={l.label}
+              variant="secondary"
               onPress={() => {
                 useAppStore.getState().setLanguage(l.key);
                 setStep('me');
-              }}>
-              <Text style={styles.optionLabel}>{l.label}</Text>
-            </Pressable>
+              }}
+            />
           ))}
         </View>
         {authConfigured() ? (
@@ -104,108 +110,75 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={[
-          styles.meContent,
-          { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 24 },
-        ]}
-        keyboardShouldPersistTaps="handled">
-        <Text style={styles.question}>{t('先让 TA 们认识你')}</Text>
-        <Text style={styles.hint}>{t('只用填最基本的，其余都可以跳过。')}</Text>
+    <View style={styles.screen}>
+      <DiamondBackground />
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={[
+            styles.meContent,
+            { paddingTop: insets.top + 52, paddingBottom: insets.bottom + 24 },
+          ]}
+          keyboardShouldPersistTaps="handled">
+          <Text style={styles.title}>{t('先让 TA 们认识你')}</Text>
+          <Text style={styles.hint}>{t('只用填最基本的，其余都可以跳过。')}</Text>
 
-        <View style={styles.meField}>
-          <Text style={styles.meLabel}>{t('昵称 *')}</Text>
-          <Text style={styles.meHint}>{t('角色看到的名字')}</Text>
-          <TextInput
-            style={styles.meInput}
-            value={nickname}
-            onChangeText={setNickname}
-            placeholder={t('怎么称呼你？')}
-            placeholderTextColor={Romance.faint}
-            maxLength={12}
-          />
-        </View>
+          <Field label={t('昵称')} hint={t('角色看到的名字')} required>
+            <Input
+              value={nickname}
+              onChangeText={setNickname}
+              placeholder={t('怎么称呼你？')}
+              maxLength={12}
+            />
+          </Field>
 
-        <View style={styles.meField}>
-          <Text style={styles.meLabel}>{t('性别')}</Text>
-          <View style={styles.chips}>
-            {GENDERS.map((g) => {
-              const active = gender === g.key;
-              return (
-                <Pressable
+          <Field label={t('性别')}>
+            <View style={styles.chips}>
+              {GENDERS.map((g) => (
+                <Chip
                   key={g.key}
-                  style={[styles.chip, active && styles.chipActive]}
-                  onPress={() => setGender(g.key)}>
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(g.label)}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
+                  label={t(g.label)}
+                  selected={gender === g.key}
+                  onPress={() => setGender(g.key)}
+                />
+              ))}
+            </View>
+          </Field>
 
-        <View style={styles.meField}>
-          <Text style={styles.meLabel}>{t('更倾向于和什么样的人建立关系？')} *</Text>
-          <View style={styles.chips}>
-            {PREFS.map((o) => {
-              const active = pref === o.key;
-              return (
-                <Pressable
+          <Field label={t('更倾向于和什么样的人建立关系？')} required>
+            <View style={styles.chips}>
+              {PREFS.map((o) => (
+                <Chip
                   key={o.key}
-                  style={[styles.chip, active && styles.chipActive]}
-                  onPress={() => setPref(o.key)}>
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(o.label)}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
+                  label={t(o.label)}
+                  selected={pref === o.key}
+                  onPress={() => setPref(o.key)}
+                />
+              ))}
+            </View>
+          </Field>
 
-        <View style={styles.meField}>
-          <Text style={styles.meLabel}>{t('称呼 / 代词')}</Text>
-          <TextInput
-            style={styles.meInput}
-            value={pronoun}
-            onChangeText={setPronoun}
-            placeholder={t('可不填')}
-            placeholderTextColor={Romance.faint}
-            maxLength={12}
-          />
-        </View>
+          <Field label={t('称呼 / 代词')}>
+            <Input value={pronoun} onChangeText={setPronoun} placeholder={t('可不填')} maxLength={12} />
+          </Field>
 
-        <View style={styles.meField}>
-          <Text style={styles.meLabel}>{t('职业')}</Text>
-          <TextInput
-            style={styles.meInput}
-            value={occupation}
-            onChangeText={setOccupation}
-            placeholder={t('可不填')}
-            placeholderTextColor={Romance.faint}
-            maxLength={20}
-          />
-        </View>
+          <Field label={t('职业')}>
+            <Input
+              value={occupation}
+              onChangeText={setOccupation}
+              placeholder={t('可不填')}
+              maxLength={20}
+            />
+          </Field>
 
-        <View style={styles.meField}>
-          <Text style={styles.meLabel}>{t('生日')}</Text>
-          <TextInput
-            style={styles.meInput}
-            value={birthday}
-            onChangeText={setBirthday}
-            placeholder={t('比如 05-20')}
-            placeholderTextColor={Romance.faint}
-            maxLength={5}
-          />
-        </View>
+          <Field label={t('生日')}>
+            <Input value={birthday} onChangeText={setBirthday} placeholder={t('比如 05-20')} maxLength={5} />
+          </Field>
 
-        <Pressable
-          style={[styles.primaryBtn, !ready && styles.primaryBtnDisabled]}
-          disabled={!ready}
-          onPress={finish}>
-          <Text style={styles.primaryBtnText}>{t('进去看看')}</Text>
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <Button label={t('进去看看')} disabled={!ready} onPress={finish} style={styles.submit} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -213,52 +186,18 @@ const styles = themed(() =>
   StyleSheet.create({
     flex: { flex: 1 },
     screen: { flex: 1, backgroundColor: Romance.bg, paddingHorizontal: 28 },
-    question: { fontSize: 32, fontWeight: '700', color: Romance.ink },
-    hint: { fontSize: 14, color: Romance.sub, marginTop: 10 },
-    options: { marginTop: 40, gap: 12 },
-    option: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 24,
-      paddingHorizontal: 20,
-      paddingVertical: 18,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    optionLabel: { fontSize: 18, fontWeight: '600', color: Romance.ink },
-    signIn: { marginTop: 'auto', alignSelf: 'center', paddingVertical: 18 },
-    signInText: { fontSize: 14, fontWeight: '600', color: Romance.sub },
-    meContent: { flexGrow: 1 },
-    meField: { marginTop: 22 },
-    meLabel: { fontSize: 14, fontWeight: '600', color: Romance.ink },
-    meHint: { fontSize: 11, color: Romance.faint, marginTop: 2 },
-    meInput: {
-      marginTop: 8,
-      backgroundColor: '#FFFFFF',
-      borderRadius: 18,
-      paddingHorizontal: 16,
-      paddingVertical: 13,
-      fontSize: 16,
+    title: {
+      fontSize: Type.scale.display.size,
+      lineHeight: Math.round(Type.scale.display.size * 1.25),
+      fontWeight: '600',
       color: Romance.ink,
     },
-    chips: { flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' },
-    chip: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 16,
-      paddingHorizontal: 16,
-      paddingVertical: 9,
-    },
-    chipActive: { backgroundColor: Romance.accent },
-    chipText: { fontSize: 13, color: Romance.sub },
-    chipTextActive: { color: '#FFFFFF', fontWeight: '600' },
-    primaryBtn: {
-      marginTop: 32,
-      backgroundColor: Romance.accent,
-      borderRadius: 24,
-      paddingVertical: 15,
-      alignItems: 'center',
-    },
-    primaryBtnDisabled: { opacity: 0.4 },
-    primaryBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+    hint: { fontSize: 14, color: Romance.sub, marginTop: 10 },
+    options: { marginTop: 40, gap: 10 },
+    signIn: { marginTop: 'auto', alignSelf: 'center', paddingVertical: 18 },
+    signInText: { fontSize: 14, fontWeight: '500', color: Romance.sub },
+    meContent: { flexGrow: 1 },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    submit: { marginTop: 30 },
   })
 );

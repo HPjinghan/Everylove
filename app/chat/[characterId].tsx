@@ -1,9 +1,13 @@
 /**
- * 交友试聊（D-040 滑到即配对后进入这里）：TA 先开口。
+ * 交友试聊（D-040 滑到即配对后进入这里；D-100 纸面）：TA 先开口。
  * 免费层机制：TA 有点兴趣但不太主动；3 天不聊配对过期、TA 会忘记你。
  * 心动值（D-029）：她每开口一句都会涨（速度 = 角色的确定关系节奏 offerAfterTurns，±15% 浮动）；
  * 满 100 = 羁绊 LV1——TA 主动开口交换联系方式（产品触发器，不由模型决定；features/adoption.ts）。
  * 回合走底座管线（D-086）：这里只管界面与 TA 的开场白。
+ *
+ * 纸面（D-100）：顶栏 ‹ / 头像 36 / 名 17 / 身份 12，右侧标签白底 r6——自创显示「你创造的 TA」，配对显示倒计时「还剩 N 天」（最后一天 accent）；
+ * 心动条吸顶：header 下方通栏（白底、1.5px ink 下沿），不随消息滚动，满 100 保持满格；
+ * offer 仍是输入栏上方的 cta 卡（白卡描边 + primary 小按钮），贴近拇指。
  */
 
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -11,17 +15,29 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/button';
+import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { ChatThread, type ReplyRef } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { scriptFor } from '@/content/characters';
-import { Romance, themed } from '@/constants/theme';
+import { Shape, Space } from '@/constants/design';
+import { Fonts, Romance, themed } from '@/constants/theme';
 import { himMsg, wait } from '@/core/turn';
 import { HEART_FULL } from '@/lib/bond';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { sendImage, sendText, sendVoice, squareScope } from '@/lib/chat';
-import { findCharacter, useAppStore } from '@/store/app-store';
+import { findCharacter, SQUARE_CHAT_TTL_MS, useAppStore } from '@/store/app-store';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** 配对倒计时（D-100）：还剩 N 天 = 配对时限的天数 − 距上次说话的整天数，最少 1 */
+function daysLeft(lastActiveAt: number): number {
+  const total = Math.round(SQUARE_CHAT_TTL_MS / DAY_MS);
+  const elapsed = Math.floor((Date.now() - lastActiveAt) / DAY_MS);
+  return Math.max(1, total - elapsed);
+}
 
 export default function SquareChatScreen() {
   const { characterId } = useLocalSearchParams<{ characterId: string }>();
@@ -80,6 +96,12 @@ export default function SquareChatScreen() {
   const onSendImage = (uri: string) => void sendImage(scope, uri, ui);
 
   const offered = chat?.adoptionOffered;
+  // 满 100 之后吸顶条保持满格
+  const heart = offered ? HEART_FULL : Math.min(HEART_FULL, chat?.heart ?? 0);
+  const left = daysLeft(chat?.lastActiveAt ?? Date.now());
+  const lastDay = left <= 1;
+  // 「还剩 N 天」：数字用 Fredoka，所以按 {n} 把译文拆成前后两段
+  const [leftBefore, leftAfter] = t('还剩 {n} 天').split('{n}');
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -87,14 +109,37 @@ export default function SquareChatScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <IconSymbol name="chevron.left" size={22} color={Romance.ink} />
         </Pressable>
-        <CharAvatar name={character.name} color={character.color} size={36} characterId={character.id} />
+        <CharAvatar name={character.name} color={character.color} size={Space.avatar.row} characterId={character.id} />
         <View style={styles.headerText}>
-          <Text style={styles.headerName}>{character.name}</Text>
-          <Text style={styles.headerSub}>{character.identity}</Text>
+          <Text style={styles.headerName} numberOfLines={1}>
+            {character.name}
+          </Text>
+          <Text style={styles.headerSub} numberOfLines={1}>
+            {character.identity}
+          </Text>
         </View>
-        <View style={styles.squareTag}>
-          <Text style={styles.squareTagText}>{character.custom ? t('你创造的 TA') : t('刚刚配对')}</Text>
+        <View style={styles.tag}>
+          {character.custom ? (
+            <Text style={styles.tagText}>{t('你创造的 TA')}</Text>
+          ) : (
+            <Text style={[styles.tagText, lastDay && styles.tagUrgent]}>
+              {leftBefore}
+              <Text style={[styles.tagNum, lastDay && styles.tagUrgent]}>{left}</Text>
+              {leftAfter}
+            </Text>
+          )}
         </View>
+      </View>
+
+      {/* 心动条吸顶（D-100）：白底通栏 + 1.5px 下沿，不随消息滚动 */}
+      <View style={styles.heartBar}>
+        <Text style={styles.heartLabel}>{t('心动')}</Text>
+        <View style={styles.heartTrack}>
+          <View style={[styles.heartFill, { width: `${heart}%` }]} />
+        </View>
+        <Text style={styles.heartNum}>
+          {heart}/{HEART_FULL}
+        </Text>
       </View>
 
       <ChatThread
@@ -108,48 +153,28 @@ export default function SquareChatScreen() {
         onSendVoice={onSendVoice}
         onRecall={(m) => useAppStore.getState().recallMessage({ characterId: character.id }, m.id)}
         onDelete={(m) => useAppStore.getState().deleteMessage({ characterId: character.id }, m.id)}
-        banner={
-          <View style={styles.banner}>
-            <View style={styles.heartRow}>
-              <Text style={styles.heartLabel}>{t('心动')}</Text>
-              <View style={styles.heartTrack}>
-                <View
-                  style={[
-                    styles.heartFill,
-                    { width: `${Math.min(100, chat?.heart ?? 0)}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.heartNum}>
-                {Math.min(100, chat?.heart ?? 0)}/{HEART_FULL}
-              </Text>
-            </View>
-          </View>
-        }
         cta={
           offered ? (
-            <View style={styles.ctaWrap}>
-              <View style={styles.ctaTextWrap}>
+            <Card style={styles.cta}>
+              <View style={styles.ctaText}>
                 <Text style={styles.ctaTitle}>
                   {character.custom ? t('TA 想和你确定关系') : t('TA 想要你的联系方式')}
                 </Text>
-                {character.custom ? (
-                  <Text style={styles.ctaSub}>{t('这一次，是 TA 自己想留在你身边')}</Text>
-                ) : null}
+                <Text style={styles.ctaSub}>
+                  {character.custom ? t('这一次，是 TA 自己想留在你身边') : t('心动满了，TA 先开了口')}
+                </Text>
               </View>
-              <Pressable
-                style={styles.ctaBtn}
+              <Button
+                size="sm"
+                label={character.custom ? t('答应 TA') : t('交换联系方式')}
                 onPress={() =>
                   router.push({
                     pathname: '/adopt/[characterId]',
                     params: { characterId: character.id },
                   })
-                }>
-                <Text style={styles.ctaBtnText}>
-                  {character.custom ? t('答应 TA') : t('交换联系方式')}
-                </Text>
-              </Pressable>
-            </View>
+                }
+              />
+            </Card>
           ) : null
         }
       />
@@ -160,67 +185,61 @@ export default function SquareChatScreen() {
 const styles = themed(() =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Romance.bg },
+    // 顶栏透底、1.5px ink 下沿
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: Romance.line,
+      gap: Space.inlineLoose,
+      paddingHorizontal: Space.screen,
+      paddingTop: 6,
+      paddingBottom: 10,
+      borderBottomWidth: Shape.stroke,
+      borderBottomColor: Romance.stroke,
     },
     headerText: { flex: 1 },
-    headerName: { fontSize: 16, fontWeight: '600', color: Romance.ink },
-    headerSub: { fontSize: 11, color: Romance.sub },
-    squareTag: {
-      backgroundColor: Romance.line,
+    headerName: { fontSize: 17, fontWeight: '600', color: Romance.ink },
+    headerSub: { fontSize: 12, color: Romance.sub, marginTop: 3 },
+    // 右侧标签：白底 r6 11，无描边
+    tag: {
+      backgroundColor: Romance.card,
+      borderRadius: Shape.radius,
       paddingHorizontal: 8,
       paddingVertical: 4,
-      borderRadius: 8,
     },
-    squareTagText: { fontSize: 10, color: Romance.sub },
-    banner: {
-      alignSelf: 'center',
-      alignItems: 'center',
-      backgroundColor: Romance.accentSoft,
-      borderRadius: 14,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      gap: 4,
-    },
-    heartRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    heartLabel: { fontSize: 11, color: Romance.accent, fontWeight: '700' },
-    heartTrack: {
-      width: 120,
-      height: 7,
-      borderRadius: 4,
-      backgroundColor: '#FFFFFF',
-      overflow: 'hidden',
-    },
-    heartFill: { height: '100%', borderRadius: 4, backgroundColor: Romance.accent },
-    heartNum: { fontSize: 11, color: Romance.accent, fontWeight: '600' },
-    ctaWrap: {
+    tagText: { fontSize: 11, fontWeight: '500', color: Romance.sub },
+    tagNum: { fontFamily: Fonts.label, fontSize: 11, color: Romance.sub },
+    // 最后一天整条 accent
+    tagUrgent: { color: Romance.accentStrong },
+    heartBar: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginHorizontal: 14,
+      gap: Space.inlineLoose,
+      paddingHorizontal: Space.screen,
+      paddingVertical: 8,
+      backgroundColor: Romance.card,
+      borderBottomWidth: Shape.stroke,
+      borderBottomColor: Romance.stroke,
+    },
+    heartLabel: { fontSize: 12, fontWeight: '600', color: Romance.accentStrong },
+    heartTrack: {
+      flex: 1,
+      height: 7,
+      borderRadius: Shape.radiusTail,
+      backgroundColor: Romance.bg,
+      overflow: 'hidden',
+    },
+    heartFill: { height: '100%', backgroundColor: Romance.accent },
+    heartNum: { fontFamily: Fonts.labelBold, fontSize: 12, color: Romance.accentStrong },
+    // offer 卡：白卡描边，贴在输入栏上方
+    cta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Space.inlineLoose,
+      marginHorizontal: Space.screen,
       marginBottom: 8,
-      backgroundColor: '#FFFFFF',
-      borderRadius: 20,
-      padding: 12,
-      shadowColor: '#3B2126',
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 3 },
     },
-    ctaTextWrap: { flex: 1 },
-    ctaTitle: { fontSize: 14, fontWeight: '700', color: Romance.ink },
+    ctaText: { flex: 1 },
+    ctaTitle: { fontSize: 14, fontWeight: '600', color: Romance.ink },
     ctaSub: { fontSize: 11, color: Romance.sub, marginTop: 2 },
-    ctaBtn: {
-      backgroundColor: Romance.accent,
-      borderRadius: 18,
-      paddingHorizontal: 14,
-      paddingVertical: 9,
-    },
-    ctaBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   })
 );

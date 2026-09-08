@@ -107,6 +107,12 @@ export const THEMES: Record<string, { label: string; colors: RomancePalette }> =
 /** 默认主题（D-083）：新装机走设计系统的「纸面」；老存档里的 themeId 保留 */
 export const DEFAULT_THEME_ID = 'paper';
 
+/** token 色的半透明版（D-100）：遮罩 / 暗场用它，不手写 rgba；只接受 #RRGGBB */
+export function withAlpha(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1, 7), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
 /** 全局可变配色对象：applyThemeColors 覆写；界面里 Romance.x 的内联引用在重挂载后取到新值 */
 export const Romance: RomancePalette = { ...THEMES[DEFAULT_THEME_ID].colors };
 
@@ -138,6 +144,8 @@ export function themed<T extends object>(factory: () => T): T {
 
 /** 设计系统字体（D-084）：label = Fredoka 500（数字、标签、导航、时间戳）、labelBold = Fredoka 600（时钟、标题、按钮）；正文用系统字体。字体在 app/_layout.tsx 用 useFonts 加载 */
 const FREDOKA = { label: 'Fredoka_500Medium', labelBold: 'Fredoka_600SemiBold' };
+/** 头像单字（D-100）：设计稿用 Noto Serif SC；iOS 不带它，用系统自带的宋体（Songti SC）代替，不另装 CJK 字体 */
+const INITIAL_IOS = 'Songti SC';
 
 export const Fonts = Platform.select({
   ios: {
@@ -149,6 +157,7 @@ export const Fonts = Platform.select({
     rounded: 'ui-rounded',
     /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
+    initial: INITIAL_IOS,
     ...FREDOKA,
   },
   default: {
@@ -156,6 +165,7 @@ export const Fonts = Platform.select({
     serif: 'serif',
     rounded: 'normal',
     mono: 'monospace',
+    initial: 'serif',
     ...FREDOKA,
   },
   web: {
@@ -165,5 +175,6 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
     label: "'Fredoka', 'SF Pro Rounded', sans-serif",
     labelBold: "'Fredoka', 'SF Pro Rounded', sans-serif",
+    initial: "'Noto Serif SC', 'Songti SC', serif",
   },
 });

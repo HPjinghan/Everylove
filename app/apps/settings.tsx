@@ -1,32 +1,65 @@
 /**
- * 我的：槽位与订阅（占位）、素材开关（占位）、我的创作、开发者与测试工具。
+ * 设置（D-100 纸面）：分区标题 13/600 muted；每区一张白卡（不带内距），行内距 13×12，行间 1.5px ink 分区线（Divider，不用 hairline）；
+ * 行左 14 ink、右值 13/500 muted。语言 = 三段等宽（paper 底 / 选中 primary 白字）；主题点 34 r6（选中外圈 ink 2.5、留 2）；
+ * 壁纸块 52×88 r6（纸面画 paper 底 + 菱格，其余上下两段纯色；选中外圈 primary 2、留 1）；槽位超额时数值与说明走 accent（交互改动 9）。
  * 开发者区只读显示 AI 引擎与取路（D-069：引擎/key 全走工程配置 .env.local，手填与脚本引擎已下线）。
  */
 
 import * as Notifications from 'expo-notifications';
-import { useEffect, useState, type ReactNode } from 'react';
+import { Children, Fragment, isValidElement, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
 import { AppScreen } from '@/components/app-screen';
+import { Card, Divider } from '@/components/card';
+import { DiamondBackground } from '@/components/paper-bg';
 import { WALLPAPERS } from '@/constants/apps';
-import { Romance, THEMES, themed } from '@/constants/theme';
+import { Shape, Space } from '@/constants/design';
+import { Fonts, Romance, THEMES, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { aiRouteSync, engineLabel } from '@/lib/engine';
 import { ensurePortrait, imageKeyReady, portraitFor } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
 import { authConfigured, isSignedIn, onAuthChange, sessionLabel, signedInSession, signOut } from '@/lib/auth';
 import { t } from '@/lib/i18n';
-import { slotLimitLabel } from '@/lib/bond';
+import { slotLimit, slotLimitLabel } from '@/lib/bond';
 import { deleteCloudData, restoreSnapshot, uploadSnapshot } from '@/lib/sync';
 import { useAppStore } from '@/store/app-store';
 
+/** 选中外圈：主题点 ink 2.5 留 2；壁纸块 primary 2 留 1（外层 View 包一圈 border，圆角随之外扩） */
+const THEME_RING = { width: 2.5, gap: 2 };
+const WALL_RING = { width: 2, gap: 1 };
+
+const LANGS = [
+  ['zh', '中文'],
+  ['en', 'English'],
+  ['ja', '日本語'],
+] as const;
+
+/** 把 children（含 Fragment）摊平成一维、去掉空值——分区行之间才好插分区线 */
+function flattenChildren(children: ReactNode): ReactNode[] {
+  return Children.toArray(children).flatMap((child) =>
+    isValidElement(child) && child.type === Fragment
+      ? flattenChildren((child.props as { children?: ReactNode }).children)
+      : [child]
+  );
+}
+
+/** 分区：标题 + 一张不带内距的白卡；卡内每两个直接子元素之间一条 1.5px ink 分区线 */
 function Section({ title, children }: { title: string; children: ReactNode }) {
+  const items = flattenChildren(children);
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionBody}>{children}</View>
+      <Card padded={false}>
+        {items.map((item, i) => (
+          <Fragment key={i}>
+            {i > 0 ? <Divider /> : null}
+            {item}
+          </Fragment>
+        ))}
+      </Card>
     </View>
   );
 }
@@ -35,19 +68,41 @@ function Row({
   label,
   value,
   dim,
+  numeric,
+  tone,
+  hint,
   onPress,
 }: {
   label: string;
   value?: string;
+  /** 值置灰（未开放的功能） */
   dim?: boolean;
+  /** 值是数字：Fredoka */
+  numeric?: boolean;
+  /** accent：值与说明都用强调色（槽位超额） */
+  tone?: 'accent';
+  /** 行下方的一句说明，与行同属一格（不隔分区线） */
+  hint?: string;
   onPress?: () => void;
 }) {
   return (
-    <Pressable style={styles.row} onPress={onPress} disabled={!onPress}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      {value ? (
-        <Text style={[styles.rowValue, dim && { color: Romance.faint }]}>{value}</Text>
-      ) : null}
+    <Pressable onPress={onPress} disabled={!onPress}>
+      <View style={[styles.row, !!hint && styles.rowWithHint]}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        {value ? (
+          <Text
+            style={[
+              styles.rowValue,
+              numeric && styles.rowValueNumeric,
+              dim && styles.rowValueDim,
+              tone === 'accent' && styles.rowValueAccent,
+            ]}
+            numberOfLines={1}>
+            {value}
+          </Text>
+        ) : null}
+      </View>
+      {hint ? <Text style={[styles.rowHint, tone === 'accent' && styles.rowHintAccent]}>{hint}</Text> : null}
     </Pressable>
   );
 }
@@ -135,6 +190,8 @@ export default function MeScreen() {
   const me = useAppStore((s) => s.me);
   const plan = useAppStore((s) => s.plan);
   const language = useAppStore((s) => s.language);
+  // 槽位超额（交互改动 9）：降级后已有的羁绊不消失，但不能再新增
+  const slotsOver = bonds.length > slotLimit(plan);
 
   /** 模拟订阅（D-063）：点击即订/退，不扣费 */
   const subscribe = (p: 'free' | 'pro' | 'max') => {
@@ -197,146 +254,159 @@ export default function MeScreen() {
   };
 
   return (
-    <AppScreen title={t("设置")}>
+    <AppScreen title={t('设置')}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Section title={t("账号 · 云端")}>
-        {!authConfigured() ? (
-          <Text style={styles.footHint}>
-            未配置 Supabase：在 .env.local 填 EXPO_PUBLIC_SUPABASE_URL 与
-            EXPO_PUBLIC_SUPABASE_ANON_KEY 并重启 expo start；建表 SQL 见 docs/supabase-setup.sql。
-          </Text>
-        ) : session ? (
-          <>
-            <Row label={t("账号")} value={sessionLabel(session)} />
-            <Row label={t("立即备份到云端")} onPress={doBackupNow} />
-            <Row label={t("从云端恢复到本机")} onPress={doRestore} />
-            <Row label={t("退出登录")} onPress={doSignOut} />
-            <Row label={t("删除云端数据")} onPress={doDeleteCloud} />
-            <Text style={styles.footHint}>{t("含聊天与记忆，按最高敏感级对待。")}</Text>
-          </>
-        ) : (
-          <>
-            <Row label={t("登录 / 开通云端")} onPress={() => router.push('/auth')} />
-            <Text style={styles.footHint}>
-              {t("换手机也不会失去 TA 和你们的故事。")}
+        <Section title={t('账号 · 云端')}>
+          {!authConfigured() ? (
+            <Text style={styles.cardNote}>
+              未配置 Supabase：在 .env.local 填 EXPO_PUBLIC_SUPABASE_URL 与
+              EXPO_PUBLIC_SUPABASE_ANON_KEY 并重启 expo start；建表 SQL 见 docs/supabase-setup.sql。
             </Text>
-          </>
-        )}
-      </Section>
+          ) : session ? (
+            <>
+              <Row label={t('账号')} value={sessionLabel(session)} />
+              <Row label={t('立即备份到云端')} onPress={doBackupNow} />
+              <Row label={t('从云端恢复到本机')} onPress={doRestore} />
+              <Row label={t('退出登录')} onPress={doSignOut} />
+              <Row label={t('删除云端数据')} hint={t('含聊天与记忆，按最高敏感级对待。')} onPress={doDeleteCloud} />
+            </>
+          ) : (
+            <Row
+              label={t('登录 / 开通云端')}
+              hint={t('换手机也不会失去 TA 和你们的故事。')}
+              onPress={() => router.push('/auth')}
+            />
+          )}
+        </Section>
 
-      <Section title="Language · 语言 · 言語">
-        <View style={styles.themeRow}>
-          {([['zh', '中文'], ['en', 'English'], ['ja', '日本語']] as const).map(([lg, label]) => (
-            <Pressable
-              key={lg}
-              style={[styles.engineBtn, language === lg && styles.engineBtnActive]}
-              onPress={() => useAppStore.getState().setLanguage(lg)}>
-              <Text style={[styles.engineText, language === lg && styles.engineTextActive]}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </Section>
+        <Section title="Language · 语言 · 言語">
+          <View style={styles.langRow}>
+            {LANGS.map(([lg, label]) => {
+              const on = language === lg;
+              return (
+                <Pressable
+                  key={lg}
+                  style={[styles.langItem, on && styles.langItemOn]}
+                  onPress={() => useAppStore.getState().setLanguage(lg)}>
+                  <Text style={[styles.langText, on && styles.langTextOn]}>{label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Section>
 
-      <Section title={t("我")}>
-        <Row
-          label={t("我的身份")}
-          value={me?.nickname ? `「${me.nickname}」` : t('还没告诉 TA 们你是谁')}
-          onPress={() => router.push('/apps/identity')}
-        />
-      </Section>
+        <Section title={t('我')}>
+          <Row
+            label={t('我的身份')}
+            value={me?.nickname ? `「${me.nickname}」` : t('还没告诉 TA 们你是谁')}
+            onPress={() => router.push('/apps/identity')}
+          />
+        </Section>
 
-      <Section title={t("主题")}>
-        <View style={styles.themeRow}>
-          {Object.entries(THEMES).map(([id, t]) => (
-            <Pressable key={id} style={styles.themeItem} onPress={() => useAppStore.getState().setThemeId(id)}>
-              <View
-                style={[
-                  styles.themeDot,
-                  { backgroundColor: t.colors.accent },
-                  themeId === id && styles.themeDotActive,
-                ]}
-              />
-              <Text style={[styles.themeLabel, themeId === id && { color: Romance.accent, fontWeight: '700' }]}>
-                {t.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        <View style={styles.wallRow}>
-          {WALLPAPERS.map((w) => (
-            <Pressable key={w.id} onPress={() => useAppStore.getState().setWallpaper(w.id)}>
-              <View
-                style={[
-                  styles.wallSwatch,
-                  { backgroundColor: w.colors[0] },
-                  wallpaper === w.id && styles.wallSwatchActive,
-                ]}>
-                <View style={[styles.wallSwatchInner, { backgroundColor: w.colors[1] }]} />
-              </View>
-              <Text style={[styles.wallLabel, wallpaper === w.id && { color: Romance.accent }]}>
-                {w.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        <Text style={styles.footHint}>{t("锁屏照片、来电铃声：正式版开放。")}</Text>
-      </Section>
+        <Section title={t('主题')}>
+          <View>
+            <View style={styles.themeRow}>
+              {Object.entries(THEMES).map(([id, theme]) => {
+                const on = themeId === id;
+                return (
+                  <Pressable key={id} style={styles.themeItem} onPress={() => useAppStore.getState().setThemeId(id)}>
+                    <View style={[styles.themeRing, on && styles.themeRingOn]}>
+                      <View style={[styles.themeDot, { backgroundColor: theme.colors.accent }]} />
+                    </View>
+                    <Text style={[styles.themeLabel, on && styles.themeLabelOn]}>{theme.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <View style={styles.wallRow}>
+              {WALLPAPERS.map((w) => {
+                const on = wallpaper === w.id;
+                return (
+                  <Pressable key={w.id} style={styles.wallItem} onPress={() => useAppStore.getState().setWallpaper(w.id)}>
+                    <View style={[styles.wallRing, on && styles.wallRingOn]}>
+                      <View style={styles.wallSwatch}>
+                        {w.pattern ? (
+                          <View style={styles.wallPaper}>
+                            <DiamondBackground />
+                          </View>
+                        ) : (
+                          <>
+                            <View style={[styles.wallHalf, { backgroundColor: w.colors[0] }]} />
+                            <View style={[styles.wallHalf, { backgroundColor: w.colors[1] }]} />
+                          </>
+                        )}
+                      </View>
+                    </View>
+                    <Text style={[styles.wallLabel, on && styles.wallLabelOn]}>{w.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={styles.cardNote}>{t('锁屏照片、来电铃声：正式版开放。')}</Text>
+          </View>
+        </Section>
 
-      <Section title={t("订阅计划（试装模拟，不扣费）")}>
-        <Row
-          label={t("当前计划")}
-          value={plan === 'max' ? 'Max' : plan === 'pro' ? 'Pro' : 'Free'}
-        />
-        <Row label={t("羁绊槽位")} value={`${bonds.length}/${slotLimitLabel(plan)}`} />
-        <Row
-          label={plan === 'pro' ? t('已订阅 Pro ✓') : t('订阅 Pro')}
-          value={t("5 个羁绊槽")}
-          onPress={() => subscribe('pro')}
-        />
-        <Row
-          label={plan === 'max' ? t('已订阅 Max ✓') : t('订阅 Max')}
-          value={t("羁绊不限量")}
-          onPress={() => subscribe('max')}
-        />
-        {plan !== 'free' ? <Row label={t("取消订阅（回 Free）")} onPress={() => subscribe('free')} /> : null}
-        <Row label="Morning call" value={t("TA 叫你起床 · 敬请期待")} dim />
-        <Row label={t("错过回溯")} value={t("错过的来电与聊天回听 · 敬请期待")} dim />
-      </Section>
+        <Section title={t('订阅计划（试装模拟，不扣费）')}>
+          <Row label={t('当前计划')} value={plan === 'max' ? 'Max' : plan === 'pro' ? 'Pro' : 'Free'} />
+          <Row
+            label={t('羁绊槽位')}
+            value={`${bonds.length}/${slotLimitLabel(plan)}`}
+            numeric
+            tone={slotsOver ? 'accent' : undefined}
+            hint={slotsOver ? t('超出的羁绊不会消失，但不能再新增') : undefined}
+          />
+          <Row
+            label={plan === 'pro' ? t('已订阅 Pro ✓') : t('订阅 Pro')}
+            value={t('5 个羁绊槽')}
+            onPress={() => subscribe('pro')}
+          />
+          <Row
+            label={plan === 'max' ? t('已订阅 Max ✓') : t('订阅 Max')}
+            value={t('羁绊不限量')}
+            onPress={() => subscribe('max')}
+          />
+          {plan !== 'free' ? <Row label={t('取消订阅（回 Free）')} onPress={() => subscribe('free')} /> : null}
+          <Row label="Morning call" value={t('TA 叫你起床 · 敬请期待')} dim />
+          <Row label={t('错过回溯')} value={t('错过的来电与聊天回听 · 敬请期待')} dim />
+        </Section>
 
-      <Section title={t("素材开关")}>
-        <Row label={t("分享给他")} value={t("即将上线")} dim />
-        <Row label={t("口味偏好")} value={t("即将上线")} dim />
-        <Row label={t("记事本（私密）")} onPress={() => router.push('/apps/notes' as never)} />
-      </Section>
+        <Section title={t('素材开关')}>
+          <Row label={t('分享给他')} value={t('即将上线')} dim />
+          <Row label={t('口味偏好')} value={t('即将上线')} dim />
+          <Row label={t('记事本（私密）')} onPress={() => router.push('/apps/notes' as never)} />
+        </Section>
 
-      <Section title={t("我的创作")}>
-        <Row label={t("创造的角色")} value={`${customs.filter((c) => !c.shared).length}`} onPress={() => router.push('/apps/my-characters' as never)} />
-        <Row label={t("热度 · 分成")} value={t("敬请期待")} dim />
-      </Section>
+        <Section title={t('我的创作')}>
+          <Row
+            label={t('创造的角色')}
+            value={`${customs.filter((c) => !c.shared).length}`}
+            numeric
+            onPress={() => router.push('/apps/my-characters' as never)}
+          />
+          <Row label={t('热度 · 分成')} value={t('敬请期待')} dim />
+        </Section>
 
-      <Section title={t("开发者（试装）")}>
-        <Row label={t('AI 引擎')} value={engineLabel()} />
-        <Row
-          label={t('AI 取路')}
-          value={
-            aiRoute === 'direct'
-              ? t('直连（.env.local）')
-              : aiRoute === 'proxy'
-                ? t('服务端代理（已登录）')
-                : t('不可用：无 key 且未登录')
-          }
-          dim={aiRoute === 'none'}
-        />
-        <Text style={styles.footHint}>
-          {t('引擎与 key 只读工程配置 .env.local（改后重启 Metro）；没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。')}
-        </Text>
-        <Row label="查看 TA 记住了什么（记忆库）" onPress={showMemory} />
-        <Row label="为 6 位种子角色生成立绘（测试，后台逐个）" onPress={genSeedPortraits} />
-        <Row label="重画首个羁绊角色的立绘（测试）" onPress={redrawBondPortrait} />
-        <Row label="重置全部数据" onPress={reset} />
-      </Section>
+        <Section title={t('开发者（试装）')}>
+          <Row label={t('AI 引擎')} value={engineLabel()} />
+          <Row
+            label={t('AI 取路')}
+            value={
+              aiRoute === 'direct'
+                ? t('直连（.env.local）')
+                : aiRoute === 'proxy'
+                  ? t('服务端代理（已登录）')
+                  : t('不可用：无 key 且未登录')
+            }
+            dim={aiRoute === 'none'}
+            hint={t('引擎与 key 只读工程配置 .env.local（改后重启 Metro）；没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。')}
+          />
+          <Row label="查看 TA 记住了什么（记忆库）" onPress={showMemory} />
+          <Row label="为 6 位种子角色生成立绘（测试，后台逐个）" onPress={genSeedPortraits} />
+          <Row label="重画首个羁绊角色的立绘（测试）" onPress={redrawBondPortrait} />
+          <Row label="重置全部数据" onPress={reset} />
+        </Section>
 
-      <Text style={styles.about}>全自动恋爱（代号） · 试装 0.1.0{'\n'}零劳动被爱 · 他说到做到</Text>
+        <Text style={styles.about}>全自动恋爱（代号） · 试装 0.1.0{'\n'}零劳动被爱 · 他说到做到</Text>
       </ScrollView>
     </AppScreen>
   );
@@ -345,51 +415,80 @@ export default function MeScreen() {
 const styles = themed(() =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Romance.bg },
+    // 表单类页面左右留白按设计稿 18
     content: { paddingHorizontal: 18, paddingBottom: 40 },
-    title: { fontSize: 28, fontWeight: '700', color: Romance.ink, marginBottom: 6 },
-    section: { marginTop: 18 },
-    sectionTitle: { fontSize: 13, fontWeight: '600', color: Romance.sub, marginBottom: 8 },
-    sectionBody: { backgroundColor: '#FFFFFF', borderRadius: 22, paddingHorizontal: 4 },
+    section: { marginTop: 16 },
+    sectionTitle: { fontSize: 13, fontWeight: '600', color: Romance.sub, marginBottom: Space.inline },
     row: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: Romance.line,
+      gap: Space.inline,
+      paddingVertical: 13,
+      paddingHorizontal: Space.cardX,
     },
+    rowWithHint: { paddingBottom: 4 },
     rowLabel: { fontSize: 14, color: Romance.ink },
-    rowValue: { fontSize: 13, color: Romance.sub },
-    footHint: { fontSize: 11, color: Romance.faint, padding: 12 },
-    themeRow: { flexDirection: 'row', gap: 18, paddingHorizontal: 12, paddingTop: 12, flexWrap: 'wrap' },
-    themeItem: { alignItems: 'center', gap: 5 },
-    themeDot: { width: 34, height: 34, borderRadius: 17, borderWidth: 2.5, borderColor: 'transparent' },
-    themeDotActive: { borderColor: Romance.ink },
-    themeLabel: { fontSize: 11, color: Romance.sub },
-    wallRow: { flexDirection: 'row', gap: 14, padding: 12, flexWrap: 'wrap' },
-    wallSwatch: {
-      width: 52,
-      height: 88,
-      borderRadius: 16,
-      overflow: 'hidden',
-      borderWidth: 2,
-      borderColor: 'transparent',
-    },
-    wallSwatchActive: { borderColor: Romance.accent },
-    wallSwatchInner: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%' },
-    wallLabel: { fontSize: 11, color: Romance.sub, textAlign: 'center', marginTop: 4 },
-    engineRow: { flexDirection: 'row', gap: 8, padding: 12 },
-    engineBtn: {
+    rowValue: { fontSize: 13, fontWeight: '500', color: Romance.sub, flexShrink: 1, textAlign: 'right' },
+    rowValueNumeric: { fontFamily: Fonts.labelBold },
+    rowValueDim: { color: Romance.faint },
+    rowValueAccent: { color: Romance.accentStrong },
+    rowHint: { fontSize: 11, lineHeight: 16, color: Romance.sub, paddingHorizontal: Space.cardX, paddingBottom: Space.cardX },
+    rowHintAccent: { color: Romance.accentStrong },
+    /** 卡内独立的一句说明（不是行的附注） */
+    cardNote: { fontSize: 11, lineHeight: 16, color: Romance.sub, padding: Space.cardX },
+    // 语言：三段等宽，paper 底 / 选中 primary 白字，无描边
+    langRow: { flexDirection: 'row', gap: Space.inline, padding: Space.cardX },
+    langItem: {
       flex: 1,
-      borderRadius: 16,
-      paddingVertical: 10,
+      borderRadius: Shape.radius,
+      paddingVertical: Space.inlineLoose,
       alignItems: 'center',
       backgroundColor: Romance.bg,
     },
-    engineBtnActive: { backgroundColor: Romance.accent },
-    engineText: { fontSize: 13, color: Romance.sub, fontWeight: '500' },
-    engineTextActive: { color: '#fff' },
+    langItemOn: { backgroundColor: Romance.accent },
+    langText: { fontSize: 13, fontWeight: '500', color: Romance.sub },
+    langTextOn: { color: '#FFFFFF' },
+    // 主题点：34 r6，选中外圈 ink 2.5 留 2
+    themeRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Space.inlineLoose,
+      paddingHorizontal: Space.inline,
+      paddingTop: Space.inline,
+    },
+    themeItem: { alignItems: 'center', gap: 5 },
+    themeRing: {
+      borderWidth: THEME_RING.width,
+      borderColor: 'transparent',
+      padding: THEME_RING.gap,
+      borderRadius: Shape.radius + THEME_RING.gap + THEME_RING.width,
+    },
+    themeRingOn: { borderColor: Romance.ink },
+    themeDot: { width: 34, height: 34, borderRadius: Shape.radius },
+    themeLabel: { fontSize: 11, color: Romance.sub },
+    themeLabelOn: { color: Romance.accent, fontWeight: '600' },
+    // 壁纸块：52×88 r6，选中外圈 primary 2 留 1
+    wallRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Space.inlineLoose,
+      paddingHorizontal: Space.inline,
+      paddingTop: Space.cardX,
+    },
+    wallItem: { alignItems: 'center' },
+    wallRing: {
+      borderWidth: WALL_RING.width,
+      borderColor: 'transparent',
+      padding: WALL_RING.gap,
+      borderRadius: Shape.radius + WALL_RING.gap + WALL_RING.width,
+    },
+    wallRingOn: { borderColor: Romance.accent },
+    wallSwatch: { width: 52, height: 88, borderRadius: Shape.radius, overflow: 'hidden' },
+    wallPaper: { flex: 1, backgroundColor: Romance.bg },
+    wallHalf: { flex: 1 },
+    wallLabel: { fontSize: 11, color: Romance.sub, textAlign: 'center', marginTop: 4 },
+    wallLabelOn: { color: Romance.accent },
     about: {
       textAlign: 'center',
       fontSize: 11,
