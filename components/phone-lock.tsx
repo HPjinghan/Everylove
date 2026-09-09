@@ -15,7 +15,7 @@ import { DiamondBackground } from '@/components/paper-bg';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
-import { getLang, t } from '@/lib/i18n';
+import { getLang, localeOf, t } from '@/lib/i18n';
 import { PHONE_PASSCODE_LENGTH } from '@/lib/phone';
 import { useAppStore } from '@/store/app-store';
 
@@ -38,7 +38,7 @@ const REPLY_MAX = 3;
 /** 日期行按界面语言：9月6日星期日 / Sunday, September 6 / 9月6日日曜日 */
 function dateLine(d: Date): string {
   const lang = getLang();
-  const locale = lang === 'zh' ? 'zh-CN' : lang === 'ja' ? 'ja-JP' : 'en-US';
+  const locale = localeOf(lang);
   try {
     return d.toLocaleDateString(locale, { month: 'long', day: 'numeric', weekday: 'long' });
   } catch {

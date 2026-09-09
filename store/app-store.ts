@@ -14,7 +14,7 @@ import { bondedPostsFor, CHARACTERS, scriptFor, seedCharactersFor, SQUARE_POSTS 
 import { uid } from '@/lib/format';
 import { applyThemeColors } from '@/constants/theme';
 import { bondLevel, levelLabel } from '@/lib/bond';
-import { setLang } from '@/lib/i18n';
+import { setLang, type Lang } from '@/lib/i18n';
 import { DEFAULT_DOCK, DEFAULT_WALLPAPER } from '@/constants/apps';
 import { placeById } from '@/content/places';
 import { appointmentAtLabel, minutesLate, planIsOpen } from '@/lib/appointments';
@@ -41,7 +41,7 @@ export const SQUARE_CHAT_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 interface AppState {
   onboarded: boolean;
   /** 界面语言（D-066）：onboarding 第 0 步选择；真模型输出语言跟随（prompts 语言行） */
-  language: 'zh' | 'en' | 'ja';
+  language: Lang;
   /** 新手流（D-058）：onboarding 后直接落交友滑卡；首次加好友或点「先逛逛」后才放行桌面 */
   introDone: boolean;
   /** 桌面揭幕 + 气泡标注是否已看过（首次加好友后播一次） */
@@ -92,7 +92,7 @@ interface AppState {
   noteSchedule: Record<string, number>;
 
   completeOnboarding: (pref: LovePref) => void;
-  setLanguage: (l: 'zh' | 'en' | 'ja') => void;
+  setLanguage: (l: Lang) => void;
   /** 新手流逃生门 / 完成（D-058） */
   setIntroDone: () => void;
   setIntroRevealSeen: () => void;
@@ -194,7 +194,7 @@ interface AppState {
 
 const initialData = {
   onboarded: false,
-  language: 'zh' as 'zh' | 'en' | 'ja',
+  language: 'zh' as Lang,
   introDone: false,
   introRevealSeen: false,
   lovePref: undefined as LovePref | undefined,

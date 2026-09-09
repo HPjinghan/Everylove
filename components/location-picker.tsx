@@ -48,7 +48,7 @@ const FALLBACK: Region = { latitude: 35.6812, longitude: 139.7671, latitudeDelta
 const CLOSE: Pick<Region, 'latitudeDelta' | 'longitudeDelta'> = { latitudeDelta: 0.012, longitudeDelta: 0.012 };
 
 async function searchPlaces(q: string): Promise<Hit[]> {
-  const lang = getLang() === 'zh' ? 'zh-CN,zh' : getLang() === 'ja' ? 'ja,en' : 'en';
+  const lang = getLang() === 'zh' ? 'zh-CN,zh' : getLang() === 'ja' ? 'ja,en' : getLang() === 'ko' ? 'ko,en' : 'en';
   const res = await fetch(
     `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=${encodeURIComponent(q)}`,
     { headers: { 'User-Agent': 'everylove-app/0.1 (prototype)', 'Accept-Language': lang } }

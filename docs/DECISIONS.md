@@ -1,7 +1,7 @@
 # DECISIONS.md — 现行决策总账（按主题合并）
 
 > **怎么用**：一个主题一条，写**现在的口径**；被推翻的旧口径只在「曾经」留一行（编号 + 一句话）。某个编号当时的完整理由、验证与影响文件，到 `docs/archive/DECISIONS-log-2026-08-13_09-06.md` 按编号搜（冻结存档，D-001～D-096 逐条原文）。
-> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-101**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
+> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-102**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
 > 代码注释里的 D-编号一律按索引表查；D-087 / D-088 各撞号一次，用 a / b 区分。
 
 ## 编号索引
@@ -110,6 +110,7 @@
 | D-098 | 09-07 | TA 的记事本写自己的生活：专用装配、接着上几条写 | F6 |
 | D-099 | 09-07 | 她在 TA 心里的分量：恋爱类型 / 追法家族 / MBTI / 主动强度映射成 0.1～0.9，记事本与 X 发帖按它掷硬币、按档措辞 | D6 / F3 / F6 |
 | D-100 | 09-08 | 纸面设计系统全屏重做：27 屏按 `design/Everylove Paper UI.html` 重现 + 10 项交互改动（桌面翻页 / 未读合并、交友口味 chip + 略过撤销、试聊心动条吸顶 + 倒计时、会话「+」预告 + TA 的主页三入口、锁屏原地回复、查手机二次确认、日历赴约、外出约定条、设置槽位超额、去掉 palette 外的红橙蓝与渐变）；LINE 拟真与糖果双色图标下线 | H3 / F1 / F2 / F3 / F4 / F5 / F6 / E5 / D3 / D4 / C3 / C4 / G1 |
+| D-101 | 09-09 | 韩语接入：UI 词典四语、种子角色韩文版、心跳 / 开场白 / 暗面路由 / 热线 / 拦截名单、`localeOf` 集中 locale、百度 TTS 不支持韩语 | H2 / E1 / B3 |
 
 ---
 
@@ -298,10 +299,10 @@
 - **现行**（自 D-078 起对全部新增文案生效）：**界面提示只描述内容或情绪，不解释机制**——不写「TA 会…」「满 100 就…」「N 天不聊就…」「LV 几解锁」「走某某模型」，不写导航指路，不预告交互方式（滑卡方向、点卡即配对、长按删除、停顿即发送）；**保留三类**：红线与政策告知（不收真人照片、未成年不开放恋爱、发布即确认成年）、隐私与数据说明、商业信息（Pro / Max、试装不扣费）；表单 hint 只定义「填什么」，选项自带含义短语保留；叙事化系统消息保留但去指路后缀。**措辞**：「领回家」→「加好友」；用户可见文案**一律不出现「领养」**（改小火苗 + 热度；「领养」只作机制词）；缔结在产品语言里 = 交换联系方式；通用文案代词「TA」（角色台词各自人称）；TA 不当客服。新文案先过这条再进 t() 与 en / ja 词典。
 - **编号**：D-022 → D-028 → D-032 → D-064 → D-078。
 
-### H2 · 三语 i18n 与内容本地化
-- **现行**：`lib/i18n.ts`——**中文原文即键**，界面写 `t('中文', vars?)`，en / ja 缺词回落中文；语言存 `store.language`（onboarding 第 0 步选、设置可改），切换以 `themeId-language` 为 key 全局 remount；日期格式按语言 locale。**纪律**：新界面文案必须写 t() 并同步在 `lib/i18n.ts` 尾部哨兵 `__EN_END__` / `__JA_END__` 前补 en / ja；改中文文案 = 改键。**内容层**：种子角色三语各一套（E1）；原型兜底、动态种子、心跳模板、外出开场白、暗面路由（三语触发、按语言回复）、危机热线、真人 / IP 拦截样例各按语言；**所有 prompt 的输出语言按界面语言**（聊天 / 外出 / 通话 / 记事本 / 发帖 / 回帖 / 记忆提取 / 看图 / 创造解析 / 台词），地点场景描写进 prompt 仍是中文（指令语言）；自创角色打上创建时的语言。写手润色待办（#23）。
-- **编号**：D-066 → D-093。
-- **曾经**：D-066「角色台词库与种子人设暂不三语」（→ D-093）。
+### H2 · 多语 i18n 与内容本地化（中 / 英 / 日 / 韩）
+- **现行**：`lib/i18n.ts`——**中文原文即键**，界面写 `t('中文', vars?)`，en / ja / ko 缺词回落中文（D-101 加韩语：`Lang` 四值，词典 en / ja / ko 各一份、尾部各有哨兵 `__EN_END__` / `__JA_END__` / `__KO_END__`；日期 / 数字格式化统一走 `localeOf(lang)`（zh-CN / en-US / ja-JP / ko-KR），界面不再各写三元；Nominatim 搜索语言 ko,en）；语言存 `store.language`（onboarding 第 0 步选、设置可改），切换以 `themeId-language` 为 key 全局 remount；日期格式按语言 locale。**纪律**：新界面文案必须写 t() 并同步在 `lib/i18n.ts` 尾部哨兵 `__EN_END__` / `__JA_END__` 前补 en / ja；改中文文案 = 改键。**内容层**：种子角色四语各一套（E1；韩文版 `content/characters/ko.ts`，id 加 `-ko`、立绘共用原 id，韩文名为韩国市场重取）；原型兜底、动态种子、心跳模板、外出开场白、暗面路由（三语触发、按语言回复）、危机热线（韩国：자살예방상담전화 109、정신건강위기상담 1577-0199）、真人 / IP 拦截样例各按语言（韩语补 방탄소년단 / 블랙핑크 / 뉴진스 / 아이유 / 해리포터 / 나루토 / 원신 等）；**所有 prompt 的输出语言按界面语言**（聊天 / 外出 / 通话 / 记事本 / 发帖 / 回帖 / 记忆提取 / 看图 / 创造解析 / 台词），地点场景描写进 prompt 仍是中文（指令语言）；自创角色打上创建时的语言。写手润色待办（#23）。
+- **编号**：D-066 → D-093 → D-101。
+- **曾经**：D-066「角色台词库与种子人设暂不三语」（→ D-093）；D-093 三语（→ D-101 四语）。韩语与日 / 英一样是 Claude 初稿，母语写手润色待办（#23）；韩语语音：百度 TTS / ASR 不支持，走 OpenAI 兼容通道（B3 `ttsSpeaksLang`）。
 
 ### H3 · 设计系统与主题
 - **现行**：Claude Design「Everylove - Design System」（原文 `design/design-system.page.html`；**全屏设计稿 `design/Everylove Paper UI.html`（27 屏 + 标注）与说明 `design/README.md`**）：粉色纸面、菱形暗纹、墨色细描边、**无阴影、无渐变**、圆角 6 / 内层 4；结构性元素通底不加框，只有内容卡片、主按钮、顶栏下沿、输入栏上沿、卡片内分区线 1.5 px 描边。**色彩 = `THEMES.paper`**（「纸面」，新装机默认；老存档主题不动；配色仍 4 套可切），`RomancePalette` 含 `stroke` / `accentStrong`，半透明遮罩 / 暗场一律 `withAlpha(Romance.ink, a)`；palette 外只允许通话深底 `CALL_BG` 与 TA 手机里记事本的米色 `NOTE_PAPER`。**非色彩规格 = `constants/design.ts`**（Shape / Type / Space / Pattern / Component / PRINCIPLES / AVATAR_COLORS（沈胡苏 + 江烛洛）/ NOTE_PAPER / POLAROID_TILTS）：**Fredoka 只管数字与拉丁标签**（时钟、温度、日期缩写、LV、n/100、时间戳、Message / X 等英文 App 名；`Fonts.label` / `labelBold`），**所有中文走系统字体**，头像单字衬线 `Fonts.initial`（iOS 系统宋体，不装 Noto Serif SC）；字号 clock 84 / display 30 / title 17 / card 15 / body 15·22 / label 13 / eyebrow 12 / timestamp 11；间距 14 屏边 / 8–10 行内 / 22–26 图块间 / 桌面 4 × 104 / Dock 102·距底 26。**27 屏已全部按设计稿重做（D-100）**，primitive 层：`AppScreen`（「‹ 桌面」/ 17·600 系统字体标题 / `HeaderAction` 右动作 14·600 primary / `pattern` 铺暗纹）、`Card` / `Divider`、`Button`（primary 描边 / secondary 白 / paper / outline × lg / md / sm，禁用 .4）、`Chip` / `Segmented`、`Field` / `Input`、`DiamondBackground`（±45° 菱格 accent 7%，线距 14 = SVG 单元 14√2；锁屏用白 8%）/ `ChatWallpaper`（accentSoft + 120 px 涂鸦 accent 16%）、`CharAvatar`（方块 r6 + 角色色 + 衬线首字 / 立绘）、`Polaroid`（白框描边 r6、Fredoka 10 说明、±0.6–1.8° 倾角）、`showToast`（ink 底 r6）、`MingCute`（+ plus / pencil / lock / cloud）。**纪律**（CLAUDE.md §11-4）：界面只引 design.ts 与 Romance token，不手写 hex / 圆角 / 阴影 / 字号；卡片 `Card`、按钮 `Button`、选项 `Chip` / `Segmented`、表单 `Field` / `Input`、遮罩 `withAlpha`。主题机制：`Romance` 为可变对象 + `themed()` 缓存重建。

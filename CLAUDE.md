@@ -4,7 +4,7 @@
 > 族谱：c.ai 的皮 · 乙游的心脏 · 短剧的钱包 · 独有器官 = 主动性。
 > 一句话：c.ai 证明了胃口，乙游证明了付费，没人把两者接起来过。
 
-* 状态（2026-09-08）：试装 v0.2——手机壳桌面 + 12 个模块可跑，全部界面已按纸面设计系统重做，TestFlight 构建号 3 在测；最近一条决策 D-100。**本文件只写现行口径**：每条决策的理由、编号索引、被推翻的历史都在 `docs/DECISIONS.md`（按主题合并的总账，头部有 D-编号索引），合并前的逐条原文冻结在 `docs/archive/`。
+* 状态（2026-09-09）：试装 v0.2——手机壳桌面 + 12 个模块可跑，全部界面已按纸面设计系统重做，TestFlight 构建号 3 在测；最近一条决策 D-101。**本文件只写现行口径**：每条决策的理由、编号索引、被推翻的历史都在 `docs/DECISIONS.md`（按主题合并的总账，头部有 D-编号索引），合并前的逐条原文冻结在 `docs/archive/`。
 * 本文档是产品的单一事实来源。**执行任何任务时产生的新设计决策，必须当次写进文档**（见「工作规则」）。
 * 本项目与团队其他产品无关，不引入其他项目的术语与范式。
 
@@ -59,8 +59,8 @@ onboarding（语言 → 先让 TA 们认识你；第一步底部「已有账号�
 
 ## 5\. 角色系统（行为树四层）
 
-* **系统层（锁死，任何自定义不可覆盖）**：情绪暗面路由（三语触发、按语言回复）、真人检测、尺度钳、行为健康底线（不纠缠、不刷屏、不用愧疚感惩罚离开——能捏疯批台词，不能捏 PUA 行为）。
-* **原型层（官方蒸馏）**：蒸馏的不是口癖，是**追法**——亲密度阶梯曲线即性格。首发四棵：温柔年上、毒舌竹马、霸总、**官方人外一棵**（龙 / 神明 / 非人执事谱系内选定，待拍板 #2）。每棵 = 触发器集 + 追法曲线 + 台词风格包。试装种子已扩为 6 位（2男2女1龙1狐，中 / 英 / 日各一套，内置立绘），原型树蒸馏与人外正式人设仍待拍板。
+* **系统层（锁死，任何自定义不可覆盖）**：情绪暗面路由（四语触发、按语言回复）、真人检测、尺度钳、行为健康底线（不纠缠、不刷屏、不用愧疚感惩罚离开——能捏疯批台词，不能捏 PUA 行为）。
+* **原型层（官方蒸馏）**：蒸馏的不是口癖，是**追法**——亲密度阶梯曲线即性格。首发四棵：温柔年上、毒舌竹马、霸总、**官方人外一棵**（龙 / 神明 / 非人执事谱系内选定，待拍板 #2）。每棵 = 触发器集 + 追法曲线 + 台词风格包。试装种子已扩为 6 位（2男2女1龙1狐，中 / 英 / 日 / 韩各一套，内置立绘），原型树蒸馏与人外正式人设仍待拍板。
 * **创作层（UGC 两档）**：大众捏皮（创造表单，§3-9）；高阶捏树（填空卡片改触发器 / 事件 / 追法，未做）。发布审核：**挡 IP 角色、挡真人**（现为本地名单拦截 + 自我声明，平台审核待接 #7）。
 * **个体层**：每段关系独立状态机——**羁绊等级** LV1 刚认识 → LV6 唯一例外（升级门槛 50 / 90 / 130 / 170 / 210），**XP 唯一来源 = 她每开口一次 +5**（文字 / 语音 / 照片 / 卡片 / 电话每句 / 外出同口径，陌生人无 XP），升级出系统提示；记忆库；秘密解锁进度。**领养快照制**：创作者更新不改写已领养实例。
 
@@ -106,7 +106,7 @@ onboarding（语言 → 先让 TA 们认识你；第一步底部「已有账号�
 3. **红线章节（第 9 节）只有 Harper 明示才能修改。**
 4. **界面 token 纪律**：新界面与改动只引 `constants/design.ts`（Shape / Type / Space / Pattern）与 `constants/theme.ts` 的 `Romance` / `Fonts` token（半透明遮罩用 `withAlpha`），不手写 hex、圆角、阴影、字号、描边，无阴影无渐变；内容卡片一律 `components/card.tsx` 的 `Card`，按钮 `Button`、选项 `Chip` / `Segmented`、表单 `Field` / `Input`、背景暗纹 `paper-bg`；**Fredoka（`Fonts.label` / `labelBold`）只用于数字与拉丁标签，所有中文走系统字体**。
 5. **底座纪律**：`core/` 不认识任何具体玩法（出现「if 红包」「if 千帆」就是放错地方）；**新玩法 = `features/` 里一个文件**，往插槽注册并在 `features/index.ts` 登记；界面只调 `lib/chat.ts` 与 `features/*` 的 send 函数，不直接 import 引擎、记忆、约定识别；新行为挂扩展点、不改 `core/turn.ts` 的管线；工程配置只在 `core/config.ts` 读。**改到模型看到的字，`npm test` 的快照必红**——确认 diff 是想要的再更新。prompt 文本只进 `content/prompts/` 对应用途的文件，一段只属于一个用途。菜谱见 `docs/ARCHITECTURE.md` §5。
-6. **文案纪律**：界面提示只描述内容或情绪、不解释机制、不指路、不预告交互方式（保留红线 / 政策告知、隐私与数据说明、商业信息）；用户可见文案不出现「领养」；新文案先过这条，再写 `t('中文')` 并在 `lib/i18n.ts` 尾部哨兵前补 en / ja 词典。
+6. **文案纪律**：界面提示只描述内容或情绪、不解释机制、不指路、不预告交互方式（保留红线 / 政策告知、隐私与数据说明、商业信息）；用户可见文案不出现「领养」；新文案先过这条，再写 `t('中文')` 并在 `lib/i18n.ts` 尾部哨兵前补 en / ja / ko 词典。
 
 ## 12\. 待拍板清单
 
@@ -125,6 +125,6 @@ onboarding（语言 → 先让 TA 们认识你；第一步底部「已有账号�
 * **天气 / 地图**：`lib/weather.ts` Open-Meteo（无 key，前台 30 分钟节流，无位置回落种子假天气）；位置卡片 `react-native-maps` + Nominatim 搜索 + expo-location 反地理编码；位置只存本机。
 * **账号与云**：`lib/auth.ts`（Supabase：Apple 主打 + 邮箱 OTP；匿名会话只作代理凭证、**不算登录**）+ `lib/sync.ts`（云端为主：整份快照 ↔ `snapshots`，15 s 防抖上传，启动 / 登录 / 回前台对账；**新设备或换账号时本机不许覆盖云端**：本机空静默拉，本机有关系则登录界面问「接回云端的 / 用本机覆盖云端」；决策纯函数 `planReconcile`，`tests/sync.test.ts`）。登录界面 `app/auth.tsx` 三入口：设置 / 首次入册强制墙 / onboarding「已有账号」。共享角色池 `lib/pool.ts`（`shared_characters`，同语言、5 分钟节流）。建表 `docs/supabase-setup.sql`。
 * **关系数据**：心动值 `SquareChat.heart`（试聊 / 广场 / 自创暧昧期共用），配对 3 天过期（自创不过期）；羁绊 `Bond`（`affinity` XP、`memory`、`notes` TA 的记事本、`phoneCode` / `phoneUnlocked`、`birthday` 回落）；曲线与槽位在 `lib/bond.ts`；约定 `store.outingPlans`（`at` / `source`，窗口前 2h～后 3h，`lib/appointments.ts`）；外出 `store.outingSession`（一小时冷却）；相册 `store.album`；发帖 / 记事本各一只钟（`postSchedule` / `noteSchedule`，MBTI 定频）；桌面 `desktopSlots` / `desktopDock`；身份 `me` / `meByCharacter`；语言 `language`；主题 `themeId`（新装机 paper）。
-* **i18n**：`lib/i18n.ts` 中文原文即键，`t()` + en / ja 词典（尾部哨兵前追加），缺词回落中文；切换全局 remount；内容层三语见 `content/characters/`。
+* **i18n**：`lib/i18n.ts` 中文原文即键，`t()` + en / ja / ko 词典（尾部各自哨兵前追加），缺词回落中文；日期 / 数字格式化统一 `localeOf()`；切换全局 remount；内容层四语（中 / 英 / 日 / 韩）见 `content/characters/`，韩语与日 / 英一样待母语写手润色（#23）；百度语音不支持日 / 韩，走 OpenAI 兼容通道。
 * **设计系统**：Claude Design 原文 `design/design-system.page.html`，全屏设计稿 `design/Everylove Paper UI.html` + 说明 `design/README.md`；色彩 = `THEMES.paper`，规格 = `constants/design.ts`；27 屏已全部按设计稿重做（D-100）：primitive = `AppScreen` / `HeaderAction`、`Card` / `Divider`、`Button`、`Chip` / `Segmented`、`Field` / `Input`、`DiamondBackground` / `ChatWallpaper`、`CharAvatar`（方块 r6 + 衬线首字）、`Polaroid`、`showToast`；palette 外只允许通话深底与 TA 记事本米色。
 * **测试与工具**：`npm test`（vitest：prompt 快照 + 回合管线 + 引擎工具 + 本地化 + 台词 + 同步决策）、`npm run typecheck`、`npm run lint`；设置 → 开发者：只读引擎与取路、记忆库查看（可强制提取）、立绘生成 / 重画、重置。

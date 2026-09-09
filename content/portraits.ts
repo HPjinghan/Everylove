@@ -15,9 +15,9 @@ export const SEED_PORTRAITS: Record<string, ImageSourcePropType> = {
   'hu-bugui': require('../assets/portraits/hu-bugui.jpg'),
 };
 
-/** 本地化的种子角色（-en / -ja，D-093）共用原 id 的立绘 */
+/** 本地化的种子角色（-en / -ja / -ko，D-093 / D-101）共用原 id 的立绘 */
 export function seedBaseId(characterId: string): string {
-  return characterId.replace(/-(en|ja)$/, '');
+  return characterId.replace(/-(en|ja|ko)$/, '');
 }
 
 export function seedPortrait(characterId: string): ImageSourcePropType | undefined {

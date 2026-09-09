@@ -35,6 +35,7 @@ const LANGS = [
   ['zh', '中文'],
   ['en', 'English'],
   ['ja', '日本語'],
+  ['ko', '한국어'],
 ] as const;
 
 /** 把 children（含 Fragment）摊平成一维、去掉空值——分区行之间才好插分区线 */

@@ -21,7 +21,7 @@ import { Fonts, Romance, themed } from '@/constants/theme';
 import { dateKey, holidayFor, parseDateKey } from '@/content/calendar';
 import { placeById } from '@/content/places';
 import { clockTime, uid } from '@/lib/format';
-import { getLang, t } from '@/lib/i18n';
+import { localeOf, t } from '@/lib/i18n';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
@@ -199,7 +199,7 @@ export default function CalendarScreen() {
           {/* 选中日详情 */}
           <Card padded={false} style={styles.detail}>
             <Text style={styles.detailTitle}>
-              {parseDateKey(selected).toLocaleDateString(getLang() === 'zh' ? 'zh-CN' : getLang() === 'ja' ? 'ja-JP' : 'en-US', {
+              {parseDateKey(selected).toLocaleDateString(localeOf(), {
                 month: 'long',
                 day: 'numeric',
                 weekday: 'long',

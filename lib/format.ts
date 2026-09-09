@@ -1,5 +1,5 @@
 import { stageName } from '@/lib/bond';
-import { getLang, t } from '@/lib/i18n';
+import { localeOf, t } from '@/lib/i18n';
 
 export function timeAgo(at: number, now = Date.now()): string {
   const s = Math.max(1, Math.floor((now - at) / 1000));
@@ -10,7 +10,7 @@ export function timeAgo(at: number, now = Date.now()): string {
   if (h < 24) return t('{n} 小时前', { n: h });
   const d = Math.floor(h / 24);
   if (d < 7) return t('{n} 天前', { n: d });
-  const locale = getLang() === 'zh' ? 'zh-CN' : getLang() === 'ja' ? 'ja-JP' : 'en-US';
+  const locale = localeOf();
   return new Date(at).toLocaleDateString(locale, { month: 'numeric', day: 'numeric' });
 }
 

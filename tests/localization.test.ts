@@ -1,5 +1,5 @@
 /**
- * 三语本地化（D-093）：每种语言六位种子角色只分发给自己语言的用户；脚本 / 兜底 / 动态 / 暗面路由 / 心跳 / 开场白按语言取。
+ * 四语本地化（D-093 三语 → D-101 加韩语）：每种语言六位种子角色只分发给自己语言的用户；脚本 / 兜底 / 动态 / 暗面路由 / 心跳 / 开场白按语言取。
  */
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -14,15 +14,17 @@ import type { Character } from '@/lib/types';
 afterEach(() => setLang('zh'));
 
 describe('种子角色按语言分发', () => {
-  it('三种语言各六位，id 互不相同，查找表含全部', () => {
-    for (const lang of ['zh', 'en', 'ja'] as const) {
+  it('四种语言各六位，id 互不相同，查找表含全部', () => {
+    for (const lang of ['zh', 'en', 'ja', 'ko'] as const) {
       const seeds = seedCharactersFor(lang);
       expect(seeds).toHaveLength(6);
       expect(seeds.every((c) => c.lang === lang)).toBe(true);
     }
-    expect(new Set(CHARACTERS.map((c) => c.id)).size).toBe(18);
+    expect(new Set(CHARACTERS.map((c) => c.id)).size).toBe(24);
     expect(seedCharactersFor('en').map((c) => c.id)).toEqual(seedCharactersFor('zh').map((c) => `${c.id}-en`));
     expect(seedCharactersFor('ja').map((c) => c.id)).toEqual(seedCharactersFor('zh').map((c) => `${c.id}-ja`));
+    expect(seedCharactersFor('ko').map((c) => c.id)).toEqual(seedCharactersFor('zh').map((c) => `${c.id}-ko`));
+    expect(seedCharactersFor('ko').every((c) => c.lang === 'ko' && c.name && c.identity && c.hook)).toBe(true);
   });
   it('缺省按界面语言', () => {
     setLang('ja');
@@ -61,12 +63,16 @@ describe('系统层与模板按语言', () => {
     expect(DARK_SIDE_PATTERN.test('我不想活了')).toBe(true);
     expect(DARK_SIDE_PATTERN.test("I want to kill myself")).toBe(true);
     expect(DARK_SIDE_PATTERN.test('もう死にたい')).toBe(true);
+    expect(DARK_SIDE_PATTERN.test('그냥 죽고 싶어')).toBe(true);
+    expect(DARK_SIDE_PATTERN.test('오늘 너무 피곤해')).toBe(false);
     expect(DARK_SIDE_PATTERN.test('今天好累')).toBe(false);
     expect(DARK_SIDE_PATTERN.test('I killed it at karaoke')).toBe(false);
     setLang('en');
     expect(darkSideCheck('honestly I just want to die')?.texts[0]).toContain('988');
     setLang('ja');
     expect(darkSideReply()).toContain('0120-279-338');
+    setLang('ko');
+    expect(darkSideReply()).toContain('109');
   });
   it('心跳与外出开场白', () => {
     expect(heartbeatLine('day', 'finals', 'Mia', 1, 'en')).toBe("Mia, go get it. Tell me first the moment 'finals' is over.");
@@ -74,5 +80,8 @@ describe('系统层与模板按语言', () => {
     expect(heartbeatLine('before', '期末試験', '小春', 0)).toContain('「期末試験」');
     expect(outingOpeners().stranger).toHaveLength(2);
     expect(outingOpeners('en').dateLate[1]).toContain('{minutes}');
+    expect(heartbeatLine('day', '시험', '수아', 1, 'ko')).toBe('수아, 파이팅. ‘시험’ 끝나면 제일 먼저 나한테 말해 줘.');
+    expect(outingOpeners('ko').dateLate[1]).toContain('{minutes}');
+    expect(outingOpeners('ko').stranger).toHaveLength(2);
   });
 });

@@ -246,6 +246,7 @@ const CRISIS_HOTLINE: Record<Lang, string> = {
   zh: '中国大陆：12356，全国 24 小时',
   en: '美国：拨打或短信 988；其他地区：findahelpline.com',
   ja: '日本：よりそいホットライン 0120-279-338、いのちの電話 0570-064-556',
+  ko: '韩国：자살예방상담전화 109（24 小时）、정신건강위기상담 1577-0199',
 };
 
 function crisisLine(lang: Lang): string {
@@ -257,11 +258,12 @@ const CHAT_LANG_LINE: Record<Lang, string> = {
   zh: '- 始终用简体中文口语说话。',
   en: '- 始终用自然、口语化的英语（English）说话。',
   ja: '- 始终用自然的日语口语（タメ口寄りの日本語）说话。',
+  ko: '- 始终用自然的韩语口语（반말 위주의 자연스러운 한국어）说话。',
 };
 
 /** 给任务类 prompt（记忆 / 看图 / 解析）用的语言名：「用{langName}写」 */
 export function langName(lang: Lang = getLang()): string {
-  return lang === 'en' ? '英语（English）' : lang === 'ja' ? '日语（日本語）' : '简体中文';
+  return lang === 'en' ? '英语（English）' : lang === 'ja' ? '日语（日本語）' : lang === 'ko' ? '韩语（한국어）' : '简体中文';
 }
 
 export function CHAT_HARD_RULES_OF(lang: Lang = getLang()): string[] {

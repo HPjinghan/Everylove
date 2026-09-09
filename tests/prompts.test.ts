@@ -91,17 +91,22 @@ describe('系统 prompt 装配', () => {
   it('外出：广场陌生人', () => {
     expect(buildChatSystemPrompt(outingStrangerCtx, NOW)).toMatchSnapshot();
   });
-  it('语言行跟随界面语言（en / ja）', () => {
+  it('语言行跟随界面语言（en / ja / ko）', () => {
     setLang('en');
     const en = buildChatSystemPrompt(bondedCtx, NOW);
     setLang('ja');
     const ja = buildChatSystemPrompt(bondedCtx, NOW);
+    setLang('ko');
+    const ko = buildChatSystemPrompt(bondedCtx, NOW);
     expect(en).toContain('English');
     expect(ja).toContain('日本語');
+    expect(ko).toContain('한국어');
+    expect(ko).toContain('109');
     const strip = (p: string) => p.replace(/^- 始终用.*$/m, '').replace(/^- 若她表达自伤.*$/m, '');
     expect(en).toContain('988');
     expect(ja).toContain('0120-279-338');
     expect(strip(en)).toBe(strip(ja));
+    expect(strip(en)).toBe(strip(ko));
   });
 });
 

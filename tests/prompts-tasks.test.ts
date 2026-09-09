@@ -114,9 +114,10 @@ describe('生图', () => {
     expect(buildOutingPhotoPrompt(seed, { ...opts, kind: 'together', digest: '她：好冷\n主角：把外套给你' })).toMatchSnapshot();
     expect(buildOutingPhotoPrompt(custom, { ...opts, kind: 'solo' })).toMatchSnapshot();
   });
-  it('看图（中 / 日）', () => {
+  it('看图（中 / 日 / 韩）', () => {
     expect(imageCaptionSystem('zh')).toMatchSnapshot();
     expect(imageCaptionSystem('ja')).toMatchSnapshot();
+    expect(imageCaptionSystem('ko')).toMatchSnapshot();
     expect(IMAGE_CAPTION_USER).toMatchSnapshot();
   });
 });
@@ -153,9 +154,10 @@ describe('心跳与创造', () => {
     expect(characterParseSystem('zh')).toMatchSnapshot();
     expect(characterParseSystem('en')).toMatchSnapshot();
   });
-  it('TA 的台词（中 / 日）+ 角色卡', () => {
+  it('TA 的台词（中 / 日 / 韩）+ 角色卡', () => {
     expect(characterLinesSystem('zh')).toMatchSnapshot();
     expect(characterLinesSystem('ja')).toMatchSnapshot();
+    expect(characterLinesSystem('ko')).toMatchSnapshot();
     expect(buildCharacterLinesUser(custom)).toMatchSnapshot();
   });
 });

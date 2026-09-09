@@ -12,7 +12,7 @@ import { PhotoViewer, Polaroid } from '@/components/polaroid';
 import { Space } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { placeById } from '@/content/places';
-import { getLang, t } from '@/lib/i18n';
+import { localeOf, t } from '@/lib/i18n';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
 const COLS = 3;
@@ -28,11 +28,6 @@ interface Shot {
   caption?: string;
   /** 墙上相纸的短手写字：地点 emoji + 名字 */
   wall: string;
-}
-
-function localeOf(): string {
-  const lang = getLang();
-  return lang === 'zh' ? 'zh-CN' : lang === 'ja' ? 'ja-JP' : 'en-US';
 }
 
 export default function AlbumScreen() {

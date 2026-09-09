@@ -36,12 +36,12 @@ export function ttsReady(): boolean {
 }
 
 /**
- * 当前 TTS 通道会不会说这门语言：百度只有中/英，日语要靠 OpenAI 兼容通道；
+ * 当前 TTS 通道会不会说这门语言：百度只有中/英，日语 / 韩语要靠 OpenAI 兼容通道；
  * 走代理时以服务端配置为准（这里乐观放行）。
  */
 export function ttsSpeaksLang(lang: Lang): boolean {
   if (speechConfigured()) return true;
-  if (lang !== 'ja') return true;
+  if (lang !== 'ja' && lang !== 'ko') return true;
   return !ENV_QIANFAN_KEY && proxyReadySync();
 }
 
