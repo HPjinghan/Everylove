@@ -4,7 +4,7 @@
 > 族谱：c.ai 的皮 · 乙游的心脏 · 短剧的钱包 · 独有器官 = 主动性。
 > 一句话：c.ai 证明了胃口，乙游证明了付费，没人把两者接起来过。
 
-* 状态（2026-09-09）：试装 v0.2——手机壳桌面 + 12 个模块可跑，全部界面已按纸面设计系统重做，TestFlight 构建号 3 在测；最近一条决策 D-107。**本文件只写现行口径**：每条决策的理由、编号索引、被推翻的历史都在 `docs/DECISIONS.md`（按主题合并的总账，头部有 D-编号索引），合并前的逐条原文冻结在 `docs/archive/`。
+* 状态（2026-09-09）：试装 v0.2——手机壳桌面 + 12 个模块可跑，全部界面已按纸面设计系统重做，TestFlight 构建号 3 在测；最近一条决策 D-108。**本文件只写现行口径**：每条决策的理由、编号索引、被推翻的历史都在 `docs/DECISIONS.md`（按主题合并的总账，头部有 D-编号索引），合并前的逐条原文冻结在 `docs/archive/`。
 * 本文档是产品的单一事实来源。**执行任何任务时产生的新设计决策，必须当次写进文档**（见「工作规则」）。
 * 本项目与团队其他产品无关，不引入其他项目的术语与范式。
 
@@ -117,7 +117,7 @@ onboarding（语言 → 先让 TA 们认识你；第一步底部「已有账号�
 * **客户端**：Expo **SDK 57**（2026-09-09 自 54 升级，D-102；RN 0.86 / React 19.2 / TS 6，只有新架构；升 SDK 走 `expo install expo@<ver>` → `expo install --fix` → `expo-doctor`）+ React Native + TypeScript，expo-router；**只做 iOS**；试装 Expo Go（`npx expo start` 扫码）。界面强制浅色。
 * **分发**：Expo Go 朋友试装 = EAS Update `preview` 渠道（发布时置空 AI key）；TestFlight = EAS Build `production` 档 → `eas submit`（`eas.json`，bundle id `com.kotoko.everylove`，构建号远程自增，`--auto-submit`）。动了 app.json 插件 / 原生依赖必须重新 build + submit；JS 改动 `eas update --channel production` 热更。步骤见 `docs/RELEASE.md`。
 * **目录**：`core/`（底座：registry / hooks / config / providers / prompt / modes / markers / cards / jobs / turn）+ `features/`（一个玩法一个文件，`features/index.ts` 启动清单）+ `lib/`（chat 会话入口、engine 门面、memory、media、tts、imagegen、outing、appointments、call、posts、his-notes、phone、pool、auth、sync、proxy、weather、i18n、bond、recommend）+ `content/`（`characters/` 三语种子与脚本、`prompts/` 一用途一文件、`places` / `calendar` / `portraits`）+ `store/app-store.ts`（zustand + AsyncStorage，persist v5）+ `app/`（桌面 `index.tsx`、`apps/*` 模块、`chat` / `bond` / `outing` / `call` / `adopt` / `auth` / `onboarding` / `weather`）+ `components/`。手册 `docs/ARCHITECTURE.md`。
-* **AI 取路**：本地 key 直连（`.env.local`：`EXPO_PUBLIC_ANTHROPIC_API_KEY` / `EXPO_PUBLIC_QIANFAN_API_KEY`，可选 `EXPO_PUBLIC_AI_ENGINE`；设置 → 开发者可点选供应商覆盖，只存本机）> 有会话走服务端代理（`supabase/functions/ai`，真账号或匿名游客，每人每日 500 次）> 不可用抛错——**失败不回落，直接在会话里露出原因**。供应商 anthropic / qianfan（千帆 v2 OpenAI 兼容，模型默认 `deepseek-v4-pro`）在 `features/providers.ts` 注册。暗面路由、尺度、无 PUA 在引擎入口执行，任何供应商不可绕过。
+* **AI 取路**：本地 key 直连（`.env.local`：`EXPO_PUBLIC_ANTHROPIC_API_KEY` / `EXPO_PUBLIC_QIANFAN_API_KEY`，可选 `EXPO_PUBLIC_AI_ENGINE`；设置 → 开发者可点选供应商覆盖，只存本机）> 有会话走服务端代理（`supabase/functions/ai`，真账号或匿名游客，每人每日 500 次）> 不可用抛错——**失败不回落，直接在会话里露出原因**。供应商 anthropic（模型 `EXPO_PUBLIC_ANTHROPIC_MODEL`，默认 `claude-sonnet-5`；Opus 5 默认开思考，回话自动加余量 + effort low）/ qianfan（千帆 v2 OpenAI 兼容，模型默认 `deepseek-v4-pro`）在 `features/providers.ts` 注册。暗面路由、尺度、无 PUA 在引擎入口执行，任何供应商不可绕过。
 * **对话**：四模式（初识 / 亲密 / 外出 / 通话）各自独立 prompt，系统 prompt 按分段表装配（`core/prompt.ts`，分段在 `features/prompts.ts` 声明）；聊天两模式纯打字感（禁（），`stripStageDirections` 兜底）、1-2 句短句口语、亲密可拆两条气泡；外出独享（）描写、不分条；输出语言按界面语言。上下文 = 最近 20 轮（`HISTORY_ROUNDS`）；语音 / 照片 / 卡片经 `messageContextText` 进上下文。
 * **记忆**：`lib/memory.ts` mem0 式本地实现，`Bond.memory = { facts ≤30, summary }`，每 3 个用户轮次后台提取、旧对话滚进摘要，注入亲密 / 外出 / 通话；外出对话、电话、爽约、她的记事本也并入。**只有羁绊层有记忆**。正式版切自托管 mem0，接口不变。
 * **语音**：她的语音 → OpenAI 兼容通道优先（Whisper 协议，`EXPO_PUBLIC_SPEECH_*`，中 / 英 / 日）→ 回落百度 ASR（同一把千帆 key，不支持日语，#25）；TA 的语音 → OpenAI 兼容 `/audio/speech` 或百度 `text2audio`（音色按人称 4193 / 4194 / 4115）；`shouldSendVoice` 决定 TA 偶尔发语音。通话页 `app/call/[characterId].tsx` 管线式；端到端实时语音等 dev build（#26）。

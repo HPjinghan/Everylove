@@ -11,16 +11,23 @@ import { proxyJson } from '@/lib/proxy';
 type AnthropicJson = { content: { type: string; text?: string }[] };
 type OpenAIJson = { choices?: { message?: { content?: string } }[] };
 
+/** 默认就开着思考的 Claude 家族（Opus 5 / Fable）：思考 token 也算进 max_tokens，角色回话的 300 预算会被吃光 → 加余量、压低 effort（D-108） */
+const THINKING_ON_BY_DEFAULT = /^claude-(opus-5|fable|mythos)/;
+const THINKING_HEADROOM = 2048;
+
 const anthropic: ChatProvider = {
   id: 'anthropic',
   label: `Claude · ${CONFIG.anthropicModel}`,
   localKey: () => CONFIG.anthropicKey,
   async complete(req, route) {
+    const thinks = THINKING_ON_BY_DEFAULT.test(CONFIG.anthropicModel);
     const body = {
       model: CONFIG.anthropicModel,
-      max_tokens: req.maxTokens,
+      max_tokens: thinks ? req.maxTokens + THINKING_HEADROOM : req.maxTokens,
       system: req.system,
       messages: req.turns,
+      // 回话要快要短：低 effort；任务类（记忆提取 / 解析）用默认 high
+      ...(thinks && req.kind === 'reply' ? { output_config: { effort: 'low' } } : {}),
     };
     let data: AnthropicJson;
     if (route === 'direct') {

@@ -8,7 +8,8 @@
 export const CONFIG = {
   /* ── 聊天引擎（D-069：引擎与 key 只从工程配置读） ── */
   anthropicKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '',
-  anthropicModel: 'claude-sonnet-5',
+  /** Claude 模型 ID（D-108）：默认 Sonnet 5；可换 claude-opus-5 / claude-haiku-4-5（Opus 5 默认开思考，供应商侧自行加余量） */
+  anthropicModel: process.env.EXPO_PUBLIC_ANTHROPIC_MODEL || 'claude-sonnet-5',
   qianfanKey: process.env.EXPO_PUBLIC_QIANFAN_API_KEY ?? '',
   /** 千帆上挂着多家模型，默认 DeepSeek V4（千帆模型 ID：deepseek-v4-pro） */
   qianfanModel: process.env.EXPO_PUBLIC_QIANFAN_MODEL || 'deepseek-v4-pro',

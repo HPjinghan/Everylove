@@ -1,7 +1,7 @@
 # DECISIONS.md — 现行决策总账（按主题合并）
 
 > **怎么用**：一个主题一条，写**现在的口径**；被推翻的旧口径只在「曾经」留一行（编号 + 一句话）。某个编号当时的完整理由、验证与影响文件，到 `docs/archive/DECISIONS-log-2026-08-13_09-06.md` 按编号搜（冻结存档，D-001～D-096 逐条原文）。
-> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-108**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
+> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-109**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
 > 代码注释里的 D-编号一律按索引表查；D-087 / D-088 各撞号一次，用 a / b 区分。
 
 ## 编号索引
@@ -113,6 +113,7 @@
 | D-101 | 09-09 | 韩语接入：UI 词典四语、种子角色韩文版、心跳 / 开场白 / 暗面路由 / 热线 / 拦截名单、`localeOf` 集中 locale、百度 TTS 不支持韩语 | H2 / E1 / B3 |
 | D-102 | 09-09 | Expo SDK 54 → 57（Harper 手机 Expo Go 已升 57）：RN 0.86 / React 19.2 / TS 6、只有新架构、React Compiler 的 hooks 规则真修不关、删模板残留；runtime 变了，TestFlight 与 preview 都要重新 build / update | A1 / A2 / A3 |
 | D-106 | 09-09 | 设置 → 开发者「AI 引擎」可点选供应商：运行期偏好 > `EXPO_PUBLIC_AI_ENGINE` > 有 key 的 > 默认；只存本机 AsyncStorage，不进 store / 云端快照 | B1 |
+| D-108 | 09-09 | Claude 模型从 env 读（`EXPO_PUBLIC_ANTHROPIC_MODEL`，默认 Sonnet 5）；Opus 5 / Fable 默认开思考 → 回话加 2048 余量 + effort low | B1 |
 | D-107 | 09-09 | 六位种子角色各一套专属立绘 prompt（`content/prompts/portrait-seeds.ts`：精细画风行 + 脸 / 发 / 眼神 / 衣着 / 光线 / 配色 / 背景意象），`buildPortraitPrompt` 命中即替换通用画风行与主体段；六张内置立绘重画；脚本只画中文原版六位（-en / -ja / -ko 共用） | B4 |
 | D-105 | 09-09 | 词典缺词清扫 + 守门测试：天况 / 天气小文案 / 「交友」/ 口味 / 配色与壁纸名 / 设置与创造弹窗 / 自创角色默认文案补 en / ja / ko；`tests/i18n-coverage.test.ts` 扫源码，t() 字面键与数据表标签缺词即红 | H2 |
 | D-104 | 09-09 | 壁纸只换纸的颜色不换纸：每款 = 一块纯色底 + 同一套菱格暗纹，上下两段纯色下线、晚八点改浅暮紫；大时钟行高 0.9 → 1（iOS 按行高裁字形，顶被切） | C1 / H1 |
@@ -149,7 +150,7 @@
 ## B. AI 供给
 
 ### B1 · 聊天引擎与取路
-- **现行**：`lib/engine.ts` 是 ChatEngine 门面（组历史 → `core/providers.completeChat` → 拆气泡 → 剥暗号）；供应商 **anthropic（Claude）/ qianfan（百度千帆 v2 OpenAI 兼容接口，模型默认 `deepseek-v4-pro`，`EXPO_PUBLIC_QIANFAN_MODEL` 可换）** 在 `features/providers.ts` 注册，再接一家 = 再注册一个。**引擎与 key 只读工程配置** `.env.local`（不进 git，模板 `.env.example`；`EXPO_PUBLIC_AI_ENGINE` 可选引擎，不填有 Claude key 用 Claude 否则千帆）。**手动切换（D-106）**：设置 → 开发者点「AI 引擎」弹出已注册供应商（各标 直连 / 代理 / 不可用）与「跟随配置」；选定后 `core/providers.setChatProviderPreference` 立即生效，`lib/engine.setEnginePreference` 落本机 AsyncStorage（`everylove-engine-pref`），启动 `loadEnginePreference` 读回；优先级 指定 id > 运行期偏好 > `EXPO_PUBLIC_AI_ENGINE` > 第一个有 key 的 > 默认千帆。偏好不是用户数据：不进 store、不进云端快照（延续 D-069 口径）。**取路** `aiRoute()`：本地 key 直连 > 有会话（真账号或匿名游客）走服务端代理 > 不可用抛 `AiUnavailableError`。**失败不回落、直接露出**：聊天 / 羁绊 / 外出插系统消息「模型调用失败，TA 这条没回上：{原因}」（她的消息与心动 / XP 照常，该回合不触发 offer）；X 回帖弹窗露原因；后台任务（发帖 / 记忆 / 记事本）静默记 warn。暗面路由、尺度、无 PUA 在引擎入口执行，任何供应商不可绕过。设置 → 开发者只读显示引擎与取路。
+- **现行**：`lib/engine.ts` 是 ChatEngine 门面（组历史 → `core/providers.completeChat` → 拆气泡 → 剥暗号）；供应商 **anthropic（Claude，模型 `EXPO_PUBLIC_ANTHROPIC_MODEL` 可换、默认 `claude-sonnet-5`；D-108：Opus 5 / Fable 家族默认开思考、思考 token 算进 max_tokens，供应商侧给回话加 2048 余量并送 `output_config.effort: low`，任务类保持默认）/ qianfan（百度千帆 v2 OpenAI 兼容接口，模型默认 `deepseek-v4-pro`，`EXPO_PUBLIC_QIANFAN_MODEL` 可换）** 在 `features/providers.ts` 注册，再接一家 = 再注册一个。**引擎与 key 只读工程配置** `.env.local`（不进 git，模板 `.env.example`；`EXPO_PUBLIC_AI_ENGINE` 可选引擎，不填有 Claude key 用 Claude 否则千帆）。**手动切换（D-106）**：设置 → 开发者点「AI 引擎」弹出已注册供应商（各标 直连 / 代理 / 不可用）与「跟随配置」；选定后 `core/providers.setChatProviderPreference` 立即生效，`lib/engine.setEnginePreference` 落本机 AsyncStorage（`everylove-engine-pref`），启动 `loadEnginePreference` 读回；优先级 指定 id > 运行期偏好 > `EXPO_PUBLIC_AI_ENGINE` > 第一个有 key 的 > 默认千帆。偏好不是用户数据：不进 store、不进云端快照（延续 D-069 口径）。**取路** `aiRoute()`：本地 key 直连 > 有会话（真账号或匿名游客）走服务端代理 > 不可用抛 `AiUnavailableError`。**失败不回落、直接露出**：聊天 / 羁绊 / 外出插系统消息「模型调用失败，TA 这条没回上：{原因}」（她的消息与心动 / XP 照常，该回合不触发 offer）；X 回帖弹窗露原因；后台任务（发帖 / 记忆 / 记事本）静默记 warn。暗面路由、尺度、无 PUA 在引擎入口执行，任何供应商不可绕过。设置 → 开发者只读显示引擎与取路。
 - **编号**：D-004 → D-010 → D-057 → D-069 → D-086 → D-088a。
 - **曾经**：D-004 MockEngine 默认 + 开发者面板手填 key；D-010 「无 key 或失败回落 mock」；D-069 删了脚本引擎（**角色台词库 `scriptFor` 保留**——那是产品触发器与人设内容，不是 mock）。
 
