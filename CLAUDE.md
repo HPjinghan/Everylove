@@ -4,7 +4,7 @@
 > 族谱：c.ai 的皮 · 乙游的心脏 · 短剧的钱包 · 独有器官 = 主动性。
 > 一句话：c.ai 证明了胃口，乙游证明了付费，没人把两者接起来过。
 
-* 状态（2026-09-09）：试装 v0.2——手机壳桌面 + 12 个模块可跑，全部界面已按纸面设计系统重做，TestFlight 构建号 3 在测；最近一条决策 D-106。**本文件只写现行口径**：每条决策的理由、编号索引、被推翻的历史都在 `docs/DECISIONS.md`（按主题合并的总账，头部有 D-编号索引），合并前的逐条原文冻结在 `docs/archive/`。
+* 状态（2026-09-09）：试装 v0.2——手机壳桌面 + 12 个模块可跑，全部界面已按纸面设计系统重做，TestFlight 构建号 3 在测；最近一条决策 D-107。**本文件只写现行口径**：每条决策的理由、编号索引、被推翻的历史都在 `docs/DECISIONS.md`（按主题合并的总账，头部有 D-编号索引），合并前的逐条原文冻结在 `docs/archive/`。
 * 本文档是产品的单一事实来源。**执行任何任务时产生的新设计决策，必须当次写进文档**（见「工作规则」）。
 * 本项目与团队其他产品无关，不引入其他项目的术语与范式。
 
@@ -121,7 +121,7 @@ onboarding（语言 → 先让 TA 们认识你；第一步底部「已有账号�
 * **对话**：四模式（初识 / 亲密 / 外出 / 通话）各自独立 prompt，系统 prompt 按分段表装配（`core/prompt.ts`，分段在 `features/prompts.ts` 声明）；聊天两模式纯打字感（禁（），`stripStageDirections` 兜底）、1-2 句短句口语、亲密可拆两条气泡；外出独享（）描写、不分条；输出语言按界面语言。上下文 = 最近 20 轮（`HISTORY_ROUNDS`）；语音 / 照片 / 卡片经 `messageContextText` 进上下文。
 * **记忆**：`lib/memory.ts` mem0 式本地实现，`Bond.memory = { facts ≤30, summary }`，每 3 个用户轮次后台提取、旧对话滚进摘要，注入亲密 / 外出 / 通话；外出对话、电话、爽约、她的记事本也并入。**只有羁绊层有记忆**。正式版切自托管 mem0，接口不变。
 * **语音**：她的语音 → OpenAI 兼容通道优先（Whisper 协议，`EXPO_PUBLIC_SPEECH_*`，中 / 英 / 日）→ 回落百度 ASR（同一把千帆 key，不支持日语，#25）；TA 的语音 → OpenAI 兼容 `/audio/speech` 或百度 `text2audio`（音色按人称 4193 / 4194 / 4115）；`shouldSendVoice` 决定 TA 偶尔发语音。通话页 `app/call/[characterId].tsx` 管线式；端到端实时语音等 dev build（#26）。
-* **图像**：只剩**立绘**与**外出拍照**，千帆文生图；prompt = 画风行 → 主体（不写角色名）→ `PORTRAIT_SYSTEM` + 末行红线句 + 反向提示；画风表 `PORTRAIT_STYLES`（`Character.artStyle`，缺省少女漫·水彩），动漫 → 蒸汽机 Air-Image（专用端点 / 代理 `qianfan.musesteamer`）、其余 → qwen-image。种子角色内置立绘 `assets/portraits/`（`scripts/gen-seed-portraits.mts`），取用 `portraitSource` / `portraitFor`（本机 > 内置）。调 prompt 工具：双击 `gen-image.bat`（127.0.0.1:3939）或 `npm run gen-image`，实时读工程画风表。
+* **图像**：只剩**立绘**与**外出拍照**，千帆文生图；prompt = 画风行 → 主体（不写角色名）→ `PORTRAIT_SYSTEM` + 末行红线句 + 反向提示；六位种子角色用各自的专属画风行与主体段（`content/prompts/portrait-seeds.ts`，D-107）；画风表 `PORTRAIT_STYLES`（`Character.artStyle`，缺省少女漫·水彩），动漫 → 蒸汽机 Air-Image（专用端点 / 代理 `qianfan.musesteamer`）、其余 → qwen-image。种子角色内置立绘 `assets/portraits/`（`scripts/gen-seed-portraits.mts`），取用 `portraitSource` / `portraitFor`（本机 > 内置）。调 prompt 工具：双击 `gen-image.bat`（127.0.0.1:3939）或 `npm run gen-image`，实时读工程画风表。
 * **天气 / 地图**：`lib/weather.ts` Open-Meteo（无 key，前台 30 分钟节流，无位置回落种子假天气）；位置卡片 `react-native-maps` + Nominatim 搜索 + expo-location 反地理编码；位置只存本机。
 * **账号与云**：`lib/auth.ts`（Supabase：Apple 主打 + 邮箱 OTP；匿名会话只作代理凭证、**不算登录**）+ `lib/sync.ts`（云端为主：整份快照 ↔ `snapshots`，15 s 防抖上传，启动 / 登录 / 回前台对账；**新设备或换账号时本机不许覆盖云端**：本机空静默拉，本机有关系则登录界面问「接回云端的 / 用本机覆盖云端」；决策纯函数 `planReconcile`，`tests/sync.test.ts`）。登录界面 `app/auth.tsx` 三入口：设置 / 首次入册强制墙 / onboarding「已有账号」。共享角色池 `lib/pool.ts`（`shared_characters`，同语言、5 分钟节流）。建表 `docs/supabase-setup.sql`。
 * **关系数据**：心动值 `SquareChat.heart`（试聊 / 广场 / 自创暧昧期共用），配对 3 天过期（自创不过期）；羁绊 `Bond`（`affinity` XP、`memory`、`notes` TA 的记事本、`phoneCode` / `phoneUnlocked`、`birthday` 回落）；曲线与槽位在 `lib/bond.ts`；约定 `store.outingPlans`（`at` / `source`，窗口前 2h～后 3h，`lib/appointments.ts`）；外出 `store.outingSession`（一小时冷却）；相册 `store.album`；发帖 / 记事本各一只钟（`postSchedule` / `noteSchedule`，MBTI 定频）；桌面 `desktopSlots` / `desktopDock`；身份 `me` / `meByCharacter`；语言 `language`；主题 `themeId`（新装机 paper）。

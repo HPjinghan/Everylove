@@ -1,7 +1,7 @@
 # DECISIONS.md — 现行决策总账（按主题合并）
 
 > **怎么用**：一个主题一条，写**现在的口径**；被推翻的旧口径只在「曾经」留一行（编号 + 一句话）。某个编号当时的完整理由、验证与影响文件，到 `docs/archive/DECISIONS-log-2026-08-13_09-06.md` 按编号搜（冻结存档，D-001～D-096 逐条原文）。
-> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-108**；D-107 已由另一会话占用：种子角色专属立绘）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
+> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-108**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
 > 代码注释里的 D-编号一律按索引表查；D-087 / D-088 各撞号一次，用 a / b 区分。
 
 ## 编号索引
@@ -113,6 +113,7 @@
 | D-101 | 09-09 | 韩语接入：UI 词典四语、种子角色韩文版、心跳 / 开场白 / 暗面路由 / 热线 / 拦截名单、`localeOf` 集中 locale、百度 TTS 不支持韩语 | H2 / E1 / B3 |
 | D-102 | 09-09 | Expo SDK 54 → 57（Harper 手机 Expo Go 已升 57）：RN 0.86 / React 19.2 / TS 6、只有新架构、React Compiler 的 hooks 规则真修不关、删模板残留；runtime 变了，TestFlight 与 preview 都要重新 build / update | A1 / A2 / A3 |
 | D-106 | 09-09 | 设置 → 开发者「AI 引擎」可点选供应商：运行期偏好 > `EXPO_PUBLIC_AI_ENGINE` > 有 key 的 > 默认；只存本机 AsyncStorage，不进 store / 云端快照 | B1 |
+| D-107 | 09-09 | 六位种子角色各一套专属立绘 prompt（`content/prompts/portrait-seeds.ts`：精细画风行 + 脸 / 发 / 眼神 / 衣着 / 光线 / 配色 / 背景意象），`buildPortraitPrompt` 命中即替换通用画风行与主体段；六张内置立绘重画；脚本只画中文原版六位（-en / -ja / -ko 共用） | B4 |
 | D-105 | 09-09 | 词典缺词清扫 + 守门测试：天况 / 天气小文案 / 「交友」/ 口味 / 配色与壁纸名 / 设置与创造弹窗 / 自创角色默认文案补 en / ja / ko；`tests/i18n-coverage.test.ts` 扫源码，t() 字面键与数据表标签缺词即红 | H2 |
 | D-104 | 09-09 | 壁纸只换纸的颜色不换纸：每款 = 一块纯色底 + 同一套菱格暗纹，上下两段纯色下线、晚八点改浅暮紫；大时钟行高 0.9 → 1（iOS 按行高裁字形，顶被切） | C1 / H1 |
 | D-103 | 09-09 | App 图标与名字：Harper 定名 **everylove**（app.json name），图标 = 纸面粉底 + 菱格暗纹 + 微微右倾的白色小手机（屏里一颗 primary 心），不写字；启动图透明底手机、底色 paper；SVG 源 `scripts/logo/render.mjs` | H3 |
@@ -164,7 +165,7 @@
 
 ### B4 · 图像生成：只剩立绘与外出拍照
 - **现行**：文生图走百度千帆（`lib/imagegen.ts`，与聊天共用 key）。**立绘 prompt = 画风行 → 主体 → `PORTRAIT_SYSTEM`（Harper 给定文案）+ 末行 `COMIC_RULES` 红线句**（「氛围暧昧克制、无露骨；不模仿真人」是红线 #1/#5 的 prompt 侧实现，只有 Harper 明示才去）；主体行**不写角色名**（qwen-image 会把名字画进画面），写「画面主角是一位男性 / 女性 / 一个角色：外貌」；外貌一句话别写鞋 / 腿（会拉成全身）；反向提示 `PORTRAIT_NEGATIVE`（文字 / 字母 / 水印 / Q 版 / 全身 / 多人，蒸汽机不收）。**画风八选一** `PORTRAIT_STYLES`（`Character.artStyle`，缺省 shojo 少女漫·水彩 = 原画风）：动漫 → 蒸汽机 Air-Image（专用端点、代理服务 `qianfan.musesteamer`，约 10 秒）、其余 → qwen-image（约 1 分钟）；`imageModelFor()` 按画风选模型，立绘与外出拍照共用。**种子角色内置立绘随包分发**（`assets/portraits/` + `content/portraits.ts`，`scripts/gen-seed-portraits.mts` 生成，串行 + 429 重试；英 / 日版共用原 id 立绘）；取用统一 `portraitSource` / `portraitFor`（本机 `store.portraits` > 内置）。**外出拍照**（`buildOutingPhotoPrompt` + `generateScenePhoto`）：第一行同画风，合影中她只入镜侧影 / 手、不画清晰正脸；洗好即 `store.addAlbumShot`。千帆按分钟限频，三张并发会撞 429。
-- **编号**：D-014（供应商）、D-019（立绘）、D-037、D-051、D-071、D-076、D-092。
+- **编号**：D-014（供应商）、D-019（立绘）、D-037、D-051、D-071、D-076、D-092、D-107（种子角色专属立绘 prompt：通用「画风行 + look 一句」出的图太平太淡，六位各按气质写一套——精细画风行（女性向精致插画、体积光影、通透皮肤、发丝分缕）+ 主体段（脸 / 发 / 眼神 / 衣着 / 姿态 / 光线 / 配色 / 背景意象），system 段与红线句照旧；键为中文原 id，本地化种子共用；`scripts/gen-seed-portraits.mts` 只画六位原版；自创角色仍走通用三段）。
 - **曾经**：D-013 阿里云百炼 DashScope；D-014/D-015 初见甩图与羁绊漫画（→ D-037 下线）；D-019 立绘作参考图走 `images/edits`（→ D-037 下线）；D-024 图 = 场景本身的会话内投放（→ D-037）；D-019 `SEED_PORTRAITS_AUTO`（→ D-092 内置立绘）；D-018「用角色名指代 TA」（→ D-092 不写名字）。历史图片消息仍可显示。
 
 ## C. 对话

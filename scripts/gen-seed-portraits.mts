@@ -30,7 +30,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 mkdirSync(OUT_DIR, { recursive: true });
 
-const targets = CHARACTERS.filter((c) => !c.teaser)
+// 本地化种子（-en / -ja / -ko）共用中文原 id 的立绘（content/portraits.ts seedBaseId），只画六位原版
+const targets = CHARACTERS.filter((c) => !c.teaser && !/-(en|ja|ko)$/.test(c.id))
   .filter((c) => !only || only.has(c.id))
   .filter((c) => force || !existsSync(resolve(OUT_DIR, `${c.id}.jpg`)));
 

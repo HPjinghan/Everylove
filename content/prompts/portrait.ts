@@ -7,6 +7,7 @@
 import type { Character } from '@/lib/types';
 
 import { COMIC_RULES, comicSubjectLine, roleOnly } from './image-common';
+import { seedPortraitPrompt } from './portrait-seeds';
 
 /* ── 立绘（D-019；D-076 改三段结构）：捏＋时生成一次，作头像/卡面用（D-037 后会话内生图已下线） ── */
 
@@ -57,8 +58,11 @@ export const PORTRAIT_COMPOSITION =
 /**
  * 立绘 prompt（D-076）：**画风行 → 主体（外貌 + 身份气质）→ system**，段间空行；
  * 最后一行保留红线句 COMIC_RULES（红线 #1/#5 的 prompt 侧实现，不随 system 文案改动而丢）。
+ * 种子角色（D-107）：画风行与主体段换成 portrait-seeds.ts 里各自的专属版本，system 与红线句不变。
  */
 export function buildPortraitPrompt(character: Character): string {
+  const seed = seedPortraitPrompt(character.id);
+  if (seed) return [seed.style, seed.subject, `${PORTRAIT_SYSTEM}\n${COMIC_RULES}`].join('\n\n');
   const subject = [
     comicSubjectLine(character),
     `身份气质：${roleOnly(character.identity)}${character.styleLabel ? `，${character.styleLabel}` : ''}。`,
