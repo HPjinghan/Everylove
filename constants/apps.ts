@@ -45,26 +45,26 @@ export function appById(id: string): DesktopApp | undefined {
 }
 
 /**
- * 壁纸（设置 → 主题）。D-100 纸面：不再画渐变——「纸面」= paper 底 + 菱格暗纹（新装机默认）；
- * 其余五款以上下两段纯色平铺（colors[0] 上半、colors[1] 下半），设置页缩略图同样画法。
+ * 壁纸（设置 → 主题，D-104）：壁纸只换纸的颜色，不换纸——每款都是「一块纯色底 + 同一套菱格暗纹（DiamondBackground）」，
+ * 不渐变、不分段。「纸面」（新装机默认）底色跟随当前配色的 Romance.bg（color 留空）；其余五款各一块浅底，
+ * 保证 ink 字与白卡在上面照样清楚。设置页缩略图同样画法。
  */
 export interface Wallpaper {
   id: string;
   label: string;
-  colors: [string, string];
-  /** 纸面：底色取当前主题的 Romance.bg，铺 DiamondBackground（colors 只供缩略图） */
-  pattern?: boolean;
+  /** 底色；留空 = 当前配色的 Romance.bg */
+  color?: string;
 }
 
 export const DEFAULT_WALLPAPER = 'paper';
 
 export const WALLPAPERS: Wallpaper[] = [
-  { id: 'paper', label: '纸面', colors: ['#FFD6E7', '#FFD6E7'], pattern: true },
-  { id: 'dawn', label: '拂晓', colors: ['#FFEDF3', '#FFD3E0'] },
-  { id: 'eight', label: '晚八点', colors: ['#2B2D42', '#6D6875'] },
-  { id: 'sea', label: '归墟', colors: ['#DCEFF5', '#B8D8E8'] },
-  { id: 'matcha', label: '抹茶', colors: ['#EEF5EA', '#CDE3C8'] },
-  { id: 'milk', label: '奶白', colors: ['#FBF8F3', '#EFE8DE'] },
+  { id: 'paper', label: '纸面' },
+  { id: 'dawn', label: '拂晓', color: '#FFEDF3' },
+  { id: 'eight', label: '晚八点', color: '#E4DDF0' },
+  { id: 'sea', label: '归墟', color: '#DCEFF5' },
+  { id: 'matcha', label: '抹茶', color: '#EEF5EA' },
+  { id: 'milk', label: '奶白', color: '#FBF8F3' },
 ];
 
 export function wallpaperById(id: string): Wallpaper {

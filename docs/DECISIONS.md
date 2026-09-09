@@ -1,7 +1,7 @@
 # DECISIONS.md — 现行决策总账（按主题合并）
 
 > **怎么用**：一个主题一条，写**现在的口径**；被推翻的旧口径只在「曾经」留一行（编号 + 一句话）。某个编号当时的完整理由、验证与影响文件，到 `docs/archive/DECISIONS-log-2026-08-13_09-06.md` 按编号搜（冻结存档，D-001～D-096 逐条原文）。
-> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-104**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
+> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-105**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
 > 代码注释里的 D-编号一律按索引表查；D-087 / D-088 各撞号一次，用 a / b 区分。
 
 ## 编号索引
@@ -112,6 +112,7 @@
 | D-100 | 09-08 | 纸面设计系统全屏重做：27 屏按 `design/Everylove Paper UI.html` 重现 + 10 项交互改动（桌面翻页 / 未读合并、交友口味 chip + 略过撤销、试聊心动条吸顶 + 倒计时、会话「+」预告 + TA 的主页三入口、锁屏原地回复、查手机二次确认、日历赴约、外出约定条、设置槽位超额、去掉 palette 外的红橙蓝与渐变）；LINE 拟真与糖果双色图标下线 | H3 / F1 / F2 / F3 / F4 / F5 / F6 / E5 / D3 / D4 / C3 / C4 / G1 |
 | D-101 | 09-09 | 韩语接入：UI 词典四语、种子角色韩文版、心跳 / 开场白 / 暗面路由 / 热线 / 拦截名单、`localeOf` 集中 locale、百度 TTS 不支持韩语 | H2 / E1 / B3 |
 | D-102 | 09-09 | Expo SDK 54 → 57（Harper 手机 Expo Go 已升 57）：RN 0.86 / React 19.2 / TS 6、只有新架构、React Compiler 的 hooks 规则真修不关、删模板残留；runtime 变了，TestFlight 与 preview 都要重新 build / update | A1 / A2 / A3 |
+| D-104 | 09-09 | 壁纸只换纸的颜色不换纸：每款 = 一块纯色底 + 同一套菱格暗纹，上下两段纯色下线、晚八点改浅暮紫；大时钟行高 0.9 → 1（iOS 按行高裁字形，顶被切） | C1 / H1 |
 | D-103 | 09-09 | App 图标与名字：Harper 定名 **everylove**（app.json name），图标 = 纸面粉底 + 菱格暗纹 + 白色小手机（屏里一颗 primary 心）+ Fredoka 字标；启动图透明底手机、底色 paper；SVG 源 `scripts/logo/render.mjs` | H3 |
 
 ---
@@ -245,7 +246,7 @@
 ## F. 手机壳与模块
 
 ### F1 · 桌面：图标 / 编辑 / Dock / 天气 / 揭幕
-- **现行**（`app/index.tsx`）：主页 = 一部手机的桌面，无 bottom bar；App 注册表与壁纸在 `constants/apps.ts`（**供给纪律**：模块必须有内容供给才上架——闹钟 morning call、音乐 v1.5 不摆图标）。上架 12 个：Message / 电话 / X / 交友 / 通讯录 / 相册 / 日历 / 外出 / 创造 / 记事本 / 查手机 / 设置；新 App 进注册表自动补到网格末尾。底 = paper + 菱格暗纹（壁纸「纸面」，新装机默认）或 5 款**上下两段纯色**壁纸（拂晓 / 晚八点 / 归墟 / 抹茶 / 奶白，不再渐变）、大时钟（Fredoka 84，副行英文日期 Fredoka 13）、**大天气卡**（真实天气，可点开 `app/weather.tsx`：定位（反地理编码）或搜索地区候选点选、7 日预报；位置只存本机；无位置 / 离线回落日期种子假天气，Open-Meteo 请求只带经纬度，前台 30 分钟节流刷新）。**长按进入编辑模式**（抖动）**自由格位**（任意格可放、可留空、拖到占位交换，`store.desktopSlots`）；底部 **iPhone 式 Dock**（最多 4 个、无标签，默认 通讯录 + 设置，`store.desktopDock`；网格 ↔ Dock 拖入拖出、Dock 内重排）。图标 **MingCute** filled（`components/mingcute.tsx` 内嵌 path，react-native-svg）**白底 r6 图块 + ink 单色**（D-100；X 也不再黑底），角标 primary r6 Fredoka。**网格水平翻页**（D-100）：每页 rows × 4 格，`desktopSlots` 格位跨页连续（page = floor(slot / slotsPerPage)），每页行数 = （网格区高 − Dock − 页码点带）÷ 104 随机型与横幅有无变化、页数上限 6；页码点在 Dock 上方 14（当前 ink、其余 30%，≥2 页才显示）；编辑模式拖到左右 28 pt 边缘停留 600 ms 自动翻页、被拖图标画在分页外的浮层、「完成」在右上角；Dock 白卡描边 102 高、距底 max(26, 安全区 + 8)、内图块 paper 底。顶部未读横幅（白卡描边）：一人未读直达会话，**多人合并「A、B · N 条新消息」进 Message**（D-100）；首次加好友后揭幕三卡（遮罩 ink 82%、白图块 ink 图标）；无状态栏行（真实时间在时钟里，电量拟真取消）。系统级拟真彩蛋（锁屏照片 / 铃声）留正式版。
+- **现行**（`app/index.tsx`）：主页 = 一部手机的桌面，无 bottom bar；App 注册表与壁纸在 `constants/apps.ts`（**供给纪律**：模块必须有内容供给才上架——闹钟 morning call、音乐 v1.5 不摆图标）。上架 12 个：Message / 电话 / X / 交友 / 通讯录 / 相册 / 日历 / 外出 / 创造 / 记事本 / 查手机 / 设置；新 App 进注册表自动补到网格末尾。底 = **壁纸只换纸的颜色不换纸**（D-104）：一块纯色底 + 同一套菱格暗纹 `DiamondBackground`——「纸面」底色跟随配色的 `Romance.bg`（新装机默认），其余 5 款各一块浅底（拂晓 #FFEDF3 / 晚八点 #E4DDF0 / 归墟 #DCEFF5 / 抹茶 #EEF5EA / 奶白 #FBF8F3，`constants/apps.ts`），不渐变不分段，ink 字与白卡在任何壁纸上都清楚；大时钟（Fredoka 84，**行高 1**——设计稿 0.9 在 RN iOS 会按行高裁掉字形顶部，D-104；副行英文日期 Fredoka 13）、**大天气卡**（真实天气，可点开 `app/weather.tsx`：定位（反地理编码）或搜索地区候选点选、7 日预报；位置只存本机；无位置 / 离线回落日期种子假天气，Open-Meteo 请求只带经纬度，前台 30 分钟节流刷新）。**长按进入编辑模式**（抖动）**自由格位**（任意格可放、可留空、拖到占位交换，`store.desktopSlots`）；底部 **iPhone 式 Dock**（最多 4 个、无标签，默认 通讯录 + 设置，`store.desktopDock`；网格 ↔ Dock 拖入拖出、Dock 内重排）。图标 **MingCute** filled（`components/mingcute.tsx` 内嵌 path，react-native-svg）**白底 r6 图块 + ink 单色**（D-100；X 也不再黑底），角标 primary r6 Fredoka。**网格水平翻页**（D-100）：每页 rows × 4 格，`desktopSlots` 格位跨页连续（page = floor(slot / slotsPerPage)），每页行数 = （网格区高 − Dock − 页码点带）÷ 104 随机型与横幅有无变化、页数上限 6；页码点在 Dock 上方 14（当前 ink、其余 30%，≥2 页才显示）；编辑模式拖到左右 28 pt 边缘停留 600 ms 自动翻页、被拖图标画在分页外的浮层、「完成」在右上角；Dock 白卡描边 102 高、距底 max(26, 安全区 + 8)、内图块 paper 底。顶部未读横幅（白卡描边）：一人未读直达会话，**多人合并「A、B · N 条新消息」进 Message**（D-100）；首次加好友后揭幕三卡（遮罩 ink 82%、白图块 ink 图标）；无状态栏行（真实时间在时钟里，电量拟真取消）。系统级拟真彩蛋（锁屏照片 / 铃声）留正式版。
 - **编号**：D-020 → D-021 → D-023 → D-026 → D-034 → D-036 → D-044 → D-061 → D-064 → D-065 → D-100。
 - **曾经**：D-020 上架清单里的闹钟（无 TTS morning call 供给）、朋友圈命名（→ D-053 X）；D-021 状态栏真实电量（→ D-023 去掉）；D-023 emoji 图标（→ D-026）；D-034 前的「重排序」（→ 自由格位）；D-044 Dock 默认四个（→ D-064 两个）；D-036 / D-061 假天气为主（→ D-065 真实天气，假天气降为回落）。
 
@@ -280,7 +281,7 @@
 - **曾经**：D-030 拨打为占位「电话还没接通这个世界」。
 
 ### F8 · 设置
-- **现行**（`settings.tsx`）：**账号 · 云端**（登录 / 立即备份 / 从云端恢复 / 退出登录 / 删除云端数据；未配置 Supabase 显示引导）、**Language**（中 / English / 日本語，切换全局 remount）、**我的身份**（G1）、**主题**（配色 4 套：纸面（新装机默认）/ 蜜桃 / 苏打 / 抹茶 / 葡萄 之四 + 壁纸 5 款，即刻全局生效；锁屏照片 / 铃声正式版）、**订阅计划**（试装模拟，D4）、素材开关（日记本行跳记事本）、我的创作（→ 我创建的）、**开发者**（只读 AI 引擎与取路 / 查看 TA 记住了什么（可强制提取）/ 生成或重画立绘 / 重置数据）。
+- **现行**（`settings.tsx`）：**账号 · 云端**（登录 / 立即备份 / 从云端恢复 / 退出登录 / 删除云端数据；未配置 Supabase 显示引导）、**Language**（中 / English / 日本語，切换全局 remount）、**我的身份**（G1）、**主题**（配色 4 套：纸面（新装机默认）/ 蜜桃 / 苏打 / 抹茶 / 葡萄 之四 + 壁纸 = 纸面 + 5 款换色（同一套暗纹，D-104），即刻全局生效；锁屏照片 / 铃声正式版）、**订阅计划**（试装模拟，D4）、素材开关（日记本行跳记事本）、我的创作（→ 我创建的）、**开发者**（只读 AI 引擎与取路 / 查看 TA 记住了什么（可强制提取）/ 生成或重画立绘 / 重置数据）。
 - **编号**：D-021 → D-030 → D-054 → D-062 → D-069 → D-083。
 - **曾经**：设置内联登录块（→ D-062 独立界面）；开发者面板切引擎 / 手填 key / 开门测试 / 送漫画（→ D-069 / D-046 / D-037 移除）。
 
@@ -310,7 +311,7 @@
 ### H3 · 设计系统与主题
 - **现行**：Claude Design「Everylove - Design System」（原文 `design/design-system.page.html`；**全屏设计稿 `design/Everylove Paper UI.html`（27 屏 + 标注）与说明 `design/README.md`**）：粉色纸面、菱形暗纹、墨色细描边、**无阴影、无渐变**、圆角 6 / 内层 4；结构性元素通底不加框，只有内容卡片、主按钮、顶栏下沿、输入栏上沿、卡片内分区线 1.5 px 描边。**色彩 = `THEMES.paper`**（「纸面」，新装机默认；老存档主题不动；配色仍 4 套可切），`RomancePalette` 含 `stroke` / `accentStrong`，半透明遮罩 / 暗场一律 `withAlpha(Romance.ink, a)`；palette 外只允许通话深底 `CALL_BG` 与 TA 手机里记事本的米色 `NOTE_PAPER`。**非色彩规格 = `constants/design.ts`**（Shape / Type / Space / Pattern / Component / PRINCIPLES / AVATAR_COLORS（沈胡苏 + 江烛洛）/ NOTE_PAPER / POLAROID_TILTS）：**Fredoka 只管数字与拉丁标签**（时钟、温度、日期缩写、LV、n/100、时间戳、Message / X 等英文 App 名；`Fonts.label` / `labelBold`），**所有中文走系统字体**，头像单字衬线 `Fonts.initial`（iOS 系统宋体，不装 Noto Serif SC）；字号 clock 84 / display 30 / title 17 / card 15 / body 15·22 / label 13 / eyebrow 12 / timestamp 11；间距 14 屏边 / 8–10 行内 / 22–26 图块间 / 桌面 4 × 104 / Dock 102·距底 26。**27 屏已全部按设计稿重做（D-100）**，primitive 层：`AppScreen`（「‹ 桌面」/ 17·600 系统字体标题 / `HeaderAction` 右动作 14·600 primary / `pattern` 铺暗纹）、`Card` / `Divider`、`Button`（primary 描边 / secondary 白 / paper / outline × lg / md / sm，禁用 .4）、`Chip` / `Segmented`、`Field` / `Input`、`DiamondBackground`（±45° 菱格 accent 7%，线距 14 = SVG 单元 14√2；锁屏用白 8%）/ `ChatWallpaper`（accentSoft + 120 px 涂鸦 accent 16%）、`CharAvatar`（方块 r6 + 角色色 + 衬线首字 / 立绘）、`Polaroid`（白框描边 r6、Fredoka 10 说明、±0.6–1.8° 倾角）、`showToast`（ink 底 r6）、`MingCute`（+ plus / pencil / lock / cloud）。**纪律**（CLAUDE.md §11-4）：界面只引 design.ts 与 Romance token，不手写 hex / 圆角 / 阴影 / 字号；卡片 `Card`、按钮 `Button`、选项 `Chip` / `Segmented`、表单 `Field` / `Input`、遮罩 `withAlpha`。主题机制：`Romance` 为可变对象 + `themed()` 缓存重建。**App 图标（D-103）**：`assets/images/icon.png`（1024）= paper 底 + 菱格暗纹（accent 7%）+ 白色小手机（墨色描边、chat paper 屏、灵动岛与 home 条、primary 心 + 白高光）+ Fredoka 600 字标「everylove」，两枚 accent / primary 小星；`splash-icon.png` 透明底只有手机（启动页底色 paper）；`favicon.png` 无字标版。源文件与渲染脚本 `scripts/logo/render.mjs`（resvg + 工程里的 Fredoka TTF：`npm i --no-save @resvg/resvg-js@2 && node scripts/logo/render.mjs` 重出）。**App 名 = everylove**（Harper 2026-09-09 定，`app.json` name；中文「全自动恋爱」保留为代号）。
 - **编号**：D-022 → D-030（主题实装）→ D-083 → D-084 → D-100 → D-103。
-- **曾经**：D-022「圆圆粉粉」方向（底色 #FFF0F4、圆角上调一档、马卡龙图标底）（→ D-083 纸面 / calm geometric）；蜜桃为默认主题（→ paper）；D-083/D-084「地基已落、逐屏重做另起任务」与 D-026 糖果双色图标、D-027 LINE 拟真、壁纸渐变（→ D-100 全屏落地）。
+- **曾经**：D-022「圆圆粉粉」方向（底色 #FFF0F4、圆角上调一档、马卡龙图标底）（→ D-083 纸面 / calm geometric）；蜜桃为默认主题（→ paper）；D-083/D-084「地基已落、逐屏重做另起任务」与 D-026 糖果双色图标、D-027 LINE 拟真、壁纸渐变（→ D-100 全屏落地）；D-100 壁纸「上下两段纯色」与深色晚八点（→ D-104 只换底色、暗纹常在）。
 
 ## I. 已整体下线的机制（只留一行，原文见存档）
 

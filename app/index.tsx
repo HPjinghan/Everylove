@@ -1,6 +1,6 @@
 /**
  * 手机壳桌面（D-020/D-021/D-034/D-044；D-100 纸面 + 翻页）：主页 = 一部手机的桌面。
- * - 底：纸面壁纸 = Romance.bg + 菱格暗纹（DiamondBackground）；其余壁纸上下两段纯色平铺，不再画渐变
+ * - 底：壁纸只换底色不换纹——底色（纸面 = Romance.bg，其余壁纸各一块纯色）+ 同一套菱格暗纹（DiamondBackground），不渐变不分段（D-104）
  * - 图标网格：4 列、行高 Space.desktopRow，图块 60 白底无描边、MingCute 30 ink；长按进入编辑模式（抖动），
  *   **自由摆放**（D-034）——任意格位、允许留空格，拖到已占格位则交换；格位持久化（store.desktopSlots）
  * - **翻页**（D-100）：网格区水平分页，每页 rows × 4 格，slot 索引跨页连续（page = floor(slot / slotsPerPage)）；
@@ -541,15 +541,8 @@ export default function Desktop() {
   });
 
   return (
-    <View style={styles.screen}>
-      {wallpaper.pattern ? (
-        <DiamondBackground />
-      ) : (
-        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-          <View style={[styles.wallHalf, { backgroundColor: wallpaper.colors[0] }]} />
-          <View style={[styles.wallHalf, { backgroundColor: wallpaper.colors[1] }]} />
-        </View>
-      )}
+    <View style={[styles.screen, wallpaper.color ? { backgroundColor: wallpaper.color } : null]}>
+      <DiamondBackground />
 
       <View style={{ paddingTop: insets.top }}>
         {/* Message 快捷路径：未读横幅——一人直达会话，多人合并进 Message */}
@@ -742,7 +735,6 @@ function IntroReveal() {
 const styles = themed(() =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Romance.bg },
-    wallHalf: { flex: 1 },
     // 未读横幅：白卡描边，38 paper 图块 + chat 图标
     notif: {
       flexDirection: 'row',

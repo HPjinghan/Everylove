@@ -33,7 +33,8 @@ export const Type = {
   /** 角色头像单字 */
   initial: 'Noto Serif SC',
   scale: {
-    clock: { size: 84, lineHeight: 0.9, letterSpacing: -2, weight: '600' },
+    // 设计稿 line-height 0.9；RN iOS 按行高裁字形，小于 1 会把 Fredoka 的顶切掉，故落地取 1（D-104）
+    clock: { size: 84, lineHeight: 1, letterSpacing: -2, weight: '600' },
     display: { size: 30, lineHeight: 1, weight: '600' },
     screenTitle: { size: 17, weight: '600' },
     cardTitle: { size: 15, weight: '600' },

@@ -325,17 +325,8 @@ export default function MeScreen() {
                 return (
                   <Pressable key={w.id} style={styles.wallItem} onPress={() => useAppStore.getState().setWallpaper(w.id)}>
                     <View style={[styles.wallRing, on && styles.wallRingOn]}>
-                      <View style={styles.wallSwatch}>
-                        {w.pattern ? (
-                          <View style={styles.wallPaper}>
-                            <DiamondBackground />
-                          </View>
-                        ) : (
-                          <>
-                            <View style={[styles.wallHalf, { backgroundColor: w.colors[0] }]} />
-                            <View style={[styles.wallHalf, { backgroundColor: w.colors[1] }]} />
-                          </>
-                        )}
+                      <View style={[styles.wallSwatch, w.color ? { backgroundColor: w.color } : null]}>
+                        <DiamondBackground />
                       </View>
                     </View>
                     <Text style={[styles.wallLabel, on && styles.wallLabelOn]}>{w.label}</Text>
@@ -485,9 +476,7 @@ const styles = themed(() =>
       borderRadius: Shape.radius + WALL_RING.gap + WALL_RING.width,
     },
     wallRingOn: { borderColor: Romance.accent },
-    wallSwatch: { width: 52, height: 88, borderRadius: Shape.radius, overflow: 'hidden' },
-    wallPaper: { flex: 1, backgroundColor: Romance.bg },
-    wallHalf: { flex: 1 },
+    wallSwatch: { width: 52, height: 88, borderRadius: Shape.radius, overflow: 'hidden', backgroundColor: Romance.bg },
     wallLabel: { fontSize: 11, color: Romance.sub, textAlign: 'center', marginTop: 4 },
     wallLabelOn: { color: Romance.accent },
     about: {
