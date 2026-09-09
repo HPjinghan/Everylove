@@ -4,7 +4,7 @@
 > 族谱：c.ai 的皮 · 乙游的心脏 · 短剧的钱包 · 独有器官 = 主动性。
 > 一句话：c.ai 证明了胃口，乙游证明了付费，没人把两者接起来过。
 
-* 状态（2026-09-09）：试装 v0.2——手机壳桌面 + 12 个模块可跑，全部界面已按纸面设计系统重做，TestFlight 构建号 3 在测；最近一条决策 D-105。**本文件只写现行口径**：每条决策的理由、编号索引、被推翻的历史都在 `docs/DECISIONS.md`（按主题合并的总账，头部有 D-编号索引），合并前的逐条原文冻结在 `docs/archive/`。
+* 状态（2026-09-09）：试装 v0.2——手机壳桌面 + 12 个模块可跑，全部界面已按纸面设计系统重做，TestFlight 构建号 3 在测；最近一条决策 D-106。**本文件只写现行口径**：每条决策的理由、编号索引、被推翻的历史都在 `docs/DECISIONS.md`（按主题合并的总账，头部有 D-编号索引），合并前的逐条原文冻结在 `docs/archive/`。
 * 本文档是产品的单一事实来源。**执行任何任务时产生的新设计决策，必须当次写进文档**（见「工作规则」）。
 * 本项目与团队其他产品无关，不引入其他项目的术语与范式。
 
@@ -46,7 +46,7 @@
 9. **创造**：**描述导入**（≤2000 字，自动解析成表单，AI 不可用回落规则解析）+ 表单——名字 / 性别 / 长相 / 背景 / **年龄状态**（必选，未成年不能发布 #18）/ **形象必选**（上传图 或 生成立绘，不收真人照片）/ **画风八选一**（动漫走蒸汽机约 10 秒、其余 qwen-image 约 1 分钟；立绘与外出拍照共用）/ **谁能遇到 TA**（私密 / 公开 → 共享池）；高级：种族 / 生日 / 口癖 / 喜欢 / 讨厌 / 确定关系节奏 / 恋爱类型 14 种 / MBTI / 聊天设定 / 作息 / 预设共同记忆 / 主动联系强度 / 禁忌 / 隐藏设定（LV3 起逐级解锁，未解锁不进 prompt）。发布时模型写一次 **TA 的台词**（开场白 / 想确定关系时 / 确定关系后前三条 / 一句人设 / 追法），写不成回落原型兜底。**我创建的**：独立列表页（创造页顶栏右侧入口、设置也能进），编辑回填全部字段与台词、可让 TA 重写；自编辑即时生效于自己的实例，他人领养快照不变。
 10. **记事本**：她自己的本子，列表 + 全屏编辑；**私密**——只有「让 TA 看我的手机」时 TA 才读到（§7 可选日记通道），并进记忆。
 11. **查手机**：每个缔结的 TA 一部手机。「看 TA 的手机」= iPhone 式锁屏（同 Message「+」；「问 TA 要密码」后锁屏不关，TA 的回复原地以气泡显示）→ TA 的**记事本**（TA 自己的日子：工作、朋友、家人、爱好、小麻烦，身边的人前后一致；她出现多少按「她在 TA 心里的分量」——恋爱脑常常是她、冷静的人偶尔一笔；按 MBTI 频率写，I 比 E 勤；锁着的页 = 隐藏设定）+ **日历**（约定 + TA 生日）+ **Message**（和她的对话）+ **相册**。「让 TA 看我的手机」：先弹二次确认（会读到什么、看完会发消息、不可撤回），TA 翻她的记事本与她和其他 TA 的近期聊天，发 1–2 句（只说自己感受、不审问不愧疚绑架、其他真人一字不评、记事本先过暗面路由）。「被发现」留 #19。
-12. **设置**：账号 · 云端（登录 / 立即备份 / 从云端恢复 / 退出 / 删除云端数据）、语言、我的身份、主题（配色 4 套 + 纸面默认；壁纸 = 纸面 + 5 款换色、暗纹常在）、订阅计划（试装模拟；槽位超额时数值标 accent 并说明不能再新增）、素材开关、我的创作、开发者（只读 AI 引擎与取路、记忆库查看、立绘重画、重置）。
+12. **设置**：账号 · 云端（登录 / 立即备份 / 从云端恢复 / 退出 / 删除云端数据）、语言、我的身份、主题（配色 4 套 + 纸面默认；壁纸 = 纸面 + 5 款换色、暗纹常在）、订阅计划（试装模拟；槽位超额时数值标 accent 并说明不能再新增）、素材开关、我的创作、开发者（**AI 引擎点选切换**（本机偏好）、取路只读、记忆库查看、立绘重画、重置）。
 
 **关键流**：
 
@@ -117,7 +117,7 @@ onboarding（语言 → 先让 TA 们认识你；第一步底部「已有账号�
 * **客户端**：Expo **SDK 57**（2026-09-09 自 54 升级，D-102；RN 0.86 / React 19.2 / TS 6，只有新架构；升 SDK 走 `expo install expo@<ver>` → `expo install --fix` → `expo-doctor`）+ React Native + TypeScript，expo-router；**只做 iOS**；试装 Expo Go（`npx expo start` 扫码）。界面强制浅色。
 * **分发**：Expo Go 朋友试装 = EAS Update `preview` 渠道（发布时置空 AI key）；TestFlight = EAS Build `production` 档 → `eas submit`（`eas.json`，bundle id `com.kotoko.everylove`，构建号远程自增，`--auto-submit`）。动了 app.json 插件 / 原生依赖必须重新 build + submit；JS 改动 `eas update --channel production` 热更。步骤见 `docs/RELEASE.md`。
 * **目录**：`core/`（底座：registry / hooks / config / providers / prompt / modes / markers / cards / jobs / turn）+ `features/`（一个玩法一个文件，`features/index.ts` 启动清单）+ `lib/`（chat 会话入口、engine 门面、memory、media、tts、imagegen、outing、appointments、call、posts、his-notes、phone、pool、auth、sync、proxy、weather、i18n、bond、recommend）+ `content/`（`characters/` 三语种子与脚本、`prompts/` 一用途一文件、`places` / `calendar` / `portraits`）+ `store/app-store.ts`（zustand + AsyncStorage，persist v5）+ `app/`（桌面 `index.tsx`、`apps/*` 模块、`chat` / `bond` / `outing` / `call` / `adopt` / `auth` / `onboarding` / `weather`）+ `components/`。手册 `docs/ARCHITECTURE.md`。
-* **AI 取路**：本地 key 直连（`.env.local`：`EXPO_PUBLIC_ANTHROPIC_API_KEY` / `EXPO_PUBLIC_QIANFAN_API_KEY`，可选 `EXPO_PUBLIC_AI_ENGINE`）> 有会话走服务端代理（`supabase/functions/ai`，真账号或匿名游客，每人每日 500 次）> 不可用抛错——**失败不回落，直接在会话里露出原因**。供应商 anthropic / qianfan（千帆 v2 OpenAI 兼容，模型默认 `deepseek-v4-pro`）在 `features/providers.ts` 注册。暗面路由、尺度、无 PUA 在引擎入口执行，任何供应商不可绕过。
+* **AI 取路**：本地 key 直连（`.env.local`：`EXPO_PUBLIC_ANTHROPIC_API_KEY` / `EXPO_PUBLIC_QIANFAN_API_KEY`，可选 `EXPO_PUBLIC_AI_ENGINE`；设置 → 开发者可点选供应商覆盖，只存本机）> 有会话走服务端代理（`supabase/functions/ai`，真账号或匿名游客，每人每日 500 次）> 不可用抛错——**失败不回落，直接在会话里露出原因**。供应商 anthropic / qianfan（千帆 v2 OpenAI 兼容，模型默认 `deepseek-v4-pro`）在 `features/providers.ts` 注册。暗面路由、尺度、无 PUA 在引擎入口执行，任何供应商不可绕过。
 * **对话**：四模式（初识 / 亲密 / 外出 / 通话）各自独立 prompt，系统 prompt 按分段表装配（`core/prompt.ts`，分段在 `features/prompts.ts` 声明）；聊天两模式纯打字感（禁（），`stripStageDirections` 兜底）、1-2 句短句口语、亲密可拆两条气泡；外出独享（）描写、不分条；输出语言按界面语言。上下文 = 最近 20 轮（`HISTORY_ROUNDS`）；语音 / 照片 / 卡片经 `messageContextText` 进上下文。
 * **记忆**：`lib/memory.ts` mem0 式本地实现，`Bond.memory = { facts ≤30, summary }`，每 3 个用户轮次后台提取、旧对话滚进摘要，注入亲密 / 外出 / 通话；外出对话、电话、爽约、她的记事本也并入。**只有羁绊层有记忆**。正式版切自托管 mem0，接口不变。
 * **语音**：她的语音 → OpenAI 兼容通道优先（Whisper 协议，`EXPO_PUBLIC_SPEECH_*`，中 / 英 / 日）→ 回落百度 ASR（同一把千帆 key，不支持日语，#25）；TA 的语音 → OpenAI 兼容 `/audio/speech` 或百度 `text2audio`（音色按人称 4193 / 4194 / 4115）；`shouldSendVoice` 决定 TA 偶尔发语音。通话页 `app/call/[characterId].tsx` 管线式；端到端实时语音等 dev build（#26）。
@@ -127,4 +127,4 @@ onboarding（语言 → 先让 TA 们认识你；第一步底部「已有账号�
 * **关系数据**：心动值 `SquareChat.heart`（试聊 / 广场 / 自创暧昧期共用），配对 3 天过期（自创不过期）；羁绊 `Bond`（`affinity` XP、`memory`、`notes` TA 的记事本、`phoneCode` / `phoneUnlocked`、`birthday` 回落）；曲线与槽位在 `lib/bond.ts`；约定 `store.outingPlans`（`at` / `source`，窗口前 2h～后 3h，`lib/appointments.ts`）；外出 `store.outingSession`（一小时冷却）；相册 `store.album`；发帖 / 记事本各一只钟（`postSchedule` / `noteSchedule`，MBTI 定频）；桌面 `desktopSlots` / `desktopDock`；身份 `me` / `meByCharacter`；语言 `language`；主题 `themeId`（新装机 paper）。
 * **i18n**：`lib/i18n.ts` 中文原文即键，`t()` + en / ja / ko 词典（尾部各自哨兵前追加），缺词回落中文；日期 / 数字格式化统一 `localeOf()`；切换全局 remount；内容层四语（中 / 英 / 日 / 韩）见 `content/characters/`，韩语与日 / 英一样待母语写手润色（#23）；百度语音不支持日 / 韩，走 OpenAI 兼容通道。
 * **设计系统**：Claude Design 原文 `design/design-system.page.html`，全屏设计稿 `design/Everylove Paper UI.html` + 说明 `design/README.md`；色彩 = `THEMES.paper`，规格 = `constants/design.ts`；27 屏已全部按设计稿重做（D-100）：primitive = `AppScreen` / `HeaderAction`、`Card` / `Divider`、`Button`、`Chip` / `Segmented`、`Field` / `Input`、`DiamondBackground` / `ChatWallpaper`、`CharAvatar`（方块 r6 + 衬线首字）、`Polaroid`、`showToast`；palette 外只允许通话深底与 TA 记事本米色。App 图标 / 启动图 / favicon 由 `scripts/logo/render.mjs` 从 SVG 渲染（纸面粉底 + 微倾的小手机、不写字，D-103），改图只改脚本再重出。
-* **测试与工具**：`npm test`（vitest：prompt 快照 + 回合管线 + 引擎工具 + 本地化 + 词典覆盖 + 台词 + 同步决策）、`npm run typecheck`、`npm run lint`（含 React Compiler 的 hooks 规则：渲染期不读 ref、effect 里不同步 setState、渲染期无 `Date.now()`——`reactCompiler` 已开，这些规则真修不关；Animated 值用 `useAnimatedValue` / `useAnimatedValueXY`）；设置 → 开发者：只读引擎与取路、记忆库查看（可强制提取）、立绘生成 / 重画、重置。
+* **测试与工具**：`npm test`（vitest：prompt 快照 + 回合管线 + 引擎工具 + 本地化 + 词典覆盖 + 台词 + 同步决策）、`npm run typecheck`、`npm run lint`（含 React Compiler 的 hooks 规则：渲染期不读 ref、effect 里不同步 setState、渲染期无 `Date.now()`——`reactCompiler` 已开，这些规则真修不关；Animated 值用 `useAnimatedValue` / `useAnimatedValueXY`）；设置 → 开发者：引擎点选切换、取路只读、记忆库查看（可强制提取）、立绘生成 / 重画、重置。

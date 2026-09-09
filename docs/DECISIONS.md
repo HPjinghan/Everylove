@@ -148,7 +148,7 @@
 ## B. AI 供给
 
 ### B1 · 聊天引擎与取路
-- **现行**：`lib/engine.ts` 是 ChatEngine 门面（组历史 → `core/providers.completeChat` → 拆气泡 → 剥暗号）；供应商 **anthropic（Claude）/ qianfan（百度千帆 v2 OpenAI 兼容接口，模型默认 `deepseek-v4-pro`，`EXPO_PUBLIC_QIANFAN_MODEL` 可换）** 在 `features/providers.ts` 注册，再接一家 = 再注册一个。**引擎与 key 只读工程配置** `.env.local`（不进 git，模板 `.env.example`；`EXPO_PUBLIC_AI_ENGINE` 可选引擎，不填有 Claude key 用 Claude 否则千帆）。**取路** `aiRoute()`：本地 key 直连 > 有会话（真账号或匿名游客）走服务端代理 > 不可用抛 `AiUnavailableError`。**失败不回落、直接露出**：聊天 / 羁绊 / 外出插系统消息「模型调用失败，TA 这条没回上：{原因}」（她的消息与心动 / XP 照常，该回合不触发 offer）；X 回帖弹窗露原因；后台任务（发帖 / 记忆 / 记事本）静默记 warn。暗面路由、尺度、无 PUA 在引擎入口执行，任何供应商不可绕过。设置 → 开发者只读显示引擎与取路。
+- **现行**：`lib/engine.ts` 是 ChatEngine 门面（组历史 → `core/providers.completeChat` → 拆气泡 → 剥暗号）；供应商 **anthropic（Claude）/ qianfan（百度千帆 v2 OpenAI 兼容接口，模型默认 `deepseek-v4-pro`，`EXPO_PUBLIC_QIANFAN_MODEL` 可换）** 在 `features/providers.ts` 注册，再接一家 = 再注册一个。**引擎与 key 只读工程配置** `.env.local`（不进 git，模板 `.env.example`；`EXPO_PUBLIC_AI_ENGINE` 可选引擎，不填有 Claude key 用 Claude 否则千帆）。**手动切换（D-106）**：设置 → 开发者点「AI 引擎」弹出已注册供应商（各标 直连 / 代理 / 不可用）与「跟随配置」；选定后 `core/providers.setChatProviderPreference` 立即生效，`lib/engine.setEnginePreference` 落本机 AsyncStorage（`everylove-engine-pref`），启动 `loadEnginePreference` 读回；优先级 指定 id > 运行期偏好 > `EXPO_PUBLIC_AI_ENGINE` > 第一个有 key 的 > 默认千帆。偏好不是用户数据：不进 store、不进云端快照（延续 D-069 口径）。**取路** `aiRoute()`：本地 key 直连 > 有会话（真账号或匿名游客）走服务端代理 > 不可用抛 `AiUnavailableError`。**失败不回落、直接露出**：聊天 / 羁绊 / 外出插系统消息「模型调用失败，TA 这条没回上：{原因}」（她的消息与心动 / XP 照常，该回合不触发 offer）；X 回帖弹窗露原因；后台任务（发帖 / 记忆 / 记事本）静默记 warn。暗面路由、尺度、无 PUA 在引擎入口执行，任何供应商不可绕过。设置 → 开发者只读显示引擎与取路。
 - **编号**：D-004 → D-010 → D-057 → D-069 → D-086 → D-088a。
 - **曾经**：D-004 MockEngine 默认 + 开发者面板手填 key；D-010 「无 key 或失败回落 mock」；D-069 删了脚本引擎（**角色台词库 `scriptFor` 保留**——那是产品触发器与人设内容，不是 mock）。
 
