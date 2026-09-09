@@ -41,7 +41,7 @@ function phone(cx, top, w, h, stroke) {
   const sx = x + inset, sy = top + inset, sw = w - inset * 2, sh = h - inset * 2, rScreen = Math.round(rShell * 0.72);
   const islandW = Math.round(w * 0.3), islandH = Math.round(w * 0.075);
   const homeW = Math.round(w * 0.32), homeH = Math.round(w * 0.024);
-  const heartSize = Math.round(sw * 0.62);
+  const heartSize = Math.round(sw * 0.66);
   const scale = heartSize / 24;
   const hx = cx - heartSize / 2, hy = sy + sh * 0.5 - heartSize / 2 + islandH * 0.4;
   const hlR = heartSize * 0.07;
@@ -57,10 +57,10 @@ function phone(cx, top, w, h, stroke) {
     <rect x="${cx - homeW / 2}" y="${sy + sh - homeH * 2.6}" width="${homeW}" height="${homeH}" rx="${homeH / 2}" fill="${ink}"/>`;
 }
 
-function iconSvg({ size = 1024, wordmark = true, background = true } = {}) {
+function iconSvg({ size = 1024, wordmark = false, background = true, tilt = -8 } = {}) {
   const stroke = Math.round(size * 0.0098);
   // 有字标：手机偏上；无字标：居中
-  const pw = Math.round(size * (wordmark ? 0.36 : 0.44));
+  const pw = Math.round(size * (wordmark ? 0.36 : 0.46));
   const ph = Math.round(pw * 1.78);
   const top = wordmark ? Math.round(size * 0.1) : Math.round((size - ph) / 2);
   const cx = size / 2;
@@ -71,10 +71,13 @@ function iconSvg({ size = 1024, wordmark = true, background = true } = {}) {
     ${diamond('screenDots', accent, 0.05, size * 0.022, size * 0.0016)}
   </defs>
   ${background ? `<rect width="${size}" height="${size}" fill="${paper}"/><rect width="${size}" height="${size}" fill="url(#bgDots)"/>` : ''}
-  ${sparkle(cx + pw * 0.62, top + ph * 0.12, size * 0.034, accent)}
-  ${sparkle(cx - pw * 0.66, top + ph * 0.7, size * 0.024, primary)}
-  ${sparkle(cx + pw * 0.7, top + ph * 0.62, size * 0.016, primary)}
-  ${phone(cx, top, pw, ph, stroke)}
+  <!-- 手机连同小星一起微微右倾（D-103：无字标、有斜度更可爱） -->
+  <g transform="rotate(${tilt} ${cx} ${size / 2})">
+    ${sparkle(cx + pw * 0.66, top + ph * 0.1, size * 0.036, accent)}
+    ${sparkle(cx - pw * 0.68, top + ph * 0.72, size * 0.026, primary)}
+    ${sparkle(cx + pw * 0.72, top + ph * 0.64, size * 0.016, primary)}
+    ${phone(cx, top, pw, ph, stroke)}
+  </g>
   ${wordmark ? `<text x="${cx}" y="${Math.round(size * 0.905)}" text-anchor="middle" font-family="Fredoka" font-weight="600" font-size="${fontSize}" letter-spacing="${-fontSize * 0.02}" fill="${ink}">everylove</text>` : ''}
 </svg>`;
 }
@@ -99,9 +102,9 @@ function render(svg, width, file) {
   console.log(path.basename(file), width, png.length, 'bytes');
 }
 
-const scratch = path.dirname(fileURLToPath(import.meta.url));
+const scratch = process.env.TEMP ?? process.env.TMPDIR ?? '.';
 fs.writeFileSync(path.join(scratch, 'icon.svg'), iconSvg());
 render(iconSvg(), 1024, path.join(OUT, 'icon.png'));
-render(iconSvg({ wordmark: false }), 96, path.join(OUT, 'favicon.png'));
+render(iconSvg(), 96, path.join(OUT, 'favicon.png'));
 render(splashSvg(), 600, path.join(OUT, 'splash-icon.png'));
 render(iconSvg(), 256, path.join(scratch, 'icon-preview.png'));
