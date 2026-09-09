@@ -3,6 +3,12 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 
+import '@/features';
+
+import { applyReplyMarkers, buildTurns, HISTORY_ROUNDS, splitBubbles, stripStageDirections } from '@/lib/engine';
+import { history, NOW } from './fixtures';
+
+// vitest 会把 vi.mock 提升到文件顶部，写在 import 之后只是为了过 import/first
 vi.mock('@/lib/proxy', () => ({
   proxyAvailable: async () => false,
   proxyReadySync: () => false,
@@ -10,11 +16,6 @@ vi.mock('@/lib/proxy', () => ({
     throw new Error('no proxy in tests');
   },
 }));
-
-import '@/features';
-
-import { applyReplyMarkers, buildTurns, HISTORY_ROUNDS, splitBubbles, stripStageDirections } from '@/lib/engine';
-import { history, NOW } from './fixtures';
 
 describe('buildTurns', () => {
   it('系统条不进；同角色合并；首条必须是 user；本轮消息去重', () => {

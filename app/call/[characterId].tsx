@@ -63,6 +63,9 @@ export default function CallScreen() {
   const alive = useRef(true);
   const connectedAt = useRef(0);
   const speechStarted = useRef(false);
+  // 渲染只读 state：这两个是 connectedAt / speechStarted 的镜像，写 ref 的地方同步写它们（管线逻辑仍看 ref）
+  const [connected, setConnected] = useState(false);
+  const [heard, setHeard] = useState(false);
   const lastLoudAt = useRef(0);
   const turnBusy = useRef(false);
   const phaseRef = useRef<Phase>('dialing');
@@ -78,6 +81,19 @@ export default function CallScreen() {
     }, 1000);
     return () => clearInterval(id);
   }, []);
+
+  /* ── 开始听她说 ── */
+  const listen = useCallback(async () => {
+    if (!alive.current) return;
+    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+    await recorder.prepareToRecordAsync();
+    recorder.record();
+    speechStarted.current = false;
+    setHeard(false);
+    lastLoudAt.current = Date.now();
+    setNote('');
+    setPhaseSafe('listening');
+  }, [recorder]);
 
   /* ── 播放 TA 的话（合成失败就只显示字幕，停 2.5 秒再听） ── */
   const speak = useCallback(
@@ -99,20 +115,8 @@ export default function CallScreen() {
       player.play();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [character]
+    [character, listen]
   );
-
-  /* ── 开始听她说 ── */
-  const listen = useCallback(async () => {
-    if (!alive.current) return;
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-    await recorder.prepareToRecordAsync();
-    recorder.record();
-    speechStarted.current = false;
-    lastLoudAt.current = Date.now();
-    setNote('');
-    setPhaseSafe('listening');
-  }, [recorder]);
 
   /* ── 她说完了：停录 → 识别 → TA 回 → 播放 ── */
   const endTurn = useCallback(async () => {
@@ -155,6 +159,8 @@ export default function CallScreen() {
     const db = rec.metering ?? -160;
     if (db > VAD.speechDb) {
       speechStarted.current = true;
+      // 镜像写在 effect 之后的微任务里（规则不许 effect 体内同步 setState）；ref 仍当场置位，断句逻辑不受影响
+      queueMicrotask(() => setHeard(true));
       lastLoudAt.current = now;
     }
     if (speechStarted.current && now - lastLoudAt.current > VAD.hangMs) void endTurn();
@@ -192,6 +198,7 @@ export default function CallScreen() {
         const line = await callPickupLine(bond.id);
         if (cancelled) return;
         connectedAt.current = Date.now();
+        setConnected(true);
         await speak(line);
       } catch (e) {
         if (cancelled) return;
@@ -255,7 +262,7 @@ export default function CallScreen() {
         <Text style={styles.name}>{bond.name}</Text>
         <View style={styles.statusRow}>
           <Text style={styles.status}>{statusText}</Text>
-          {connectedAt.current ? (
+          {connected ? (
             <>
               <Text style={styles.status}> · </Text>
               <Text style={styles.statusTime}>{formatCallDuration(elapsed)}</Text>
@@ -273,8 +280,8 @@ export default function CallScreen() {
         {note ? <Text style={styles.note}>{note}</Text> : null}
         {phase === 'listening' ? (
           <View style={styles.meter}>
-            <View style={[styles.meterDot, speechStarted.current && styles.meterDotOn]} />
-            <Text style={styles.meterText}>{speechStarted.current ? t('听到了') : t('说话吧')}</Text>
+            <View style={[styles.meterDot, heard && styles.meterDotOn]} />
+            <Text style={styles.meterText}>{heard ? t('听到了') : t('说话吧')}</Text>
           </View>
         ) : null}
       </View>
@@ -293,6 +300,7 @@ export default function CallScreen() {
           disabled={phase !== 'listening'}
           onPress={() => {
             speechStarted.current = true;
+            setHeard(true);
             void endTurn();
           }}>
           <Text style={styles.sideBtnText}>{t('说完了')}</Text>

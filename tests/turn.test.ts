@@ -4,6 +4,14 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import '@/features';
+
+import { chatProviders, type ChatRequest } from '@/core/providers';
+import { sendText } from '@/core/turn';
+import { HEART_FULL } from '@/lib/bond';
+import { useAppStore } from '@/store/app-store';
+
+// vitest 会把 vi.mock 提升到文件顶部，写在 import 之后只是为了过 import/first
 vi.mock('@/lib/proxy', () => ({
   proxyAvailable: async () => false,
   proxyReadySync: () => false,
@@ -11,13 +19,6 @@ vi.mock('@/lib/proxy', () => ({
     throw new Error('no proxy in tests');
   },
 }));
-
-import '@/features';
-
-import { chatProviders, type ChatRequest } from '@/core/providers';
-import { sendText } from '@/core/turn';
-import { HEART_FULL } from '@/lib/bond';
-import { useAppStore } from '@/store/app-store';
 
 let lastReq: ChatRequest | null = null;
 let nextReply = '嗯，我在。';

@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text } from 'react-native';
+import { Animated, StyleSheet, Text, useAnimatedValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Shape } from '@/constants/design';
@@ -19,7 +19,7 @@ export function showToast(text: string): void {
 export function ToastHost() {
   const insets = useSafeAreaInsets();
   const [text, setText] = useState<string | null>(null);
-  const opacity = useRef(new Animated.Value(0)).current;
+  const opacity = useAnimatedValue(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {

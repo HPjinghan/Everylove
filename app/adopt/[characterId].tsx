@@ -8,7 +8,7 @@
 
 import * as Haptics from 'expo-haptics';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Animated,
   KeyboardAvoidingView,
@@ -17,6 +17,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useAnimatedValue,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -201,8 +202,12 @@ function Ceremony({
         t('你出现在了 TA 的通讯录里'),
         t('TA 给你的备注是——「{nickname}」', { nickname }),
       ];
-  const fades = useRef(lines.map(() => new Animated.Value(0))).current;
-  const heart = useRef(new Animated.Value(0)).current;
+  // 三行显影各一只 Animated 值（仪式固定三行，hook 个数固定）+ 心跳一只
+  const fade0 = useAnimatedValue(0);
+  const fade1 = useAnimatedValue(0);
+  const fade2 = useAnimatedValue(0);
+  const fades = [fade0, fade1, fade2];
+  const heart = useAnimatedValue(0);
   const [done, setDone] = useState(false);
 
   useEffect(() => {

@@ -18,12 +18,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
+  type GestureResponderEvent,
   Modal,
-  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  useAnimatedValueXY,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -54,6 +55,18 @@ const INITIAL_CIRCLE = 236;
 const INITIAL_CIRCLE_COMPACT = 112;
 /** 略过后行内 toast 的停留时长 */
 const PASS_TOAST_MS = 3000;
+/** 滑卡手势：横向位移超过这个值才接管手势 */
+const SWIPE_START_PX = 8;
+/** 松手时横向位移超过这个值 = 飞出，否则弹回 */
+const SWIPE_COMMIT_PX = 100;
+
+/**
+ * 本轮是否已把整池划完（D-042）：是 → 视为重开一轮，已滑列表按空算。
+ * 牌堆派生与写入都走这一个口径，全划完时不出空牌堆、也不需要 effect 去清状态。
+ */
+function roundDone(poolIds: string[], swiped: string[]): boolean {
+  return poolIds.length > 0 && poolIds.every((id) => swiped.includes(id));
+}
 
 /** 偏好选项（D-049）：与 onboarding 第一问同一套口味 */
 const PREFS: { key: LovePref; label: string }[] = [
@@ -154,8 +167,10 @@ export default function DatingScreen() {
   const passTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 飞出动画锁：动画期间不响应再次滑动
   const animating = useRef(false);
+  // 手势原点：触摸落下时记一次，接管手势时再归零（同 PanResponder：dx 从接管点起算）
+  const gestureOrigin = useRef({ x: 0, y: 0 });
   const [deckH, setDeckH] = useState(0);
-  const pan = useRef(new Animated.ValueXY()).current;
+  const pan = useAnimatedValueXY({ x: 0, y: 0 });
 
   useEffect(
     () => () => {
@@ -169,7 +184,8 @@ export default function DatingScreen() {
   // 牌堆：没加好友、没配对的（预告卡不进牌堆——右滑必成，配了要能聊）。
   // 顺序走推荐算法（D-041）：口味 / 热度 / 新面孔 / 自创 / 每日轮换 / 略过冷却。
   // 冷却只在供给充足时生效（D-042）：全池都被略过时忽略冷却直接回流，不用等 3 天。
-  const { deck, poolCount } = useMemo(() => {
+  // 全划完自动回流（D-042）：本次全滑过但池子还有人 → 渲染期直接视为重开一轮，不出空牌堆。
+  const { deck, poolCount, poolIds } = useMemo(() => {
     // 偏好过滤（D-049）：口味不再只是排序加权，而是直接筛（「都可以」看全部）；
     // 共享池（D-060）：别人公开的角色合入同一池、同一套打分（本地已有同 id 的不重复）
     const remote = sharedPool.filter((c) => !customs.some((x) => x.id === c.id));
@@ -181,7 +197,9 @@ export default function DatingScreen() {
         !squareChats[c.id] &&
         (!lovePref || lovePref === 'any' || c.loveTag === lovePref)
     );
-    const available = pool.filter((c) => !swipedIds.includes(c.id));
+    const ids = pool.map((c) => c.id);
+    const swiped = roundDone(ids, swipedIds) ? [] : swipedIds;
+    const available = pool.filter((c) => !swiped.includes(c.id));
     const ample = hasFreshSupply(pool, datingPasses);
     return {
       deck: rankDeck(available, {
@@ -190,13 +208,13 @@ export default function DatingScreen() {
         knownIds: new Set([...Object.keys(squareChats), ...bondedIds]),
       }),
       poolCount: pool.length,
+      poolIds: ids,
     };
   }, [customs, sharedPool, bondedIds, squareChats, swipedIds, lovePref, datingPasses, language]);
 
-  // 全划完自动回流（D-042）：本次全滑过但池子还有人 → 重开一轮，不出空牌堆
-  useEffect(() => {
-    if (deck.length === 0 && poolCount > 0) setSwipedIds([]);
-  }, [deck.length, poolCount]);
+  // 已滑列表的写入口径与牌堆派生一致：上一轮已把整池划完 → 先按重开一轮算，再记这一次
+  const recordSwipe = (id: string) =>
+    setSwipedIds((prev) => [...(roundDone(poolIds, prev) ? [] : prev), id]);
 
   const top = deck[0];
   const next = deck[1];
@@ -241,13 +259,13 @@ export default function DatingScreen() {
     const c = passed;
     if (!c) return;
     clearPassToast();
-    setSwipedIds((prev) => prev.filter((id) => id !== c.id));
+    setSwipedIds((prev) => (roundDone(poolIds, prev) ? [] : prev).filter((id) => id !== c.id));
     useAppStore.getState().unmarkDatingPass(c.id);
   };
 
   const completeSwipe = (c: Character, liked: boolean) => {
     pan.setValue({ x: 0, y: 0 });
-    setSwipedIds((prev) => [...prev, c.id]);
+    recordSwipe(c.id);
     if (liked) {
       // 右滑心动：TA 一定会同意——当场配对，等她去打招呼
       clearPassToast();
@@ -271,29 +289,39 @@ export default function DatingScreen() {
     }).start(() => completeSwipe(top, dir === 1));
   };
 
-  const topId = top?.id;
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_e, g) =>
-          !animating.current && Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
-        onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
-          useNativeDriver: false,
-        }),
-        onPanResponderRelease: (_e, g) => {
-          if (Math.abs(g.dx) > 100) {
-            flyOut(g.dx >= 0 ? 1 : -1);
-          } else {
-            Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
-          }
-        },
-        onPanResponderTerminate: () => {
-          Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
-        },
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [topId]
-  );
+  // 滑卡手势：直接挂 responder 回调（等价于 PanResponder：落下记原点、横向超阈值接管、接管点归零起算 dx）。
+  // 回调只在手势事件里读 ref，渲染期不碰 .current。
+  const gestureDelta = (e: GestureResponderEvent) => ({
+    dx: e.nativeEvent.pageX - gestureOrigin.current.x,
+    dy: e.nativeEvent.pageY - gestureOrigin.current.y,
+  });
+  const markOrigin = (e: GestureResponderEvent) => {
+    gestureOrigin.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+  };
+  const springBack = () => {
+    Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
+  };
+  const onStartShouldSetResponderCapture = (e: GestureResponderEvent) => {
+    if (e.nativeEvent.touches.length === 1) markOrigin(e);
+    return false;
+  };
+  const onMoveShouldSetResponder = (e: GestureResponderEvent) => {
+    const { dx, dy } = gestureDelta(e);
+    return !animating.current && Math.abs(dx) > SWIPE_START_PX && Math.abs(dx) > Math.abs(dy);
+  };
+  const onResponderGrant = (e: GestureResponderEvent) => {
+    markOrigin(e);
+    return true;
+  };
+  const onResponderMove = (e: GestureResponderEvent) => {
+    const { dx, dy } = gestureDelta(e);
+    pan.setValue({ x: dx, y: dy });
+  };
+  const onResponderRelease = (e: GestureResponderEvent) => {
+    const { dx } = gestureDelta(e);
+    if (Math.abs(dx) > SWIPE_COMMIT_PX) flyOut(dx >= 0 ? 1 : -1);
+    else springBack();
+  };
 
   const rotate = pan.x.interpolate({
     inputRange: [-SCREEN_W, 0, SCREEN_W],
@@ -317,7 +345,7 @@ export default function DatingScreen() {
 
   // 瀑布流模式（D-049）：点卡 = 心动（TA 一定会同意），与右滑同效
   const tapMatch = (c: Character) => {
-    setSwipedIds((prev) => [...prev, c.id]);
+    recordSwipe(c.id);
     useAppStore.getState().ensureSquareChat(c.id);
     setMatch(c);
   };
@@ -410,7 +438,12 @@ export default function DatingScreen() {
                   styles.card,
                   { width: cardW, transform: [...pan.getTranslateTransform(), { rotate }] },
                 ]}
-                {...panResponder.panHandlers}>
+                onStartShouldSetResponderCapture={onStartShouldSetResponderCapture}
+                onMoveShouldSetResponder={onMoveShouldSetResponder}
+                onResponderGrant={onResponderGrant}
+                onResponderMove={onResponderMove}
+                onResponderRelease={onResponderRelease}
+                onResponderTerminate={springBack}>
                 <DeckCard c={top} position={position} />
                 {/* 印章跟手浮现：右 = 心动（必成），左 = 略过 */}
                 <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeStamp }]}>
@@ -548,7 +581,7 @@ const styles = themed(() =>
     // 卡面：白卡描边 r6（Card），内部裁切
     deckCard: { flex: 1, overflow: 'hidden' },
     deckTop: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    deckPortrait: { ...StyleSheet.absoluteFillObject },
+    deckPortrait: { ...StyleSheet.absoluteFill },
     deckCircle: {
       width: INITIAL_CIRCLE,
       height: INITIAL_CIRCLE,
@@ -645,7 +678,7 @@ const styles = themed(() =>
     prefTitle: { fontSize: 15, fontWeight: '600', color: Romance.ink, marginBottom: 12 },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     matchOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: Romance.bg,
       alignItems: 'center',
       justifyContent: 'center',

@@ -32,10 +32,21 @@ import { findCharacter, SQUARE_CHAT_TTL_MS, useAppStore } from '@/store/app-stor
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** 配对倒计时（D-100）：还剩 N 天 = 配对时限的天数 − 距上次说话的整天数，最少 1 */
-function daysLeft(lastActiveAt: number): number {
+/** 渲染期只读它的「现在」：每分钟刷新一次（渲染里不直接叫 Date.now） */
+function useNow(intervalMs = 60_000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
+/** 配对倒计时（D-100）：还剩 N 天 = 配对时限的天数 − 距上次说话的整天数，最少 1；
+ * now 最多晚 1 分钟，刚说完话时 lastActiveAt 可能比它新，经过天数钳到 0 */
+function daysLeft(lastActiveAt: number, now: number): number {
   const total = Math.round(SQUARE_CHAT_TTL_MS / DAY_MS);
-  const elapsed = Math.floor((Date.now() - lastActiveAt) / DAY_MS);
+  const elapsed = Math.max(0, Math.floor((now - lastActiveAt) / DAY_MS));
   return Math.max(1, total - elapsed);
 }
 
@@ -48,6 +59,7 @@ export default function SquareChatScreen() {
   const bond = useAppStore((s) => s.bonds.find((b) => b.characterId === characterId));
   const [typing, setTyping] = useState(false);
   const booted = useRef(false);
+  const now = useNow();
 
   // 进场：过期判定 + 他先开口
   useEffect(() => {
@@ -98,7 +110,7 @@ export default function SquareChatScreen() {
   const offered = chat?.adoptionOffered;
   // 满 100 之后吸顶条保持满格
   const heart = offered ? HEART_FULL : Math.min(HEART_FULL, chat?.heart ?? 0);
-  const left = daysLeft(chat?.lastActiveAt ?? Date.now());
+  const left = daysLeft(chat?.lastActiveAt ?? now, now);
   const lastDay = left <= 1;
   // 「还剩 N 天」：数字用 Fredoka，所以按 {n} 把译文拆成前后两段
   const [leftBefore, leftAfter] = t('还剩 {n} 天').split('{n}');

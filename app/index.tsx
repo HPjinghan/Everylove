@@ -16,7 +16,7 @@
 
 import * as Haptics from 'expo-haptics';
 import { Redirect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   LayoutAnimation,
@@ -25,10 +25,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useAnimatedValue,
+  useAnimatedValueXY,
   useWindowDimensions,
   View,
+  type GestureResponderHandlers,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type PanResponderCallbacks,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -78,6 +82,39 @@ function useClock(): { time: string; date: string } {
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/**
+ * 网格容器的手势：配置在渲染期只是一份数据，PanResponder 实例到第一次触摸才建（配置换了就换新）。
+ * 回调全在事件里跑，React Compiler 才能证明渲染期没读 ref；PanResponder.create 没有副作用，
+ * 内部手势状态每次新触摸都在 onStartShouldSetResponderCapture 里重置，所以晚建与渲染期建等价。
+ */
+function useLazyPanHandlers(config: PanResponderCallbacks): GestureResponderHandlers {
+  const cache = useRef<{
+    config: PanResponderCallbacks;
+    handlers: Required<GestureResponderHandlers>;
+  } | null>(null);
+  const resolve = () => {
+    const hit = cache.current;
+    if (hit && hit.config === config) return hit.handlers;
+    const handlers = PanResponder.create(config).panHandlers as Required<GestureResponderHandlers>;
+    cache.current = { config, handlers };
+    return handlers;
+  };
+  return {
+    onStartShouldSetResponder: (e) => resolve().onStartShouldSetResponder(e),
+    onMoveShouldSetResponder: (e) => resolve().onMoveShouldSetResponder(e),
+    onStartShouldSetResponderCapture: (e) => resolve().onStartShouldSetResponderCapture(e),
+    onMoveShouldSetResponderCapture: (e) => resolve().onMoveShouldSetResponderCapture(e),
+    onResponderGrant: (e) => resolve().onResponderGrant(e),
+    onResponderReject: (e) => resolve().onResponderReject(e),
+    onResponderRelease: (e) => resolve().onResponderRelease(e),
+    onResponderStart: (e) => resolve().onResponderStart(e),
+    onResponderMove: (e) => resolve().onResponderMove(e),
+    onResponderEnd: (e) => resolve().onResponderEnd(e),
+    onResponderTerminate: (e) => resolve().onResponderTerminate(e),
+    onResponderTerminationRequest: (e) => resolve().onResponderTerminationRequest(e),
+  };
+}
 
 function DesktopIcon({
   app,
@@ -169,11 +206,13 @@ export default function Desktop() {
   const clock = useClock();
 
   const [editMode, setEditMode] = useState(false);
-  const [dragId, setDragId] = useState<string | null>(null);
+  /** 拖拽中的图标：state 给渲染用（浮层 / 隐藏原位 / 锁翻页）；dragRef 是同一份，给 PanResponder 回调读 */
+  const [dragging, setDragging] = useState<DragState | null>(null);
+  const dragId = dragging ? dragging.id : null;
   const [page, setPage] = useState(0);
   const [gridH, setGridH] = useState(0);
-  const dragXY = useRef(new Animated.ValueXY()).current;
-  const wiggle = useRef(new Animated.Value(0.5)).current;
+  const dragXY = useAnimatedValueXY({ x: 0, y: 0 });
+  const wiggle = useAnimatedValue(0.5);
   const scrollRef = useRef<ScrollView>(null);
   const dragRef = useRef<DragState | null>(null);
   /** 网格容器已接管这次触摸（区分「按下就松开」与真正的拖动） */
@@ -228,7 +267,7 @@ export default function Desktop() {
   const realPages = Math.max(1, Math.ceil((maxSlot + 1) / slotsPerPage));
   const pageCount = Math.min(MAX_PAGES, editMode ? realPages + 1 : realPages);
 
-  // 渲染期之外（PanResponder、翻页计时器）要读的最新布局与数据
+  // 渲染期之外（PanResponder、翻页计时器）要读的最新布局与数据：每次提交后同步，回调都在提交之后才跑
   const live = useRef({
     ids,
     slots,
@@ -243,20 +282,22 @@ export default function Desktop() {
     dockLeft,
     editMode,
   });
-  live.current = {
-    ids,
-    slots,
-    dock,
-    rows,
-    cellW,
-    screenW,
-    page,
-    pageCount,
-    slotsPerPage,
-    dockTop,
-    dockLeft,
-    editMode,
-  };
+  useLayoutEffect(() => {
+    live.current = {
+      ids,
+      slots,
+      dock,
+      rows,
+      cellW,
+      screenW,
+      page,
+      pageCount,
+      slotsPerPage,
+      dockTop,
+      dockLeft,
+      editMode,
+    };
+  });
 
   const goToPage = useCallback((p: number, animated = true) => {
     const next = clamp(p, 0, live.current.pageCount - 1);
@@ -323,7 +364,7 @@ export default function Desktop() {
     grantedRef.current = false;
     dragRef.current = null;
     dragXY.setValue({ x: 0, y: 0 });
-    setDragId(null);
+    setDragging(null);
   }, [dragXY]);
 
   /** 记下出发矩形（网格容器坐标系），拖拽中的图标画在浮层里 */
@@ -367,7 +408,7 @@ export default function Desktop() {
     dragRef.current = next;
     grantedRef.current = false;
     setEditMode(true);
-    setDragId(id);
+    setDragging(next);
   };
 
   /** 按下就松开（没拖动）：网格容器没接管，清掉待拖状态，别锁住翻页 */
@@ -377,11 +418,11 @@ export default function Desktop() {
     }, 0);
   };
 
-  const panResponder = useMemo(() => {
+  const panConfig = useMemo<PanResponderCallbacks>(() => {
     const follow = Animated.event([null, { dx: dragXY.x, dy: dragXY.y }], {
       useNativeDriver: false,
     });
-    return PanResponder.create({
+    return {
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: () => live.current.editMode && dragRef.current !== null,
       onPanResponderTerminationRequest: () => false,
@@ -474,8 +515,9 @@ export default function Desktop() {
         endDrag();
       },
       onPanResponderTerminate: () => endDrag(),
-    });
+    };
   }, [dragXY, endDrag, goToPage]);
+  const panHandlers = useLazyPanHandlers(panConfig);
 
   const onPageSettle = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const p = clamp(Math.round(e.nativeEvent.contentOffset.x / screenW), 0, pageCount - 1);
@@ -487,7 +529,6 @@ export default function Desktop() {
   // 新手流（D-058）：桌面是奖励——先去交友滑卡，首次加好友（或点「先逛逛」）后放行
   if (!introDone) return <Redirect href="/apps/dating" />;
 
-  const dragging = dragId ? dragRef.current : null;
   const dragApp = dragging ? appById(dragging.id) : undefined;
   const pagesH = rows * CELL_H;
 
@@ -551,7 +592,7 @@ export default function Desktop() {
       <View
         style={styles.grid}
         onLayout={(e) => setGridH(e.nativeEvent.layout.height)}
-        {...panResponder.panHandlers}>
+        {...panHandlers}>
         {gridH > 0 ? (
           <ScrollView
             ref={scrollRef}
@@ -854,13 +895,13 @@ const styles = themed(() =>
     doneBtn: { position: 'absolute', right: Space.screen, zIndex: 15 },
     // 揭幕遮罩：ink 82%
     introMask: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 20,
     },
     introScrim: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: Romance.ink,
       opacity: 0.82,
     },

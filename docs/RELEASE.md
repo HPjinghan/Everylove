@@ -82,3 +82,4 @@ npx eas-cli submit -p ios --latest --profile production
 
 - **动了 `app.json` 插件、原生依赖（新的 expo-* 原生模块、react-native-maps 之类）、SDK**：必须重新 `build` + `submit`，**不要**只推 update（runtimeVersion 用的是 sdkVersion 策略，同 runtime 的旧包会拿到不兼容的 JS）。
 - 朋友的 Expo Go 试装照旧 `--channel preview`，两个渠道互不影响。
+- **升过 SDK 之后（D-102，54 → 57）**：runtime 从 `exposdk:54.0.0` 变成 `exposdk:57.0.0`——TestFlight 必须新 `build` + `submit`；Expo Go 那边朋友的 Expo Go 也得是 57，再 `eas update --channel preview` 一次新 runtime 的包，老 runtime 的 update 他们看不到。

@@ -5,8 +5,8 @@
  * TA 答应时 features/phone-peek 把 phoneUnlocked 置真，父组件的 visible 自然切到手机内容。不传 bondId 走旧行为。
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Animated, Modal, Pressable, StyleSheet, Text, useAnimatedValue, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharAvatar } from '@/components/char-avatar';
@@ -74,18 +74,25 @@ export function PhoneLock({
   const [code, setCode] = useState('');
   const [wrong, setWrong] = useState(false);
   const [askedAt, setAskedAt] = useState<number | null>(null);
-  const shake = useRef(new Animated.Value(0)).current;
+  const shake = useAnimatedValue(0);
   const [now, setNow] = useState(new Date());
   const bond = useAppStore((s) => (bondId ? s.bonds.find((b) => b.id === bondId) : undefined));
 
-  useEffect(() => {
-    if (!visible) {
+  // visible 变了就在渲染期调整 state（不在 effect 里 setState）：关上清掉密码 / 错误 / 提问时间，打开先把时钟对准
+  const [prevVisible, setPrevVisible] = useState(visible);
+  if (visible !== prevVisible) {
+    setPrevVisible(visible);
+    if (visible) {
+      setNow(new Date());
+    } else {
       setCode('');
       setWrong(false);
       setAskedAt(null);
-      return;
     }
-    setNow(new Date());
+  }
+
+  useEffect(() => {
+    if (!visible) return;
     const id = setInterval(() => setNow(new Date()), 15_000);
     return () => clearInterval(id);
   }, [visible]);

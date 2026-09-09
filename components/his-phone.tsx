@@ -4,7 +4,7 @@
  * 锁屏在 components/phone-lock.tsx；打开即触发一次记事本补写（lib/his-notes.ts），第一次进来不会是空本子。
  */
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
@@ -77,6 +77,8 @@ export function PhoneSheet({
     }
   }, [visible, onViewed]);
 
+  // 日历「今天」按打开这张表时的时间算（渲染里不直接叫 Date.now）
+  const [now] = useState(() => Date.now());
   const notes = [...(bond.notes ?? [])].sort((a, b) => b.at - a.at);
   const secrets = characterSecrets(character);
   const unlockedSecrets = unlockedSecretCount(levelInfo(bond.affinity).level, secrets.length);
@@ -91,13 +93,13 @@ export function PhoneSheet({
     }
     if (character.birthday && /^\d{1,2}-\d{1,2}$/.test(character.birthday)) {
       const [mm, dd] = character.birthday.split('-').map(Number);
-      const y = new Date().getFullYear();
+      const y = new Date(now).getFullYear();
       let bd = new Date(y, mm - 1, dd).getTime();
-      if (bd < Date.now() - 86400_000) bd = new Date(y + 1, mm - 1, dd).getTime();
+      if (bd < now - 86400_000) bd = new Date(y + 1, mm - 1, dd).getTime();
       out.push({ at: bd, text: t('我的生日'), timed: false });
     }
-    return out.sort((a, b) => a.at - b.at).filter((e) => e.at > Date.now() - 86400_000).slice(0, 5);
-  }, [plans, character, bond.nickname]);
+    return out.sort((a, b) => a.at - b.at).filter((e) => e.at > now - 86400_000).slice(0, 5);
+  }, [plans, character, bond.nickname, now]);
 
   const messages = bond.messages.filter((m) => m.from !== 'system' && !m.recalled && messageContextText(m)).slice(-6);
   const photos = [

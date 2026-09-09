@@ -1,7 +1,7 @@
 # DECISIONS.md — 现行决策总账（按主题合并）
 
 > **怎么用**：一个主题一条，写**现在的口径**；被推翻的旧口径只在「曾经」留一行（编号 + 一句话）。某个编号当时的完整理由、验证与影响文件，到 `docs/archive/DECISIONS-log-2026-08-13_09-06.md` 按编号搜（冻结存档，D-001～D-096 逐条原文）。
-> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-102**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
+> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-103**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
 > 代码注释里的 D-编号一律按索引表查；D-087 / D-088 各撞号一次，用 a / b 区分。
 
 ## 编号索引
@@ -111,23 +111,25 @@
 | D-099 | 09-07 | 她在 TA 心里的分量：恋爱类型 / 追法家族 / MBTI / 主动强度映射成 0.1～0.9，记事本与 X 发帖按它掷硬币、按档措辞 | D6 / F3 / F6 |
 | D-100 | 09-08 | 纸面设计系统全屏重做：27 屏按 `design/Everylove Paper UI.html` 重现 + 10 项交互改动（桌面翻页 / 未读合并、交友口味 chip + 略过撤销、试聊心动条吸顶 + 倒计时、会话「+」预告 + TA 的主页三入口、锁屏原地回复、查手机二次确认、日历赴约、外出约定条、设置槽位超额、去掉 palette 外的红橙蓝与渐变）；LINE 拟真与糖果双色图标下线 | H3 / F1 / F2 / F3 / F4 / F5 / F6 / E5 / D3 / D4 / C3 / C4 / G1 |
 | D-101 | 09-09 | 韩语接入：UI 词典四语、种子角色韩文版、心跳 / 开场白 / 暗面路由 / 热线 / 拦截名单、`localeOf` 集中 locale、百度 TTS 不支持韩语 | H2 / E1 / B3 |
+| D-102 | 09-09 | Expo SDK 54 → 57（Harper 手机 Expo Go 已升 57）：RN 0.86 / React 19.2 / TS 6、只有新架构、React Compiler 的 hooks 规则真修不关、删模板残留；runtime 变了，TestFlight 与 preview 都要重新 build / update | A1 / A2 / A3 |
 
 ---
 
 ## A. 工程与分发
 
 ### A1 · 技术栈与工程约束
-- **现行**：Expo **SDK 54（锁定，勿升级）** + React Native + TypeScript，expo-router 文件路由；**只做 iOS**；试装跑 Expo Go（`npx expo start` 扫码）。状态 zustand + AsyncStorage 持久化（`store/app-store.ts`，persist v5），云端为主、本地缓存（见 G2）。界面强制浅色（`userInterfaceStyle: light`）。
-- **编号**：D-001、D-005、D-007。
+- **现行**：Expo **SDK 57**（D-102，2026-09-09 从 54 升级，起因是 Harper 手机上的 Expo Go 已升到 57、只跑 57 工程；React Native 0.86.3 / React 19.2 / TypeScript 6 / eslint-config-expo 57；**只有新架构**，`newArchEnabled` 已从 app.json 删除；`expo install --fix` 顺手把 expo-font / image / sharing / status-bar / web-browser 加进 plugins）+ TypeScript，expo-router 文件路由；升级纪律：以后升 SDK 走 `npx expo install expo@<ver>` → `npx expo install --fix` → `npx expo-doctor`，然后跑 typecheck / lint / test / `npx expo export --platform ios` 修破坏性变更。**SDK 56 起 expo-router 不再兼容 `@react-navigation/*`**：三个包已卸载，主题从 `expo-router/react-navigation` 引；RN 0.86 删了 `StyleSheet.absoluteFillObject`（用 `absoluteFill`）；expo-symbols 的 name 类型改成按平台对象（`icon-symbol.tsx` 只认 `SFSymbol` 字符串）；Expo 模板残留（parallax-scroll-view / themed-text / themed-view / hello-wave / external-link / collapsible / use-theme-color / use-color-scheme）已删。**只做 iOS**；试装跑 Expo Go（`npx expo start` 扫码）。状态 zustand + AsyncStorage 持久化（`store/app-store.ts`，persist v5），云端为主、本地缓存（见 G2）。界面强制浅色（`userInterfaceStyle: light`）。
+- **编号**：D-001、D-005、D-007、D-102。
+- **曾经**：D-007「SDK 54 锁定、勿升级」（→ D-102 升 57）。
 - **曾经**：D-005 的底部五 tab（→ D-020 桌面）与「无后端」（→ D-054/D-057）。
 
 ### A2 · 分发：Expo Go 试装 / TestFlight
-- **现行**：两条通道。**Expo Go 朋友试装 = EAS Update `preview` 渠道**（项目 @harperz/everylove，runtimeVersion 对齐 SDK 54；发布前置空 AI key，分发包只带 Supabase 公开配置，AI 走服务端代理）。**TestFlight 正式测试 = EAS Build `production` 档 → `eas submit`**（`eas.json`：channel production、构建号远程自增、`ascAppId` 已记、`--auto-submit` 可无人值守；bundle id `com.kotoko.everylove`；Apple Team = 公司第二个组织账号，App Store Connect 记录设限制访问；构建号 3 已在 TestFlight）。**纪律**：动了 app.json 插件 / 原生依赖必须重新 build + submit，不能只 `eas update --channel production`；`.env.local` 被 gitignore 天然不进构建，Supabase 公开配置放 EAS 环境变量 production；Supabase Apple provider 的 Client IDs 含 bundle id 与 `host.exp.Exponent`。操作手册 `docs/RELEASE.md`。
+- **现行**：两条通道。**Expo Go 朋友试装 = EAS Update `preview` 渠道**（项目 @harperz/everylove，runtimeVersion 走 sdkVersion 策略（D-102 起 = 57，升 SDK 后 preview / production 两个渠道都要在新 runtime 下重新 build / update，老包收不到）；发布前置空 AI key，分发包只带 Supabase 公开配置，AI 走服务端代理）。**TestFlight 正式测试 = EAS Build `production` 档 → `eas submit`**（`eas.json`：channel production、构建号远程自增、`ascAppId` 已记、`--auto-submit` 可无人值守；bundle id `com.kotoko.everylove`；Apple Team = 公司第二个组织账号，App Store Connect 记录设限制访问；构建号 3 已在 TestFlight）。**纪律**：动了 app.json 插件 / 原生依赖必须重新 build + submit，不能只 `eas update --channel production`；`.env.local` 被 gitignore 天然不进构建，Supabase 公开配置放 EAS 环境变量 production；Supabase Apple provider 的 Client IDs 含 bundle id 与 `host.exp.Exponent`。操作手册 `docs/RELEASE.md`。
 - **编号**：D-059、D-087a（含补记）。
 
 ### A3 · 底座与插槽（core/ + features/）；测试安全网
-- **现行**：`core/`——`registry`（注册表，register 返回撤销函数、同 key 覆盖）/ `hooks`（emit / waterfall）/ `config`（所有 `EXPO_PUBLIC_*` 只在这里读）/ `providers`（`ChatProvider` 接缝 + 取路）/ `prompt`（`PromptSection` 分段表 + `ORDER` 顺序槽 + `assembleSystemPrompt`，装配模式 = 四种对话 + note）/ `modes`（`ConversationMode`：初识 / 亲密 / 外出 / 通话）/ `markers`（回复暗号 → `reply.flags` → apply）/ `cards` / `jobs`（launch / foreground）/ `turn`（唯一回合管线 `runTurn` / `sendText` / `sendCard` / `respond` + `turnHooks.bubble` / `after`）。`features/`：providers / prompts / modes / invite / red-packet / location / phone-peek / voice-reply / memory / appointment / adoption / schedulers，`features/index.ts` 是启动清单（`app/_layout.tsx` 顶部 import 一次）。`lib/chat.ts` 是界面唯一会话入口（`sendText` / `sendVoice` / `sendImage` / `sendCard` / `respond` / `peekMyPhone` + 四个 scope）。**纪律**：`core/` 不认识任何玩法；新玩法 = `features/` 一个文件往插槽注册；界面不直接 import 引擎 / 记忆 / 约定识别；新行为挂扩展点不改 `core/turn.ts`。**测试**：`npm test`（vitest：14 份对话 prompt 快照 + 26 份任务类快照 + 回合管线 + 引擎工具函数 + 本地化 + 台词 + 同步决策）、`npm run typecheck`、`npm run lint`；改到模型看到的字快照必红，确认 diff 再更新。手册 `docs/ARCHITECTURE.md`。借鉴 Cordis / dsh 的「注册即效果、可撤销、分段装配」，不借动态挂载 / 依赖排序 / 事件总线。
-- **编号**：D-086（取代 D-085 的 `respondAsHim` / `sendCardAndRespond` / `applyReplyEffects`，落成 D-004 的引擎接口）。
+- **现行**：`core/`——`registry`（注册表，register 返回撤销函数、同 key 覆盖）/ `hooks`（emit / waterfall）/ `config`（所有 `EXPO_PUBLIC_*` 只在这里读）/ `providers`（`ChatProvider` 接缝 + 取路）/ `prompt`（`PromptSection` 分段表 + `ORDER` 顺序槽 + `assembleSystemPrompt`，装配模式 = 四种对话 + note）/ `modes`（`ConversationMode`：初识 / 亲密 / 外出 / 通话）/ `markers`（回复暗号 → `reply.flags` → apply）/ `cards` / `jobs`（launch / foreground）/ `turn`（唯一回合管线 `runTurn` / `sendText` / `sendCard` / `respond` + `turnHooks.bubble` / `after`）。`features/`：providers / prompts / modes / invite / red-packet / location / phone-peek / voice-reply / memory / appointment / adoption / schedulers，`features/index.ts` 是启动清单（`app/_layout.tsx` 顶部 import 一次）。`lib/chat.ts` 是界面唯一会话入口（`sendText` / `sendVoice` / `sendImage` / `sendCard` / `respond` / `peekMyPhone` + 四个 scope）。**纪律**：`core/` 不认识任何玩法；新玩法 = `features/` 一个文件往插槽注册；界面不直接 import 引擎 / 记忆 / 约定识别；新行为挂扩展点不改 `core/turn.ts`。**测试**：`npm test`（vitest：14 份对话 prompt 快照 + 26 份任务类快照 + 回合管线 + 引擎工具函数 + 本地化 + 台词 + 同步决策）、`npm run typecheck`、`npm run lint`；改到模型看到的字快照必红，确认 diff 再更新。**React Compiler 约定**（D-102，eslint-config-expo 57 的 react-hooks 规则真修不关，因为 `reactCompiler: true`）：渲染期不读 ref——Animated 值用 `useAnimatedValue` / `useAnimatedValueXY`，界面要显示的值用 state（管线里的 ref 加 state 镜像），latest-ref 在 `useLayoutEffect` 里赋值，读 ref 的手势闭包直接作为 JSX responder props 挂上（`PanResponder.create` 在 useMemo / useState 里都会被判定）；effect 里不同步 setState——能派生就渲染期派生（交友回流 `roundDone`）、prop 变化重置用「prevProp 比较」写法、必须留在 effect 的用 `queueMicrotask` 延一拍；渲染期无 `Date.now()`（`useState(() => Date.now())` / 每分钟刷新的 `useNow`）；创造页编辑回填改成按 `edit` 参数 `key` 重挂载 + 惰性初始 state。手册 `docs/ARCHITECTURE.md`。借鉴 Cordis / dsh 的「注册即效果、可撤销、分段装配」，不借动态挂载 / 依赖排序 / 事件总线。
+- **编号**：D-086 → D-102（取代 D-085 的 `respondAsHim` / `sendCardAndRespond` / `applyReplyEffects`，落成 D-004 的引擎接口）。
 
 ### A4 · prompt 与内容文件的组织
 - **现行**：**全部 prompt 文本在 `content/prompts/` 目录，一用途一文件**，`index.ts` 汇总且头部是索引：`shared` / `chat`（初识 + 亲密）/ `outing` / `call` / `his-notes` / `phone` / `red-packet` / `image-common` / `portrait` / `photo` / `memory` / `social` / `appointment` / `caption` / `heartbeat` / `create`。一段只属于一个用途，不在段里按模式切换（一般对话与外出各一份、立绘与拍照各一份）；分段的模式与顺序在 `features/prompts.ts` 声明，玩法自己的一句话提示语随 `features/*`。模型 ID / max_tokens 等参数留在 lib。角色内容在 `content/characters/`（`types` / `zh` / `en` / `ja` / `index`），立绘表 `content/portraits.ts`，地点 `content/places.ts`，节假日 `content/calendar.ts`。

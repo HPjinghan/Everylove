@@ -59,7 +59,8 @@ export default function OutingSceneScreen() {
     booted.current = true;
     const s = enterPlace(place.id);
     if (!s) {
-      setNoOne(true);
+      // 没遇到人：store 里没有会话可派生，空场态放到 effect 之后的微任务里落（规则不许 effect 体内同步 setState）
+      queueMicrotask(() => setNoOne(true));
       return;
     }
     if (s.messages.length === 0) {

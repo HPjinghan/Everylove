@@ -13,7 +13,7 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -132,6 +132,120 @@ const MBTI_LIST = [
 
 const EMPTY_LINES: CharacterLines = { opening: [], offer: [], arrival: [] };
 
+type Gender = (typeof GENDERS)[number]['key'];
+type ArtStyle = (typeof PORTRAIT_STYLES)[number]['id'];
+
+/** 表单的一份初始值：新建 = 空白；编辑 = 从已创建的角色回填（D-050 / D-095） */
+type FormInit = {
+  editing: Character | null;
+  name: string;
+  gender: Gender;
+  ageStatus: 'adult' | 'minor';
+  visibility: 'private' | 'public';
+  look: string;
+  story: string;
+  palette: number;
+  portraitUri: string | undefined;
+  artStyle: ArtStyle;
+  advancedOpen: boolean;
+  race: string;
+  raceCustom: string;
+  birthMonth: number | null;
+  birthDay: number | null;
+  catchphrase: string;
+  likes: string;
+  dislikes: string;
+  offerTurns: number;
+  loveStyle: string | undefined;
+  mbti: string | undefined;
+  initiative: 'high' | 'mid' | 'low';
+  presetMemories: string;
+  taboos: string;
+  secrets: string;
+  chatNotes: string;
+  schedule: string;
+  lines: CharacterLines | null;
+};
+
+const BLANK_FORM: FormInit = {
+  editing: null,
+  name: '',
+  gender: 'male',
+  ageStatus: 'adult',
+  visibility: 'private',
+  look: '',
+  story: '',
+  palette: 0,
+  portraitUri: undefined,
+  artStyle: DEFAULT_PORTRAIT_STYLE,
+  advancedOpen: false,
+  race: '人类',
+  raceCustom: '',
+  birthMonth: null,
+  birthDay: null,
+  catchphrase: '',
+  likes: '',
+  dislikes: '',
+  offerTurns: 4,
+  loveStyle: undefined,
+  mbti: undefined,
+  initiative: 'mid',
+  presetMemories: '',
+  taboos: '',
+  secrets: '',
+  chatNotes: '',
+  schedule: '',
+  lines: null,
+};
+
+/** 编辑已创建的角色（D-050）：全部字段回填进表单（高级区直接展开） */
+function formFor(c: Character): FormInit {
+  const pi = PALETTES.findIndex((p) => p.color === c.color);
+  const race = !c.race
+    ? { race: '人类', raceCustom: '' }
+    : RACES.includes(c.race)
+      ? { race: c.race, raceCustom: '' }
+      : { race: '其他', raceCustom: c.race };
+  const [bm, bd] =
+    c.birthday && /^\d{1,2}-\d{1,2}$/.test(c.birthday) ? c.birthday.split('-').map(Number) : [null, null];
+  return {
+    editing: c,
+    name: c.name,
+    gender: c.gender ?? (c.loveTag === 'female' ? 'female' : c.loveTag === 'nonbinary' ? 'nonbinary' : 'male'),
+    ageStatus: 'adult', // 已发布的都确认过成年
+    visibility: c.visibility ?? 'private',
+    look: c.look ?? '',
+    story: c.story ?? '',
+    palette: pi >= 0 ? pi : 0,
+    portraitUri: useAppStore.getState().portraits[c.id],
+    artStyle: c.artStyle ?? DEFAULT_PORTRAIT_STYLE,
+    advancedOpen: true,
+    ...race,
+    birthMonth: bm,
+    birthDay: bd,
+    catchphrase: c.catchphrase ?? '',
+    likes: c.likes ?? '',
+    dislikes: c.dislikes ?? '',
+    offerTurns: c.offerAfterTurns ?? 4,
+    loveStyle: c.loveStyle,
+    mbti: c.mbti,
+    initiative: c.initiative ?? 'mid',
+    presetMemories: c.presetMemories ?? '',
+    taboos: c.taboos ?? '',
+    secrets: c.secrets ?? '',
+    chatNotes: c.chatNotes ?? '',
+    schedule: c.schedule ?? '',
+    lines: c.lines ?? null,
+  };
+}
+
+/** 从「我创建的」列表页带 edit=<id> 进来 → 表单初始值即回填（D-095）；找不到或不是自己的就当新建 */
+function initialForm(edit?: string): FormInit {
+  if (!edit) return BLANK_FORM;
+  const c = useAppStore.getState().customCharacters.find((x) => x.id === edit && !x.shared);
+  return c ? formFor(c) : BLANK_FORM;
+}
+
 /** 一组台词：一行一条（D-094） */
 function LinesField({ label, value, onChange }: { label: string; value: string[]; onChange: (v: string[]) => void }) {
   return (
@@ -173,57 +287,63 @@ function PaceCard({
 }
 
 export default function CreateScreen() {
-  const router = useRouter();
-  // 从「我创建的」列表页带 edit=<id> 进来 → 回填表单（D-095）
+  // 从「我创建的」列表页带 edit=<id> 进来 → 回填表单（D-095）：换一个 edit 就整表重挂载，初始值按它算
   const { edit } = useLocalSearchParams<{ edit?: string }>();
+  return <CreateForm key={edit ?? ''} edit={edit} />;
+}
+
+function CreateForm({ edit }: { edit?: string }) {
+  const router = useRouter();
+  // 表单初始值只算一次：新建为空白，edit 进来即回填
+  const [init] = useState(() => initialForm(edit));
 
   // ── 编辑已创建的（D-050） ──
-  const [editing, setEditing] = useState<Character | null>(null);
+  const [editing, setEditing] = useState<Character | null>(init.editing);
 
   // ── 描述导入（D-043） ──
   const [desc, setDesc] = useState('');
   const [parsing, setParsing] = useState(false);
 
   // ── 基础 ──
-  const [name, setName] = useState('');
-  const [gender, setGender] = useState<(typeof GENDERS)[number]['key']>('male');
+  const [name, setName] = useState(init.name);
+  const [gender, setGender] = useState<Gender>(init.gender);
   // 年龄状态（D-045）：发布必须确认成年；未成年走加强审查（试装不放行）
-  const [ageStatus, setAgeStatus] = useState<'adult' | 'minor'>('adult');
+  const [ageStatus, setAgeStatus] = useState<'adult' | 'minor'>(init.ageStatus);
   // 可见性（D-060）：公开 = 进共享角色池，别人也能滑到；默认私密
-  const [visibility, setVisibility] = useState<'private' | 'public'>('private');
-  const [look, setLook] = useState('');
-  const [story, setStory] = useState('');
-  const [palette, setPalette] = useState(0);
-  const [portraitUri, setPortraitUri] = useState<string | undefined>();
+  const [visibility, setVisibility] = useState<'private' | 'public'>(init.visibility);
+  const [look, setLook] = useState(init.look);
+  const [story, setStory] = useState(init.story);
+  const [palette, setPalette] = useState(init.palette);
+  const [portraitUri, setPortraitUri] = useState<string | undefined>(init.portraitUri);
   const [generating, setGenerating] = useState(false);
   // TA 的台词（D-094）：发布时模型写一次；编辑已创建的角色时可改、可让 TA 重写
-  const [lines, setLines] = useState<CharacterLines | null>(null);
+  const [lines, setLines] = useState<CharacterLines | null>(init.lines);
   const [linesBusy, setLinesBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
   // 立绘画风（D-076）：注入生图 prompt 第一行；动漫走蒸汽机、其余走 Qwen
-  const [artStyle, setArtStyle] = useState<(typeof PORTRAIT_STYLES)[number]['id']>(DEFAULT_PORTRAIT_STYLE);
+  const [artStyle, setArtStyle] = useState<ArtStyle>(init.artStyle);
 
-  // ── 高级（默认收起） ──
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [race, setRace] = useState('人类');
-  const [raceCustom, setRaceCustom] = useState('');
+  // ── 高级（新建默认收起，编辑时展开） ──
+  const [advancedOpen, setAdvancedOpen] = useState(init.advancedOpen);
+  const [race, setRace] = useState(init.race);
+  const [raceCustom, setRaceCustom] = useState(init.raceCustom);
   // 生日下拉（D-045）：月 / 日 两级选单
-  const [birthMonth, setBirthMonth] = useState<number | null>(null);
-  const [birthDay, setBirthDay] = useState<number | null>(null);
+  const [birthMonth, setBirthMonth] = useState<number | null>(init.birthMonth);
+  const [birthDay, setBirthDay] = useState<number | null>(init.birthDay);
   const [pickerOpen, setPickerOpen] = useState<null | 'month' | 'day'>(null);
-  const [catchphrase, setCatchphrase] = useState('');
-  const [likes, setLikes] = useState('');
-  const [dislikes, setDislikes] = useState('');
-  const [offerTurns, setOfferTurns] = useState(4);
-  const [loveStyle, setLoveStyle] = useState<string | undefined>();
-  const [mbti, setMbti] = useState<string | undefined>();
+  const [catchphrase, setCatchphrase] = useState(init.catchphrase);
+  const [likes, setLikes] = useState(init.likes);
+  const [dislikes, setDislikes] = useState(init.dislikes);
+  const [offerTurns, setOfferTurns] = useState(init.offerTurns);
+  const [loveStyle, setLoveStyle] = useState<string | undefined>(init.loveStyle);
+  const [mbti, setMbti] = useState<string | undefined>(init.mbti);
   // 创造扩展（D-045）
-  const [initiative, setInitiative] = useState<'high' | 'mid' | 'low'>('mid');
-  const [presetMemories, setPresetMemories] = useState('');
-  const [taboos, setTaboos] = useState('');
-  const [secrets, setSecrets] = useState('');
-  const [chatNotes, setChatNotes] = useState('');
-  const [schedule, setSchedule] = useState('');
+  const [initiative, setInitiative] = useState<'high' | 'mid' | 'low'>(init.initiative);
+  const [presetMemories, setPresetMemories] = useState(init.presetMemories);
+  const [taboos, setTaboos] = useState(init.taboos);
+  const [secrets, setSecrets] = useState(init.secrets);
+  const [chatNotes, setChatNotes] = useState(init.chatNotes);
+  const [schedule, setSchedule] = useState(init.schedule);
 
   const finalRace = race === '其他' ? raceCustom.trim() : race;
   const birthday =
@@ -484,60 +604,10 @@ export default function CreateScreen() {
     else showToast(t('没写成，先保留原来的'));
   };
 
-  /** 编辑已创建的角色（D-050）：全部字段回填进表单 */
-  const loadForEdit = (c: Character) => {
-    setEditing(c);
-    setDesc('');
-    setName(c.name);
-    setGender(c.gender ?? (c.loveTag === 'female' ? 'female' : c.loveTag === 'nonbinary' ? 'nonbinary' : 'male'));
-    setAgeStatus('adult'); // 已发布的都确认过成年
-    setVisibility(c.visibility ?? 'private');
-    setLook(c.look ?? '');
-    setStory(c.story ?? '');
-    const pi = PALETTES.findIndex((p) => p.color === c.color);
-    setPalette(pi >= 0 ? pi : 0);
-    setPortraitUri(useAppStore.getState().portraits[c.id]);
-    setArtStyle(c.artStyle ?? DEFAULT_PORTRAIT_STYLE);
-    if (!c.race) {
-      setRace('人类'); setRaceCustom('');
-    } else if (RACES.includes(c.race)) {
-      setRace(c.race); setRaceCustom('');
-    } else {
-      setRace('其他'); setRaceCustom(c.race);
-    }
-    if (c.birthday && /^\d{1,2}-\d{1,2}$/.test(c.birthday)) {
-      const [bm, bd] = c.birthday.split('-').map(Number);
-      setBirthMonth(bm); setBirthDay(bd);
-    } else {
-      setBirthMonth(null); setBirthDay(null);
-    }
-    setCatchphrase(c.catchphrase ?? '');
-    setLikes(c.likes ?? '');
-    setDislikes(c.dislikes ?? '');
-    setOfferTurns(c.offerAfterTurns ?? 4);
-    setLoveStyle(c.loveStyle);
-    setMbti(c.mbti);
-    setInitiative(c.initiative ?? 'mid');
-    setPresetMemories(c.presetMemories ?? '');
-    setTaboos(c.taboos ?? '');
-    setSecrets(c.secrets ?? '');
-    setChatNotes(c.chatNotes ?? '');
-    setSchedule(c.schedule ?? '');
-    setLines(c.lines ?? null);
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setAdvancedOpen(true);
-  };
-
   const toggleAdvanced = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setAdvancedOpen((v) => !v);
   };
-
-  useEffect(() => {
-    if (!edit) return;
-    const c = useAppStore.getState().customCharacters.find((x) => x.id === edit && !x.shared);
-    if (c) loadForEdit(c);
-  }, [edit]);
 
   const publishLabel = publishing
     ? t('正在给 TA 写台词…')

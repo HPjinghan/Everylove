@@ -1,3 +1,4 @@
+/* global Buffer */
 /**
  * 生图调 prompt 工具的共用核心（CLI gen-image.mjs 与本地网页 gen-image-server.mjs 都用它）。
  * 与工程 lib/imagegen.ts 同一条 API：POST /v2/images/generations（蒸汽机走专用端点），
