@@ -407,7 +407,7 @@ function CreateForm({ edit }: { edit?: string }) {
     const text = desc.trim();
     if (!text || parsing) return;
     if (BLOCKED_NAME_PATTERN.test(text)) {
-      Alert.alert('这个 TA 不能被创造出来', '描述里包含真人明星或已有 IP 的角色。\n用文字描述「神似」是可以的。');
+      Alert.alert(t('这个 TA 不能被创造出来'), t('描述里包含真人明星或已有 IP 的角色。\n用文字描述「神似」是可以的。'));
       return;
     }
     setParsing(true);
@@ -424,10 +424,10 @@ function CreateForm({ edit }: { edit?: string }) {
     }
     const n = applyParsed(parsed ?? heuristicParse(text));
     setParsing(false);
-    const body = n ? `填好了 ${n} 项。往下检查一下，每一项都还能改。` : '已把描述放进背景故事，其他项可以手动补。';
+    const body = n ? t('填好了 {n} 项。往下检查一下，每一项都还能改。', { n }) : t('已把描述放进背景故事，其他项可以手动补。');
     Alert.alert(
-      aiError ? '模型解析失败，已用规则解析' : n ? '解析好了' : '没读出结构化的字段',
-      aiError ? `${body}\n\n原因：${aiError}` : body
+      aiError ? t('模型解析失败，已用规则解析') : n ? t('解析好了') : t('没读出结构化的字段'),
+      aiError ? `${body}\n\n${t('原因：{reason}', { reason: aiError })}` : body
     );
   };
 
@@ -445,8 +445,8 @@ function CreateForm({ edit }: { edit?: string }) {
       archetype: style?.archetype ?? 'gentle',
       loveTag: gender === 'nonbinary' ? 'nonbinary' : gender,
       gender,
-      styleLabel: style?.label ?? '自创',
-      identity: identitySrc ? identitySrc.slice(0, 18) : '你亲手捏出来的 TA',
+      styleLabel: style?.label ?? t('自创'),
+      identity: identitySrc ? identitySrc.slice(0, 18) : t('你亲手捏出来的 TA'),
       look: look.trim() || undefined,
       pronoun: g.pronoun,
       story: story.trim() || undefined,
@@ -467,9 +467,9 @@ function CreateForm({ edit }: { edit?: string }) {
       secrets: secrets.trim() || undefined,
       artStyle,
       offerAfterTurns: offerTurns,
-      hook: style ? style.desc.split('；')[0] : 'TA 在等一个点开 TA 的人。',
-      intro: '……你捏出来的 TA，正在看你。',
-      tags: ['自创', ...(style ? [style.label] : []), ...(finalRace && finalRace !== '人类' ? [finalRace] : [])].slice(0, 3),
+      hook: style ? style.desc.split('；')[0] : t('TA 在等一个点开 TA 的人。'),
+      intro: t('……你捏出来的 TA，正在看你。'),
+      tags: [t('自创'), ...(style ? [style.label] : []), ...(finalRace && finalRace !== '人类' ? [finalRace] : [])].slice(0, 3),
       adoptedCount: 0,
       ...PALETTES[palette],
       custom: true,
@@ -478,7 +478,7 @@ function CreateForm({ edit }: { edit?: string }) {
 
   const guard = (): boolean => {
     if (BLOCKED_NAME_PATTERN.test(allText)) {
-      Alert.alert('这个 TA 不能被创造出来', '不能创造真人明星或已有 IP 的角色。\n用文字描述「神似」是可以的。');
+      Alert.alert(t('这个 TA 不能被创造出来'), t('不能创造真人明星或已有 IP 的角色。\n用文字描述「神似」是可以的。'));
       return false;
     }
     return true;
@@ -501,7 +501,7 @@ function CreateForm({ edit }: { edit?: string }) {
     const draft = draftCharacter();
     if (!draft) return;
     if (!imageKeyReady()) {
-      Alert.alert('AI 不可用', '立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。');
+      Alert.alert(t('AI 不可用'), t('立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。'));
       return;
     }
     if (!guard()) return;
@@ -510,7 +510,7 @@ function CreateForm({ edit }: { edit?: string }) {
       setPortraitUri(await generatePortraitFor(draft));
     } catch (e) {
       console.warn('[create] 立绘生成失败：', e);
-      Alert.alert('立绘没画出来', '网络或生图服务出了点问题，可以再试一次，或先跳过（醒来后会在后台补画）。');
+      Alert.alert(t('立绘没画出来'), t('网络或生图服务出了点问题，可以再试一次，或先跳过（醒来后会在后台补画）。'));
     } finally {
       setGenerating(false);
     }
@@ -917,7 +917,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 <Input
                   value={presetMemories}
                   onChangeText={setPresetMemories}
-                  placeholder={'高中同桌三年，TA 总抄你的笔记\n去年冬天一起看过一场雪'}
+                  placeholder={t('高中同桌三年，TA 总抄你的笔记\n去年冬天一起看过一场雪')}
                   multiline
                   maxLength={200}
                 />
@@ -937,7 +937,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 <Input
                   value={secrets}
                   onChangeText={setSecrets}
-                  placeholder={'其实注册交友软件只是为了找一个人\n左手的疤是替别人挡下来的\n真实身份是……'}
+                  placeholder={t('其实注册交友软件只是为了找一个人\n左手的疤是替别人挡下来的\n真实身份是……')}
                   multiline
                   maxLength={300}
                 />

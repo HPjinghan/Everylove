@@ -4,7 +4,7 @@
 > 族谱：c.ai 的皮 · 乙游的心脏 · 短剧的钱包 · 独有器官 = 主动性。
 > 一句话：c.ai 证明了胃口，乙游证明了付费，没人把两者接起来过。
 
-* 状态（2026-09-09）：试装 v0.2——手机壳桌面 + 12 个模块可跑，全部界面已按纸面设计系统重做，TestFlight 构建号 3 在测；最近一条决策 D-104。**本文件只写现行口径**：每条决策的理由、编号索引、被推翻的历史都在 `docs/DECISIONS.md`（按主题合并的总账，头部有 D-编号索引），合并前的逐条原文冻结在 `docs/archive/`。
+* 状态（2026-09-09）：试装 v0.2——手机壳桌面 + 12 个模块可跑，全部界面已按纸面设计系统重做，TestFlight 构建号 3 在测；最近一条决策 D-105。**本文件只写现行口径**：每条决策的理由、编号索引、被推翻的历史都在 `docs/DECISIONS.md`（按主题合并的总账，头部有 D-编号索引），合并前的逐条原文冻结在 `docs/archive/`。
 * 本文档是产品的单一事实来源。**执行任何任务时产生的新设计决策，必须当次写进文档**（见「工作规则」）。
 * 本项目与团队其他产品无关，不引入其他项目的术语与范式。
 
@@ -106,7 +106,7 @@ onboarding（语言 → 先让 TA 们认识你；第一步底部「已有账号�
 3. **红线章节（第 9 节）只有 Harper 明示才能修改。**
 4. **界面 token 纪律**：新界面与改动只引 `constants/design.ts`（Shape / Type / Space / Pattern）与 `constants/theme.ts` 的 `Romance` / `Fonts` token（半透明遮罩用 `withAlpha`），不手写 hex、圆角、阴影、字号、描边，无阴影无渐变；内容卡片一律 `components/card.tsx` 的 `Card`，按钮 `Button`、选项 `Chip` / `Segmented`、表单 `Field` / `Input`、背景暗纹 `paper-bg`；**Fredoka（`Fonts.label` / `labelBold`）只用于数字与拉丁标签，所有中文走系统字体**。
 5. **底座纪律**：`core/` 不认识任何具体玩法（出现「if 红包」「if 千帆」就是放错地方）；**新玩法 = `features/` 里一个文件**，往插槽注册并在 `features/index.ts` 登记；界面只调 `lib/chat.ts` 与 `features/*` 的 send 函数，不直接 import 引擎、记忆、约定识别；新行为挂扩展点、不改 `core/turn.ts` 的管线；工程配置只在 `core/config.ts` 读。**改到模型看到的字，`npm test` 的快照必红**——确认 diff 是想要的再更新。prompt 文本只进 `content/prompts/` 对应用途的文件，一段只属于一个用途。菜谱见 `docs/ARCHITECTURE.md` §5。
-6. **文案纪律**：界面提示只描述内容或情绪、不解释机制、不指路、不预告交互方式（保留红线 / 政策告知、隐私与数据说明、商业信息）；用户可见文案不出现「领养」；新文案先过这条，再写 `t('中文')` 并在 `lib/i18n.ts` 尾部哨兵前补 en / ja / ko 词典。
+6. **文案纪律**：界面提示只描述内容或情绪、不解释机制、不指路、不预告交互方式（保留红线 / 政策告知、隐私与数据说明、商业信息）；用户可见文案不出现「领养」；新文案先过这条，再写 `t('中文')` 并在 `lib/i18n.ts` 尾部哨兵前补 en / ja / ko 词典——`npm test` 的词典覆盖测试会扫源码，缺词即红。
 
 ## 12\. 待拍板清单
 
@@ -127,4 +127,4 @@ onboarding（语言 → 先让 TA 们认识你；第一步底部「已有账号�
 * **关系数据**：心动值 `SquareChat.heart`（试聊 / 广场 / 自创暧昧期共用），配对 3 天过期（自创不过期）；羁绊 `Bond`（`affinity` XP、`memory`、`notes` TA 的记事本、`phoneCode` / `phoneUnlocked`、`birthday` 回落）；曲线与槽位在 `lib/bond.ts`；约定 `store.outingPlans`（`at` / `source`，窗口前 2h～后 3h，`lib/appointments.ts`）；外出 `store.outingSession`（一小时冷却）；相册 `store.album`；发帖 / 记事本各一只钟（`postSchedule` / `noteSchedule`，MBTI 定频）；桌面 `desktopSlots` / `desktopDock`；身份 `me` / `meByCharacter`；语言 `language`；主题 `themeId`（新装机 paper）。
 * **i18n**：`lib/i18n.ts` 中文原文即键，`t()` + en / ja / ko 词典（尾部各自哨兵前追加），缺词回落中文；日期 / 数字格式化统一 `localeOf()`；切换全局 remount；内容层四语（中 / 英 / 日 / 韩）见 `content/characters/`，韩语与日 / 英一样待母语写手润色（#23）；百度语音不支持日 / 韩，走 OpenAI 兼容通道。
 * **设计系统**：Claude Design 原文 `design/design-system.page.html`，全屏设计稿 `design/Everylove Paper UI.html` + 说明 `design/README.md`；色彩 = `THEMES.paper`，规格 = `constants/design.ts`；27 屏已全部按设计稿重做（D-100）：primitive = `AppScreen` / `HeaderAction`、`Card` / `Divider`、`Button`、`Chip` / `Segmented`、`Field` / `Input`、`DiamondBackground` / `ChatWallpaper`、`CharAvatar`（方块 r6 + 衬线首字）、`Polaroid`、`showToast`；palette 外只允许通话深底与 TA 记事本米色。App 图标 / 启动图 / favicon 由 `scripts/logo/render.mjs` 从 SVG 渲染（纸面粉底 + 微倾的小手机、不写字，D-103），改图只改脚本再重出。
-* **测试与工具**：`npm test`（vitest：prompt 快照 + 回合管线 + 引擎工具 + 本地化 + 台词 + 同步决策）、`npm run typecheck`、`npm run lint`（含 React Compiler 的 hooks 规则：渲染期不读 ref、effect 里不同步 setState、渲染期无 `Date.now()`——`reactCompiler` 已开，这些规则真修不关；Animated 值用 `useAnimatedValue` / `useAnimatedValueXY`）；设置 → 开发者：只读引擎与取路、记忆库查看（可强制提取）、立绘生成 / 重画、重置。
+* **测试与工具**：`npm test`（vitest：prompt 快照 + 回合管线 + 引擎工具 + 本地化 + 词典覆盖 + 台词 + 同步决策）、`npm run typecheck`、`npm run lint`（含 React Compiler 的 hooks 规则：渲染期不读 ref、effect 里不同步 setState、渲染期无 `Date.now()`——`reactCompiler` 已开，这些规则真修不关；Animated 值用 `useAnimatedValue` / `useAnimatedValueXY`）；设置 → 开发者：只读引擎与取路、记忆库查看（可强制提取）、立绘生成 / 重画、重置。

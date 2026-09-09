@@ -174,10 +174,10 @@ export default function MeScreen() {
   };
 
   const reset = () => {
-    Alert.alert('重置全部数据', '所有羁绊、聊天记录和创作都会消失。他们会忘记你。', [
-      { text: '取消', style: 'cancel' },
+    Alert.alert(t('重置全部数据'), t('所有羁绊、聊天记录和创作都会消失。他们会忘记你。'), [
+      { text: t('取消'), style: 'cancel' },
       {
-        text: '重置',
+        text: t('重置'),
         style: 'destructive',
         onPress: async () => {
           await Notifications.cancelAllScheduledNotificationsAsync();
@@ -197,10 +197,10 @@ export default function MeScreen() {
   /** 模拟订阅（D-063）：点击即订/退，不扣费 */
   const subscribe = (p: 'free' | 'pro' | 'max') => {
     if (p === plan) return;
-    const label = p === 'max' ? 'Max：羁绊不限量' : p === 'pro' ? 'Pro：5 个羁绊槽' : 'Free：1 个羁绊槽';
-    Alert.alert(p === 'free' ? '取消订阅' : '订阅（试装模拟，不扣费）', label, [
-      { text: '取消', style: 'cancel' },
-      { text: p === 'free' ? '确认取消' : '订阅', onPress: () => useAppStore.getState().setPlan(p) },
+    const label = p === 'max' ? t('Max：羁绊不限量') : p === 'pro' ? t('Pro：5 个羁绊槽') : t('Free：1 个羁绊槽');
+    Alert.alert(p === 'free' ? t('取消订阅') : t('订阅（试装模拟，不扣费）'), label, [
+      { text: t('取消'), style: 'cancel' },
+      { text: p === 'free' ? t('确认取消') : t('订阅'), onPress: () => useAppStore.getState().setPlan(p) },
     ]);
   };
 
@@ -215,40 +215,40 @@ export default function MeScreen() {
 
   const doBackupNow = async () => {
     const r = await uploadSnapshot();
-    Alert.alert(r === 'ok' ? '已备份' : '备份失败', r === 'ok' ? '云端已是最新。' : '稍后再试。');
+    Alert.alert(r === 'ok' ? t('已备份') : t('备份失败'), r === 'ok' ? t('云端已是最新。') : t('稍后再试。'));
   };
 
   const doRestore = () => {
-    Alert.alert('从云端恢复', '会用云端备份覆盖这台手机上的全部数据。', [
-      { text: '取消', style: 'cancel' },
+    Alert.alert(t('从云端恢复'), t('会用云端备份覆盖这台手机上的全部数据。'), [
+      { text: t('取消'), style: 'cancel' },
       {
-        text: '恢复',
+        text: t('恢复'),
         style: 'destructive',
         onPress: async () => {
           const ok = await restoreSnapshot();
-          Alert.alert(ok ? '已恢复' : '恢复失败', ok ? 'TA 们回来了。' : '云端可能还没有备份。');
+          Alert.alert(ok ? t('已恢复') : t('恢复失败'), ok ? t('TA 们回来了。') : t('云端可能还没有备份。'));
         },
       },
     ]);
   };
 
   const doSignOut = () => {
-    Alert.alert('退出登录', '数据留在这台手机上，云端备份保留；再次登录可恢复。', [
-      { text: '取消', style: 'cancel' },
-      { text: '退出', onPress: () => void signOut() },
+    Alert.alert(t('退出登录'), t('数据留在这台手机上，云端备份保留；再次登录可恢复。'), [
+      { text: t('取消'), style: 'cancel' },
+      { text: t('退出'), onPress: () => void signOut() },
     ]);
   };
 
   const doDeleteCloud = () => {
-    Alert.alert('删除云端数据', '云端备份将被永久删除并退出登录；本机数据保留。', [
-      { text: '取消', style: 'cancel' },
+    Alert.alert(t('删除云端数据'), t('云端备份将被永久删除并退出登录；本机数据保留。'), [
+      { text: t('取消'), style: 'cancel' },
       {
-        text: '删除并退出',
+        text: t('删除并退出'),
         style: 'destructive',
         onPress: async () => {
           await deleteCloudData();
           await signOut();
-          Alert.alert('已删除', '云端已清空。账号本体删除将在正式版提供。');
+          Alert.alert(t('已删除'), t('云端已清空。账号本体删除将在正式版提供。'));
         },
       },
     ]);
@@ -314,7 +314,7 @@ export default function MeScreen() {
                     <View style={[styles.themeRing, on && styles.themeRingOn]}>
                       <View style={[styles.themeDot, { backgroundColor: theme.colors.accent }]} />
                     </View>
-                    <Text style={[styles.themeLabel, on && styles.themeLabelOn]}>{theme.label}</Text>
+                    <Text style={[styles.themeLabel, on && styles.themeLabelOn]}>{t(theme.label)}</Text>
                   </Pressable>
                 );
               })}
@@ -329,7 +329,7 @@ export default function MeScreen() {
                         <DiamondBackground />
                       </View>
                     </View>
-                    <Text style={[styles.wallLabel, on && styles.wallLabelOn]}>{w.label}</Text>
+                    <Text style={[styles.wallLabel, on && styles.wallLabelOn]}>{t(w.label)}</Text>
                   </Pressable>
                 );
               })}
