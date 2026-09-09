@@ -394,7 +394,6 @@ const en: Record<string, string> = {
   '直连（.env.local）': 'Direct (.env.local)',
   '服务端代理（已登录）': 'Server proxy (signed in)',
   '不可用：无 key 且未登录': 'Unavailable: no key and not signed in',
-  '引擎与 key 只读工程配置 .env.local（改后重启 Metro）；没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。': 'Engine and keys come only from .env.local (restart Metro after changes); without a key, signing in routes through the server proxy. Failures show up right in the conversation.',
   // 她的语音与照片（D-073）
   '识别中…': 'Transcribing…', '没听清': "Couldn't hear that",
   'TA 在看…': 'Looking…', 'TA 没看清这张': "Couldn't see this one",
@@ -661,6 +660,13 @@ const en: Record<string, string> = {
   '你亲手捏出来的 TA': 'Made by your own hands',
   'TA 在等一个点开 TA 的人。': 'Waiting for someone to open them up.',
   '……你捏出来的 TA，正在看你。': '…the one you made is looking at you.',
+  // 引擎切换（D-106）
+  '直连': 'Direct',
+  '代理': 'Proxy',
+  '不可用': 'Unavailable',
+  '跟随配置': 'Follow config',
+  '两把 key 都在 .env.local 时可以手动指定；「跟随配置」= 有 Claude key 用 Claude，否则千帆。': 'With both keys in .env.local you can pick one by hand. "Follow config" = Claude if a Claude key exists, otherwise Qianfan.',
+  'key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。': 'Keys come only from .env.local (restart Metro after changes). Tap "AI engine" to switch providers; the choice stays on this phone. Without a key, signing in routes through the server proxy. Failures show up right in the conversation.',
   // __EN_END__
 };
 
@@ -1027,7 +1033,6 @@ const ja: Record<string, string> = {
   '直连（.env.local）': '直接接続（.env.local）',
   '服务端代理（已登录）': 'サーバー経由（ログイン中）',
   '不可用：无 key 且未登录': '利用不可：keyなし・未ログイン',
-  '引擎与 key 只读工程配置 .env.local（改后重启 Metro）；没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。': 'エンジンとkeyは.env.localのみ（変更後はMetro再起動）。keyがない場合はログインでサーバー経由。失敗は会話内にそのまま表示されます。',
   // 她的语音与照片（D-073）
   '识别中…': '認識中…', '没听清': '聞き取れませんでした',
   'TA 在看…': '見ています…', 'TA 没看清这张': 'この写真は見えませんでした',
@@ -1294,6 +1299,13 @@ const ja: Record<string, string> = {
   '你亲手捏出来的 TA': 'あなたの手で生まれた相手',
   'TA 在等一个点开 TA 的人。': '開いてくれる誰かを待っている。',
   '……你捏出来的 TA，正在看你。': '……あなたが作った相手が、あなたを見ている。',
+  // 引擎切换（D-106）
+  '直连': '直結',
+  '代理': 'プロキシ',
+  '不可用': '利用不可',
+  '跟随配置': '設定に従う',
+  '两把 key 都在 .env.local 时可以手动指定；「跟随配置」= 有 Claude key 用 Claude，否则千帆。': '.env.local に両方の key があれば手動で選べます。「設定に従う」= Claude の key があれば Claude、なければ千帆。',
+  'key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。': 'key は .env.local からのみ読みます（変更後は Metro を再起動）。「AIエンジン」をタップで切り替え、選択はこの端末にだけ保存。key がなければログインでサーバー経由。失敗は会話にそのまま表示されます。',
   // __JA_END__
 };
 
@@ -1690,7 +1702,6 @@ const ko: Record<string, string> = {
   '直连（.env.local）': '직접 연결 (.env.local)',
   '服务端代理（已登录）': '서버 프록시 (로그인됨)',
   '不可用：无 key 且未登录': '사용 불가: key 없음 · 미로그인',
-  '引擎与 key 只读工程配置 .env.local（改后重启 Metro）；没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。': '엔진과 key는 프로젝트 설정 .env.local에서만 읽어요 (변경 후 Metro 재시작). key가 없으면 로그인 시 서버 프록시를 거쳐요. 호출 실패는 대화에 그대로 표시돼요.',
   '识别中…': '인식 중…',
   '没听清': '잘 못 들었어요',
   'TA 在看…': '보고 있어요…',
@@ -1930,6 +1941,13 @@ const ko: Record<string, string> = {
   '你亲手捏出来的 TA': '당신 손으로 빚어낸 상대',
   'TA 在等一个点开 TA 的人。': '자신을 열어 줄 누군가를 기다리는 중.',
   '……你捏出来的 TA，正在看你。': '……당신이 만든 상대가, 당신을 보고 있어요.',
+  // 引擎切换（D-106）
+  '直连': '직접 연결',
+  '代理': '프록시',
+  '不可用': '사용 불가',
+  '跟随配置': '설정 따르기',
+  '两把 key 都在 .env.local 时可以手动指定；「跟随配置」= 有 Claude key 用 Claude，否则千帆。': '.env.local에 두 key가 모두 있으면 직접 고를 수 있어요. ‘설정 따르기’ = Claude key가 있으면 Claude, 없으면 千帆.',
+  'key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。': 'key는 .env.local에서만 읽어요 (바꾼 뒤 Metro 재시작). ‘AI 엔진’을 눌러 공급자를 바꿀 수 있고, 선택은 이 휴대폰에만 저장돼요. key가 없으면 로그인 시 서버 프록시로 가요. 실패는 대화에 바로 표시돼요.',
   // __KO_END__
 };
 

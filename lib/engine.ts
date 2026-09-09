@@ -8,16 +8,21 @@
  * 取路 = 本地 key 直连 > 登录走服务端代理 > 不可用抛错；调用失败直接抛，界面把原因露出来（D-069）。
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { DARK_SIDE_PATTERN, darkSideReply } from '@/content/characters';
 import { buildChatSystemPrompt, messageContextText, OPENING_STAGE_LINE } from '@/content/prompts';
 import { stripReplyMarkers } from '@/core/markers';
 import { modes } from '@/core/modes';
 import {
   AiUnavailableError,
+  chatProviderPreference,
+  chatProviders,
   chatRoute,
   chatRouteSync,
   completeChat,
   currentChatProvider,
+  setChatProviderPreference,
   type AiRoute,
   type ChatTurn,
 } from '@/core/providers';
@@ -33,6 +38,33 @@ const REPLY_MAX_TOKENS = 300;
 /** 界面用的引擎名 */
 export function engineLabel(providerId?: string): string {
   return currentChatProvider(providerId).label;
+}
+
+/* ── 引擎偏好（D-106）：设置 → 开发者点「AI 引擎」在已注册供应商之间切换；只存本机（AsyncStorage），不进 store、不进云端快照 ── */
+const ENGINE_PREF_KEY = 'everylove-engine-pref';
+
+/** 启动时读回上次的选择（app/_layout 调一次） */
+export async function loadEnginePreference(): Promise<void> {
+  try {
+    const id = await AsyncStorage.getItem(ENGINE_PREF_KEY);
+    if (id) setChatProviderPreference(id);
+  } catch {}
+}
+
+/** 选一家（'' = 跟随工程配置）；立即生效并落盘 */
+export function setEnginePreference(id: string): void {
+  setChatProviderPreference(id);
+  void (id ? AsyncStorage.setItem(ENGINE_PREF_KEY, id) : AsyncStorage.removeItem(ENGINE_PREF_KEY)).catch(() => {});
+}
+
+/** 当前偏好的供应商 id（'' = 跟随工程配置） */
+export function enginePreference(): string {
+  return chatProviderPreference();
+}
+
+/** 可选的供应商：id、界面名、当前取路 */
+export function engineOptions(): { id: string; label: string; route: AiRoute }[] {
+  return chatProviders.list().map((p) => ({ id: p.id, label: p.label, route: chatRouteSync(p) }));
 }
 
 /** 某供应商本地直连用的 key（媒体模块判断能否直连百度时用；空 = 没配） */

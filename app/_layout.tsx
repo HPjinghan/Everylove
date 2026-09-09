@@ -18,6 +18,7 @@ import { applyThemeColors, Romance } from '@/constants/theme';
 import { runJobs } from '@/core/jobs';
 import { currentChatProvider } from '@/core/providers';
 import { authConfigured, ensureGuestSession } from '@/lib/auth';
+import { loadEnginePreference } from '@/lib/engine';
 import { setLang } from '@/lib/i18n';
 import { initCloudSync } from '@/lib/sync';
 import '@/lib/notifications';
@@ -53,6 +54,11 @@ export default function RootLayout() {
   };
   // 启动：后台任务（种子帖 / 天气 / 心跳 / 发帖 / 爽约 / TA 的记事本……全在 features/schedulers.ts 登记）。
   // onboarding 门禁是声明式的（app/index.tsx 桌面），根布局不做任何命令式跳转——首帧跳转会崩在 assertIsReady。
+  // 引擎偏好（D-106）：设置 → 开发者点选的供应商，存本机，启动读回
+  useEffect(() => {
+    void loadEnginePreference();
+  }, []);
+
   useEffect(() => {
     if (!ready) return;
     void runJobs('launch');

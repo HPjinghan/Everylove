@@ -40,9 +40,18 @@ export const chatProviders = createRegistry<ChatProvider>('chatProviders', (p) =
 /** 没指定、也没人有本地 key 时用它走代理（服务端两家都通，默认千帆） */
 export const DEFAULT_CHAT_PROVIDER = 'qianfan';
 
-/** 当前该用哪家：指定 id > 工程配置 EXPO_PUBLIC_AI_ENGINE > 第一个有本地 key 的 > 默认供应商 */
+/** 运行期偏好（D-106）：设置 → 开发者点选的供应商 id；空 = 跟随工程配置。只存本机，不是用户数据（lib/engine 负责落盘） */
+let preferred = '';
+export function setChatProviderPreference(id: string): void {
+  preferred = chatProviders.get(id) ? id : '';
+}
+export function chatProviderPreference(): string {
+  return preferred;
+}
+
+/** 当前该用哪家：指定 id > 运行期偏好 > 工程配置 EXPO_PUBLIC_AI_ENGINE > 第一个有本地 key 的 > 默认供应商 */
 export function currentChatProvider(id?: string): ChatProvider {
-  const wanted = id ?? CONFIG.engine;
+  const wanted = id ?? (preferred || CONFIG.engine);
   const byId = wanted ? chatProviders.get(wanted) : undefined;
   if (byId) return byId;
   const all = chatProviders.list();

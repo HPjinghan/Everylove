@@ -2,7 +2,7 @@
  * 设置（D-100 纸面）：分区标题 13/600 muted；每区一张白卡（不带内距），行内距 13×12，行间 1.5px ink 分区线（Divider，不用 hairline）；
  * 行左 14 ink、右值 13/500 muted。语言 = 三段等宽（paper 底 / 选中 primary 白字）；主题点 34 r6（选中外圈 ink 2.5、留 2）；
  * 壁纸块 52×88 r6（纸面画 paper 底 + 菱格，其余上下两段纯色；选中外圈 primary 2、留 1）；槽位超额时数值与说明走 accent（交互改动 9）。
- * 开发者区只读显示 AI 引擎与取路（D-069：引擎/key 全走工程配置 .env.local，手填与脚本引擎已下线）。
+ * 开发者区显示 AI 引擎与取路（D-069：key 全走工程配置 .env.local，手填与脚本引擎已下线；D-106：「AI 引擎」可点选供应商，本机偏好）。
  */
 
 import * as Notifications from 'expo-notifications';
@@ -18,7 +18,7 @@ import { WALLPAPERS } from '@/constants/apps';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, THEMES, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
-import { aiRouteSync, engineLabel } from '@/lib/engine';
+import { aiRouteSync, engineLabel, engineOptions, enginePreference, setEnginePreference } from '@/lib/engine';
 import { ensurePortrait, imageKeyReady, portraitFor } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
 import { authConfigured, isSignedIn, onAuthChange, sessionLabel, signedInSession, signOut } from '@/lib/auth';
@@ -113,7 +113,30 @@ export default function MeScreen() {
   const bonds = useAppStore((s) => s.bonds);
   const customs = useAppStore((s) => s.customCharacters);
   const wallpaper = useAppStore((s) => s.wallpaper);
+  // 引擎偏好（D-106）：点「AI 引擎」在已注册供应商间切换，'' = 跟随 .env.local；换完本地重算取路
+  const [enginePref, setEnginePrefState] = useState(enginePreference);
   const aiRoute = aiRouteSync();
+  const pickEngine = () => {
+    const routeText = (r: ReturnType<typeof aiRouteSync>) =>
+      r === 'direct' ? t('直连') : r === 'proxy' ? t('代理') : t('不可用');
+    Alert.alert(t('AI 引擎'), t('两把 key 都在 .env.local 时可以手动指定；「跟随配置」= 有 Claude key 用 Claude，否则千帆。'), [
+      ...engineOptions().map((o) => ({
+        text: `${o.label} · ${routeText(o.route)}${o.id === enginePref ? ' ✓' : ''}`,
+        onPress: () => {
+          setEnginePreference(o.id);
+          setEnginePrefState(o.id);
+        },
+      })),
+      {
+        text: `${t('跟随配置')}${enginePref ? '' : ' ✓'}`,
+        onPress: () => {
+          setEnginePreference('');
+          setEnginePrefState('');
+        },
+      },
+      { text: t('取消'), style: 'cancel' },
+    ]);
+  };
   const themeId = useAppStore((s) => s.themeId);
 
   /** 立绘（D-019/D-092）：种子角色已内置立绘，这里只补没有的（新加的种子）或重画首个羁绊角色（存本机、盖过内置） */
@@ -379,7 +402,11 @@ export default function MeScreen() {
         </Section>
 
         <Section title={t('开发者（试装）')}>
-          <Row label={t('AI 引擎')} value={engineLabel()} />
+          <Row
+            label={t('AI 引擎')}
+            value={enginePref ? engineLabel() : `${engineLabel()} · ${t('跟随配置')}`}
+            onPress={pickEngine}
+          />
           <Row
             label={t('AI 取路')}
             value={
@@ -390,7 +417,7 @@ export default function MeScreen() {
                   : t('不可用：无 key 且未登录')
             }
             dim={aiRoute === 'none'}
-            hint={t('引擎与 key 只读工程配置 .env.local（改后重启 Metro）；没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。')}
+            hint={t('key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。')}
           />
           <Row label="查看 TA 记住了什么（记忆库）" onPress={showMemory} />
           <Row label="为 6 位种子角色生成立绘（测试，后台逐个）" onPress={genSeedPortraits} />
