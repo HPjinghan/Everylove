@@ -14,6 +14,12 @@ Notifications.setNotificationHandler({
   }),
 });
 
+/** 只查不问（排通知时用；问权限的时机在缔结那一刻，D-120） */
+export async function hasNotificationPermission(): Promise<boolean> {
+  const settings = await Notifications.getPermissionsAsync();
+  return settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+}
+
 export async function requestNotificationPermission(): Promise<boolean> {
   const settings = await Notifications.getPermissionsAsync();
   if (settings.granted) return true;

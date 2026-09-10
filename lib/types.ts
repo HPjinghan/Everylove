@@ -274,6 +274,8 @@ export interface Bond {
   hintPlusSeen?: boolean;
   /** 缔结那一刻的角色快照（D-116）：设定、台词、世界都定格在这里；之后角色库里怎么改（自己改 / 创作者改）都不动这段关系。旧存档没有的按 id 取现行 */
   character?: Character;
+  /** TA 自己的作息（D-119）：TA 日历里自己的安排（上班 / 和朋友的约 / 家里的事……），按周补写；进【你的日程】 */
+  hisEvents?: HisEvent[];
   /** TA 身边的人（D-110）：第一次查手机时生成一次，之后前后一致；进记事本 / 发帖 / 亲密 prompt，X 里会来互动 */
   circle?: CirclePerson[];
   /** TA 和身边的人的近期聊天（D-110，查手机里的 Message）：personId → 对话 */
@@ -403,6 +405,16 @@ export interface Note {
   updatedAt: number;
 }
 
+/** TA 日历里自己的一条安排（D-119） */
+export interface HisEvent {
+  id: string;
+  /** YYYY-MM-DD */
+  date: string;
+  /** HH:mm，可空 = 只写在某一天 */
+  time?: string;
+  title: string;
+}
+
 /** TA 记事本里的一条心事（D-085）：按 MBTI 频率由引擎写，她查手机时看得到 */
 export interface HisNote {
   id: string;
@@ -431,7 +443,7 @@ export interface EngineContext {
   /** bonded/outing 模式下的关系信息（含记忆库、缔结时间，注入系统 prompt） */
   bond?: Pick<
     Bond,
-    'name' | 'nickname' | 'affinity' | 'birthday' | 'memory' | 'createdAt' | 'phoneCode' | 'phoneUnlocked' | 'circle'
+    'name' | 'nickname' | 'affinity' | 'birthday' | 'memory' | 'createdAt' | 'phoneCode' | 'phoneUnlocked' | 'circle' | 'hisEvents'
   >;
   /** 广场偶遇的记录（D-110）：初识 / 广场模式注入——TA 记得见过她 */
   encounters?: Encounter[];

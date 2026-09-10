@@ -30,6 +30,7 @@ import type {
   CirclePerson,
   CircleLine,
   Encounter,
+  HisEvent,
   LovePref,
   OutingPlan,
   OutingSession,
@@ -111,6 +112,8 @@ interface AppState {
   /** 共享世界池缓存（D-111）：别人公开的世界（lib/pool.ts 刷新） */
   sharedWorlds: WorldBook[];
   sharedWorldsAt: number;
+  /** 勿扰时段（D-120）：TA 主动找她的静默区间（小时，from 起到次日 to 止）；默认 23–8，设置里可改 */
+  quietHours: { from: number; to: number };
   /** TA 主动找她（D-114）：bondId → 下一条的到点时间（频率按主动联系强度 × MBTI × 等级，lib/reach-out.ts） */
   reachSchedule: Record<string, number>;
   /** 到点前写好的下一条（D-114）：bondId → 文字 + 到点时间 + 写好的时间 + 本地通知 id；她在写好之后又说过话就作废重写 */
@@ -194,6 +197,9 @@ interface AppState {
   toggleWorldFavorite: (id: string) => void;
   setSharedWorlds: (worlds: WorldBook[]) => void;
   setReachDue: (bondId: string, at: number) => void;
+  setQuietHours: (h: { from: number; to: number }) => void;
+  /** TA 自己的作息（D-119） */
+  setHisEvents: (bondId: string, events: HisEvent[]) => void;
   setReachPending: (bondId: string, p: ReachPending | undefined) => void;
   /** 广场偶遇留一条记录（D-110）：TA 记得在哪见过她 */
   addEncounter: (characterId: string, e: Encounter) => void;
@@ -270,6 +276,7 @@ const initialData = {
   sharedWorldsAt: 0,
   reachSchedule: {} as Record<string, number>,
   reachPending: {} as Record<string, ReachPending>,
+  quietHours: { from: 23, to: 8 },
 };
 
 export const useAppStore = create<AppState>()(
@@ -679,6 +686,9 @@ export const useAppStore = create<AppState>()(
         }),
       setSharedWorlds: (worlds) => set({ sharedWorlds: worlds, sharedWorldsAt: Date.now() }),
       setReachDue: (bondId, at) => set({ reachSchedule: { ...get().reachSchedule, [bondId]: at } }),
+      setQuietHours: (h) => set({ quietHours: h }),
+      setHisEvents: (bondId, events) =>
+        set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, hisEvents: events.slice(-30) } : b)) }),
       setReachPending: (bondId, p) => {
         const next = { ...get().reachPending };
         if (p) next[bondId] = p;

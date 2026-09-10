@@ -102,12 +102,13 @@ const PEEK_LINES = 6;
  * 让 TA 看我的手机（D-085）：TA 翻她的记事本、她和其他 TA 的近期聊天，然后给她发一条消息（进会话、计未读）。
  * 红线：记事本里出现痛苦 / 危机内容走暗面路由（温柔模式、不入戏）；记事本里的其他真人一个字不评论（他只看她）。
  */
-export async function peekMyPhone(bondId: string): Promise<boolean> {
+/** TA 看她手机时拿到的那份东西（D-118 回放共用同一份）：记事本 / 日历 / 她和别人的聊天 */
+export function peekPayload(bondId: string): {
+  notes: { at: number; text: string }[];
+  events: { id: string; date: string; title: string }[];
+  chats: { name: string; characterId: string; messages: ChatMessage[] }[];
+} {
   const state = useAppStore.getState();
-  const bond = state.bonds.find((b) => b.id === bondId);
-  if (!bond) return false;
-  const scope = bondScope(bondId);
-  const mode = modeOf(scope);
   const notes = [...state.notes]
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .slice(0, PEEK_NOTES)
@@ -117,13 +118,12 @@ export async function peekMyPhone(bondId: string): Promise<boolean> {
     .filter((b) => b.id !== bondId)
     .map((b) => ({
       name: b.name,
+      characterId: b.characterId,
       messages: b.messages.filter((m) => m.from !== 'system' && !m.recalled).slice(-PEEK_LINES),
     }))
     .filter((c) => c.messages.length)
     .sort((a, b) => (b.messages[b.messages.length - 1]?.at ?? 0) - (a.messages[a.messages.length - 1]?.at ?? 0))
     .slice(0, PEEK_OTHERS);
-
-  // 她的日历（D-113）：过去几天到接下来一个多月的安排，TA 看过就知道了
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const from = today.getTime() - PEEK_EVENT_PAST_DAYS * 86400_000;
@@ -134,7 +134,20 @@ export async function peekMyPhone(bondId: string): Promise<boolean> {
       return at >= from && at <= to;
     })
     .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, PEEK_EVENTS);
+    .slice(0, PEEK_EVENTS)
+    .map((e) => ({ id: e.id, date: e.date, title: e.title }));
+  return { notes, events, chats };
+}
+
+export async function peekMyPhone(bondId: string): Promise<boolean> {
+  const state = useAppStore.getState();
+  const bond = state.bonds.find((b) => b.id === bondId);
+  if (!bond) return false;
+  const scope = bondScope(bondId);
+  const mode = modeOf(scope);
+  const { notes, events, chats } = peekPayload(bondId);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   mode.append(scope, [sysMsg(t('TA 看了你的手机'))]);
   showToast(t('TA 拿起了你的手机'));

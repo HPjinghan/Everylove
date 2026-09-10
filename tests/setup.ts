@@ -48,6 +48,13 @@ vi.mock('expo-audio', () =>
   })
 );
 vi.mock('expo-image-manipulator', () => stubModule({ SaveFormat: { JPEG: 'jpeg' } }));
+// 分享扩展（D-117）：原生模块，测试里桩掉
+vi.mock('expo-share-intent', () =>
+  stubModule({
+    ShareIntentProvider: ({ children }: { children: unknown }) => children,
+    useShareIntentContext: () => ({ hasShareIntent: false, shareIntent: {}, resetShareIntent: () => {} }),
+  })
+);
 // 本地通知（D-114 主动消息排通知）：node 里没有 __DEV__，整个模块桩掉；权限一律拒绝、排通知返回假 id
 vi.mock('expo-notifications', () =>
   stubModule({

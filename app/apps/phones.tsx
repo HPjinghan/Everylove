@@ -14,11 +14,12 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { PhoneSheet } from '@/components/his-phone';
+import { PeekReplay, type PeekPayload } from '@/components/peek-replay';
 import { PhoneLock } from '@/components/phone-lock';
 import { Shape, Space } from '@/constants/design';
 import { Romance, themed, withAlpha } from '@/constants/theme';
 import { askPasscode as askHisPasscode } from '@/features/phone-peek';
-import { peekMyPhone } from '@/lib/chat';
+import { peekMyPhone, peekPayload } from '@/lib/chat';
 import { aiRouteSync } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -33,6 +34,9 @@ export default function PhonesScreen() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [peeking, setPeeking] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  // 「TA 正在看」回放（D-118）：和 peekMyPhone 用同一份数据；放完且 TA 回了话才关
+  const [replay, setReplay] = useState<{ bondId: string; payload: PeekPayload } | null>(null);
+  const [replayDone, setReplayDone] = useState(false);
 
   const open = bonds.find((b) => b.id === openId);
   const openCharacter = open ? findCharacter(open.characterId) : undefined;
@@ -45,7 +49,12 @@ export default function PhonesScreen() {
       return;
     }
     setPeeking(bondId);
-    void peekMyPhone(bondId).finally(() => setPeeking(null));
+    setReplayDone(false);
+    setReplay({ bondId, payload: peekPayload(bondId) });
+    void peekMyPhone(bondId).finally(() => {
+      setPeeking(null);
+      setReplayDone(true);
+    });
   };
 
   return (
@@ -112,6 +121,18 @@ export default function PhonesScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {replay ? (
+        <PeekReplay
+          visible
+          name={bonds.find((b) => b.id === replay.bondId)?.name ?? ''}
+          characterId={bonds.find((b) => b.id === replay.bondId)?.characterId ?? ''}
+          color={findCharacter(bonds.find((b) => b.id === replay.bondId)?.characterId ?? '')?.color ?? Romance.accent}
+          payload={replay.payload}
+          done={replayDone}
+          onClose={() => setReplay(null)}
+        />
+      ) : null}
 
       {open && openCharacter ? (
         <>

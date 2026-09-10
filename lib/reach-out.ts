@@ -1,7 +1,7 @@
 /**
  * TA 主动找她（D-114）：每段羁绊一只钟，到点 TA 自己先开口——机制照发帖调度器。
  * - 频率：按创造表单的「主动联系强度」定每天几条（高 2.5 / 中 1.2 / 低 0.4），乘 MBTI（E ×1.2 / I ×0.85）
- *   与羁绊等级（LV1 ×0.8 … LV5+ ×1.2），±35% 抖动；23:00–08:00 静默，落进去的顺延到早上。
+ *   与羁绊等级（LV1 ×0.8 … LV5+ ×1.2），±35% 抖动；勿扰时段（默认 23:00–08:00，设置里可改 D-120）静默，落进去的顺延到结束后。
  * - 守门（红线 6：不纠缠、不刷屏）：她 3 小时内说过话不发；会话里已有 2 条未读不发；守门没过就往后挪 2–4 小时。
  * - 内容：亲密模式整套 prompt + 舞台提示（此刻 / 天气 / 她多久没说话 / TA 的记事本与帖子 / 上一条是谁说的，content/prompts/reach-out.ts），
  *   TA 从自己的日子说起，不问「在吗」。
@@ -14,7 +14,7 @@ import { bondedContext } from '@/lib/chat';
 import { bondLevel } from '@/lib/bond';
 import { generateReply, stripStageDirections } from '@/lib/engine';
 import { uid } from '@/lib/format';
-import { cancelScheduled, requestNotificationPermission, scheduleArrivalNotification } from '@/lib/notifications';
+import { cancelScheduled, hasNotificationPermission, scheduleArrivalNotification } from '@/lib/notifications';
 import type { Bond, Character, ChatMessage } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -25,7 +25,7 @@ export const REACH_PER_DAY: Record<NonNullable<Character['initiative']>, number>
 export const REACH_MBTI = { E: 1.2, I: 0.85 };
 /** 羁绊等级系数：越熟越常来（LV1 起） */
 export const REACH_LEVEL = [0.8, 0.9, 1, 1.1, 1.2, 1.2];
-/** 静默时段（不发）：23:00 起到次日 08:00 */
+/** 静默时段默认值（不发）：23:00 起到次日 08:00；实际读 store.quietHours（D-120） */
 export const QUIET_FROM = 23;
 export const QUIET_TO = 8;
 /** 她刚说过话（小时内）不主动；会话里已有几条未读就不再加 */
@@ -46,18 +46,18 @@ export function reachIntervalMs(c: Pick<Character, 'initiative' | 'mbti'>, affin
   return Math.round(base * (0.65 + rand * 0.7));
 }
 
-/** 静默时段内的时刻顺延到早上 08:00 之后（+0～90 分钟） */
-export function outsideQuiet(at: number, rand = Math.random()): number {
+/** 勿扰时段内的时刻顺延到结束之后（+0～90 分钟）；hours 不传读设置 */
+export function outsideQuiet(at: number, rand = Math.random(), hours?: { from: number; to: number }): number {
+  const { from, to } = hours ?? useAppStore.getState().quietHours ?? { from: QUIET_FROM, to: QUIET_TO };
+  if (from === to) return at;
   const d = new Date(at);
   const h = d.getHours();
-  if (h < QUIET_TO) {
-    d.setHours(QUIET_TO, 0, 0, 0);
-  } else if (h >= QUIET_FROM) {
-    d.setDate(d.getDate() + 1);
-    d.setHours(QUIET_TO, 0, 0, 0);
-  } else {
-    return at;
-  }
+  // 跨夜（23→8）：h<to 或 h>=from 在静默里；不跨夜（1→6）：from<=h<to 在静默里
+  const overnight = from > to;
+  const inQuiet = overnight ? h < to || h >= from : h >= from && h < to;
+  if (!inQuiet) return at;
+  if (overnight && h >= from) d.setDate(d.getDate() + 1);
+  d.setHours(to, 0, 0, 0);
   return d.getTime() + Math.round(rand * 90 * 60_000);
 }
 
@@ -153,7 +153,8 @@ async function preparePending(bond: Bond, character: Character, due: number): Pr
   await clearPending(bond.id);
   const texts = await generateReachOut(bond, character, new Date(due));
   if (!texts) return;
-  const ok = await requestNotificationPermission().catch(() => false);
+  // 权限在缔结那一刻问过（D-120）；这里只看有没有，不再弹
+  const ok = await hasNotificationPermission().catch(() => false);
   const notifId = ok ? await scheduleArrivalNotification(bond.name, texts.join(' '), new Date(due), bond.id) : null;
   useAppStore.getState().setReachPending(bond.id, { texts, due, generatedAt: Date.now(), notifId: notifId ?? undefined });
 }

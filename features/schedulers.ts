@@ -6,6 +6,7 @@
 import { jobs } from '@/core/jobs';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { deliverDueHisNotes } from '@/lib/his-notes';
+import { deliverDueHisSchedules } from '@/lib/his-schedule';
 import { checkMissedPlans } from '@/lib/outing';
 import { deliverDuePosts, deliverDueReactions } from '@/lib/posts';
 import { deliverDueReachOuts } from '@/lib/reach-out';
@@ -36,6 +37,9 @@ jobs.register({ id: 'reach-out', on: ['launch', 'foreground'], run: (now) => del
 
 /** 爽约检查（D-079）：过了赴约窗口还没去的约定 → 记忆 + TA 主动说一句 */
 jobs.register({ id: 'missed-plans', on: ['launch', 'foreground'], run: (now) => checkMissedPlans(now) });
+
+/** TA 自己的作息（D-119）：日程不够就补一周 */
+jobs.register({ id: 'his-schedule', on: ['launch', 'foreground'], run: (now) => deliverDueHisSchedules(now) });
 
 /** TA 的记事本（D-085）：按 MBTI 频率写心事 */
 jobs.register({ id: 'his-notes', on: ['launch', 'foreground'], run: (now) => deliverDueHisNotes(now) });

@@ -12,6 +12,7 @@ import '@/features/invite';
 import '@/features/red-packet';
 import '@/features/location';
 import '@/features/phone-peek';
+import '@/features/share';
 
 import '@/features/voice-reply';
 import '@/features/memory';

@@ -25,6 +25,7 @@ import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { planTimeLabel } from '@/lib/appointments';
 import { levelInfo } from '@/lib/bond';
 import { ensureCircle } from '@/lib/circle';
+import { ensureHisSchedule, upcomingHisEvents } from '@/lib/his-schedule';
 import { clockTime, timeAgo } from '@/lib/format';
 import { portraitFor } from '@/lib/imagegen';
 import { deliverDueHisNotes } from '@/lib/his-notes';
@@ -108,6 +109,8 @@ export function PhoneSheet({
       void deliverDueHisNotes();
       // 身边的人（D-110）：第一次打开时生成一次
       void ensureCircle(bond.id).then(() => setCircleReady(true));
+      // TA 自己的作息（D-119）：日程不够就补一周
+      void ensureHisSchedule(bond.id);
     }
   }, [visible, onViewed, bond.id]);
 
@@ -119,9 +122,14 @@ export function PhoneSheet({
   const circle = bond.circle ?? [];
   const circleChats = bond.circleChats ?? {};
 
-  // 日历：和她的约定 + TA 的生日（只记安排与纪念日，D-090；TA 经历的事在记事本里）
+  // 日历：TA 自己的安排（D-119）+ 和她的约定 + TA 的生日（只记安排与纪念日，D-090；TA 经历的事在记事本里）
   const calendar = useMemo(() => {
     const out: { at: number; text: string; timed: boolean }[] = [];
+    for (const e of upcomingHisEvents(bond.hisEvents)) {
+      const [y, mo, d] = e.date.split('-').map(Number);
+      const [hh, mm] = (e.time ?? '00:00').split(':').map(Number);
+      out.push({ at: new Date(y, mo - 1, d, hh, mm).getTime(), text: e.title, timed: !!e.time });
+    }
     for (const p of plans) {
       if (p.characterId !== character.id || !p.at) continue;
       const place = placeById(p.placeId);
@@ -134,8 +142,8 @@ export function PhoneSheet({
       if (bd < now - 86400_000) bd = new Date(y + 1, mm - 1, dd).getTime();
       out.push({ at: bd, text: t('我的生日'), timed: false });
     }
-    return out.sort((a, b) => a.at - b.at).filter((e) => e.at > now - 86400_000).slice(0, 8);
-  }, [plans, character, bond.nickname, now]);
+    return out.sort((a, b) => a.at - b.at).filter((e) => e.at > now - 86400_000).slice(0, 12);
+  }, [plans, character, bond.nickname, bond.hisEvents, now]);
 
   // 她的会话（TA 视角）：非系统、可进上下文的最近 40 条
   const herMessages = bond.messages.filter((m) => m.from !== 'system' && !m.recalled && messageContextText(m)).slice(-40);

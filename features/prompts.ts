@@ -23,6 +23,7 @@ import {
   circleBlock,
   encountersBlock,
   hisNoteLifeLines,
+  hisScheduleBlock,
   HIS_NOTE_MANNER,
   initiativeLine,
   memoryBlockFor,
@@ -46,6 +47,7 @@ import {
   userProfileBlock,
   worldBlock,
 } from '@/content/prompts';
+import { dateKey } from '@/content/calendar';
 import { ORDER, promptSections, type PromptMode } from '@/core/prompt';
 import { levelInfo } from '@/lib/bond';
 import type { EngineContext } from '@/lib/types';
@@ -74,6 +76,9 @@ promptSections.register({ name: 'profile', modes: 'all', order: ORDER.profile, l
 promptSections.register({ name: 'world', modes: 'all', order: ORDER.world, lines: (ctx) => worldBlock(ctx.character) });
 promptSections.register({ name: 'circle', modes: BONDED_FAMILY, order: ORDER.circle, lines: (ctx) => circleBlock(ctx.bond?.circle) });
 promptSections.register({ name: 'circle-outing', modes: OUTING, order: ORDER.circle, lines: (ctx) => (isStranger(ctx) ? [] : circleBlock(ctx.bond?.circle)) });
+// TA 自己的作息（D-119）：羁绊层都知道自己接下来要干嘛
+promptSections.register({ name: 'his-schedule', modes: BONDED_FAMILY, order: ORDER.circle, lines: (ctx, env) => hisScheduleBlock(ctx.bond?.hisEvents, dateKey(env.now)) });
+promptSections.register({ name: 'his-schedule-outing', modes: OUTING, order: ORDER.circle, lines: (ctx, env) => (isStranger(ctx) ? [] : hisScheduleBlock(ctx.bond?.hisEvents, dateKey(env.now))) });
 promptSections.register({ name: 'voice-square', modes: SQUARE, order: ORDER.voice, lines: (ctx) => squareVoiceBlock(ctx) });
 promptSections.register({ name: 'voice-bonded', modes: BONDED_FAMILY, order: ORDER.voice, lines: (ctx) => bondedVoiceBlock(ctx) });
 promptSections.register({ name: 'voice-outing', modes: OUTING, order: ORDER.voice, lines: (ctx) => outingVoiceBlock(ctx) });

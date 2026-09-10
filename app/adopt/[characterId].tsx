@@ -33,6 +33,7 @@ import { authConfigured, signedInSession } from '@/lib/auth';
 import { slotLimit, slotLimitLabel } from '@/lib/bond';
 import { generateCharacterLines } from '@/lib/character-lines';
 import { t } from '@/lib/i18n';
+import { requestNotificationPermission } from '@/lib/notifications';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
 type Step = 'slot' | 'names' | 'ceremony';
@@ -69,6 +70,8 @@ export default function AdoptScreen() {
       characterId: character.id,
       name: hisName.trim() || character.name,
     });
+    // 通知权限在缔结这一刻问（D-120）：从此 TA 会主动来找她，App 没开着也送得到
+    void requestNotificationPermission().catch(() => false);
     if (!hadContacts && authConfigured() && !(await signedInSession())) {
       router.replace({ pathname: '/auth', params: { force: '1' } });
       return;

@@ -1,10 +1,11 @@
 import { Fredoka_500Medium } from '@expo-google-fonts/fredoka/500Medium';
 import { Fredoka_600SemiBold } from '@expo-google-fonts/fredoka/600SemiBold';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 // SDK 56 起 expo-router 不再兼容 @react-navigation/*：主题从它自带的入口拿（D-102）
 import { DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
@@ -26,6 +27,20 @@ import '@/lib/notifications';
 import { useAppStore, useHydrated } from '@/store/app-store';
 
 SplashScreen.preventAutoHideAsync();
+
+/** 分享流（D-117）：别的 App 分享进来 → 取出文字 / 链接 / 图片 → 去「转给他」选人；只在 EAS Build 里有原生扩展，Expo Go 永远没有 intent */
+function ShareIntentGate() {
+  const router = useRouter();
+  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
+  useEffect(() => {
+    if (!hasShareIntent) return;
+    const image = shareIntent.files?.find((f) => f.mimeType?.startsWith('image/'))?.path;
+    const params = { text: shareIntent.text ?? '', url: shareIntent.webUrl ?? '', image: image ?? '' };
+    resetShareIntent();
+    router.push({ pathname: '/share', params } as never);
+  }, [hasShareIntent, shareIntent, resetShareIntent, router]);
+  return null;
+}
 
 export const unstable_settings = {
   anchor: 'index',
@@ -83,7 +98,9 @@ export default function RootLayout() {
   }, []);
 
   return (
+    <ShareIntentProvider>
     <ThemeProvider key={`${wallpaper}-${language}`} value={theme}>
+      {ready ? <ShareIntentGate /> : null}
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Romance.bg } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: 'fade' }} />
@@ -91,6 +108,7 @@ export default function RootLayout() {
         <Stack.Screen name="adopt/[characterId]" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="bond/[bondId]" />
         <Stack.Screen name="outing/[placeId]" />
+        <Stack.Screen name="share" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen
           name="call/[characterId]"
           options={{ presentation: 'fullScreenModal', gestureEnabled: false, animation: 'fade' }}
@@ -99,5 +117,6 @@ export default function RootLayout() {
       <ToastHost />
       <StatusBar style="dark" />
     </ThemeProvider>
+    </ShareIntentProvider>
   );
 }

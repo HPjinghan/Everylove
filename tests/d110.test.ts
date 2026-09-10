@@ -14,10 +14,13 @@ import {
   circleBlock,
   encountersBlock,
   parseCircleJSON,
+  hisScheduleBlock,
+  parseHisScheduleJSON,
   parseReactionsJSON,
   pickOutingOpener,
   worldBlock,
 } from '@/content/prompts';
+import { outsideQuiet } from '@/lib/reach-out';
 import { setLang } from '@/lib/i18n';
 import { canPublishCharacter, selectableFrom, worldOf, worldSnapshot } from '@/lib/worlds';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -173,6 +176,26 @@ describe('她的日历是私密的（D-113）', () => {
     expect(count()).toBe(1);
     // 同一段不重复
     expect(await deliverDueHeartbeats(eve)).toBe(0);
+  });
+});
+
+describe('TA 自己的作息（D-119）', () => {
+  it('解析 JSON、注入【你的日程】按今天 / 明天标注', () => {
+    const parsed = parseHisScheduleJSON('{"events":[{"date":"2026-09-11","time":"9:00","title":"早会"},{"date":"bad","title":"x"}]}');
+    expect(parsed).toEqual([{ date: '2026-09-11', time: '09:00', title: '早会' }]);
+    const block = hisScheduleBlock([{ id: 'a', date: '2026-09-11', time: '09:00', title: '早会' }, { id: 'b', date: '2026-09-09', title: '过去的' }], '2026-09-10');
+    expect(block[1]).toBe('- 明天 09:00：早会');
+    expect(block).toHaveLength(2);
+  });
+});
+
+describe('勿扰时段读设置（D-120）', () => {
+  it('改成 1–6 点后，凌晨 3 点顺延到 6 点，23 点照发', () => {
+    useAppStore.getState().setQuietHours({ from: 1, to: 6 });
+    const three = new Date(2026, 8, 10, 3, 0).getTime();
+    expect(new Date(outsideQuiet(three, 0)).getHours()).toBe(6);
+    const late = new Date(2026, 8, 10, 23, 0).getTime();
+    expect(outsideQuiet(late, 0)).toBe(late);
   });
 });
 

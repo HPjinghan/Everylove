@@ -48,6 +48,22 @@ function flattenChildren(children: ReactNode): ReactNode[] {
 }
 
 /** 分区：标题 + 一张不带内距的白卡；卡内每两个直接子元素之间一条 1.5px ink 分区线 */
+/** 小时步进：Fredoka 数字，两侧 −/+（D-120 勿扰时段） */
+function HourStepper({ value, onChange }: { value: number; onChange: (h: number) => void }) {
+  const step = (d: number) => onChange((value + d + 24) % 24);
+  return (
+    <View style={styles.stepper}>
+      <Pressable onPress={() => step(-1)} hitSlop={8} style={styles.stepBtn}>
+        <Text style={styles.stepBtnText}>−</Text>
+      </Pressable>
+      <Text style={styles.stepValue}>{String(value).padStart(2, '0')}:00</Text>
+      <Pressable onPress={() => step(1)} hitSlop={8} style={styles.stepBtn}>
+        <Text style={styles.stepBtnText}>+</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const items = flattenChildren(children);
   return (
@@ -211,6 +227,7 @@ export default function MeScreen() {
   };
 
   const me = useAppStore((s) => s.me);
+  const quiet = useAppStore((s) => s.quietHours);
   const plan = useAppStore((s) => s.plan);
   const language = useAppStore((s) => s.language);
   // 槽位超额（交互改动 9）：降级后已有的羁绊不消失，但不能再新增
@@ -369,6 +386,16 @@ export default function MeScreen() {
           {plan !== 'free' ? <Row label={t('取消订阅（回 Free）')} onPress={() => subscribe('free')} /> : null}
         </Section>
 
+        <Section title={t('TA 主动找你')}>
+          <View style={styles.quietRow}>
+            <Text style={styles.quietLabel}>{t('勿扰时段')}</Text>
+            <HourStepper value={quiet.from} onChange={(from) => useAppStore.getState().setQuietHours({ ...quiet, from })} />
+            <Text style={styles.quietDash}>–</Text>
+            <HourStepper value={quiet.to} onChange={(to) => useAppStore.getState().setQuietHours({ ...quiet, to })} />
+          </View>
+          <Text style={styles.cardNote}>{t('这段时间 TA 不会主动发消息，到点了也等到结束再来。')}</Text>
+        </Section>
+
         <Section title={t('我的创作')}>
           <Row
             label={t('创造的角色')}
@@ -464,6 +491,13 @@ const styles = themed(() =>
     wallSwatch: { width: 52, height: 88, borderRadius: Shape.radius, overflow: 'hidden', backgroundColor: Romance.bg },
     wallLabel: { fontSize: 11, color: Romance.sub, textAlign: 'center', marginTop: 4 },
     wallLabelOn: { color: Romance.accent },
+    quietRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inline, paddingVertical: 10, paddingHorizontal: Space.cardX },
+    quietLabel: { flex: 1, fontSize: 14, color: Romance.ink },
+    quietDash: { fontFamily: Fonts.label, fontSize: 14, color: Romance.sub },
+    stepper: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Romance.bg, borderRadius: Shape.radius, paddingHorizontal: 4 },
+    stepBtn: { width: 26, height: 30, alignItems: 'center', justifyContent: 'center' },
+    stepBtnText: { fontFamily: Fonts.labelBold, fontSize: 16, color: Romance.accent },
+    stepValue: { fontFamily: Fonts.labelBold, fontSize: 14, color: Romance.ink, minWidth: 44, textAlign: 'center' },
     about: {
       textAlign: 'center',
       fontFamily: Fonts.label,

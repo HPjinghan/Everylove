@@ -22,6 +22,7 @@
  *   world.ts         世界书：TA 所在的世界（D-110）
  *   circle.ts        TA 身边的人：生成 + 注入（D-110）
  *   reach-out.ts     TA 主动找她的舞台提示（D-114）
+ *   his-schedule.ts  TA 自己的作息：生成 + 注入（D-119）
  *
  * 不在这里的：
  *   - 角色人设 persona / 追法 pursuit / 外貌 look / 人称 pronoun / 台词库 → content/characters/（zh / en / ja 各一份，D-093）
@@ -45,6 +46,7 @@ export * from './circle';
 export * from './create';
 export * from './heartbeat';
 export * from './his-notes';
+export * from './his-schedule';
 export * from './image-common';
 export * from './memory';
 export * from './outing';
