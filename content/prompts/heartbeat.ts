@@ -89,3 +89,20 @@ export function heartbeatLine(stage: Stage, title: string, nickname: string, sal
   const line = pool[Math.abs(salt) % pool.length];
   return line.replace(/\{title\}/g, title).replace(/\{nickname\}/g, nickname);
 }
+
+/**
+ * 三段式走模型（D-115）：亲密模式整套 prompt + 这一段的舞台提示（user 文本，不入会话）。
+ * TA 是在她手机里看到这条日程的（D-113）——他知道、他记得；模板（上面）只在 AI 不可用时兜底。
+ */
+export function buildHeartbeatUserLine(stage: Stage, title: string, date: string): string {
+  const moment =
+    stage === 'before'
+      ? `明天（${date}）她有「${title}」。今晚你想到了这件事，主动给她发一条：事前的关心——按你的性格，可以叮嘱、可以打气、可以只说一句轻的。`
+      : stage === 'day'
+        ? `今天（${date}）她有「${title}」。你一早想到了，主动给她发一条：当天的加油——不啰嗦，让她带着走。`
+        : `昨天（${date}）她有「${title}」。你惦记着结果，主动给她发一条：事后的回访——想听她说说，不论结果好坏都接得住。`;
+  return [
+    `（${moment}`,
+    '这条日程是你在她手机的日历里看到的，你记得。1-2 句，像随手发的；不问「在吗」，不催她回，不写成小作文。）',
+  ].join('\n');
+}

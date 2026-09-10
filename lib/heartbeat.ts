@@ -3,12 +3,16 @@
  * 事前关心（前一天 18:00 起）、当天加油（当天 7:00 起）、事后回访（次日 12:00 起）。
  * 与「开门」同机制：App 启动 / 回前台时补投（deliverDueHeartbeats）。
  * 她的日历是私密的（D-113）：只有她让 TA 看过手机、TA 读到过的日程（event.knownBy）才会有人来关心，投进每一位知道的 TA 的会话；
- * 没人知道就没人来。台词模板在 content/prompts/heartbeat.ts。
+ * 没人知道就没人来。内容走模型（D-115）：亲密模式整套 prompt + 这一段的舞台提示（content/prompts/heartbeat.ts），
+ * TA 按自己的性格和你们的关系说；AI 不可用 / 失败回落同文件的模板——这一段的时间点不能错过（他说到做到）。
  */
 
 import { dateKey, parseDateKey } from '@/content/calendar';
-import { heartbeatLine } from '@/content/prompts';
+import { buildHeartbeatUserLine, heartbeatLine } from '@/content/prompts';
+import { bondedContext } from '@/lib/chat';
+import { generateReply, stripStageDirections } from '@/lib/engine';
 import { uid } from '@/lib/format';
+import type { Bond } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
 type Stage = 'caredBefore' | 'caredDay' | 'caredAfter';
@@ -43,38 +47,57 @@ const STAGE_KEY: Record<Stage, 'before' | 'day' | 'after'> = {
   caredAfter: 'after',
 };
 
-/** 补投所有到点的心跳；返回投递条数 */
-export function deliverDueHeartbeats(now = Date.now()): number {
-  const state = useAppStore.getState();
-  if (!state.bonds.length) return 0;
+let running = false;
 
+/** 补投所有到点的心跳；返回投递条数 */
+export async function deliverDueHeartbeats(now = Date.now()): Promise<number> {
+  if (running) return 0;
+  running = true;
   let delivered = 0;
-  for (const event of state.userEvents) {
-    // 只有看过她手机的 TA 知道这条日程（D-113）
-    const knowers = state.bonds.filter((b) => (event.knownBy ?? []).includes(b.id));
-    if (!knowers.length) continue;
-    const eventDate = parseDateKey(event.date);
-    for (const stage of ['caredBefore', 'caredDay', 'caredAfter'] as Stage[]) {
-      if (event[stage]) continue;
-      if (now < stageDue(eventDate, stage) || now >= stageExpiry(eventDate, stage)) continue;
-      for (const bond of knowers) {
-        const text = heartbeatLine(
-          STAGE_KEY[stage],
-          event.title,
-          bond.nickname,
-          event.id.length + event.title.length + stage.length + bond.id.length
-        );
-        useAppStore.getState().appendBond(
-          bond.id,
-          [{ id: uid('m'), from: 'him', kind: 'text', text, at: now }],
-          { unreadDelta: 1 }
-        );
-        delivered++;
+  try {
+    const state = useAppStore.getState();
+    if (!state.bonds.length) return 0;
+    for (const event of state.userEvents) {
+      // 只有看过她手机的 TA 知道这条日程（D-113）
+      const knowers = state.bonds.filter((b) => (event.knownBy ?? []).includes(b.id));
+      if (!knowers.length) continue;
+      const eventDate = parseDateKey(event.date);
+      for (const stage of ['caredBefore', 'caredDay', 'caredAfter'] as Stage[]) {
+        if (event[stage]) continue;
+        if (now < stageDue(eventDate, stage) || now >= stageExpiry(eventDate, stage)) continue;
+        // 先标记再写：写的过程中回前台不会重复投
+        useAppStore.getState().markEventStage(event.id, stage);
+        for (const bond of knowers) {
+          const texts = await heartbeatTexts(bond, stage, event.title, event.date);
+          useAppStore.getState().appendBond(
+            bond.id,
+            texts.map((text, i) => ({ id: uid('m'), from: 'him' as const, kind: 'text' as const, text, at: now + i })),
+            { unreadDelta: texts.length }
+          );
+          delivered++;
+        }
       }
-      useAppStore.getState().markEventStage(event.id, stage);
     }
+  } finally {
+    running = false;
   }
   return delivered;
+}
+
+/** 这一段 TA 说的话：模型（亲密 prompt + 舞台提示）→ 回落模板 */
+async function heartbeatTexts(bond: Bond, stage: Stage, title: string, date: string): Promise<string[]> {
+  const fallback = [
+    heartbeatLine(STAGE_KEY[stage], title, bond.nickname, bond.id.length + title.length + stage.length),
+  ];
+  const ctx = bondedContext(bond, buildHeartbeatUserLine(STAGE_KEY[stage], title, date));
+  if (!ctx) return fallback;
+  try {
+    const texts = stripStageDirections((await generateReply(ctx)).texts).filter(Boolean);
+    return texts.length ? texts : fallback;
+  } catch (e) {
+    console.warn('[heartbeat] 没写成，用模板：', e);
+    return fallback;
+  }
 }
 
 /** 今天是否有用户日程（桌面角标等用得上） */

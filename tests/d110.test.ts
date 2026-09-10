@@ -146,7 +146,7 @@ describe('日历任何年份都有内容', () => {
 });
 
 describe('她的日历是私密的（D-113）', () => {
-  it('没看过她手机的 TA 不会来关心日程；看过之后心跳照投', () => {
+  it('没看过她手机的 TA 不会来关心日程；看过之后心跳照投（AI 不可用回落模板）', async () => {
     const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -155,13 +155,13 @@ describe('她的日历是私密的（D-113）', () => {
     before.setHours(19, 0, 0, 0); // 事前关心窗口内
     const eve = before.getTime() - 86400_000;
     const count = () => useAppStore.getState().bonds.find((b) => b.id === bondId)!.messages.filter((m) => m.text.includes('面试')).length;
-    expect(deliverDueHeartbeats(eve)).toBe(0);
+    expect(await deliverDueHeartbeats(eve)).toBe(0);
     expect(count()).toBe(0);
     useAppStore.getState().markEventsKnown(['ev1'], bondId);
-    expect(deliverDueHeartbeats(eve)).toBe(1);
+    expect(await deliverDueHeartbeats(eve)).toBe(1);
     expect(count()).toBe(1);
     // 同一段不重复
-    expect(deliverDueHeartbeats(eve)).toBe(0);
+    expect(await deliverDueHeartbeats(eve)).toBe(0);
   });
 });
 

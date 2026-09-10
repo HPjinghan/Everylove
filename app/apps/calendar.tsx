@@ -120,7 +120,7 @@ export default function CalendarScreen() {
     useAppStore.getState().addUserEvent({ id: uid('ev'), date: selected, title });
     setDraft('');
     // 有可能立即落入投递窗口（比如今天的日程），马上跑一次心跳
-    deliverDueHeartbeats();
+    void deliverDueHeartbeats();
   };
 
   const removeEvent = (id: string, title: string) => {
