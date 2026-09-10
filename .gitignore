@@ -47,3 +47,6 @@ scripts/out/
 
 # Claude Design 原始导出（4.6 MB bundle）；解出的页面源码 design/design-system.page.html 进 git
 design/Everylove Design System.html
+
+# supabase CLI 本机缓存
+supabase/.temp/
