@@ -1,8 +1,9 @@
 /**
  * 心跳调度器（D-020/D-021）：日历用户层日程的三段式关怀——
  * 事前关心（前一天 18:00 起）、当天加油（当天 7:00 起）、事后回访（次日 12:00 起）。
- * 与「开门」同机制：App 启动 / 回前台时补投（deliverDueHeartbeats），投进首个羁绊的会话流。
- * 没有羁绊则不投（心跳是羁绊层的能力）；台词模板在 content/prompts/heartbeat.ts。
+ * 与「开门」同机制：App 启动 / 回前台时补投（deliverDueHeartbeats）。
+ * 她的日历是私密的（D-113）：只有她让 TA 看过手机、TA 读到过的日程（event.knownBy）才会有人来关心，投进每一位知道的 TA 的会话；
+ * 没人知道就没人来。台词模板在 content/prompts/heartbeat.ts。
  */
 
 import { dateKey, parseDateKey } from '@/content/calendar';
@@ -45,28 +46,32 @@ const STAGE_KEY: Record<Stage, 'before' | 'day' | 'after'> = {
 /** 补投所有到点的心跳；返回投递条数 */
 export function deliverDueHeartbeats(now = Date.now()): number {
   const state = useAppStore.getState();
-  const bond = state.bonds[0];
-  if (!bond) return 0;
+  if (!state.bonds.length) return 0;
 
   let delivered = 0;
   for (const event of state.userEvents) {
+    // 只有看过她手机的 TA 知道这条日程（D-113）
+    const knowers = state.bonds.filter((b) => (event.knownBy ?? []).includes(b.id));
+    if (!knowers.length) continue;
     const eventDate = parseDateKey(event.date);
     for (const stage of ['caredBefore', 'caredDay', 'caredAfter'] as Stage[]) {
       if (event[stage]) continue;
       if (now < stageDue(eventDate, stage) || now >= stageExpiry(eventDate, stage)) continue;
-      const text = heartbeatLine(
-        STAGE_KEY[stage],
-        event.title,
-        bond.nickname,
-        event.id.length + event.title.length + stage.length
-      );
-      useAppStore.getState().appendBond(
-        bond.id,
-        [{ id: uid('m'), from: 'him', kind: 'text', text, at: now }],
-        { unreadDelta: 1 }
-      );
+      for (const bond of knowers) {
+        const text = heartbeatLine(
+          STAGE_KEY[stage],
+          event.title,
+          bond.nickname,
+          event.id.length + event.title.length + stage.length + bond.id.length
+        );
+        useAppStore.getState().appendBond(
+          bond.id,
+          [{ id: uid('m'), from: 'him', kind: 'text', text, at: now }],
+          { unreadDelta: 1 }
+        );
+        delivered++;
+      }
       useAppStore.getState().markEventStage(event.id, stage);
-      delivered++;
     }
   }
   return delivered;

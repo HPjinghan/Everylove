@@ -191,6 +191,8 @@ interface AppState {
   removeUserEvent: (id: string) => void;
   /** 心跳三段式：标记某段已投递（lib/heartbeat.ts） */
   markEventStage: (id: string, stage: 'caredBefore' | 'caredDay' | 'caredAfter') => void;
+  /** 这些日程被某个 TA 看到了（D-113：查我手机时） */
+  markEventsKnown: (ids: string[], bondId: string) => void;
   /** 外出（D-038）：立一个约定（同角色只保留最新一条），并在羁绊会话留系统记录；带时间的约定只在赴约窗口内算数（D-079） */
   addOutingPlan: (
     characterId: string,
@@ -688,6 +690,12 @@ export const useAppStore = create<AppState>()(
           userEvents: [...get().userEvents, e].sort((a, b) => a.date.localeCompare(b.date)),
         }),
       removeUserEvent: (id) => set({ userEvents: get().userEvents.filter((e) => e.id !== id) }),
+      markEventsKnown: (ids, bondId) =>
+        set({
+          userEvents: get().userEvents.map((e) =>
+            ids.includes(e.id) && !(e.knownBy ?? []).includes(bondId) ? { ...e, knownBy: [...(e.knownBy ?? []), bondId] } : e
+          ),
+        }),
       markEventStage: (id, stage) =>
         set({
           userEvents: get().userEvents.map((e) => (e.id === id ? { ...e, [stage]: true } : e)),

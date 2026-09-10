@@ -348,7 +348,9 @@ export interface CalendarEvent {
   /** YYYY-MM-DD */
   date: string;
   title: string;
-  /** 心跳三段式投递标记（lib/heartbeat.ts） */
+  /** 哪些羁绊知道这条日程（D-113）：她让 TA 看手机时 TA 读到的；没看过的 TA 不知道、也不会来关心 */
+  knownBy?: string[];
+  /** 心跳三段式投递标记（lib/heartbeat.ts）：只投给知道的 TA */
   caredBefore?: boolean;
   caredDay?: boolean;
   caredAfter?: boolean;

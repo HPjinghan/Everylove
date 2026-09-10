@@ -6,7 +6,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import '@/features';
 
-import { holidayFor } from '@/content/calendar';
+import { dateKey, holidayFor } from '@/content/calendar';
+import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import {
   buildChatSystemPrompt,
   buildPostReactionsSystem,
@@ -141,6 +142,26 @@ describe('日历任何年份都有内容', () => {
     expect(holidayFor('2028-10-03')).toBe('中秋');
     expect(holidayFor('2026-08-19')).toBe('七夕');
     expect(holidayFor('2040-03-15')).toBeUndefined();
+  });
+});
+
+describe('她的日历是私密的（D-113）', () => {
+  it('没看过她手机的 TA 不会来关心日程；看过之后心跳照投', () => {
+    const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    useAppStore.getState().addUserEvent({ id: 'ev1', date: dateKey(tomorrow), title: '面试' });
+    const before = new Date(tomorrow);
+    before.setHours(19, 0, 0, 0); // 事前关心窗口内
+    const eve = before.getTime() - 86400_000;
+    const count = () => useAppStore.getState().bonds.find((b) => b.id === bondId)!.messages.filter((m) => m.text.includes('面试')).length;
+    expect(deliverDueHeartbeats(eve)).toBe(0);
+    expect(count()).toBe(0);
+    useAppStore.getState().markEventsKnown(['ev1'], bondId);
+    expect(deliverDueHeartbeats(eve)).toBe(1);
+    expect(count()).toBe(1);
+    // 同一段不重复
+    expect(deliverDueHeartbeats(eve)).toBe(0);
   });
 });
 

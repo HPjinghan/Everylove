@@ -28,6 +28,8 @@ export function phoneBlock(ctx: EngineContext): string[] {
 export function buildPeekMyPhoneUser(input: {
   nickname: string;
   notes: { at: number; text: string }[];
+  /** 她日历里的安排（D-113）：过去几天与接下来的，日期 + 标题 */
+  events?: { date: string; title: string }[];
   chats: { name: string; messages: ChatMessage[] }[];
 }): string {
   const noteLines = input.notes.length
@@ -36,9 +38,11 @@ export function buildPeekMyPhoneUser(input: {
   const chatBlocks = input.chats.length
     ? input.chats.map((c) => `和${c.name}：\n${transcript(c.messages, c.name)}`).join('\n\n')
     : '（没有别的聊天）';
+  const eventLines = input.events?.length ? input.events.map((e) => `- ${e.date}：${e.title}`).join('\n') : '（空的）';
   return [
     `（${input.nickname}把自己的手机递给你，说「随便看」。你翻了翻——`,
     `【她的记事本】\n${noteLines}`,
+    `【她的日历】\n${eventLines}`,
     `【她和别人的聊天】（都是这个世界里的人）\n${chatBlocks}`,
     '看完之后，你给她发一条消息，1-2 句，像你平时发消息那样。按你的性格反应：可以在意、可以吃醋、可以逗她、可以被记事本里的某句话打动；只说你自己的感受，不审问、不翻旧账、不用愧疚绑架她。记事本里如果提到别的真实的人，一个字都不评论。）',
   ].join('\n\n');

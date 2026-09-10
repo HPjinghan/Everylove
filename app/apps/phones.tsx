@@ -96,7 +96,7 @@ export default function PhonesScreen() {
             <Card padded={false} style={styles.confirm}>
               <Text style={styles.confirmTitle}>{t('让{name}看你的手机？', { name: confirming?.name ?? '' })}</Text>
               <Text style={styles.confirmBody}>
-                {t('TA 会读到：记事本的全部内容、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。')}
+                {t('TA 会读到：记事本的全部内容、日历里的安排、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。')}
               </Text>
               <View style={styles.confirmActions}>
                 <Button label={t('取消')} variant="paper" size="md" style={styles.flex} onPress={() => setConfirmId(null)} />

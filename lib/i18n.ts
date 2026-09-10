@@ -569,7 +569,7 @@ const en: Record<string, string> = {
   // 记事本编辑 / 查手机二次确认（D-100 纸面：Notes / Phones / Phone lock / His phone）
   '标题': 'Title',
   '让{name}看你的手机？': 'Let {name} see your phone?',
-  'TA 会读到：记事本的全部内容、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。': "They'll read all of your notes and your recent chats with others, then message you. This can't be undone.",
+  'TA 会读到：记事本的全部内容、日历里的安排、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。': "They'll read all of your notes, the plans in your calendar and your recent chats with others, then message you. This can't be undone.",
   '让 TA 看': 'Let them',
   // 设置：槽位超额（D-100 交互改动 9）
   '超出的羁绊不会消失，但不能再新增': 'Bonds over the limit stay, but no new ones can be added',
@@ -1250,7 +1250,7 @@ const ja: Record<string, string> = {
   // 记事本编辑 / 查手机二次确认（D-100 纸面：Notes / Phones / Phone lock / His phone）
   '标题': 'タイトル',
   '让{name}看你的手机？': '{name} にスマホを見せる？',
-  'TA 会读到：记事本的全部内容、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。': 'メモの全部と、ほかの人との最近のやりとりを読まれます。読み終えたらメッセージが届きます。取り消しはできません。',
+  'TA 会读到：记事本的全部内容、日历里的安排、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。': 'メモの全部、カレンダーの予定、ほかの人との最近のやりとりを読まれます。読み終えたらメッセージが届きます。取り消しはできません。',
   '让 TA 看': '見せる',
   // 设置：槽位超额（D-100 交互改动 9）
   '超出的羁绊不会消失，但不能再新增': '上限を超えた絆は消えませんが、新しく増やすことはできません',
@@ -1937,7 +1937,7 @@ const ko: Record<string, string> = {
   '使用当前位置': '현재 위치 사용',
   '标题': '제목',
   '让{name}看你的手机？': '{name}에게 휴대폰을 보여 줄까요?',
-  'TA 会读到：记事本的全部内容、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。': '메모 전체와 다른 사람들과 나눈 최근 대화를 읽게 돼요. 다 읽고 나면 메시지를 보내와요. 되돌릴 수 없어요.',
+  'TA 会读到：记事本的全部内容、日历里的安排、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。': '메모 전체, 달력의 일정, 다른 사람들과 나눈 최근 대화를 읽게 돼요. 다 읽고 나면 메시지를 보내와요. 되돌릴 수 없어요.',
   '让 TA 看': '보여 주기',
   '超出的羁绊不会消失，但不能再新增': '한도를 넘은 인연은 사라지지 않지만, 새로 추가할 수는 없어요',
   '昵称': '닉네임',
