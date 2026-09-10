@@ -680,7 +680,6 @@ const en: Record<string, string> = {
   '{n} 位 TA 住在这里': '{n} living here',
   '收藏的世界才会出现在创造角色的选项里。': 'Only favorited worlds show up when you create a character.',
   '删除这个世界': 'Delete this world',
-  '「{name}」会消失，住在里面的 TA 回到现实世界。': '"{name}" will be gone; anyone living there returns to the real world.',
   '编辑世界': 'Edit world',
   '新的世界': 'New world',
   '这个世界叫什么': 'What is this world called',
@@ -701,14 +700,15 @@ const en: Record<string, string> = {
   '在广场见过 · 加好友前的帖子': 'Met at the plaza · posted before you were friends',
   '恋人': 'Partner',
   // D-111：世界书共享
-  'TA 们也收回私密了': 'They went private too',
-  '这个世界别人看不见了，住在里面的 {n} 位 TA 一并改成了私密。': 'Others can no longer see this world, so the {n} living there were set to private as well.',
   'TA 所在的世界别人看不见，所以 TA 不能公开。把那个世界设为公开后再试。': 'Their world is not visible to others, so they cannot be public. Make that world public first.',
   '保存中…': 'Saving…',
   '谁能看到这个世界': 'Who can see this world',
   '公开：所有玩家都能在世界书里看到、收藏它（需要登录）；住在里面的 TA 才能公开。': 'Public: everyone can browse and favorite it in Worlds (sign-in required); only then can those living there be public.',
   '私密：只有你看得见；住在里面的 TA 不能公开。': 'Private: only you can see it; those living there cannot be public.',
   '还没有人公开自己的世界。': 'Nobody has shared a world yet.',
+  // D-112：绑定即快照、版本号
+  '「{name}」会从世界书里消失；已经住进去的 TA 带着当时的设定，不受影响。': '"{name}" will disappear from Worlds; anyone already living there keeps the lore from when they were bound.',
+  'TA 绑定世界的那一刻会带走当时的设定；之后改这里不影响 TA。': 'A character takes a snapshot of the world when bound; later edits here do not affect them.',
   // __EN_END__
 };
 
@@ -1361,7 +1361,6 @@ const ja: Record<string, string> = {
   '{n} 位 TA 住在这里': '{n}人が住んでいる',
   '收藏的世界才会出现在创造角色的选项里。': 'お気に入りにした世界だけが、キャラ作成の選択肢に出ます。',
   '删除这个世界': 'この世界を削除',
-  '「{name}」会消失，住在里面的 TA 回到现实世界。': '「{name}」は消え、住んでいた相手は現実世界に戻ります。',
   '编辑世界': '世界を編集',
   '新的世界': '新しい世界',
   '这个世界叫什么': 'この世界の名前',
@@ -1382,14 +1381,15 @@ const ja: Record<string, string> = {
   '在广场见过 · 加好友前的帖子': '広場で会った · 友達になる前の投稿',
   '恋人': '恋人',
   // D-111：世界书共享
-  'TA 们也收回私密了': '相手も非公開に戻しました',
-  '这个世界别人看不见了，住在里面的 {n} 位 TA 一并改成了私密。': 'この世界は他の人に見えなくなったので、住んでいる{n}人も非公開にしました。',
   'TA 所在的世界别人看不见，所以 TA 不能公开。把那个世界设为公开后再试。': '相手のいる世界が他の人に見えないので、公開できません。先にその世界を公開にしてください。',
   '保存中…': '保存中…',
   '谁能看到这个世界': 'この世界を見られる人',
   '公开：所有玩家都能在世界书里看到、收藏它（需要登录）；住在里面的 TA 才能公开。': '公開：すべてのプレイヤーがワールドで閲覧・お気に入りにできます（ログイン必須）。住んでいる相手を公開にできるのはこの場合だけ。',
   '私密：只有你看得见；住在里面的 TA 不能公开。': '非公開：あなただけが見られます。住んでいる相手は公開できません。',
   '还没有人公开自己的世界。': 'まだ誰も世界を公開していません。',
+  // D-112：绑定即快照、版本号
+  '「{name}」会从世界书里消失；已经住进去的 TA 带着当时的设定，不受影响。': '「{name}」はワールドから消えます。すでに住んでいる相手は、そのときの設定を持ったまま影響を受けません。',
+  'TA 绑定世界的那一刻会带走当时的设定；之后改这里不影响 TA。': '相手は世界に紐づけた瞬間の設定を持っていきます。あとでここを変えても相手には影響しません。',
   // __JA_END__
 };
 
@@ -2045,7 +2045,6 @@ const ko: Record<string, string> = {
   '{n} 位 TA 住在这里': '{n}명이 여기 살아요',
   '收藏的世界才会出现在创造角色的选项里。': '즐겨찾기한 세계만 캐릭터 만들기 선택지에 나와요.',
   '删除这个世界': '이 세계 삭제',
-  '「{name}」会消失，住在里面的 TA 回到现实世界。': '‘{name}’이(가) 사라지고, 거기 살던 상대는 현실 세계로 돌아와요.',
   '编辑世界': '세계 편집',
   '新的世界': '새 세계',
   '这个世界叫什么': '이 세계의 이름',
@@ -2066,14 +2065,15 @@ const ko: Record<string, string> = {
   '在广场见过 · 加好友前的帖子': '광장에서 만남 · 친구 되기 전 글',
   '恋人': '연인',
   // D-111：世界书共享
-  'TA 们也收回私密了': '상대들도 비공개로 돌렸어요',
-  '这个世界别人看不见了，住在里面的 {n} 位 TA 一并改成了私密。': '이 세계를 다른 사람이 볼 수 없게 되어, 여기 사는 {n}명도 함께 비공개로 바꿨어요.',
   'TA 所在的世界别人看不见，所以 TA 不能公开。把那个世界设为公开后再试。': '상대가 사는 세계를 다른 사람이 볼 수 없어서 공개할 수 없어요. 먼저 그 세계를 공개로 바꿔 주세요.',
   '保存中…': '저장 중…',
   '谁能看到这个世界': '이 세계를 볼 수 있는 사람',
   '公开：所有玩家都能在世界书里看到、收藏它（需要登录）；住在里面的 TA 才能公开。': '공개: 모든 플레이어가 세계관에서 보고 즐겨찾기할 수 있어요 (로그인 필요). 그래야 여기 사는 상대도 공개할 수 있어요.',
   '私密：只有你看得见；住在里面的 TA 不能公开。': '비공개: 나만 볼 수 있어요. 여기 사는 상대는 공개할 수 없어요.',
   '还没有人公开自己的世界。': '아직 아무도 세계를 공개하지 않았어요.',
+  // D-112：绑定即快照、版本号
+  '「{name}」会从世界书里消失；已经住进去的 TA 带着当时的设定，不受影响。': '‘{name}’이(가) 세계관에서 사라져요. 이미 살고 있는 상대는 그때의 설정을 그대로 가져가서 영향이 없어요.',
+  'TA 绑定世界的那一刻会带走当时的设定；之后改这里不影响 TA。': '상대는 세계에 묶이는 순간의 설정을 가져가요. 나중에 여기를 바꿔도 상대에게는 영향이 없어요.',
   // __KO_END__
 };
 

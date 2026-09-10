@@ -35,7 +35,7 @@ import { CharAvatar } from '@/components/char-avatar';
 import { Chip } from '@/components/chip';
 import { Field, Input } from '@/components/input';
 import { REAL_WORLD_ID } from '@/content/worlds';
-import { canPublishCharacter, selectableFrom, worldSnapshotFor } from '@/lib/worlds';
+import { canPublishCharacter, selectableFrom, worldSnapshot } from '@/lib/worlds';
 import { showToast } from '@/components/toast';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
@@ -476,6 +476,13 @@ function CreateForm({ edit }: { edit?: string }) {
       adultConfirmed: ageStatus === 'adult' ? true : undefined,
       visibility,
       worldId: worldId && worldId !== REAL_WORLD_ID ? worldId : undefined,
+      // 绑定那一刻快照（D-112）：没换世界就沿用编辑前的快照，换了才重新抄
+      world:
+        worldId && worldId !== REAL_WORLD_ID
+          ? editing?.worldId === worldId && editing.world
+            ? editing.world
+            : worldSnapshot(worldId)
+          : undefined,
       initiative,
       presetMemories: presetMemories.trim() || undefined,
       taboos: taboos.trim() || undefined,
@@ -538,7 +545,7 @@ function CreateForm({ edit }: { edit?: string }) {
   const publishIfPublic = async (character: Character): Promise<Character> => {
     if (character.visibility !== 'public') return character;
     if (!canPublishCharacter(character)) return { ...character, visibility: 'private' };
-    const ok = await publishCharacter({ ...character, world: worldSnapshotFor(character) });
+    const ok = await publishCharacter(character);
     if (!ok) {
       Alert.alert(t('先按私密保存了'), t('公开需要登录，登录后可以再改。'));
       return { ...character, visibility: 'private' };

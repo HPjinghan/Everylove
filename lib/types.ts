@@ -74,7 +74,7 @@ export interface Character {
   offerAfterTurns?: number;
   /** 所在的世界（D-110）：世界书 id；缺省 / 找不到 = 现实世界（当前）。非现实世界会作为【你所在的世界】注入所有 prompt */
   worldId?: string;
-  /** 世界快照（D-111）：公开角色发布时嵌入所绑定的世界——别人领去后本机没有这本世界书也照样有（领养快照制） */
+  /** 世界快照（D-111 / D-112）：绑定世界那一刻整本抄进来（含 version），之后世界更新 / 删除都不影响这个角色；重新选一次世界才换新快照 */
   world?: WorldBook;
   tags: string[];
   adoptedCount: number;
@@ -305,6 +305,8 @@ export interface WorldBook {
   rules?: string;
   createdAt: number;
   updatedAt: number;
+  /** 版本号（D-112）：每次保存自增；角色快照里带着当时的版本，线上角色不受之后的更新 / 删除影响 */
+  version?: number;
   /** 可见性（D-111）：public 上传共享池，所有玩家的世界书里都能浏览、收藏；缺省 = private */
   visibility?: 'private' | 'public';
   /** 来自共享池（别人创建的，D-111）：不能编辑，只能收藏 */

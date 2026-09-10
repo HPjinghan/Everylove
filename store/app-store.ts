@@ -645,7 +645,13 @@ export const useAppStore = create<AppState>()(
         set({ wallpaper: id });
       },
       addWorldBook: (w) => set({ worldBooks: [...get().worldBooks, w] }),
-      updateWorldBook: (w) => set({ worldBooks: get().worldBooks.map((x) => (x.id === w.id ? w : x)) }),
+      // 每次更新自增版本号（D-112）：角色快照按版本对照，之后的改动不影响已绑定的角色
+      updateWorldBook: (w) =>
+        set({
+          worldBooks: get().worldBooks.map((x) =>
+            x.id === w.id ? { ...w, version: (x.version ?? 1) + 1 } : x
+          ),
+        }),
       removeWorldBook: (id) =>
         set({
           worldBooks: get().worldBooks.filter((w) => w.id !== id),

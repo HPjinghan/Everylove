@@ -2,7 +2,7 @@
  * 世界书的取用（D-110 / D-111）：角色 → 所在的世界；创造表单的可选世界 = 现实世界 + 收藏的（自己的与来自其他玩家的）。
  * 世界也走共享池（lib/pool.ts）：公开的世界所有玩家都能在世界书里浏览、收藏、选给角色；
  * 绑定了别人看不见的世界（自己的私密世界）的角色不能公开（canPublishCharacter）。
- * 找不到的 worldId 依次回落：本机世界书 → 共享池缓存 → 角色自带的世界快照（发布时嵌入）→ 现实世界。
+ * 角色绑定世界那一刻整本抄成快照（D-112，含 version），之后世界更新 / 删除都不影响它；取用顺序：快照 → 本机世界书 → 共享缓存 → 现实世界。
  */
 
 import { REAL_WORLD, REAL_WORLD_ID } from '@/content/worlds';
@@ -15,9 +15,10 @@ export function worldById(id?: string): WorldBook | undefined {
   return s.worldBooks.find((w) => w.id === id) ?? s.sharedWorlds.find((w) => w.id === id);
 }
 
-/** 角色所在的世界；现实世界返回 REAL_WORLD */
+/** 角色所在的世界：绑定时的快照优先（D-112）；旧存档没快照的按 id 找；现实世界返回 REAL_WORLD */
 export function worldOf(c: Pick<Character, 'worldId' | 'world'>): WorldBook {
-  return worldById(c.worldId) ?? c.world ?? REAL_WORLD;
+  if (!c.worldId || c.worldId === REAL_WORLD_ID) return REAL_WORLD;
+  return c.world ?? worldById(c.worldId) ?? REAL_WORLD;
 }
 
 export function isRealWorld(w: WorldBook): boolean {
@@ -29,9 +30,11 @@ export function worldVisibleToOthers(w: WorldBook): boolean {
   return isRealWorld(w) || !!w.shared || w.visibility === 'public';
 }
 
-/** 绑定了别人看不见的世界的角色不能公开（D-111） */
+/** 绑定了别人看不见的世界的角色不能公开（D-111）：按世界**此刻**的可见性判断（已删的世界 = 看不见）；只在发布那一刻检查，之后世界的变化不影响线上角色（D-112） */
 export function canPublishCharacter(c: Pick<Character, 'worldId' | 'world'>): boolean {
-  return worldVisibleToOthers(worldOf(c));
+  if (!c.worldId || c.worldId === REAL_WORLD_ID) return true;
+  const live = worldById(c.worldId);
+  return !!live && worldVisibleToOthers(live);
 }
 
 /** 绑定了这个世界、且已公开的自创角色 */
@@ -52,11 +55,21 @@ export function selectableWorlds(): WorldBook[] {
   return selectableFrom(worldBooks, sharedWorlds, worldFavorites);
 }
 
-/** 发布角色时嵌进去的世界快照（领养快照制：世界之后改了也不动已领养的实例） */
-export function worldSnapshotFor(c: Pick<Character, 'worldId' | 'world'>): WorldBook | undefined {
-  const w = worldOf(c);
-  if (isRealWorld(w)) return undefined;
-  return { id: w.id, name: w.name, summary: w.summary, rules: w.rules, createdAt: w.createdAt, updatedAt: w.updatedAt, visibility: 'public', lang: w.lang };
+/** 绑定世界那一刻抄的快照（D-112）：整本 + 当时的版本号；现实世界不抄 */
+export function worldSnapshot(worldId: string | undefined): WorldBook | undefined {
+  const w = worldById(worldId);
+  if (!w || isRealWorld(w)) return undefined;
+  return {
+    id: w.id,
+    name: w.name,
+    summary: w.summary,
+    rules: w.rules,
+    createdAt: w.createdAt,
+    updatedAt: w.updatedAt,
+    version: w.version ?? 1,
+    visibility: w.visibility,
+    lang: w.lang,
+  };
 }
 
 /** 世界设定拆成行（去空行） */

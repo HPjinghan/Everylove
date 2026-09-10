@@ -18,7 +18,7 @@ import {
   worldBlock,
 } from '@/content/prompts';
 import { setLang } from '@/lib/i18n';
-import { canPublishCharacter, selectableFrom, worldOf } from '@/lib/worlds';
+import { canPublishCharacter, selectableFrom, worldOf, worldSnapshot } from '@/lib/worlds';
 import { useAppStore } from '@/store/app-store';
 
 import { bondedCtx, custom, NOW, squareCtx } from './fixtures';
@@ -65,10 +65,19 @@ describe('世界书共享（D-111）', () => {
     expect(canPublishCharacter({ worldId: 'mine-public' })).toBe(true);
     expect(canPublishCharacter({ worldId: 'theirs' })).toBe(true);
   });
-  it('找不到的世界回落角色自带的快照，再回落现实世界；收藏里能选来自其他玩家的', () => {
-    const snap = { ...w('gone', 'public'), summary: '快照' };
-    expect(worldOf({ worldId: 'gone', world: snap }).summary).toBe('快照');
-    expect(worldOf({ worldId: 'gone' }).id).toBe('real');
+  it('绑定即快照（D-112）：角色带着当时的设定与版本，世界之后更新 / 删除都不影响；没快照的旧存档按 id 找，找不到回落现实世界', () => {
+    useAppStore.getState().addWorldBook({ ...w('w1', 'public'), summary: '第一版' });
+    const snap = worldSnapshot('w1')!;
+    expect(snap.version).toBe(1);
+    useAppStore.getState().updateWorldBook({ ...useAppStore.getState().worldBooks[0], summary: '第二版' });
+    expect(useAppStore.getState().worldBooks[0].version).toBe(2);
+    expect(worldOf({ worldId: 'w1', world: snap }).summary).toBe('第一版');
+    expect(worldOf({ worldId: 'w1' }).summary).toBe('第二版');
+    useAppStore.getState().removeWorldBook('w1');
+    expect(worldOf({ worldId: 'w1', world: snap }).summary).toBe('第一版');
+    expect(worldOf({ worldId: 'w1' }).id).toBe('real');
+    // 世界删了 = 别人看不见 → 不能再新公开
+    expect(canPublishCharacter({ worldId: 'w1', world: snap })).toBe(false);
     const shared = [{ ...w('theirs', 'public'), shared: true }];
     expect(selectableFrom([], shared, ['theirs']).map((x) => x.id)).toEqual(['real', 'theirs']);
   });

@@ -1,8 +1,8 @@
 /**
  * 世界书 · 编辑 / 查看页（D-110 / D-111；纸面）：新建 / 编辑一个世界——名字、一句话、设定（一行一条）、谁能看到（私密 / 公开）。
  * 公开 = 上传共享世界池（需要登录，未登录回落私密并提示），所有玩家的世界书里都能浏览、收藏；
- * 公开 → 私密 = 从共享池撤下，住在里面的公开角色一并收回私密（别人看不见的世界，角色不能公开）。
- * 来自其他玩家的世界只能看、只能收藏，不能改。编辑态可收藏 / 取消收藏、删除（住在里面的 TA 回到现实世界）。
+ * 公开 → 私密 = 从共享池撤下；已绑定的角色带着绑定时的快照，不受之后的更新 / 删除影响（D-112，每次保存版本号自增）。
+ * 来自其他玩家的世界只能看、只能收藏，不能改。编辑态可收藏 / 取消收藏、删除（只从世界书里消失，已绑定的角色不动）。
  */
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -14,13 +14,12 @@ import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
 import { Field, Input } from '@/components/input';
 import { Space } from '@/constants/design';
-import { Romance, themed } from '@/constants/theme';
+import { Fonts, Romance, themed } from '@/constants/theme';
 import { WORLD_RULES_PLACEHOLDER } from '@/content/worlds';
 import { uid } from '@/lib/format';
 import { getLang, t } from '@/lib/i18n';
-import { publishWorld, unpublishCharacter, unpublishWorld } from '@/lib/pool';
+import { publishWorld, unpublishWorld } from '@/lib/pool';
 import type { WorldBook } from '@/lib/types';
-import { publicCharactersIn } from '@/lib/worlds';
 import { useAppStore } from '@/store/app-store';
 
 export default function WorldEditScreen() {
@@ -45,22 +44,15 @@ export default function WorldEditScreen() {
       : { id: uid('w'), name: n, summary: summary.trim(), rules: rules.trim() || undefined, visibility, lang: getLang(), createdAt: now, updatedAt: now };
     // 公开 = 上传共享池（需要登录）；失败回落私密
     if (w.visibility === 'public') {
-      const ok = await publishWorld(w);
+      // 上传的是保存后的版本号（store 保存时自增，D-112）
+      const ok = await publishWorld(existing ? { ...w, version: (existing.version ?? 1) + 1 } : { ...w, version: 1 });
       if (!ok) {
         w = { ...w, visibility: 'private' };
         Alert.alert(t('先按私密保存了'), t('公开需要登录，登录后可以再改。'));
       }
     }
-    // 公开 → 私密：撤下，住在里面的公开角色一并收回私密（D-111）
-    if (existing?.visibility === 'public' && w.visibility !== 'public') {
-      void unpublishWorld(w.id);
-      const affected = publicCharactersIn(w.id);
-      for (const c of affected) {
-        useAppStore.getState().updateCustomCharacter({ ...c, visibility: 'private' });
-        void unpublishCharacter(c.id);
-      }
-      if (affected.length) Alert.alert(t('TA 们也收回私密了'), t('这个世界别人看不见了，住在里面的 {n} 位 TA 一并改成了私密。', { n: affected.length }));
-    }
+    // 公开 → 私密：从共享池撤下；已绑定的角色带着快照，不动（D-112）
+    if (existing?.visibility === 'public' && w.visibility !== 'public') void unpublishWorld(w.id);
     if (existing) {
       useAppStore.getState().updateWorldBook(w);
     } else {
@@ -74,17 +66,13 @@ export default function WorldEditScreen() {
 
   const remove = () => {
     if (!existing) return;
-    Alert.alert(t('删除这个世界'), t('「{name}」会消失，住在里面的 TA 回到现实世界。', { name: existing.name }), [
+    Alert.alert(t('删除这个世界'), t('「{name}」会从世界书里消失；已经住进去的 TA 带着当时的设定，不受影响。', { name: existing.name }), [
       { text: t('取消'), style: 'cancel' },
       {
         text: t('删除'),
         style: 'destructive',
         onPress: () => {
           if (existing.visibility === 'public') void unpublishWorld(existing.id);
-          for (const c of publicCharactersIn(existing.id)) {
-            useAppStore.getState().updateCustomCharacter({ ...c, visibility: 'private', worldId: undefined });
-            void unpublishCharacter(c.id);
-          }
           useAppStore.getState().removeWorldBook(existing.id);
           router.back();
         },
@@ -149,6 +137,10 @@ export default function WorldEditScreen() {
               ? t('公开：所有玩家都能在世界书里看到、收藏它（需要登录）；住在里面的 TA 才能公开。')
               : t('私密：只有你看得见；住在里面的 TA 不能公开。')}
           </Text>
+          <Text style={styles.hint}>
+            {t('TA 绑定世界的那一刻会带走当时的设定；之后改这里不影响 TA。')}
+            {existing ? <Text style={styles.version}> v{existing.version ?? 1}</Text> : null}
+          </Text>
           {existing ? (
             <View style={styles.actions}>
               <Button
@@ -174,6 +166,7 @@ const styles = themed(() =>
     rules: { minHeight: 160, textAlignVertical: 'top' },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.inline },
     hint: { fontSize: 12, color: Romance.sub, lineHeight: 18, marginTop: 4 },
+    version: { fontFamily: Fonts.label, color: Romance.faint },
     actions: { flexDirection: 'row', gap: Space.inlineLoose, marginTop: 12 },
     note: { textAlign: 'center', color: Romance.faint, fontSize: 11, marginTop: 16 },
     readName: { fontSize: 20, fontWeight: '600', color: Romance.ink },

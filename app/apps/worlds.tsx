@@ -12,7 +12,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppScreen, HeaderAction } from '@/components/app-screen';
 import { Card } from '@/components/card';
 import { Shape, Space } from '@/constants/design';
-import { Romance, themed } from '@/constants/theme';
+import { Fonts, Romance, themed } from '@/constants/theme';
 import { REAL_WORLD } from '@/content/worlds';
 import { t } from '@/lib/i18n';
 import { refreshSharedWorlds } from '@/lib/pool';
@@ -39,7 +39,7 @@ export default function WorldsScreen() {
         <Card style={styles.row}>
           <View style={styles.text}>
             <Text style={styles.name} numberOfLines={1}>
-              {w.name}
+              {w.name} <Text style={styles.version}>v{w.version ?? 1}</Text>
             </Text>
             <Text style={styles.sub} numberOfLines={2}>
               {w.summary || t('还没写一句话')}
@@ -100,6 +100,7 @@ const styles = themed(() =>
     row: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose },
     text: { flex: 1, minWidth: 0 },
     name: { fontSize: 15, fontWeight: '600', color: Romance.ink },
+    version: { fontFamily: Fonts.label, fontSize: 11, fontWeight: '400', color: Romance.faint },
     sub: { fontSize: 12, color: Romance.sub, marginTop: 2, lineHeight: 17 },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
     tag: {
