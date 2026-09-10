@@ -5,6 +5,7 @@
  * 开发者区显示 AI 引擎与取路（D-069：key 全走工程配置 .env.local，手填与脚本引擎已下线；D-106：「AI 引擎」可点选供应商，本机偏好）。
  */
 
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Children, Fragment, isValidElement, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'expo-router';
@@ -343,7 +344,6 @@ export default function MeScreen() {
                 );
               })}
             </View>
-            <Text style={styles.cardNote}>{t('锁屏照片、来电铃声：正式版开放。')}</Text>
           </View>
         </Section>
 
@@ -367,14 +367,6 @@ export default function MeScreen() {
             onPress={() => subscribe('max')}
           />
           {plan !== 'free' ? <Row label={t('取消订阅（回 Free）')} onPress={() => subscribe('free')} /> : null}
-          <Row label="Morning call" value={t('TA 叫你起床 · 敬请期待')} dim />
-          <Row label={t('错过回溯')} value={t('错过的来电与聊天回听 · 敬请期待')} dim />
-        </Section>
-
-        <Section title={t('素材开关')}>
-          <Row label={t('分享给他')} value={t('即将上线')} dim />
-          <Row label={t('口味偏好')} value={t('即将上线')} dim />
-          <Row label={t('记事本（私密）')} onPress={() => router.push('/apps/notes' as never)} />
         </Section>
 
         <Section title={t('我的创作')}>
@@ -384,7 +376,6 @@ export default function MeScreen() {
             numeric
             onPress={() => router.push('/apps/my-characters' as never)}
           />
-          <Row label={t('热度 · 分成')} value={t('敬请期待')} dim />
         </Section>
 
         <Section title={t('开发者（试装）')}>
@@ -411,7 +402,7 @@ export default function MeScreen() {
           <Row label="重置全部数据" onPress={reset} />
         </Section>
 
-        <Text style={styles.about}>全自动恋爱（代号） · 试装 0.1.0{'\n'}零劳动被爱 · 他说到做到</Text>
+        <Text style={styles.about}>ver. {Constants.expoConfig?.version ?? '0.2.0'}</Text>
       </ScrollView>
     </AppScreen>
   );
@@ -475,6 +466,7 @@ const styles = themed(() =>
     wallLabelOn: { color: Romance.accent },
     about: {
       textAlign: 'center',
+      fontFamily: Fonts.label,
       fontSize: 11,
       color: Romance.faint,
       marginTop: 30,

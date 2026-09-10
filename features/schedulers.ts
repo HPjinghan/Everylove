@@ -1,6 +1,6 @@
 /**
  * 后台任务（D-086）：启动 / 回前台时补投的调度器，全部登记在这里；根布局只调 runJobs。
- * 加一个「TA 主动来找你」的调度器 = 再 register 一条。
+ * 「TA 主动来找你」（D-114）也在这里：lib/reach-out.ts。
  */
 
 import { jobs } from '@/core/jobs';
@@ -8,6 +8,7 @@ import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { deliverDueHisNotes } from '@/lib/his-notes';
 import { checkMissedPlans } from '@/lib/outing';
 import { deliverDuePosts, deliverDueReactions } from '@/lib/posts';
+import { deliverDueReachOuts } from '@/lib/reach-out';
 import { initWeather, refreshWeather } from '@/lib/weather';
 import { useAppStore } from '@/store/app-store';
 
@@ -29,6 +30,9 @@ jobs.register({ id: 'posts', on: ['launch', 'foreground'], run: (now) => deliver
 
 /** 别人的互动（D-110）：TA 的帖子下面有身边的人和其他 TA 来评论 */
 jobs.register({ id: 'post-reactions', on: ['launch', 'foreground'], run: () => deliverDueReactions() });
+
+/** TA 主动找她（D-114）：到点的落进会话，并把下一条写好、排本地通知 */
+jobs.register({ id: 'reach-out', on: ['launch', 'foreground'], run: (now) => deliverDueReachOuts(now) });
 
 /** 爽约检查（D-079）：过了赴约窗口还没去的约定 → 记忆 + TA 主动说一句 */
 jobs.register({ id: 'missed-plans', on: ['launch', 'foreground'], run: (now) => checkMissedPlans(now) });

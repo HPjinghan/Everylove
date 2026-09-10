@@ -40,6 +40,14 @@ import type {
   WorldBook,
 } from '@/lib/types';
 
+/** 到点前写好的主动消息（D-114） */
+export interface ReachPending {
+  texts: string[];
+  due: number;
+  generatedAt: number;
+  notifId?: string;
+}
+
 /** 搭话记录过期时长：3 天（免费层天花板是商业决策，不是产品缺陷） */
 export const SQUARE_CHAT_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -103,6 +111,10 @@ interface AppState {
   /** 共享世界池缓存（D-111）：别人公开的世界（lib/pool.ts 刷新） */
   sharedWorlds: WorldBook[];
   sharedWorldsAt: number;
+  /** TA 主动找她（D-114）：bondId → 下一条的到点时间（频率按主动联系强度 × MBTI × 等级，lib/reach-out.ts） */
+  reachSchedule: Record<string, number>;
+  /** 到点前写好的下一条（D-114）：bondId → 文字 + 到点时间 + 写好的时间 + 本地通知 id；她在写好之后又说过话就作废重写 */
+  reachPending: Record<string, ReachPending>;
 
   completeOnboarding: (pref: LovePref) => void;
   setLanguage: (l: Lang) => void;
@@ -181,6 +193,8 @@ interface AppState {
   removeWorldBook: (id: string) => void;
   toggleWorldFavorite: (id: string) => void;
   setSharedWorlds: (worlds: WorldBook[]) => void;
+  setReachDue: (bondId: string, at: number) => void;
+  setReachPending: (bondId: string, p: ReachPending | undefined) => void;
   /** 广场偶遇留一条记录（D-110）：TA 记得在哪见过她 */
   addEncounter: (characterId: string, e: Encounter) => void;
   /** TA 身边的人（D-110）：第一次查手机时生成一次 */
@@ -254,6 +268,8 @@ const initialData = {
   worldFavorites: [] as string[],
   sharedWorlds: [] as WorldBook[],
   sharedWorldsAt: 0,
+  reachSchedule: {} as Record<string, number>,
+  reachPending: {} as Record<string, ReachPending>,
 };
 
 export const useAppStore = create<AppState>()(
@@ -660,6 +676,13 @@ export const useAppStore = create<AppState>()(
           worldFavorites: get().worldFavorites.filter((f) => f !== id),
         }),
       setSharedWorlds: (worlds) => set({ sharedWorlds: worlds, sharedWorldsAt: Date.now() }),
+      setReachDue: (bondId, at) => set({ reachSchedule: { ...get().reachSchedule, [bondId]: at } }),
+      setReachPending: (bondId, p) => {
+        const next = { ...get().reachPending };
+        if (p) next[bondId] = p;
+        else delete next[bondId];
+        set({ reachPending: next });
+      },
       toggleWorldFavorite: (id) =>
         set({
           worldFavorites: get().worldFavorites.includes(id)

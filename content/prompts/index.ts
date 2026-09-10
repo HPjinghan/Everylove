@@ -21,6 +21,7 @@
  *   create.ts        创造描述解析
  *   world.ts         世界书：TA 所在的世界（D-110）
  *   circle.ts        TA 身边的人：生成 + 注入（D-110）
+ *   reach-out.ts     TA 主动找她的舞台提示（D-114）
  *
  * 不在这里的：
  *   - 角色人设 persona / 追法 pursuit / 外貌 look / 人称 pronoun / 台词库 → content/characters/（zh / en / ja 各一份，D-093）
@@ -50,6 +51,7 @@ export * from './outing';
 export * from './phone';
 export * from './photo';
 export * from './portrait';
+export * from './reach-out';
 export * from './red-packet';
 export * from './shared';
 export * from './social';

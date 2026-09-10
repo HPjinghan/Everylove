@@ -48,6 +48,19 @@ vi.mock('expo-audio', () =>
   })
 );
 vi.mock('expo-image-manipulator', () => stubModule({ SaveFormat: { JPEG: 'jpeg' } }));
+// 本地通知（D-114 主动消息排通知）：node 里没有 __DEV__，整个模块桩掉；权限一律拒绝、排通知返回假 id
+vi.mock('expo-notifications', () =>
+  stubModule({
+    setNotificationHandler: () => {},
+    getPermissionsAsync: async () => ({ granted: false }),
+    requestPermissionsAsync: async () => ({ granted: false }),
+    scheduleNotificationAsync: async () => 'notif-1',
+    cancelScheduledNotificationAsync: async () => {},
+    cancelAllScheduledNotificationsAsync: async () => {},
+    SchedulableTriggerInputTypes: { DATE: 'date' },
+    IosAuthorizationStatus: { PROVISIONAL: 3 },
+  })
+);
 
 vi.mock('@/constants/theme', () => ({
   applyThemeColors: () => {},
