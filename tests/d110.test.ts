@@ -20,7 +20,7 @@ import {
 } from '@/content/prompts';
 import { setLang } from '@/lib/i18n';
 import { canPublishCharacter, selectableFrom, worldOf, worldSnapshot } from '@/lib/worlds';
-import { useAppStore } from '@/store/app-store';
+import { findCharacter, useAppStore } from '@/store/app-store';
 
 import { bondedCtx, custom, NOW, squareCtx } from './fixtures';
 
@@ -142,6 +142,17 @@ describe('日历任何年份都有内容', () => {
     expect(holidayFor('2028-10-03')).toBe('中秋');
     expect(holidayFor('2026-08-19')).toBe('七夕');
     expect(holidayFor('2040-03-15')).toBeUndefined();
+  });
+});
+
+describe('缔结即快照（D-116）', () => {
+  it('缔结后角色库里的修改不动这段关系；没缔结的照常取现行', () => {
+    useAppStore.getState().addCustomCharacter({ ...custom, id: 'c-snap' });
+    const bondId = useAppStore.getState().createBond({ characterId: 'c-snap', name: '林知夏', nickname: '小满' });
+    expect(useAppStore.getState().bonds.find((b) => b.id === bondId)!.character?.identity).toBe(custom.identity);
+    useAppStore.getState().updateCustomCharacter({ ...custom, id: 'c-snap', identity: '改过的身份' });
+    expect(findCharacter('c-snap')!.identity).toBe(custom.identity);
+    expect(useAppStore.getState().customCharacters.find((c) => c.id === 'c-snap')!.identity).toBe('改过的身份');
   });
 });
 

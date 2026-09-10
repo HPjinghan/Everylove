@@ -27,9 +27,11 @@ import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { Input } from '@/components/input';
 import { DiamondBackground } from '@/components/paper-bg';
+import { showToast } from '@/components/toast';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { authConfigured, signedInSession } from '@/lib/auth';
 import { slotLimit, slotLimitLabel } from '@/lib/bond';
+import { generateCharacterLines } from '@/lib/character-lines';
 import { t } from '@/lib/i18n';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
@@ -54,6 +56,12 @@ export default function AdoptScreen() {
   const finalNickname = meForCharacter(character.id)?.nickname?.trim() || '你';
 
   const finish = async () => {
+    // 打招呼台词走生成（D-094 / D-116）：创建时已写在角色上；当时没写成的，缔结前再写一次，写不成才用原型兜底
+    if (character.custom && !character.lines) {
+      showToast(t('正在给 TA 写台词…'));
+      const written = await generateCharacterLines(character);
+      if (written) useAppStore.getState().updateCustomCharacter({ ...character, lines: written });
+    }
     // 强制登录判定（D-062）：这是不是第一次把人添加进通讯录
     const s = useAppStore.getState();
     const hadContacts = s.bonds.length > 0 || s.customCharacters.some((c) => !c.shared);

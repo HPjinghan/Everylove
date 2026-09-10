@@ -272,6 +272,8 @@ export interface Bond {
   notes?: HisNote[];
   /** LV1 首次进会话时的「+」面板预告已插过（D-100，只出现一次） */
   hintPlusSeen?: boolean;
+  /** 缔结那一刻的角色快照（D-116）：设定、台词、世界都定格在这里；之后角色库里怎么改（自己改 / 创作者改）都不动这段关系。旧存档没有的按 id 取现行 */
+  character?: Character;
   /** TA 身边的人（D-110）：第一次查手机时生成一次，之后前后一致；进记事本 / 发帖 / 亲密 prompt，X 里会来互动 */
   circle?: CirclePerson[];
   /** TA 和身边的人的近期聊天（D-110，查手机里的 Message）：personId → 对话 */

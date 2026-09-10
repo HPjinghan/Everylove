@@ -426,6 +426,8 @@ export const useAppStore = create<AppState>()(
         const bond: Bond = {
           id: uid('b'),
           characterId,
+          // 缔结即快照（D-116）：之后角色库里的修改不动这段关系
+          character: { ...character },
           name,
           nickname,
           birthday,
@@ -953,8 +955,11 @@ export function useHydrated() {
   return hydrated;
 }
 
+/** 取角色：已缔结的先用羁绊里的快照（D-116），其余按 id 取现行（种子 → 自创 → 共享池） */
 export function findCharacter(id: string): Character | undefined {
   const s = useAppStore.getState();
+  const snap = s.bonds.find((b) => b.characterId === id)?.character;
+  if (snap) return snap;
   return (
     CHARACTERS.find((c) => c.id === id) ??
     s.customCharacters.find((c) => c.id === id) ??
