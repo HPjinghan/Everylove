@@ -1,7 +1,7 @@
 # DECISIONS.md — 现行决策总账（按主题合并）
 
 > **怎么用**：一个主题一条，写**现在的口径**；被推翻的旧口径只在「曾经」留一行（编号 + 一句话）。某个编号当时的完整理由、验证与影响文件，到 `docs/archive/DECISIONS-log-2026-08-13_09-06.md` 按编号搜（冻结存档，D-001～D-096 逐条原文）。
-> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-109**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
+> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-110**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
 > 代码注释里的 D-编号一律按索引表查；D-087 / D-088 各撞号一次，用 a / b 区分。
 
 ## 编号索引
@@ -113,6 +113,7 @@
 | D-101 | 09-09 | 韩语接入：UI 词典四语、种子角色韩文版、心跳 / 开场白 / 暗面路由 / 热线 / 拦截名单、`localeOf` 集中 locale、百度 TTS 不支持韩语 | H2 / E1 / B3 |
 | D-102 | 09-09 | Expo SDK 54 → 57（Harper 手机 Expo Go 已升 57）：RN 0.86 / React 19.2 / TS 6、只有新架构、React Compiler 的 hooks 规则真修不关、删模板残留；runtime 变了，TestFlight 与 preview 都要重新 build / update | A1 / A2 / A3 |
 | D-106 | 09-09 | 设置 → 开发者「AI 引擎」可点选供应商：运行期偏好 > `EXPO_PUBLIC_AI_ENGINE` > 有 key 的 > 默认；只存本机 AsyncStorage，不进 store / 云端快照 | B1 |
+| D-109 | 09-10 | 生图请求显式超时 180 s（XHR；RN fetch 落 iOS 默认 60 s，qwen-image 经代理常超）、代理默认 90 s；拍照 / 立绘失败弹窗带原因 | B2 / B4 |
 | D-108 | 09-09 | Claude 模型从 env 读（`EXPO_PUBLIC_ANTHROPIC_MODEL`，默认 Sonnet 5）；Opus 5 / Fable 默认开思考 → 回话加 2048 余量 + effort low | B1 |
 | D-107 | 09-09 | 六位种子角色各一套专属立绘 prompt（`content/prompts/portrait-seeds.ts`：精细画风行 + 脸 / 发 / 眼神 / 衣着 / 光线 / 配色 / 背景意象），`buildPortraitPrompt` 命中即替换通用画风行与主体段；六张内置立绘重画；脚本只画中文原版六位（-en / -ja / -ko 共用） | B4 |
 | D-105 | 09-09 | 词典缺词清扫 + 守门测试：天况 / 天气小文案 / 「交友」/ 口味 / 配色与壁纸名 / 设置与创造弹窗 / 自创角色默认文案补 en / ja / ko；`tests/i18n-coverage.test.ts` 扫源码，t() 字面键与数据表标签缺词即红 | H2 |
@@ -155,7 +156,7 @@
 - **曾经**：D-004 MockEngine 默认 + 开发者面板手填 key；D-010 「无 key 或失败回落 mock」；D-069 删了脚本引擎（**角色台词库 `scriptFor` 保留**——那是产品触发器与人设内容，不是 mock）。
 
 ### B2 · 服务端代理与游客身份
-- **现行**：`supabase/functions/ai`（Edge Function，已部署，verify_jwt 开）是唯一自有服务端组件：services = qianfan.chat / qianfan.images / qianfan.musesteamer / anthropic.messages / baidu.asr / baidu.asr_pro / baidu.tts / speech.transcribe / speech.synthesize；上游 key 在 Supabase Secrets；按用户**每日限量 500 次**（`ai_usage` 表，`AI_DAILY_LIMIT` 可调，是防盗刷不是付费墙）；`SPEECH_*` 没配返回 503 让客户端回落百度。客户端 `lib/proxy.ts` 三层取路（见 B1）。**游客身份**：没本地 key 且没会话时 `ensureGuestSession()` 自动 Supabase 匿名登录（Anonymous sign-ins 已开），代理按匿名用户 id 限量；**匿名不算登录**——登录墙 / 账号区 / 云备份 / 共享池发布只认 `isSignedIn()` / `signedInSession()`；之后 Apple / 邮箱登录直接换成正式用户。分发包不带任何上游 key。
+- **现行**：`supabase/functions/ai`（Edge Function，已部署，verify_jwt 开）是唯一自有服务端组件：services = qianfan.chat / qianfan.images / qianfan.musesteamer / anthropic.messages / baidu.asr / baidu.asr_pro / baidu.tts / speech.transcribe / speech.synthesize；上游 key 在 Supabase Secrets；按用户**每日限量 500 次**（`ai_usage` 表，`AI_DAILY_LIMIT` 可调，是防盗刷不是付费墙）；`SPEECH_*` 没配返回 503 让客户端回落百度。客户端 `lib/proxy.ts` 三层取路（见 B1）。**超时（D-109）**：RN 的 fetch 不能设超时、iOS 落到 NSURLSession 默认 60 s——qwen-image 生图约 50～60 s、经代理更久，线上「合影 / 拍 TA」因此失败；`postJsonWithTimeout` 用 XMLHttpRequest 显式设 timeout（代理默认 90 s，生图直连与代理都传 180 s），超时 / 断网抛带原因的 Error，拍照与立绘失败弹窗把 `describeAiError` 带出来。线上排查记录：Supabase 函数 secrets 没有 `ANTHROPIC_API_KEY`（切 Claude 回 503），需 `supabase secrets set`；函数日志表为空、用量远低于限额。**游客身份**：没本地 key 且没会话时 `ensureGuestSession()` 自动 Supabase 匿名登录（Anonymous sign-ins 已开），代理按匿名用户 id 限量；**匿名不算登录**——登录墙 / 账号区 / 云备份 / 共享池发布只认 `isSignedIn()` / `signedInSession()`；之后 Apple / 邮箱登录直接换成正式用户。分发包不带任何上游 key。
 - **编号**：D-057、D-073/D-074/D-076（services 增补）、D-088a。
 - **曾经**：D-054「匿名账号暂不做」；D-057 取路第三层「都没有 → mock」（→ D-069 抛错）。
 

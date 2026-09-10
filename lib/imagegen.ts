@@ -13,7 +13,7 @@ import { seedPortrait } from '@/content/portraits';
 import { buildPortraitPrompt, imageModelFor, PORTRAIT_NEGATIVE } from '@/content/prompts';
 // （外出拍照的 prompt 由调用方拼好传入，见 content/prompts/photo.ts 的 buildOutingPhotoPrompt，D-051）
 import { CONFIG } from '@/core/config';
-import { proxyJson, proxyReadySync } from '@/lib/proxy';
+import { postJsonWithTimeout, proxyJson, proxyReadySync } from '@/lib/proxy';
 import { uid } from '@/lib/format';
 import type { Character } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -41,6 +41,8 @@ async function downloadTo(url: string, subdir: string, name: string): Promise<st
 
 /** 百度蒸汽机 Air-Image 走专用端点（通用端点对它不回，2026-09-02 实测；D-071）；它不收 n */
 const MUSE_MODEL_PREFIX = 'musesteamer';
+/** 生图等待上限（D-109）：qwen-image 约 1 分钟、偶尔更久；蒸汽机约 10 秒 */
+const IMAGE_TIMEOUT_MS = 180_000;
 
 /**
  * 千帆同步文生图（本地 key 直连，无 key 走服务端代理），下载到本机后返回本地 URI。
@@ -58,15 +60,16 @@ async function generateImage(prompt: string, subdir = 'portraits', model: string
     const endpoint = muse
       ? 'https://qianfan.baidubce.com/v2/musesteamer/images/generations'
       : 'https://qianfan.baidubce.com/v2/images/generations';
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`Qianfan image ${res.status}`);
-    data = await res.json();
+    const res = await postJsonWithTimeout(
+      endpoint,
+      { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+      body,
+      IMAGE_TIMEOUT_MS
+    );
+    if (!res.ok) throw new Error(`Qianfan image ${res.status}: ${res.text.slice(0, 160)}`);
+    data = JSON.parse(res.text);
   } else {
-    data = await proxyJson(muse ? 'qianfan.musesteamer' : 'qianfan.images', body);
+    data = await proxyJson(muse ? 'qianfan.musesteamer' : 'qianfan.images', body, IMAGE_TIMEOUT_MS);
   }
   const url = data.data?.[0]?.url;
   if (!url) throw new Error('no image url');

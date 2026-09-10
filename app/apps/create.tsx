@@ -510,7 +510,10 @@ function CreateForm({ edit }: { edit?: string }) {
       setPortraitUri(await generatePortraitFor(draft));
     } catch (e) {
       console.warn('[create] 立绘生成失败：', e);
-      Alert.alert(t('立绘没画出来'), t('网络或生图服务出了点问题，可以再试一次，或先跳过（醒来后会在后台补画）。'));
+      Alert.alert(
+        t('立绘没画出来'),
+        `${t('网络或生图服务出了点问题，可以再试一次，或先跳过（醒来后会在后台补画）。')}\n\n${t('原因：{reason}', { reason: describeAiError(e) })}`
+      );
     } finally {
       setGenerating(false);
     }

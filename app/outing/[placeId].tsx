@@ -26,6 +26,7 @@ import { placeById } from '@/content/places';
 import { wait } from '@/core/turn';
 import { HEART_FULL } from '@/lib/bond';
 import { uid } from '@/lib/format';
+import { describeAiError } from '@/lib/engine';
 import { imageKeyReady } from '@/lib/imagegen';
 import { t } from '@/lib/i18n';
 import { ON_TIME_TOLERANCE_MIN, planTimeLabel } from '@/lib/appointments';
@@ -146,7 +147,7 @@ export default function OutingSceneScreen() {
       await shootPhoto(active, character, place, kind, name);
     } catch (e) {
       console.warn('[outing] 拍照失败：', e);
-      if (mounted.current) Alert.alert(t('没拍成'), t('生图服务出了点问题，可以再试一次。'));
+      if (mounted.current) Alert.alert(t('没拍成'), `${t('生图服务出了点问题，可以再试一次。')}\n\n${t('原因：{reason}', { reason: describeAiError(e) })}`);
     } finally {
       if (mounted.current) setShooting(null);
     }
