@@ -74,6 +74,8 @@ export interface Character {
   offerAfterTurns?: number;
   /** 所在的世界（D-110）：世界书 id；缺省 / 找不到 = 现实世界（当前）。非现实世界会作为【你所在的世界】注入所有 prompt */
   worldId?: string;
+  /** 世界快照（D-111）：公开角色发布时嵌入所绑定的世界——别人领去后本机没有这本世界书也照样有（领养快照制） */
+  world?: WorldBook;
   tags: string[];
   adoptedCount: number;
   /** 主色（头像底、气泡强调） */
@@ -303,6 +305,12 @@ export interface WorldBook {
   rules?: string;
   createdAt: number;
   updatedAt: number;
+  /** 可见性（D-111）：public 上传共享池，所有玩家的世界书里都能浏览、收藏；缺省 = private */
+  visibility?: 'private' | 'public';
+  /** 来自共享池（别人创建的，D-111）：不能编辑，只能收藏 */
+  shared?: boolean;
+  /** 创建时的界面语言（D-111）：共享池只发同语言 */
+  lang?: 'zh' | 'en' | 'ja' | 'ko';
 }
 
 export interface PostComment {

@@ -18,6 +18,7 @@ import {
   worldBlock,
 } from '@/content/prompts';
 import { setLang } from '@/lib/i18n';
+import { canPublishCharacter, selectableFrom, worldOf } from '@/lib/worlds';
 import { useAppStore } from '@/store/app-store';
 
 import { bondedCtx, custom, NOW, squareCtx } from './fixtures';
@@ -50,6 +51,26 @@ describe('世界书', () => {
     const text = buildChatSystemPrompt({ ...squareCtx, character: { ...squareCtx.character, worldId: 'w1' } }, NOW);
     expect(text).toContain('【你所在的世界】云海之上：云上城邦。');
     expect(text.indexOf('【你所在的世界】')).toBeGreaterThan(text.indexOf('【你是谁】'));
+  });
+});
+
+describe('世界书共享（D-111）', () => {
+  const w = (id: string, visibility?: 'private' | 'public') => ({ id, name: id, summary: '', createdAt: 1, updatedAt: 1, visibility });
+  it('绑定了别人看不见的世界的角色不能公开；公开 / 共享 / 现实世界可以', () => {
+    useAppStore.getState().addWorldBook(w('mine-private'));
+    useAppStore.getState().addWorldBook(w('mine-public', 'public'));
+    useAppStore.getState().setSharedWorlds([{ ...w('theirs', 'public'), shared: true }]);
+    expect(canPublishCharacter({})).toBe(true);
+    expect(canPublishCharacter({ worldId: 'mine-private' })).toBe(false);
+    expect(canPublishCharacter({ worldId: 'mine-public' })).toBe(true);
+    expect(canPublishCharacter({ worldId: 'theirs' })).toBe(true);
+  });
+  it('找不到的世界回落角色自带的快照，再回落现实世界；收藏里能选来自其他玩家的', () => {
+    const snap = { ...w('gone', 'public'), summary: '快照' };
+    expect(worldOf({ worldId: 'gone', world: snap }).summary).toBe('快照');
+    expect(worldOf({ worldId: 'gone' }).id).toBe('real');
+    const shared = [{ ...w('theirs', 'public'), shared: true }];
+    expect(selectableFrom([], shared, ['theirs']).map((x) => x.id)).toEqual(['real', 'theirs']);
   });
 });
 

@@ -1,6 +1,8 @@
 /**
- * 世界书 · 编辑页（D-110；纸面）：新建 / 编辑一个世界——名字、一句话、设定（一行一条：时代 / 地理 / 规则 / 常识……）。
- * 保存即入库；编辑态可收藏 / 取消收藏、删除（住在里面的 TA 回到现实世界）。字段 Field + Input、按钮 Button。
+ * 世界书 · 编辑 / 查看页（D-110 / D-111；纸面）：新建 / 编辑一个世界——名字、一句话、设定（一行一条）、谁能看到（私密 / 公开）。
+ * 公开 = 上传共享世界池（需要登录，未登录回落私密并提示），所有玩家的世界书里都能浏览、收藏；
+ * 公开 → 私密 = 从共享池撤下，住在里面的公开角色一并收回私密（别人看不见的世界，角色不能公开）。
+ * 来自其他玩家的世界只能看、只能收藏，不能改。编辑态可收藏 / 取消收藏、删除（住在里面的 TA 回到现实世界）。
  */
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -9,35 +11,64 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, Vi
 
 import { AppScreen, HeaderAction } from '@/components/app-screen';
 import { Button } from '@/components/button';
+import { Chip } from '@/components/chip';
 import { Field, Input } from '@/components/input';
 import { Space } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { WORLD_RULES_PLACEHOLDER } from '@/content/worlds';
 import { uid } from '@/lib/format';
-import { t } from '@/lib/i18n';
+import { getLang, t } from '@/lib/i18n';
+import { publishWorld, unpublishCharacter, unpublishWorld } from '@/lib/pool';
+import type { WorldBook } from '@/lib/types';
+import { publicCharactersIn } from '@/lib/worlds';
 import { useAppStore } from '@/store/app-store';
 
 export default function WorldEditScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
   const existing = useAppStore((s) => (id ? s.worldBooks.find((w) => w.id === id) : undefined));
+  const shared = useAppStore((s) => (id && !existing ? s.sharedWorlds.find((w) => w.id === id) : undefined));
   const fav = useAppStore((s) => (id ? s.worldFavorites.includes(id) : false));
   const [name, setName] = useState(existing?.name ?? '');
   const [summary, setSummary] = useState(existing?.summary ?? '');
   const [rules, setRules] = useState(existing?.rules ?? '');
+  const [visibility, setVisibility] = useState<'private' | 'public'>(existing?.visibility ?? 'private');
+  const [saving, setSaving] = useState(false);
 
-  const save = () => {
+  const save = async () => {
     const n = name.trim();
-    if (!n) return;
+    if (!n || saving) return;
+    setSaving(true);
     const now = Date.now();
+    let w: WorldBook = existing
+      ? { ...existing, name: n, summary: summary.trim(), rules: rules.trim() || undefined, visibility, updatedAt: now }
+      : { id: uid('w'), name: n, summary: summary.trim(), rules: rules.trim() || undefined, visibility, lang: getLang(), createdAt: now, updatedAt: now };
+    // 公开 = 上传共享池（需要登录）；失败回落私密
+    if (w.visibility === 'public') {
+      const ok = await publishWorld(w);
+      if (!ok) {
+        w = { ...w, visibility: 'private' };
+        Alert.alert(t('先按私密保存了'), t('公开需要登录，登录后可以再改。'));
+      }
+    }
+    // 公开 → 私密：撤下，住在里面的公开角色一并收回私密（D-111）
+    if (existing?.visibility === 'public' && w.visibility !== 'public') {
+      void unpublishWorld(w.id);
+      const affected = publicCharactersIn(w.id);
+      for (const c of affected) {
+        useAppStore.getState().updateCustomCharacter({ ...c, visibility: 'private' });
+        void unpublishCharacter(c.id);
+      }
+      if (affected.length) Alert.alert(t('TA 们也收回私密了'), t('这个世界别人看不见了，住在里面的 {n} 位 TA 一并改成了私密。', { n: affected.length }));
+    }
     if (existing) {
-      useAppStore.getState().updateWorldBook({ ...existing, name: n, summary: summary.trim(), rules: rules.trim() || undefined, updatedAt: now });
+      useAppStore.getState().updateWorldBook(w);
     } else {
-      const w = { id: uid('w'), name: n, summary: summary.trim(), rules: rules.trim() || undefined, createdAt: now, updatedAt: now };
       useAppStore.getState().addWorldBook(w);
       // 新建即收藏：建出来就是为了给角色用
       useAppStore.getState().toggleWorldFavorite(w.id);
     }
+    setSaving(false);
     router.back();
   };
 
@@ -49,6 +80,11 @@ export default function WorldEditScreen() {
         text: t('删除'),
         style: 'destructive',
         onPress: () => {
+          if (existing.visibility === 'public') void unpublishWorld(existing.id);
+          for (const c of publicCharactersIn(existing.id)) {
+            useAppStore.getState().updateCustomCharacter({ ...c, visibility: 'private', worldId: undefined });
+            void unpublishCharacter(c.id);
+          }
           useAppStore.getState().removeWorldBook(existing.id);
           router.back();
         },
@@ -56,10 +92,34 @@ export default function WorldEditScreen() {
     ]);
   };
 
+  // 来自其他玩家的世界：只读 + 收藏
+  if (shared) {
+    return (
+      <AppScreen title={shared.name}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.readName}>{shared.name}</Text>
+          <Text style={styles.readSummary}>{shared.summary || t('还没写一句话')}</Text>
+          <Text style={styles.readEyebrow}>{t('设定')}</Text>
+          <Text style={styles.readRules}>{shared.rules || t('…')}</Text>
+          <Text style={styles.readFrom}>{t('来自其他玩家')}</Text>
+          <View style={styles.actions}>
+            <Button
+              label={fav ? t('取消收藏') : t('收藏')}
+              variant={fav ? 'paper' : 'primary'}
+              size="md"
+              onPress={() => useAppStore.getState().toggleWorldFavorite(shared.id)}
+            />
+          </View>
+          <Text style={styles.note}>{t('收藏的世界才会出现在创造角色的选项里。')}</Text>
+        </ScrollView>
+      </AppScreen>
+    );
+  }
+
   return (
     <AppScreen
       title={existing ? t('编辑世界') : t('新的世界')}
-      right={<HeaderAction label={t('保存')} onPress={save} disabled={!name.trim()} />}>
+      right={<HeaderAction label={saving ? t('保存中…') : t('保存')} onPress={() => void save()} disabled={!name.trim() || saving} />}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Field label={t('这个世界叫什么')}>
@@ -78,6 +138,17 @@ export default function WorldEditScreen() {
               maxLength={1500}
             />
           </Field>
+          <Field label={t('谁能看到这个世界')}>
+            <View style={styles.chipRow}>
+              <Chip label={t('私密')} selected={visibility === 'private'} onPress={() => setVisibility('private')} />
+              <Chip label={t('公开')} selected={visibility === 'public'} onPress={() => setVisibility('public')} />
+            </View>
+          </Field>
+          <Text style={styles.hint}>
+            {visibility === 'public'
+              ? t('公开：所有玩家都能在世界书里看到、收藏它（需要登录）；住在里面的 TA 才能公开。')
+              : t('私密：只有你看得见；住在里面的 TA 不能公开。')}
+          </Text>
           {existing ? (
             <View style={styles.actions}>
               <Button
@@ -101,7 +172,14 @@ const styles = themed(() =>
     flex: { flex: 1 },
     content: { paddingHorizontal: 18, paddingVertical: Space.screen, paddingBottom: 60, gap: 4 },
     rules: { minHeight: 160, textAlignVertical: 'top' },
-    actions: { flexDirection: 'row', gap: Space.inlineLoose, marginTop: 8 },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.inline },
+    hint: { fontSize: 12, color: Romance.sub, lineHeight: 18, marginTop: 4 },
+    actions: { flexDirection: 'row', gap: Space.inlineLoose, marginTop: 12 },
     note: { textAlign: 'center', color: Romance.faint, fontSize: 11, marginTop: 16 },
+    readName: { fontSize: 20, fontWeight: '600', color: Romance.ink },
+    readSummary: { fontSize: 14, lineHeight: 21, color: Romance.sub, marginTop: 4 },
+    readEyebrow: { fontSize: 12, fontWeight: '500', color: Romance.sub, letterSpacing: 0.5, marginTop: 16 },
+    readRules: { fontSize: 14, lineHeight: 22, color: Romance.ink, marginTop: 4 },
+    readFrom: { fontSize: 11, color: Romance.faint, marginTop: 12 },
   })
 );

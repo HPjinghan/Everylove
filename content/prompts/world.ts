@@ -6,7 +6,7 @@
 import type { Character } from '@/lib/types';
 import { isRealWorld, worldOf, worldRuleLines } from '@/lib/worlds';
 
-export function worldBlock(c: Pick<Character, 'worldId'>): string[] {
+export function worldBlock(c: Pick<Character, 'worldId' | 'world'>): string[] {
   const w = worldOf(c);
   if (isRealWorld(w)) return [];
   return [

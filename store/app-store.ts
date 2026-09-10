@@ -98,8 +98,11 @@ interface AppState {
   noteSchedule: Record<string, number>;
   /** 世界书（D-110）：她创建的世界；现实世界内置不在这里 */
   worldBooks: WorldBook[];
-  /** 收藏的世界 id（D-110）：只有收藏的才会出现在创造角色的世界选项里 */
+  /** 收藏的世界 id（D-110）：只有收藏的才会出现在创造角色的世界选项里（自己的或来自其他玩家的） */
   worldFavorites: string[];
+  /** 共享世界池缓存（D-111）：别人公开的世界（lib/pool.ts 刷新） */
+  sharedWorlds: WorldBook[];
+  sharedWorldsAt: number;
 
   completeOnboarding: (pref: LovePref) => void;
   setLanguage: (l: Lang) => void;
@@ -177,6 +180,7 @@ interface AppState {
   updateWorldBook: (w: WorldBook) => void;
   removeWorldBook: (id: string) => void;
   toggleWorldFavorite: (id: string) => void;
+  setSharedWorlds: (worlds: WorldBook[]) => void;
   /** 广场偶遇留一条记录（D-110）：TA 记得在哪见过她 */
   addEncounter: (characterId: string, e: Encounter) => void;
   /** TA 身边的人（D-110）：第一次查手机时生成一次 */
@@ -246,6 +250,8 @@ const initialData = {
   noteSchedule: {} as Record<string, number>,
   worldBooks: [] as WorldBook[],
   worldFavorites: [] as string[],
+  sharedWorlds: [] as WorldBook[],
+  sharedWorldsAt: 0,
 };
 
 export const useAppStore = create<AppState>()(
@@ -645,6 +651,7 @@ export const useAppStore = create<AppState>()(
           worldBooks: get().worldBooks.filter((w) => w.id !== id),
           worldFavorites: get().worldFavorites.filter((f) => f !== id),
         }),
+      setSharedWorlds: (worlds) => set({ sharedWorlds: worlds, sharedWorldsAt: Date.now() }),
       toggleWorldFavorite: (id) =>
         set({
           worldFavorites: get().worldFavorites.includes(id)

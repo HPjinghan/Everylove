@@ -35,7 +35,7 @@ import { CharAvatar } from '@/components/char-avatar';
 import { Chip } from '@/components/chip';
 import { Field, Input } from '@/components/input';
 import { REAL_WORLD_ID } from '@/content/worlds';
-import { selectableFrom } from '@/lib/worlds';
+import { canPublishCharacter, selectableFrom, worldSnapshotFor } from '@/lib/worlds';
 import { showToast } from '@/components/toast';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
@@ -320,8 +320,11 @@ function CreateForm({ edit }: { edit?: string }) {
   // 所在的世界（D-110）：现实世界 + 世界书里收藏的
   const [worldId, setWorldId] = useState<string | undefined>(init.worldId);
   const worlds = useAppStore((s) => s.worldBooks);
+  const sharedWorlds = useAppStore((s) => s.sharedWorlds);
   const worldFavorites = useAppStore((s) => s.worldFavorites);
-  const worldOptions = useMemo(() => selectableFrom(worlds, worldFavorites), [worlds, worldFavorites]);
+  const worldOptions = useMemo(() => selectableFrom(worlds, sharedWorlds, worldFavorites), [worlds, sharedWorlds, worldFavorites]);
+  // 绑定了别人看不见的世界（自己的私密世界）→ 角色不能公开（D-111）
+  const worldPublic = canPublishCharacter({ worldId });
   const [look, setLook] = useState(init.look);
   const [story, setStory] = useState(init.story);
   const [palette, setPalette] = useState(init.palette);
@@ -531,10 +534,11 @@ function CreateForm({ edit }: { edit?: string }) {
     }
   };
 
-  /** 公开角色上传共享池（D-060）；未登录/失败回落私密并提示 */
+  /** 公开角色上传共享池（D-060）；未登录/失败回落私密并提示。绑定的世界以快照嵌入（D-111） */
   const publishIfPublic = async (character: Character): Promise<Character> => {
     if (character.visibility !== 'public') return character;
-    const ok = await publishCharacter(character);
+    if (!canPublishCharacter(character)) return { ...character, visibility: 'private' };
+    const ok = await publishCharacter({ ...character, world: worldSnapshotFor(character) });
     if (!ok) {
       Alert.alert(t('先按私密保存了'), t('公开需要登录，登录后可以再改。'));
       return { ...character, visibility: 'private' };
@@ -718,13 +722,17 @@ function CreateForm({ edit }: { edit?: string }) {
           <Field label={t('④ 谁能遇到 TA')}>
             <View style={styles.chipRow}>
               <OptionChip label={t('私密')} active={visibility === 'private'} onPress={() => setVisibility('private')} />
-              <OptionChip label={t('公开')} active={visibility === 'public'} onPress={() => setVisibility('public')} />
+              {worldPublic ? (
+                <OptionChip label={t('公开')} active={visibility === 'public'} onPress={() => setVisibility('public')} />
+              ) : null}
             </View>
           </Field>
           <Text style={styles.afterHint}>
-            {visibility === 'public'
-              ? t('公开：其他人也能遇到 TA（需要登录）。')
-              : t('私密：只有你能遇到 TA。')}
+            {!worldPublic
+              ? t('TA 所在的世界别人看不见，所以 TA 不能公开。把那个世界设为公开后再试。')
+              : visibility === 'public'
+                ? t('公开：其他人也能遇到 TA（需要登录）。')
+                : t('私密：只有你能遇到 TA。')}
           </Text>
 
           {/* 所在的世界（D-110）：现实世界永远在，之后是世界书里收藏的 */}
@@ -735,7 +743,12 @@ function CreateForm({ edit }: { edit?: string }) {
                   key={w.id}
                   label={w.id === REAL_WORLD_ID ? t(w.name) : w.name}
                   active={(worldId ?? REAL_WORLD_ID) === w.id}
-                  onPress={() => setWorldId(w.id === REAL_WORLD_ID ? undefined : w.id)}
+                  onPress={() => {
+                    const next = w.id === REAL_WORLD_ID ? undefined : w.id;
+                    setWorldId(next);
+                    // 选了别人看不见的世界 → 公开自动收回私密（D-111）
+                    if (!canPublishCharacter({ worldId: next })) setVisibility('private');
+                  }}
                 />
               ))}
             </View>
