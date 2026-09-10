@@ -75,7 +75,7 @@ npx eas-cli submit -p ios --latest --profile production
   $env:EXPO_PUBLIC_SUPABASE_ANON_KEY = (($lines | ? { $_ -match '^EXPO_PUBLIC_SUPABASE_ANON_KEY=' }) -replace '^[^=]+=','').Trim('"')
   npx expo export --platform ios --max-workers 4
   Select-String -Path dist_expostaticjsios* -Pattern 'bce-v3|sk-ant-' -List   # 有输出 = 泄漏，别发
-  npx eas-cli@latest update --channel production --platform ios --skip-bundler --non-interactive --message "..."
+  npx eas-cli@latest update --channel production --environment production --platform ios --skip-bundler --non-interactive --message "..."   # 新版 eas-cli 非交互必须带 --environment
   ```
 
   Expo Go 朋友那条同理，`--channel production` 换成 `--channel preview`。导出如果在 90% 左右报 worker 被 SIGTERM，多半是机器上还挂着别的 node 进程（如没退出的 vitest），杀掉再跑。
