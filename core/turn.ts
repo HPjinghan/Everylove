@@ -6,6 +6,7 @@
  * 借 dsh 的纪律：「新行为挂扩展点，不改 loop」——要加东西，注册钩子 / 标记 / 模式，不要在这里加分支。
  */
 
+import { showToast } from '@/components/toast';
 import { cardContextText } from '@/core/cards';
 import { createEmitHook, createWaterfallHook } from '@/core/hooks';
 import { replyMarkers } from '@/core/markers';
@@ -22,7 +23,12 @@ export interface TurnUi {
   pace?: 'natural' | 'none';
   /** TA 的话计未读（她不在这个会话页时） */
   unread?: boolean;
+  /** 模型失败时不弹轻提示（调用方自己兜底，例：外出开场白回落模板） */
+  quiet?: boolean;
 }
+
+/** 模型失败的轻提示停留时长（D-110：不进会话，1 秒即走） */
+export const TURN_ERROR_TOAST_MS = 1000;
 
 export interface TurnInfo {
   scope: TurnScope;
@@ -39,7 +45,7 @@ export interface BubbleInfo extends TurnInfo {
 }
 
 export interface TurnResult {
-  /** null = 这轮 TA 没回上（原因已作为系统消息落在会话里） */
+  /** null = 这轮 TA 没回上（原因已作轻提示露出，不进会话） */
   reply: EngineReply | null;
   error?: unknown;
 }
@@ -86,9 +92,11 @@ export async function runTurn(scope: TurnScope, userText: string, ui: TurnUi = {
   try {
     reply = await generateReply(ctx);
   } catch (e) {
-    // 模型调用失败：在会话里露出原因（D-069：没有脚本回落，错误要看得见）
+    // 模型调用失败：轻提示露出原因、停 1 秒（D-069 错误要看得见；D-110 不再写进会话——会话里删不掉）
     ui.typing?.(false);
-    mode.append(scope, [sysMsg(t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) }))]);
+    if (!ui.quiet) {
+      showToast(t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) }), { durationMs: TURN_ERROR_TOAST_MS });
+    }
     return { reply: null, error: e };
   }
   if (pace === 'natural') await wait(naturalDelay(userText));

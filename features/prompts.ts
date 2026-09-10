@@ -20,6 +20,8 @@ import {
   CHAT_HARD_RULES_OF,
   CHAT_OUTPUT_FORMAT,
   characterProfileBlock,
+  circleBlock,
+  encountersBlock,
   hisNoteLifeLines,
   HIS_NOTE_MANNER,
   initiativeLine,
@@ -42,6 +44,7 @@ import {
   squareVoiceBlock,
   stageLine,
   userProfileBlock,
+  worldBlock,
 } from '@/content/prompts';
 import { ORDER, promptSections, type PromptMode } from '@/core/prompt';
 import { levelInfo } from '@/lib/bond';
@@ -67,6 +70,10 @@ promptSections.register({ name: 'intro-outing', modes: OUTING, order: ORDER.intr
 promptSections.register({ name: 'persona', modes: 'all', order: ORDER.persona, lines: (ctx) => [`【你是谁】${scriptFor(ctx.character).persona}`] });
 promptSections.register({ name: 'pursuit', modes: TALK, order: ORDER.pursuit, lines: (ctx) => [`【你的追法】${pursuitLine(ctx.character)}`] });
 promptSections.register({ name: 'profile', modes: 'all', order: ORDER.profile, lines: (ctx) => characterProfileBlock(ctx.character) });
+// 世界书（D-110）：TA 所在的世界，现实世界不出段；身边的人只在羁绊层（陌生人偶遇没有）
+promptSections.register({ name: 'world', modes: 'all', order: ORDER.world, lines: (ctx) => worldBlock(ctx.character) });
+promptSections.register({ name: 'circle', modes: BONDED_FAMILY, order: ORDER.circle, lines: (ctx) => circleBlock(ctx.bond?.circle) });
+promptSections.register({ name: 'circle-outing', modes: OUTING, order: ORDER.circle, lines: (ctx) => (isStranger(ctx) ? [] : circleBlock(ctx.bond?.circle)) });
 promptSections.register({ name: 'voice-square', modes: SQUARE, order: ORDER.voice, lines: (ctx) => squareVoiceBlock(ctx) });
 promptSections.register({ name: 'voice-bonded', modes: BONDED_FAMILY, order: ORDER.voice, lines: (ctx) => bondedVoiceBlock(ctx) });
 promptSections.register({ name: 'voice-outing', modes: OUTING, order: ORDER.voice, lines: (ctx) => outingVoiceBlock(ctx) });
@@ -89,6 +96,8 @@ promptSections.register({
   lines: (ctx) => (isStranger(ctx) ? boundariesBlock(ctx.me) : userProfileBlock(ctx.me, 'outing')),
 });
 promptSections.register({ name: 'shared-memory', modes: 'all', order: ORDER.sharedMemory, lines: (ctx) => sharedMemoryBlock(ctx.character) });
+// 广场偶遇的记录（D-110）：初识与广场陌生人都记得见过她
+promptSections.register({ name: 'encounters', modes: ['square', 'outing'], order: ORDER.encounters, lines: (ctx) => (ctx.mode === 'square' || isStranger(ctx) ? encountersBlock(ctx) : []) });
 promptSections.register({ name: 'square-situation', modes: SQUARE, order: ORDER.situation, lines: (ctx) => squareSituationLines(ctx) });
 
 /* ── 记忆与秘密（只在羁绊层，商业承重墙；陌生人偶遇没有） ── */

@@ -1,6 +1,6 @@
 /**
  * 手机壳桌面（D-020/D-021/D-034/D-044；D-100 纸面 + 翻页）：主页 = 一部手机的桌面。
- * - 底：壁纸只换底色不换纹——底色（纸面 = Romance.bg，其余壁纸各一块纯色）+ 同一套菱格暗纹（DiamondBackground），不渐变不分段（D-104）
+ * - 底：壁纸只换底色不换纹——壁纸即主题（D-110）：选中的壁纸给纸面换色后写进 Romance.bg，桌面、Dock 图块与每个 App 的底同一块纸 + 同一套菱格暗纹（DiamondBackground），不渐变不分段（D-104）
  * - 图标网格：4 列、行高 Space.desktopRow，图块 60 白底无描边、MingCute 30 ink；长按进入编辑模式（抖动），
  *   **自由摆放**（D-034）——任意格位、允许留空格，拖到已占格位则交换；格位持久化（store.desktopSlots）
  * - **翻页**（D-100）：网格区水平分页，每页 rows × 4 格，slot 索引跨页连续（page = floor(slot / slotsPerPage)）；
@@ -40,7 +40,7 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { MingCute } from '@/components/mingcute';
 import { DiamondBackground } from '@/components/paper-bg';
-import { appById, DEFAULT_DESKTOP_ORDER, wallpaperById, type DesktopApp } from '@/constants/apps';
+import { appById, DEFAULT_DESKTOP_ORDER, type DesktopApp } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
@@ -200,7 +200,6 @@ export default function Desktop() {
   const storedOrder = useAppStore((s) => s.desktopOrder);
   const storedSlots = useAppStore((s) => s.desktopSlots);
   const storedDock = useAppStore((s) => s.desktopDock);
-  const wallpaper = wallpaperById(useAppStore((s) => s.wallpaper));
   const bonds = useAppStore((s) => s.bonds);
 
   const clock = useClock();
@@ -541,7 +540,7 @@ export default function Desktop() {
   });
 
   return (
-    <View style={[styles.screen, wallpaper.color ? { backgroundColor: wallpaper.color } : null]}>
+    <View style={styles.screen}>
       <DiamondBackground />
 
       <View style={{ paddingTop: insets.top }}>

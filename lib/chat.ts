@@ -8,7 +8,7 @@
 import { showToast } from '@/components/toast';
 import { buildPeekMyPhoneUser, todayLine } from '@/content/prompts';
 import { modeOf, type TurnScope } from '@/core/modes';
-import { himMsg, respond, runTurn, sendCard, sendText, sysMsg, type TurnResult, type TurnUi } from '@/core/turn';
+import { himMsg, respond, runTurn, sendCard, sendText, sysMsg, TURN_ERROR_TOAST_MS, type TurnResult, type TurnUi } from '@/core/turn';
 import { darkSideCheck, describeAiError, messageContextText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -51,7 +51,7 @@ export async function sendVoice(scope: TurnScope, uri: string, durationMs: numbe
     transcript = await transcribeVoice(uri);
   } catch (e) {
     mode.patch(scope, msg.id, { mediaStatus: 'failed' });
-    mode.append(scope, [sysMsg(t('语音没识别出来，TA 没听到这条：{reason}', { reason: describeAiError(e) }))]);
+    showToast(t('语音没识别出来，TA 没听到这条：{reason}', { reason: describeAiError(e) }), { durationMs: TURN_ERROR_TOAST_MS });
     return { reply: null, error: e };
   }
   mode.patch(scope, msg.id, { transcript, mediaStatus: undefined });
@@ -78,7 +78,7 @@ export async function sendImage(scope: TurnScope, uri: string, ui?: TurnUi): Pro
     caption = await describeImage(uri);
   } catch (e) {
     mode.patch(scope, msg.id, { mediaStatus: 'failed' });
-    mode.append(scope, [sysMsg(t('照片没看清，TA 没看到这条：{reason}', { reason: describeAiError(e) }))]);
+    showToast(t('照片没看清，TA 没看到这条：{reason}', { reason: describeAiError(e) }), { durationMs: TURN_ERROR_TOAST_MS });
     return { reply: null, error: e };
   }
   mode.patch(scope, msg.id, { caption, mediaStatus: undefined });

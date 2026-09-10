@@ -10,15 +10,18 @@ import { herShareTier, type HerShareTier } from '@/lib/her-share';
 import type { Bond, Character, UserProfile } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 
+import { circleBlock } from './circle';
 import {
   CHAT_HARD_RULES_OF,
   characterProfileBlock,
+  langName,
   memoryBlockFor,
   pursuitLine,
   sharedMemoryBlock,
   timeOfDayLine,
   userProfileBlock,
 } from './shared';
+import { worldBlock } from './world';
 
 /**
  * X（原朋友圈）的评论回复实装模型：短、口语、带着发帖时的心情。
@@ -27,7 +30,7 @@ import {
  */
 export function buildPostReplySystem(
   c: Character,
-  bond: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'memory'> | undefined,
+  bond: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'memory' | 'circle'> | undefined,
   me: UserProfile | undefined
 ): string {
   const script = scriptFor(c);
@@ -39,6 +42,8 @@ export function buildPostReplySystem(
     `【你是谁】${script.persona}`,
     `【你的追法】${pursuitLine(c)}`,
     ...characterProfileBlock(c),
+    ...worldBlock(c),
+    ...circleBlock(bond?.circle),
     ...userProfileBlock(me, bond ? 'bonded' : 'square'),
     ...sharedMemoryBlock(c),
     ...(bond ? memoryBlockFor(bond.memory) : []),
@@ -53,11 +58,12 @@ export function buildPostReplySystem(
 /** 喂给模型的内容：帖子 + 评论线，最后一条是她刚发的 */
 export function buildPostReplyUserPrompt(input: {
   postText: string;
-  comments: { from: 'me' | 'him'; text: string }[];
+  /** 评论线：她 / TA / 别人（TA 身边的人或其他 TA，带名字，D-110） */
+  comments: { from: 'me' | 'him' | 'other'; text: string; name?: string }[];
   hisName: string;
 }): string {
   const thread = input.comments
-    .map((cm) => `${cm.from === 'me' ? '她' : input.hisName}：${cm.text}`)
+    .map((cm) => `${cm.from === 'me' ? '她' : cm.from === 'other' ? (cm.name ?? '别人') : input.hisName}：${cm.text}`)
     .join('\n');
   return [
     `你的帖子：「${input.postText}」`,
@@ -68,7 +74,7 @@ export function buildPostReplyUserPrompt(input: {
 
 export function buildCharacterPostSystem(
   c: Character,
-  bond: Pick<Bond, 'nickname' | 'affinity' | 'memory'> | undefined
+  bond: Pick<Bond, 'nickname' | 'affinity' | 'memory' | 'circle'> | undefined
 ): string {
   const script = scriptFor(c);
   const audience = bond
@@ -79,6 +85,8 @@ export function buildCharacterPostSystem(
     `【你是谁】${script.persona}`,
     `【你的追法】${pursuitLine(c)}`,
     ...characterProfileBlock(c),
+    ...worldBlock(c),
+    ...circleBlock(bond?.circle),
     ...(bond ? memoryBlockFor(bond.memory) : []),
     '【发帖的写法】',
     '- 一条帖子：1-2 句、不超过 60 字，口语，像随手发的——日常碎片、吐槽、路上看见的东西、深夜心绪都行。',
@@ -114,4 +122,52 @@ export function buildCharacterPostUserPrompt(now: Date = new Date(), input: Char
   if (input.aboutHer !== undefined) lines.push(input.aboutHer ? '这一条可以有她的影子。' : '这一条和她无关，发你自己的。');
   lines.push('写下这一条帖子。');
   return lines.join('\n');
+}
+
+/* ── 别人的互动（D-110）：TA 身边的人与其他缔结的 TA 来评论，TA 可以回一句 ── */
+
+export interface ReactionAuthor {
+  /** 名字（模型按它署名） */
+  name: string;
+  /** 这人是谁：和 TA 的关系，或另一位 TA 的一句身份 */
+  who: string;
+}
+
+export function buildPostReactionsSystem(c: Character, authors: ReactionAuthor[]): string {
+  return [
+    `一个类似 X（推特）的社交应用上，虚构角色「${c.name}」（${c.identity}）发了一条帖子。请写下面这些人在评论区的反应——他们都是这个世界里的人，认识 ${c.name}：`,
+    ...authors.map((a) => `- ${a.name}：${a.who}`),
+    ...worldBlock(c),
+    '【写法】',
+    '- 挑其中 1–3 个人各评论一句：短、口语、像熟人随手回的（调侃、关心、接梗、约饭、吐槽都行），每人的口气要配得上他和发帖人的关系。',
+    `- ${c.name} 可以回其中一条（一句，按 ${c.name} 的性格），也可以不回。`,
+    '- 不提发帖人的恋人，不写任何真实存在的人，不用 emoji、不用话题标签。',
+    `- 全部用${langName()}写。`,
+    '【输出格式】只输出一个 JSON 对象，不加解释、不用 markdown：',
+    '{"comments":[{"by":"名单里的名字","text":"…"}],"reply":"发帖人回的一句，没有就留空字符串"}',
+  ].join('\n');
+}
+
+export function buildPostReactionsUserPrompt(input: { postText: string; existing: { name: string; text: string }[] }): string {
+  const lines = [`帖子：「${input.postText}」`];
+  if (input.existing.length) lines.push('评论区已有：', ...input.existing.map((c) => `${c.name}：${c.text}`));
+  lines.push('写下评论区的反应。');
+  return lines.join('\n');
+}
+
+export function parseReactionsJSON(raw: string): { comments: { by: string; text: string }[]; reply?: string } | null {
+  const start = raw.indexOf('{');
+  const end = raw.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  try {
+    const obj = JSON.parse(raw.slice(start, end + 1)) as { comments?: unknown; reply?: unknown };
+    const comments = (Array.isArray(obj.comments) ? obj.comments : [])
+      .map((x) => x as { by?: unknown; text?: unknown })
+      .filter((x) => typeof x.by === 'string' && typeof x.text === 'string' && String(x.text).trim())
+      .map((x) => ({ by: String(x.by).trim(), text: String(x.text).trim().slice(0, 120) }));
+    const reply = typeof obj.reply === 'string' && obj.reply.trim() ? obj.reply.trim().slice(0, 120) : undefined;
+    return { comments, reply };
+  } catch {
+    return null;
+  }
 }

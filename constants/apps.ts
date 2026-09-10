@@ -32,6 +32,8 @@ export const DESKTOP_APPS: DesktopApp[] = [
   { id: 'notes', label: '记事本', icon: 'notebook', route: '/apps/notes' },
   // 查手机（D-085）：所有缔结的 TA 各一部手机；也能让 TA 看我的手机
   { id: 'phones', label: '查手机', icon: 'phoneEye', route: '/apps/phones' },
+  // 世界书（D-110）：默认现实世界，可创建别的世界并收藏；创造角色时从收藏里选，决定 TA 所处的世界与认知
+  { id: 'worlds', label: '世界书', icon: 'planet', route: '/apps/worlds' },
   { id: 'settings', label: '设置', icon: 'settings', route: '/apps/settings' },
 ];
 
@@ -45,28 +47,38 @@ export function appById(id: string): DesktopApp | undefined {
 }
 
 /**
- * 壁纸（设置 → 主题，D-104）：壁纸只换纸的颜色，不换纸——每款都是「一块纯色底 + 同一套菱格暗纹（DiamondBackground）」，
- * 不渐变、不分段。「纸面」（新装机默认）底色跟随当前配色的 Romance.bg（color 留空）；其余五款各一块浅底，
- * 保证 ink 字与白卡在上面照样清楚。设置页缩略图同样画法。
+ * 壁纸 = 主题（D-104 / D-110）：壁纸只换纸的颜色，不换纸——每款都是「一块纯色底 + 同一套菱格暗纹（DiamondBackground）」，
+ * 不渐变、不分段。「纸面」（新装机默认）= 设计系统原色（color 留空）；其余五款各一块浅底 + 配套的聊天纸与分隔线浅色，
+ * ink / primary / accent 不动。选一款即全局生效：桌面、Dock 图块、每个 App 的底、聊天纸都跟着走（constants/theme.ts applyPaperTint）。
  */
 export interface Wallpaper {
   id: string;
   label: string;
-  /** 底色；留空 = 当前配色的 Romance.bg */
+  /** 底色；留空 = 纸面原色 */
   color?: string;
+  /** 聊天纸 / 浅底（D-110）；留空 = 纸面原色 */
+  soft?: string;
+  /** 分隔线 / 浅描边（D-110）；留空 = 纸面原色 */
+  line?: string;
 }
 
 export const DEFAULT_WALLPAPER = 'paper';
 
 export const WALLPAPERS: Wallpaper[] = [
   { id: 'paper', label: '纸面' },
-  { id: 'dawn', label: '拂晓', color: '#FFEDF3' },
-  { id: 'eight', label: '晚八点', color: '#E4DDF0' },
-  { id: 'sea', label: '归墟', color: '#DCEFF5' },
-  { id: 'matcha', label: '抹茶', color: '#EEF5EA' },
-  { id: 'milk', label: '奶白', color: '#FBF8F3' },
+  { id: 'dawn', label: '拂晓', color: '#FFEDF3', soft: '#FFF5F8', line: '#F7D3DF' },
+  { id: 'eight', label: '晚八点', color: '#E4DDF0', soft: '#EFEAF7', line: '#CFC3E3' },
+  { id: 'sea', label: '归墟', color: '#DCEFF5', soft: '#EAF5F9', line: '#BFDDE8' },
+  { id: 'matcha', label: '抹茶', color: '#EEF5EA', soft: '#F4F9F1', line: '#CFE3C8' },
+  { id: 'milk', label: '奶白', color: '#FBF8F3', soft: '#FDFBF7', line: '#EADFCF' },
 ];
 
 export function wallpaperById(id: string): Wallpaper {
   return WALLPAPERS.find((w) => w.id === id) ?? WALLPAPERS[0];
+}
+
+/** 壁纸给纸面换的色（D-110）：交给 constants/theme.ts applyPaperTint */
+export function wallpaperTint(id: string): { bg?: string; accentSoft?: string; line?: string } {
+  const w = wallpaperById(id);
+  return { bg: w.color, accentSoft: w.soft, line: w.line };
 }

@@ -22,6 +22,7 @@ function bondPick(bond: Bond, opts: { phone?: boolean } = {}): NonNullable<Engin
     birthday: bond.birthday,
     createdAt: bond.createdAt,
     memory: bond.memory,
+    circle: bond.circle,
   };
   if (!opts.phone) return base;
   // 查手机（D-082）：TA 的手机密码第一次需要时才生成，记在这段羁绊上
@@ -42,7 +43,14 @@ const square: ConversationMode = {
     const character = scope.characterId ? findCharacter(scope.characterId) : undefined;
     if (!character) return null;
     const chat = useAppStore.getState().squareChats[character.id];
-    return { character, mode: 'square', me: meForCharacter(character.id), history: chat?.messages ?? [], userText };
+    return {
+      character,
+      mode: 'square',
+      me: meForCharacter(character.id),
+      encounters: chat?.encounters,
+      history: chat?.messages ?? [],
+      userText,
+    };
   },
   append(scope, msgs) {
     if (scope.characterId) useAppStore.getState().appendSquare(scope.characterId, msgs);
@@ -127,6 +135,8 @@ const outing: ConversationMode = {
       mode: 'outing',
       bond: bond ? bondPick(bond) : undefined,
       me: meForCharacter(character.id),
+      // 陌生人也记得上次在广场见过她（D-110）
+      encounters: kind === 'stranger' ? s.squareChats[character.id]?.encounters : undefined,
       outing: {
         placeName: place.name,
         scene: place.scene,

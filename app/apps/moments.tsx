@@ -4,15 +4,21 @@
  * - 回复缩进、头像 26；「我的头像」= paper 底 accent 首字（不是角色色）；评论输入框 paper r6
  * - 回复实装模型（D-053）：她评论 → TA 用当前引擎真的回一条（带人设/关系/记忆），
  *   暗面路由前置（红线 #3：评论区也不例外）；AI 不可用/失败不回帖、弹窗露出原因（D-069 起没有脚本回落）
- * - 加好友前的公开帖只能看（免费层口径不变）
+ * - 加好友前的公开帖只能看（免费层口径不变）；在广场见过的 TA 的公开帖带「在广场见过」（D-110）
+ * - 评论区不只有她（D-110）：TA 身边的人与其他缔结的 TA 会来评论（lib/posts.ts deliverDueReactions，进页补投），TA 可回一句
+ * - 点头像打开 TA 的资料页（components/character-sheet.tsx）；回帖失败走轻提示，不弹窗
  */
 
-import { useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
+import { CharacterSheet } from '@/components/character-sheet';
 import { MingCute } from '@/components/mingcute';
+import { showToast } from '@/components/toast';
+import { TURN_ERROR_TOAST_MS } from '@/core/turn';
+import { deliverDueReactions } from '@/lib/posts';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
@@ -51,13 +57,14 @@ async function generatePostReply(
   return cleaned[0];
 }
 
-function PostRow({ post }: { post: Post }) {
+function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: string) => void }) {
   const [commentDraft, setCommentDraft] = useState('');
   const [commentOpen, setCommentOpen] = useState(false);
   const [replying, setReplying] = useState(false);
   const character = findCharacter(post.characterId);
   const bond = useAppStore((s) => s.bonds.find((b) => b.id === post.bondId));
   const me = useAppStore((s) => s.me);
+  const met = useAppStore((s) => !!s.squareChats[post.characterId]?.encounters?.length);
   if (!character) return null;
   const displayName = bond?.name ?? character.name;
   const canComment = !!post.bondId;
@@ -74,7 +81,7 @@ function PostRow({ post }: { post: Post }) {
       useAppStore.getState().addHisReply(post.id, reply);
     } catch (e) {
       console.warn('[x] 回帖生成失败：', e);
-      Alert.alert(t('TA 这条没回上'), t('模型调用失败：{reason}', { reason: describeAiError(e) }));
+      showToast(t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) }), { durationMs: TURN_ERROR_TOAST_MS });
     } finally {
       setReplying(false);
     }
@@ -82,7 +89,9 @@ function PostRow({ post }: { post: Post }) {
 
   return (
     <View style={styles.row}>
-      <CharAvatar name={displayName} color={character.color} size={40} characterId={character.id} />
+      <Pressable onPress={() => onOpenCharacter(character.id)} hitSlop={6}>
+        <CharAvatar name={displayName} color={character.color} size={40} characterId={character.id} />
+      </Pressable>
       <View style={styles.rowBody}>
         <View style={styles.headLine}>
           <Text style={styles.name} numberOfLines={1}>
@@ -92,7 +101,7 @@ function PostRow({ post }: { post: Post }) {
             {handleFor(character)} · {timeAgo(post.at)}
           </Text>
         </View>
-        {!post.bondId ? <Text style={styles.lockedMeta}>{t('加好友前的帖子')}</Text> : null}
+        {!post.bondId ? <Text style={styles.lockedMeta}>{met ? t('在广场见过 · 加好友前的帖子') : t('加好友前的帖子')}</Text> : null}
         <Text style={styles.body}>{post.text}</Text>
 
         <View style={styles.actions}>
@@ -114,27 +123,42 @@ function PostRow({ post }: { post: Post }) {
         </View>
 
         {/* 回复线（推特式缩进） */}
-        {post.comments.map((cm) => (
-          <View key={cm.id} style={styles.reply}>
-            {cm.from === 'him' ? (
-              <CharAvatar name={displayName} color={character.color} size={26} characterId={character.id} />
-            ) : (
-              <View style={styles.myAvatar}>
-                <Text style={styles.myAvatarText}>{myName.slice(0, 1)}</Text>
-              </View>
-            )}
-            <View style={styles.replyBody}>
-              <Text style={styles.replyName}>
-                {cm.from === 'me' ? myName : displayName}
-                <Text style={styles.replyHandle}>
-                  {'  '}
-                  {cm.from === 'me' ? '@me' : handleFor(character)}
+        {post.comments.map((cm) => {
+          // 别人（D-110）：另一位缔结的 TA 用立绘头像、可点开资料页；TA 身边的人 = line 底首字
+          const other = cm.from === 'other' ? (cm.characterId ? findCharacter(cm.characterId) : undefined) : undefined;
+          const otherName = cm.from === 'other' ? (cm.name ?? other?.name ?? '') : '';
+          return (
+            <View key={cm.id} style={styles.reply}>
+              {cm.from === 'him' ? (
+                <CharAvatar name={displayName} color={character.color} size={26} characterId={character.id} />
+              ) : cm.from === 'other' ? (
+                other ? (
+                  <Pressable onPress={() => onOpenCharacter(other.id)} hitSlop={6}>
+                    <CharAvatar name={otherName} color={other.color} size={26} characterId={other.id} />
+                  </Pressable>
+                ) : (
+                  <View style={styles.otherAvatar}>
+                    <Text style={styles.otherAvatarText}>{otherName.slice(0, 1)}</Text>
+                  </View>
+                )
+              ) : (
+                <View style={styles.myAvatar}>
+                  <Text style={styles.myAvatarText}>{myName.slice(0, 1)}</Text>
+                </View>
+              )}
+              <View style={styles.replyBody}>
+                <Text style={styles.replyName}>
+                  {cm.from === 'me' ? myName : cm.from === 'other' ? otherName : displayName}
+                  <Text style={styles.replyHandle}>
+                    {'  '}
+                    {cm.from === 'me' ? '@me' : cm.from === 'other' ? (other ? handleFor(other) : `@${otherName}`) : handleFor(character)}
+                  </Text>
                 </Text>
-              </Text>
-              <Text style={styles.replyText}>{cm.text}</Text>
+                <Text style={styles.replyText}>{cm.text}</Text>
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
         {replying ? (
           <View style={styles.reply}>
             <CharAvatar name={displayName} color={character.color} size={26} characterId={character.id} />
@@ -170,6 +194,11 @@ function PostRow({ post }: { post: Post }) {
 export default function FeedScreen() {
   const posts = useAppStore((s) => s.posts);
   const bonds = useAppStore((s) => s.bonds);
+  const [sheetId, setSheetId] = useState<string | null>(null);
+  // 进页补一次别人的互动（D-110）：缔结时铺的帖也会有人来评论
+  useEffect(() => {
+    void deliverDueReactions();
+  }, []);
   // 只看缔结契约的 TA（D-027）：领养后帖 + 这些角色的公开帖
   const bondedCharIds = new Set(bonds.map((b) => b.characterId));
   const sorted = posts.filter((p) => bondedCharIds.has(p.characterId)).sort((a, b) => b.at - a.at);
@@ -181,7 +210,7 @@ export default function FeedScreen() {
         keyExtractor={(p) => p.id}
         style={styles.feed}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => <PostRow post={item} />}
+        renderItem={({ item }) => <PostRow post={item} onOpenCharacter={setSheetId} />}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -189,6 +218,7 @@ export default function FeedScreen() {
           </View>
         }
       />
+      <CharacterSheet characterId={sheetId} visible={!!sheetId} onClose={() => setSheetId(null)} />
     </AppScreen>
   );
 }
@@ -232,6 +262,16 @@ const styles = themed(() =>
       justifyContent: 'center',
     },
     myAvatarText: { fontSize: 12, fontWeight: '600', color: Romance.accentStrong },
+    // 别人的头像（TA 身边的人，D-110）：line 底 ink 首字
+    otherAvatar: {
+      width: 26,
+      height: 26,
+      borderRadius: Shape.radius,
+      backgroundColor: Romance.line,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    otherAvatarText: { fontFamily: Fonts.initial, fontSize: 12, fontWeight: '600', color: Romance.ink },
     commentBar: { flexDirection: 'row', alignItems: 'center', gap: Space.inline, marginTop: 10 },
     commentInput: {
       flex: 1,

@@ -6,6 +6,7 @@
  * 她在这里发的每句话同样 +XP（仅限有羁绊的 TA）；
  * 结束外出时在羁绊会话留一条「你们一起去了××」的系统记录（陌生人不留），现场对话并进羁绊记忆（D-079）；
  * 没点结束就离开，TA 还在这里等——一小时没说话再进来才是新的一场；照片洗好即进相册（lib/outing.ts）。
+ * 开场白走模型（D-110）：进场先让 TA 按【此刻】开口，每次不一样；失败回落离线模板（同一情形不连用同一条）。点气泡头像或顶栏副文打开 TA 的资料页。
  * 界面：顶栏 ‹ + 「emoji 地点」16/600 + 副文 11 muted（和谁 · 时间 · 天气）+ 「结束外出」白 r6，下沿 1.5 ink；
  * 场景条 = ink 底白字的系统条；拍照两按钮白 r6 13/600 在输入栏上方。
  */
@@ -17,11 +18,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
+import { CharacterSheet } from '@/components/character-sheet';
 import { ChatThread } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
-import { outingOpeners } from '@/content/prompts';
+import { outingOpenerUserLine, pickOutingOpener } from '@/content/prompts';
 import { placeById } from '@/content/places';
 import { wait } from '@/core/turn';
 import { HEART_FULL } from '@/lib/bond';
@@ -30,7 +32,7 @@ import { describeAiError } from '@/lib/engine';
 import { imageKeyReady } from '@/lib/imagegen';
 import { t } from '@/lib/i18n';
 import { ON_TIME_TOLERANCE_MIN, planTimeLabel } from '@/lib/appointments';
-import { outingScope, sendText } from '@/lib/chat';
+import { outingScope, respond, sendText } from '@/lib/chat';
 import { enterPlace, finishOuting, setSceneVisible, shootPhoto } from '@/lib/outing';
 import { tempNow, todayWeather } from '@/lib/weather';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -45,6 +47,7 @@ export default function OutingSceneScreen() {
   const [typing, setTyping] = useState(false);
   const [noOne, setNoOne] = useState(false);
   const [shooting, setShooting] = useState<null | 'solo' | 'together'>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const booted = useRef(false);
 
   const active = session && session.placeId === placeId ? session : null;
@@ -54,7 +57,7 @@ export default function OutingSceneScreen() {
   // 陌生人在现场交换了联系方式后（D-056），这场偶遇就地升格为熟人偶遇
   const kind = active?.kind === 'stranger' && bond ? 'encounter' : active?.kind;
 
-  // 进场：开一场外出；新场次由 TA 先开口（离线模板，带现场动作）
+  // 进场：开一场外出；新场次由 TA 先开口——走模型按【此刻】说第一句（D-110），失败回落离线模板（不重复上一条）
   useEffect(() => {
     if (!place || booted.current) return;
     booted.current = true;
@@ -68,13 +71,17 @@ export default function OutingSceneScreen() {
       const b = useAppStore.getState().bonds.find((x) => x.characterId === s.characterId);
       // 赴约迟到了（D-079）：开场就知道
       const late = s.kind === 'date' && (s.lateMinutes ?? 0) > ON_TIME_TOLERANCE_MIN;
-      const openers = outingOpeners();
-      const pool = late ? openers.dateLate : openers[s.kind];
-      const line = pool[Math.floor(Math.random() * pool.length)]
-        .replace(/\{place\}/g, place.name)
-        .replace(/\{nickname\}/g, b?.nickname ?? '你')
-        .replace(/\{minutes\}/g, String(s.lateMinutes ?? 0));
+      const openerKind = late ? 'dateLate' : s.kind;
       void (async () => {
+        const { reply } = await respond(outingScope(s.characterId), outingOpenerUserLine(openerKind), {
+          typing: setTyping,
+          quiet: true,
+        });
+        if (reply) return;
+        const line = pickOutingOpener(openerKind)
+          .replace(/\{place\}/g, place.name)
+          .replace(/\{nickname\}/g, b?.nickname ?? '你')
+          .replace(/\{minutes\}/g, String(s.lateMinutes ?? 0));
         setTyping(true);
         await wait(1000);
         setTyping(false);
@@ -164,12 +171,21 @@ export default function OutingSceneScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <Header place={place} subtitle={subtitle} weather={weatherShort} onBack={() => router.back()} onLeave={leave} />
+      <Header
+        place={place}
+        subtitle={subtitle}
+        weather={weatherShort}
+        onBack={() => router.back()}
+        onLeave={leave}
+        onSubtitlePress={() => setSheetOpen(true)}
+      />
+      <CharacterSheet characterId={character.id} visible={sheetOpen} onClose={() => setSheetOpen(false)} />
       <ChatThread
         messages={active.messages}
         color={character.color}
         name={name}
         characterId={character.id}
+        onAvatarPress={() => setSheetOpen(true)}
         typing={typing}
         typingLabel="……"
         onSend={onSend}
@@ -234,19 +250,22 @@ function Header({
   weather,
   onBack,
   onLeave,
+  onSubtitlePress,
 }: {
   place: { name: string; emoji: string };
   subtitle?: string;
   weather: { label: string; temp: string };
   onBack: () => void;
   onLeave?: () => void;
+  /** 点副文（和谁）看 TA 的资料（D-110） */
+  onSubtitlePress?: () => void;
 }) {
   return (
     <View style={styles.header}>
       <Pressable onPress={onBack} hitSlop={10}>
         <IconSymbol name="chevron.left" size={22} color={Romance.ink} />
       </Pressable>
-      <View style={styles.headerText}>
+      <Pressable style={styles.headerText} onPress={onSubtitlePress} disabled={!onSubtitlePress}>
         <Text style={styles.headerName} numberOfLines={1}>
           {place.emoji} {t(place.name)}
         </Text>
@@ -254,7 +273,7 @@ function Header({
           {subtitle ? `${subtitle} · ` : ''}
           {weather.label} <Text style={styles.headerTemp}>{weather.temp}</Text>
         </Text>
-      </View>
+      </Pressable>
       {onLeave ? (
         <Pressable style={styles.leaveBtn} onPress={onLeave} hitSlop={6}>
           <Text style={styles.leaveText}>{t('结束外出')}</Text>

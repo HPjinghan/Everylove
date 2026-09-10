@@ -20,6 +20,9 @@ export const ORDER = {
   persona: 10,
   pursuit: 20,
   profile: 30,
+  /** 世界书与身边的人（D-110）：紧跟角色设定 */
+  world: 32,
+  circle: 34,
   voice: 40,
   now: 50,
   timeRules: 55,
@@ -27,6 +30,8 @@ export const ORDER = {
   moment: 60,
   user: 70,
   sharedMemory: 80,
+  /** 广场偶遇的记录（D-110） */
+  encounters: 84,
   situation: 85,
   memory: 90,
   secrets: 100,

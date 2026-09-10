@@ -1,11 +1,11 @@
 /**
  * 日历（D-020；D-100 纸面）：内嵌真实日历，三层——
  * 世界层：真实日期 + 节假日（中文盘中国节日，content/calendar.ts）；
- * 关系层：自动记录（领养纪念日、你的生日、一百天、带时间的约定），不用用户动手；
+ * 关系层：自动记录（每一位 TA 的交换联系方式纪念日 / 一百天 / TA 的生日、你的生日、带时间的约定），不用用户动手；条目都带名字（D-110）；
  * 用户层：手动添加日程（考试/面试/出差），每条触发心跳三段式（lib/heartbeat.ts）。
- * 三层圆点：节日 ink / 纪念 primary / 日程 accent；选中日 primary 底白字（今日不另标，选中即今日）。
+ * 三层圆点：节日 ink / 纪念 primary / 日程 accent，网格下方一行图例（D-110）；选中日 primary 底白字（今日不另标，选中即今日）。
  * 详情里来自 outingPlans 的条目右侧是「赴约 ›」，点了直接去现场（D-100 交互改动 7）。
- * v1 边界：不读系统日历（手动添加、数据最小化）。日历只记安排与纪念日（D-090）：TA 经历的事在发生之后进记事本或 X，不作未来日程。
+ * 世界层任何年份都有内容（content/calendar.ts，D-110）。v1 边界：不读系统日历（手动添加、数据最小化）。日历只记安排与纪念日（D-090）：TA 经历的事在发生之后进记事本或 X，不作未来日程。
  */
 
 import { useRouter } from 'expo-router';
@@ -41,40 +41,40 @@ export default function CalendarScreen() {
   const userEvents = useAppStore((s) => s.userEvents);
   const bonds = useAppStore((s) => s.bonds);
   const plans = useAppStore((s) => s.outingPlans);
-  const bond = bonds[0];
-  const character = bond ? findCharacter(bond.characterId) : undefined;
+  const myBirthday = useAppStore((s) => s.me?.birthday);
 
   const today = new Date();
   const [ym, setYm] = useState({ y: today.getFullYear(), m: today.getMonth() });
   const [selected, setSelected] = useState(dateKey(today));
   const [draft, setDraft] = useState('');
 
-  /** 关系层：自动记录，不用用户动手 */
+  /** 关系层：自动记录，不用用户动手；每一位 TA 都有自己的纪念日，条目带名字（D-110） */
   const relationMarks = useMemo(() => {
     const marks = new Map<string, DayMark[]>();
     const push = (key: string, label: string, layer: DayMark['layer']) => {
       if (!marks.has(key)) marks.set(key, []);
       marks.get(key)!.push({ label, layer });
     };
-    if (bond) {
+    // 她的生日以身份为准（D-088），旧存档回落缔结时抄下的那份
+    const birthday = myBirthday ?? bonds[0]?.birthday;
+    if (birthday && bonds.length) {
+      const [mm, dd] = birthday.split('-').map(Number);
+      if (mm && dd) push(dateKey(new Date(ym.y, mm - 1, dd)), t('你的生日'), 'relation');
+    }
+    for (const bond of bonds) {
+      const character = findCharacter(bond.characterId);
       const created = new Date(bond.createdAt);
       push(dateKey(created), t('和{name}交换联系方式', { name: bond.name }), 'relation');
       const hundred = new Date(bond.createdAt);
       hundred.setDate(hundred.getDate() + 99);
-      push(dateKey(hundred), t('一百天'), 'relation');
-      // 她的生日以身份为准（D-088），旧存档回落缔结时抄下的那份
-      const myBirthday = useAppStore.getState().me?.birthday ?? bond.birthday;
-      if (myBirthday) {
-        const [mm, dd] = myBirthday.split('-').map(Number);
-        push(dateKey(new Date(ym.y, mm - 1, dd)), t('你的生日'), 'relation');
-      }
+      push(dateKey(hundred), t('和{name}的一百天', { name: bond.name }), 'relation');
       if (character?.birthday) {
         const [mm, dd] = character.birthday.split('-').map(Number);
         if (mm && dd) push(dateKey(new Date(ym.y, mm - 1, dd)), t('{name}的生日', { name: bond.name }), 'relation');
       }
     }
     return marks;
-  }, [bond, character, ym.y]);
+  }, [bonds, myBirthday, ym.y]);
 
   const marksFor = (key: string): DayMark[] => {
     const out: DayMark[] = [];
@@ -196,6 +196,16 @@ export default function CalendarScreen() {
             )}
           </View>
 
+          {/* 图例（D-110）：三层圆点各是什么 */}
+          <View style={styles.legend}>
+            {(['world', 'relation', 'user'] as const).map((layer) => (
+              <View key={layer} style={styles.legendItem}>
+                <View style={[styles.dot, dotStyle[layer]]} />
+                <Text style={styles.legendText}>{t(LAYER_LABEL[layer])}</Text>
+              </View>
+            ))}
+          </View>
+
           {/* 选中日详情 */}
           <Card padded={false} style={styles.detail}>
             <Text style={styles.detailTitle}>
@@ -287,6 +297,9 @@ const styles = themed(() =>
     dotWorld: { backgroundColor: Romance.ink },
     dotRelation: { backgroundColor: Romance.accent },
     dotUser: { backgroundColor: Romance.accentStrong },
+    legend: { flexDirection: 'row', justifyContent: 'center', gap: Space.tileGap, marginTop: 10 },
+    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    legendText: { fontSize: 11, color: Romance.sub },
     detail: { padding: 14, marginTop: 12 },
     detailTitle: { fontSize: 14, fontWeight: '600', color: Romance.ink, marginBottom: 8 },
     detailEmpty: { fontSize: 13, color: Romance.sub, marginBottom: 4 },

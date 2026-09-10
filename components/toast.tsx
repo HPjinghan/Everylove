@@ -1,5 +1,5 @@
 /**
- * 轻提示（D-079；D-100 纸面：ink 底白字 r6、无阴影）：全局一条，顶部淡入、两秒多后淡出；任何地方 showToast() 即可。
+ * 轻提示（D-079；D-100 纸面：ink 底白字 r6、无阴影）：全局一条，顶部淡入、两秒多后淡出（可指定停留时长，D-110 模型失败只停 1 秒）；任何地方 showToast() 即可。
  * 宿主 <ToastHost /> 挂在根布局；不在树上时 showToast 静默。
  */
 
@@ -10,10 +10,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Shape } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 
-let emit: ((text: string) => void) | null = null;
+let emit: ((text: string, durationMs: number) => void) | null = null;
 
-export function showToast(text: string): void {
-  emit?.(text);
+export const TOAST_DEFAULT_MS = 2600;
+
+export function showToast(text: string, opts: { durationMs?: number } = {}): void {
+  emit?.(text, opts.durationMs ?? TOAST_DEFAULT_MS);
 }
 
 export function ToastHost() {
@@ -23,7 +25,7 @@ export function ToastHost() {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    emit = (next) => {
+    emit = (next, durationMs) => {
       setText(next);
       if (timer.current) clearTimeout(timer.current);
       Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
@@ -31,7 +33,7 @@ export function ToastHost() {
         Animated.timing(opacity, { toValue: 0, duration: 260, useNativeDriver: true }).start(() =>
           setText(null)
         );
-      }, 2600);
+      }, durationMs);
     };
     return () => {
       emit = null;

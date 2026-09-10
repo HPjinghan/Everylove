@@ -56,12 +56,15 @@ export interface RomancePalette {
   danger: string;
 }
 
-export const THEMES: Record<string, { label: string; colors: RomancePalette }> = {
-  /**
-   * 纸面（D-083）：Claude Design「Everylove - Design System」的色彩 token 原样映射——
-   * paper #FFD6E7 / primary #E8578A / accent #C2185B / ink #4A2B36 / muted #A97F8D / surface #FFFFFF / chat paper #FBE4EC。
-   * faint 与 line 设计稿没给（它只用 muted 一档），按 paper→muted 之间取的浅色。
-   */
+/**
+ * 主题只有一套（D-110）：「纸面」= Claude Design「Everylove - Design System」的色彩 token 原样映射——
+ * paper #FFD6E7 / primary #E8578A / accent #C2185B / ink #4A2B36 / muted #A97F8D / surface #FFFFFF / chat paper #FBE4EC。
+ * faint 与 line 设计稿没给（它只用 muted 一档），按 paper→muted 之间取的浅色。
+ * 换主题 = 换壁纸（设置 → 主题只剩壁纸一排）：壁纸给纸面换一块底色 + 配套的两档浅色（accentSoft / line），
+ * ink / primary / accent 不动——主页与里面的每一屏跟着同一块纸走（constants/apps.ts WALLPAPERS）。
+ * 蜜桃 / 苏打 / 抹茶 / 葡萄四套配色已下线。
+ */
+export const THEMES: Record<'paper', { label: string; colors: RomancePalette }> = {
   paper: {
     label: '纸面',
     colors: {
@@ -70,42 +73,17 @@ export const THEMES: Record<string, { label: string; colors: RomancePalette }> =
       gold: '#E0B98A', night: '#3A2A3E', bubbleHim: '#FFFFFF', bubbleMe: '#E8578A', danger: '#C2185B',
     },
   },
-  peach: {
-    label: '蜜桃',
-    colors: {
-      bg: '#FFF0F4', card: '#FFFFFF', ink: '#4A2B36', sub: '#A97F8D', faint: '#D0AEBB',
-      accent: '#F5749B', accentSoft: '#FFE1EA', line: '#F9DBE4', stroke: '#F9DBE4', accentStrong: '#D94F7D',
-      gold: '#E0B98A', night: '#3A2A3E', bubbleHim: '#FFFFFF', bubbleMe: '#F5749B', danger: '#E0607A',
-    },
-  },
-  soda: {
-    label: '苏打',
-    colors: {
-      bg: '#EFF5FF', card: '#FFFFFF', ink: '#2B3A55', sub: '#7F90A9', faint: '#AEBDD0',
-      accent: '#6E9BF0', accentSoft: '#E0EAFF', line: '#DBE6F9', stroke: '#DBE6F9', accentStrong: '#3F73D9', gold: '#E0C08A',
-      night: '#2A2F3E', bubbleHim: '#FFFFFF', bubbleMe: '#6E9BF0', danger: '#E0607A',
-    },
-  },
-  matcha: {
-    label: '抹茶',
-    colors: {
-      bg: '#F0F7EF', card: '#FFFFFF', ink: '#2F4A35', sub: '#84A98C', faint: '#AECFB4',
-      accent: '#5FB878', accentSoft: '#DFF2E3', line: '#DDEDDF', stroke: '#DDEDDF', accentStrong: '#3F9A5B', gold: '#D9BE8A',
-      night: '#2A3E2E', bubbleHim: '#FFFFFF', bubbleMe: '#5FB878', danger: '#E0607A',
-    },
-  },
-  grape: {
-    label: '葡萄',
-    colors: {
-      bg: '#F6F0FB', card: '#FFFFFF', ink: '#43305A', sub: '#9B87B3', faint: '#C4B3D6',
-      accent: '#A879DE', accentSoft: '#EFE2FC', line: '#E9DDF6', stroke: '#E9DDF6', accentStrong: '#8358C4', gold: '#E0B98A',
-      night: '#32283E', bubbleHim: '#FFFFFF', bubbleMe: '#A879DE', danger: '#E0607A',
-    },
-  },
 };
 
-/** 默认主题（D-083）：新装机走设计系统的「纸面」；老存档里的 themeId 保留 */
+/** 唯一主题 id（D-083 / D-110）：store.themeId 只作旧存档兼容，代码不再读 */
 export const DEFAULT_THEME_ID = 'paper';
+
+/** 壁纸给纸面换的色（D-110）：底色 + 聊天纸 / 分隔线两档浅色；三者留空 = 纸面原色 */
+export interface PaperTint {
+  bg?: string;
+  accentSoft?: string;
+  line?: string;
+}
 
 /** token 色的半透明版（D-100）：遮罩 / 暗场用它，不手写 rgba；只接受 #RRGGBB */
 export function withAlpha(hex: string, alpha: number): string {
@@ -118,10 +96,22 @@ export const Romance: RomancePalette = { ...THEMES[DEFAULT_THEME_ID].colors };
 
 let themeVersion = 0;
 
-export function applyThemeColors(id: string): void {
-  const theme = THEMES[id] ?? THEMES[DEFAULT_THEME_ID];
-  Object.assign(Romance, theme.colors);
+/**
+ * 应用壁纸（D-110）：纸面配色 + 壁纸的色。传空 = 纸面原色。
+ * 桌面、Dock 图块、每个 App 的底、聊天纸都读 Romance，所以主页换了色，里面跟着换。
+ */
+export function applyPaperTint(tint: PaperTint = {}): void {
+  Object.assign(Romance, THEMES.paper.colors, {
+    bg: tint.bg ?? THEMES.paper.colors.bg,
+    accentSoft: tint.accentSoft ?? THEMES.paper.colors.accentSoft,
+    line: tint.line ?? THEMES.paper.colors.line,
+  });
   themeVersion++;
+}
+
+/** 旧名兼容：主题只剩纸面，参数忽略 */
+export function applyThemeColors(_id?: string): void {
+  applyPaperTint();
 }
 
 /**

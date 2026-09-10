@@ -121,3 +121,14 @@ export const BONDED_LOVE_RULES = [
 export const BONDED_LENGTH = [
   '- 回复 1-2 句，每句都短，口语、具体。想分成两条消息发（比如先接话、再补一句自己的），就用一个空行隔开，最多两条，两条加起来不超过三句。',
 ];
+
+/* ── 广场偶遇的记录（D-110）：初识 / 广场陌生人模式——TA 记得在哪见过她、聊了什么 ── */
+
+export function encountersBlock(ctx: EngineContext): string[] {
+  const list = ctx.encounters ?? [];
+  if (!list.length) return [];
+  return [
+    '【你们见过】你在现实里碰到过她（下面是那几次的地点与聊过的话）。你记得这些：认出她、可以自然提起当时的事，但仍是刚认识的分寸：',
+    ...list.slice(-3).map((e) => `- 在${e.placeName}：${e.summary}`),
+  ];
+}

@@ -69,14 +69,17 @@ describe('亲密会话', () => {
     expect(lastReq?.kind).toBe('reply');
   });
 
-  it('模型失败：原因作为系统消息落在会话里，不吞', async () => {
+  it('模型失败：原因走轻提示，不写进会话（D-110）', async () => {
     const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
     fail = true;
+    const before = useAppStore.getState().bonds.find((b) => b.id === bondId)!.messages.length;
     const r = await sendText({ mode: 'bonded', bondId }, '在吗', { ui: noPace });
     expect(r.reply).toBeNull();
-    const last = useAppStore.getState().bonds.find((b) => b.id === bondId)!.messages.at(-1)!;
-    expect(last.from).toBe('system');
-    expect(last.text).toContain('boom 503');
+    expect(String(r.error)).toContain('boom 503');
+    const msgs = useAppStore.getState().bonds.find((b) => b.id === bondId)!.messages;
+    // 只多了她那一句；没有系统条
+    expect(msgs.length).toBe(before + 1);
+    expect(msgs.at(-1)!.from).toBe('me');
   });
 
   it('暗面路由绕过模型：不调供应商，回温柔模式', async () => {

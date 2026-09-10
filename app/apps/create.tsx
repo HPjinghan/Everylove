@@ -13,7 +13,7 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -34,6 +34,8 @@ import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { Chip } from '@/components/chip';
 import { Field, Input } from '@/components/input';
+import { REAL_WORLD_ID } from '@/content/worlds';
+import { selectableFrom } from '@/lib/worlds';
 import { showToast } from '@/components/toast';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
@@ -142,6 +144,8 @@ type FormInit = {
   gender: Gender;
   ageStatus: 'adult' | 'minor';
   visibility: 'private' | 'public';
+  /** 所在的世界（D-110）：世界书收藏里选；undefined = 现实世界 */
+  worldId: string | undefined;
   look: string;
   story: string;
   palette: number;
@@ -173,6 +177,7 @@ const BLANK_FORM: FormInit = {
   gender: 'male',
   ageStatus: 'adult',
   visibility: 'private',
+  worldId: undefined,
   look: '',
   story: '',
   palette: 0,
@@ -214,6 +219,7 @@ function formFor(c: Character): FormInit {
     gender: c.gender ?? (c.loveTag === 'female' ? 'female' : c.loveTag === 'nonbinary' ? 'nonbinary' : 'male'),
     ageStatus: 'adult', // 已发布的都确认过成年
     visibility: c.visibility ?? 'private',
+    worldId: c.worldId,
     look: c.look ?? '',
     story: c.story ?? '',
     palette: pi >= 0 ? pi : 0,
@@ -311,6 +317,11 @@ function CreateForm({ edit }: { edit?: string }) {
   const [ageStatus, setAgeStatus] = useState<'adult' | 'minor'>(init.ageStatus);
   // 可见性（D-060）：公开 = 进共享角色池，别人也能滑到；默认私密
   const [visibility, setVisibility] = useState<'private' | 'public'>(init.visibility);
+  // 所在的世界（D-110）：现实世界 + 世界书里收藏的
+  const [worldId, setWorldId] = useState<string | undefined>(init.worldId);
+  const worlds = useAppStore((s) => s.worldBooks);
+  const worldFavorites = useAppStore((s) => s.worldFavorites);
+  const worldOptions = useMemo(() => selectableFrom(worlds, worldFavorites), [worlds, worldFavorites]);
   const [look, setLook] = useState(init.look);
   const [story, setStory] = useState(init.story);
   const [palette, setPalette] = useState(init.palette);
@@ -461,6 +472,7 @@ function CreateForm({ edit }: { edit?: string }) {
       schedule: schedule.trim() || undefined,
       adultConfirmed: ageStatus === 'adult' ? true : undefined,
       visibility,
+      worldId: worldId && worldId !== REAL_WORLD_ID ? worldId : undefined,
       initiative,
       presetMemories: presetMemories.trim() || undefined,
       taboos: taboos.trim() || undefined,
@@ -588,7 +600,7 @@ function CreateForm({ edit }: { edit?: string }) {
 
   const resetForm = () => {
     setDesc(''); setName(''); setLook(''); setStory(''); setPortraitUri(undefined); setArtStyle(DEFAULT_PORTRAIT_STYLE);
-    setAgeStatus('adult'); setVisibility('private'); setRace('人类'); setRaceCustom('');
+    setAgeStatus('adult'); setVisibility('private'); setWorldId(undefined); setRace('人类'); setRaceCustom('');
     setBirthMonth(null); setBirthDay(null); setCatchphrase('');
     setLikes(''); setDislikes(''); setOfferTurns(4); setLoveStyle(undefined);
     setMbti(undefined); setInitiative('mid'); setPresetMemories(''); setTaboos(''); setSecrets('');
@@ -714,6 +726,20 @@ function CreateForm({ edit }: { edit?: string }) {
               ? t('公开：其他人也能遇到 TA（需要登录）。')
               : t('私密：只有你能遇到 TA。')}
           </Text>
+
+          {/* 所在的世界（D-110）：现实世界永远在，之后是世界书里收藏的 */}
+          <Field label={t('TA 所在的世界')} hint={t('在世界书里收藏的世界才会出现在这里。')}>
+            <View style={styles.chipRow}>
+              {worldOptions.map((w) => (
+                <OptionChip
+                  key={w.id}
+                  label={w.id === REAL_WORLD_ID ? t(w.name) : w.name}
+                  active={(worldId ?? REAL_WORLD_ID) === w.id}
+                  onPress={() => setWorldId(w.id === REAL_WORLD_ID ? undefined : w.id)}
+                />
+              ))}
+            </View>
+          </Field>
 
           <Field label={t('⑤ TA 长什么样')}>
             <Input

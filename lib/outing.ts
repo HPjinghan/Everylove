@@ -32,6 +32,9 @@ import { findCharacter, useAppStore } from '@/store/app-store';
 
 /** 一小时没说话，再进来就是新的一场 */
 export const OUTING_IDLE_MS = 3600_000;
+/** 广场偶遇记录（D-110）：留最后几句、多长 */
+const ENCOUNTER_LINES = 6;
+const ENCOUNTER_CHARS = 240;
 
 /* ── 进入 / 结束 ── */
 
@@ -58,7 +61,15 @@ export function finishOuting(): void {
   const bond = store.bonds.find((b) => b.characterId === s.characterId);
   const place = placeById(s.placeId);
   store.endOuting();
-  if (!bond || !place) return;
+  if (!place) return;
+  if (!bond) {
+    // 陌生人（D-110）：TA 记得在广场见过她——她开过口的这一场留一条记录（进初识 / 广场 prompt 与资料页）
+    if (s.kind === 'stranger' && s.messages.some((m) => m.from === 'me' && m.kind === 'text')) {
+      const summary = transcript(s.messages.filter((m) => m.kind === 'text').slice(-ENCOUNTER_LINES), findCharacter(s.characterId)?.name ?? 'TA').slice(0, ENCOUNTER_CHARS);
+      if (summary) useAppStore.getState().addEncounter(s.characterId, { at: s.startedAt, placeName: place.name, summary });
+    }
+    return;
+  }
   // 陌生人在现场交换了联系方式（D-056）就有了羁绊——这场也算你们的第一次见面
   void absorbOutingMemory(bond.id, {
     placeName: place.name,

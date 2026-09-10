@@ -72,6 +72,8 @@ export interface Character {
   artStyle?: PortraitStyleId;
   /** 聊几句后 TA 会想确定关系（默认 4，见 lib/engine ADOPTION_OFFER_AFTER_TURNS） */
   offerAfterTurns?: number;
+  /** 所在的世界（D-110）：世界书 id；缺省 / 找不到 = 现实世界（当前）。非现实世界会作为【你所在的世界】注入所有 prompt */
+  worldId?: string;
   tags: string[];
   adoptedCount: number;
   /** 主色（头像底、气泡强调） */
@@ -206,6 +208,16 @@ export interface SquareChat {
   userTurns: number;
   /** 心动值 0-100（D-029）：满了 = 羁绊 LV1，TA 主动交换联系方式 */
   heart?: number;
+  /** 广场偶遇的记录（D-110）：TA 记得在哪见过她、聊了什么；进初识 / 广场 prompt，也在 TA 的资料页里显示 */
+  encounters?: Encounter[];
+}
+
+/** 一次广场偶遇（D-110） */
+export interface Encounter {
+  at: number;
+  placeName: string;
+  /** 现场最后几句的摘录 */
+  summary: string;
 }
 
 /**
@@ -258,13 +270,51 @@ export interface Bond {
   notes?: HisNote[];
   /** LV1 首次进会话时的「+」面板预告已插过（D-100，只出现一次） */
   hintPlusSeen?: boolean;
+  /** TA 身边的人（D-110）：第一次查手机时生成一次，之后前后一致；进记事本 / 发帖 / 亲密 prompt，X 里会来互动 */
+  circle?: CirclePerson[];
+  /** TA 和身边的人的近期聊天（D-110，查手机里的 Message）：personId → 对话 */
+  circleChats?: Record<string, CircleLine[]>;
+}
+
+/** TA 身边的一个人（D-110）：朋友 / 家人 / 同事——不是角色，不能聊，只在 TA 的世界里出现 */
+export interface CirclePerson {
+  id: string;
+  name: string;
+  /** 关系：妈妈 / 发小 / 同事 / 室友…… */
+  relation: string;
+  /** 一句话：TA 眼里这个人是什么样 */
+  note?: string;
+}
+
+/** TA 和身边的人的一句聊天（D-110） */
+export interface CircleLine {
+  from: 'him' | 'them';
+  text: string;
+  at: number;
+}
+
+/** 世界书（D-110）：TA 所处的世界与 TA 对一切的认知；现实世界（当前）内置，其余由她创建、收藏后才能选给角色 */
+export interface WorldBook {
+  id: string;
+  name: string;
+  /** 一句话：这是个什么世界 */
+  summary: string;
+  /** 设定：地理 / 时代 / 科技 / 规则 / 常识……一行一条 */
+  rules?: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface PostComment {
   id: string;
-  from: 'me' | 'him';
+  /** me = 她；him = 发帖的 TA；other = 别人（TA 身边的人，或另一位缔结的 TA，D-110） */
+  from: 'me' | 'him' | 'other';
   text: string;
   at: number;
+  /** from === 'other' 时的名字 */
+  name?: string;
+  /** from === 'other' 且是另一位缔结的 TA 时：那位的角色 id（头像用立绘） */
+  characterId?: string;
 }
 
 /** 动态帖：广场公开帖为静态种子，领养后帖在领养时物化 */
@@ -278,6 +328,8 @@ export interface Post {
   likes: number;
   liked: boolean;
   comments: PostComment[];
+  /** 别人的互动已生成过（D-110：TA 身边的人与其他 TA 的评论，每帖一次） */
+  reacted?: boolean;
 }
 
 /** 日历用户层日程（D-020/D-021；关系层与世界层运行时推导，不入库） */
@@ -365,8 +417,10 @@ export interface EngineContext {
   /** bonded/outing 模式下的关系信息（含记忆库、缔结时间，注入系统 prompt） */
   bond?: Pick<
     Bond,
-    'name' | 'nickname' | 'affinity' | 'birthday' | 'memory' | 'createdAt' | 'phoneCode' | 'phoneUnlocked'
+    'name' | 'nickname' | 'affinity' | 'birthday' | 'memory' | 'createdAt' | 'phoneCode' | 'phoneUnlocked' | 'circle'
   >;
+  /** 广场偶遇的记录（D-110）：初识 / 广场模式注入——TA 记得见过她 */
+  encounters?: Encounter[];
   /** 「我」的身份（D-035）：注入系统 prompt，TA 借此认识她 */
   me?: UserProfile;
   /** outing 模式的场景信息（D-038/D-040） */

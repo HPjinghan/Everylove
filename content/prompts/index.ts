@@ -19,6 +19,8 @@
  *   caption.ts       看图
  *   heartbeat.ts     心跳三段式模板
  *   create.ts        创造描述解析
+ *   world.ts         世界书：TA 所在的世界（D-110）
+ *   circle.ts        TA 身边的人：生成 + 注入（D-110）
  *
  * 不在这里的：
  *   - 角色人设 persona / 追法 pursuit / 外貌 look / 人称 pronoun / 台词库 → content/characters/（zh / en / ja 各一份，D-093）
@@ -38,6 +40,7 @@ export * from './appointment';
 export * from './call';
 export * from './caption';
 export * from './chat';
+export * from './circle';
 export * from './create';
 export * from './heartbeat';
 export * from './his-notes';
@@ -50,6 +53,7 @@ export * from './portrait';
 export * from './red-packet';
 export * from './shared';
 export * from './social';
+export * from './world';
 
 /** 分发器：引擎只调这一个——由 core/prompt 按分段表装配（分段在 features/prompts.ts 与各玩法里注册，D-086） */
 export function buildChatSystemPrompt(ctx: EngineContext, now: Date = new Date()): string {

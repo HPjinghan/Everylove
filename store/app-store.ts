@@ -12,10 +12,10 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { bondedPostsFor, CHARACTERS, scriptFor, seedCharactersFor, SQUARE_POSTS } from '@/content/characters';
 import { uid } from '@/lib/format';
-import { applyThemeColors } from '@/constants/theme';
+import { applyPaperTint } from '@/constants/theme';
 import { bondLevel, levelLabel } from '@/lib/bond';
 import { setLang, type Lang } from '@/lib/i18n';
-import { DEFAULT_DOCK, DEFAULT_WALLPAPER } from '@/constants/apps';
+import { DEFAULT_DOCK, DEFAULT_WALLPAPER, wallpaperTint } from '@/constants/apps';
 import { placeById } from '@/content/places';
 import { appointmentAtLabel, minutesLate, planIsOpen } from '@/lib/appointments';
 import { randomPasscode } from '@/lib/phone';
@@ -27,12 +27,17 @@ import type {
   CalendarEvent,
   Character,
   ChatMessage,
+  CirclePerson,
+  CircleLine,
+  Encounter,
   LovePref,
   OutingPlan,
   OutingSession,
   Post,
+  PostComment,
   SquareChat,
   UserProfile,
+  WorldBook,
 } from '@/lib/types';
 
 /** 搭话记录过期时长：3 天（免费层天花板是商业决策，不是产品缺陷） */
@@ -69,8 +74,9 @@ interface AppState {
   desktopSlots: Record<string, number>;
   /** 底部 Dock（D-044）：固定在桌面底部的 App id，最多 4 个 */
   desktopDock: string[];
+  /** 壁纸 = 主题（D-110）：纸面 + 换色，全局生效 */
   wallpaper: string;
-  /** 主题配色 id（constants/theme.ts THEMES，D-030） */
+  /** 已退役（D-110 主题只剩纸面）：字段保留兼容旧存档与云端快照，代码不再读 */
   themeId: string;
   /** 日历用户层日程（D-020） */
   userEvents: CalendarEvent[];
@@ -90,6 +96,10 @@ interface AppState {
   notes: Note[];
   /** TA 记事本调度（D-085）：characterId → 下一条心事的到点时间（频率按 MBTI，lib/his-notes.ts） */
   noteSchedule: Record<string, number>;
+  /** 世界书（D-110）：她创建的世界；现实世界内置不在这里 */
+  worldBooks: WorldBook[];
+  /** 收藏的世界 id（D-110）：只有收藏的才会出现在创造角色的世界选项里 */
+  worldFavorites: string[];
 
   completeOnboarding: (pref: LovePref) => void;
   setLanguage: (l: Lang) => void;
@@ -160,8 +170,19 @@ interface AppState {
   setDesktopOrder: (order: string[]) => void;
   setDesktopSlots: (slots: Record<string, number>) => void;
   setDesktopDock: (ids: string[]) => void;
+  /** 换壁纸 = 换主题（D-110）：立即给纸面换色，主页与里面的每一屏一起变 */
   setWallpaper: (id: string) => void;
-  setThemeId: (id: string) => void;
+  /** 世界书（D-110） */
+  addWorldBook: (w: WorldBook) => void;
+  updateWorldBook: (w: WorldBook) => void;
+  removeWorldBook: (id: string) => void;
+  toggleWorldFavorite: (id: string) => void;
+  /** 广场偶遇留一条记录（D-110）：TA 记得在哪见过她 */
+  addEncounter: (characterId: string, e: Encounter) => void;
+  /** TA 身边的人（D-110）：第一次查手机时生成一次 */
+  setCircle: (bondId: string, circle: CirclePerson[], chats: Record<string, CircleLine[]>) => void;
+  /** 别人的互动落到帖子上（D-110）：TA 身边的人 / 其他 TA 的评论；同时标记这帖已互动过 */
+  addPostComments: (postId: string, comments: PostComment[]) => void;
   addUserEvent: (e: CalendarEvent) => void;
   removeUserEvent: (id: string) => void;
   /** 心跳三段式：标记某段已投递（lib/heartbeat.ts） */
@@ -213,7 +234,7 @@ const initialData = {
   desktopSlots: {} as Record<string, number>,
   desktopDock: DEFAULT_DOCK,
   wallpaper: DEFAULT_WALLPAPER,
-  themeId: 'peach',
+  themeId: 'paper',
   userEvents: [] as CalendarEvent[],
   postSchedule: {} as Record<string, number>,
   datingPasses: {} as Record<string, number>,
@@ -223,6 +244,8 @@ const initialData = {
   album: [] as AlbumShot[],
   notes: [] as Note[],
   noteSchedule: {} as Record<string, number>,
+  worldBooks: [] as WorldBook[],
+  worldFavorites: [] as string[],
 };
 
 export const useAppStore = create<AppState>()(
@@ -611,11 +634,42 @@ export const useAppStore = create<AppState>()(
       setDesktopOrder: (order) => set({ desktopOrder: order }),
       setDesktopSlots: (slots) => set({ desktopSlots: slots }),
       setDesktopDock: (ids) => set({ desktopDock: ids.slice(0, 4) }),
-      setWallpaper: (id) => set({ wallpaper: id }),
-      setThemeId: (id) => {
-        applyThemeColors(id);
-        set({ themeId: id });
+      setWallpaper: (id) => {
+        applyPaperTint(wallpaperTint(id));
+        set({ wallpaper: id });
       },
+      addWorldBook: (w) => set({ worldBooks: [...get().worldBooks, w] }),
+      updateWorldBook: (w) => set({ worldBooks: get().worldBooks.map((x) => (x.id === w.id ? w : x)) }),
+      removeWorldBook: (id) =>
+        set({
+          worldBooks: get().worldBooks.filter((w) => w.id !== id),
+          worldFavorites: get().worldFavorites.filter((f) => f !== id),
+        }),
+      toggleWorldFavorite: (id) =>
+        set({
+          worldFavorites: get().worldFavorites.includes(id)
+            ? get().worldFavorites.filter((f) => f !== id)
+            : [...get().worldFavorites, id],
+        }),
+      addEncounter: (characterId, e) => {
+        get().ensureSquareChat(characterId);
+        const chat = get().squareChats[characterId];
+        if (!chat) return;
+        set({
+          squareChats: {
+            ...get().squareChats,
+            [characterId]: { ...chat, lastActiveAt: Date.now(), encounters: [...(chat.encounters ?? []), e].slice(-5) },
+          },
+        });
+      },
+      setCircle: (bondId, circle, chats) =>
+        set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, circle, circleChats: chats } : b)) }),
+      addPostComments: (postId, comments) =>
+        set({
+          posts: get().posts.map((p) =>
+            p.id === postId ? { ...p, reacted: true, comments: [...p.comments, ...comments] } : p
+          ),
+        }),
       addUserEvent: (e) =>
         set({
           userEvents: [...get().userEvents, e].sort((a, b) => a.date.localeCompare(b.date)),
@@ -806,15 +860,17 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'everylove-store',
-      version: 5,
+      version: 6,
       storage: createJSONStorage(() => AsyncStorage),
       // v2：种子角色改版（陆隽行下架、人外上新），清掉指向已删除角色的数据
       // v3：新手流标记（D-058）——已有存档的老用户不重走新手流
       // v4：Dock 默认收窄为通讯录+设置（D-064）——仍是旧默认的存档跟随新默认
       // v5：引擎与 key 不再是用户数据（D-069）——清掉旧存档/云端快照里的 engine/anthropicKey/qianfanKey
+      // v6：主题只剩纸面（D-110）——旧配色 id 归 paper；壁纸即主题
       migrate: (persisted: unknown, version) => {
         const state = persisted as (Partial<AppState> & Record<string, unknown>) | undefined;
         if (!state) return state;
+        if (version < 6) state.themeId = 'paper';
         if (version < 5) {
           delete state.engine;
           delete state.anthropicKey;

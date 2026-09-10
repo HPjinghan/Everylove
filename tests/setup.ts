@@ -51,6 +51,8 @@ vi.mock('expo-image-manipulator', () => stubModule({ SaveFormat: { JPEG: 'jpeg' 
 
 vi.mock('@/constants/theme', () => ({
   applyThemeColors: () => {},
+  applyPaperTint: () => {},
+  THEMES: { paper: { label: '纸面', colors: {} } },
   Romance: new Proxy({}, { get: (_t, k) => (typeof k === 'symbol' || k === 'then' ? undefined : '#000000') }),
   Fonts: {},
   themed: (f: () => unknown) => f(),

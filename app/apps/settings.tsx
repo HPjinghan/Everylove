@@ -28,7 +28,6 @@ import { deleteCloudData, restoreSnapshot, uploadSnapshot } from '@/lib/sync';
 import { useAppStore } from '@/store/app-store';
 
 /** 选中外圈：主题点 ink 2.5 留 2；壁纸块 primary 2 留 1（外层 View 包一圈 border，圆角随之外扩） */
-const THEME_RING = { width: 2.5, gap: 2 };
 const WALL_RING = { width: 2, gap: 1 };
 
 const LANGS = [
@@ -137,7 +136,6 @@ export default function MeScreen() {
       { text: t('取消'), style: 'cancel' },
     ]);
   };
-  const themeId = useAppStore((s) => s.themeId);
 
   /** 立绘（D-019/D-092）：种子角色已内置立绘，这里只补没有的（新加的种子）或重画首个羁绊角色（存本机、盖过内置） */
   const genSeedPortraits = () => {
@@ -329,26 +327,14 @@ export default function MeScreen() {
 
         <Section title={t('主题')}>
           <View>
-            <View style={styles.themeRow}>
-              {Object.entries(THEMES).map(([id, theme]) => {
-                const on = themeId === id;
-                return (
-                  <Pressable key={id} style={styles.themeItem} onPress={() => useAppStore.getState().setThemeId(id)}>
-                    <View style={[styles.themeRing, on && styles.themeRingOn]}>
-                      <View style={[styles.themeDot, { backgroundColor: theme.colors.accent }]} />
-                    </View>
-                    <Text style={[styles.themeLabel, on && styles.themeLabelOn]}>{t(theme.label)}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            {/* 主题 = 壁纸（D-110）：纸面 + 换色，一步到位，主页和里面一起变 */}
             <View style={styles.wallRow}>
               {WALLPAPERS.map((w) => {
                 const on = wallpaper === w.id;
                 return (
                   <Pressable key={w.id} style={styles.wallItem} onPress={() => useAppStore.getState().setWallpaper(w.id)}>
                     <View style={[styles.wallRing, on && styles.wallRingOn]}>
-                      <View style={[styles.wallSwatch, w.color ? { backgroundColor: w.color } : null]}>
+                      <View style={[styles.wallSwatch, { backgroundColor: w.color ?? THEMES.paper.colors.bg }]}>
                         <DiamondBackground />
                       </View>
                     </View>
@@ -417,7 +403,7 @@ export default function MeScreen() {
                   : t('不可用：无 key 且未登录')
             }
             dim={aiRoute === 'none'}
-            hint={t('key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。调用失败会直接显示在会话里。')}
+            hint={t('key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。调用失败会以顶部轻提示露出。')}
           />
           <Row label="查看 TA 记住了什么（记忆库）" onPress={showMemory} />
           <Row label="为 6 位种子角色生成立绘（测试，后台逐个）" onPress={genSeedPortraits} />
@@ -468,32 +454,13 @@ const styles = themed(() =>
     langItemOn: { backgroundColor: Romance.accent },
     langText: { fontSize: 13, fontWeight: '500', color: Romance.sub },
     langTextOn: { color: '#FFFFFF' },
-    // 主题点：34 r6，选中外圈 ink 2.5 留 2
-    themeRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: Space.inlineLoose,
-      paddingHorizontal: Space.inline,
-      paddingTop: Space.inline,
-    },
-    themeItem: { alignItems: 'center', gap: 5 },
-    themeRing: {
-      borderWidth: THEME_RING.width,
-      borderColor: 'transparent',
-      padding: THEME_RING.gap,
-      borderRadius: Shape.radius + THEME_RING.gap + THEME_RING.width,
-    },
-    themeRingOn: { borderColor: Romance.ink },
-    themeDot: { width: 34, height: 34, borderRadius: Shape.radius },
-    themeLabel: { fontSize: 11, color: Romance.sub },
-    themeLabelOn: { color: Romance.accent, fontWeight: '600' },
     // 壁纸块：52×88 r6，选中外圈 primary 2 留 1
     wallRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: Space.inlineLoose,
       paddingHorizontal: Space.inline,
-      paddingTop: Space.cardX,
+      paddingTop: Space.inline,
     },
     wallItem: { alignItems: 'center' },
     wallRing: {

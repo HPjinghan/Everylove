@@ -170,3 +170,25 @@ export const OUTING_OPENERS = OUTING_OPENERS_BY_LANG.zh;
 export function outingOpeners(lang: Lang = getLang()): Record<OutingOpenerKind, string[]> {
   return OUTING_OPENERS_BY_LANG[lang];
 }
+
+/**
+ * 外出开场白走模型（D-110）：进场那一刻先让 TA 按【此刻】开口——每次都不一样；
+ * 这一行是本轮的舞台提示（user 文本，不入会话）。模型失败回落上面的模板（pickOutingOpener 不重复上一条）。
+ */
+export function outingOpenerUserLine(kind: OutingOpenerKind): string {
+  if (kind === 'stranger') return '（她刚出现在你附近。你先开口搭话——一句话，配一处此刻现场的描写。）';
+  if (kind === 'dateLate') return '（她终于到了。你先开口——一句话，配一处此刻现场的描写。）';
+  if (kind === 'date') return '（她来了。你先开口——一句话，配一处此刻现场的描写。）';
+  return '（你们刚在这里碰上。你先开口——一句话，配一处此刻现场的描写。）';
+}
+
+const lastOpener: Partial<Record<OutingOpenerKind, string>> = {};
+
+/** 模板开场白：同一种情形不连用同一条 */
+export function pickOutingOpener(kind: OutingOpenerKind, lang: Lang = getLang()): string {
+  const pool = outingOpeners(lang)[kind];
+  const candidates = pool.length > 1 ? pool.filter((l) => l !== lastOpener[kind]) : pool;
+  const line = candidates[Math.floor(Math.random() * candidates.length)];
+  lastOpener[kind] = line;
+  return line;
+}

@@ -7,7 +7,7 @@ import { jobs } from '@/core/jobs';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { deliverDueHisNotes } from '@/lib/his-notes';
 import { checkMissedPlans } from '@/lib/outing';
-import { deliverDuePosts } from '@/lib/posts';
+import { deliverDuePosts, deliverDueReactions } from '@/lib/posts';
 import { initWeather, refreshWeather } from '@/lib/weather';
 import { useAppStore } from '@/store/app-store';
 
@@ -26,6 +26,9 @@ jobs.register({ id: 'heartbeat', on: ['launch', 'foreground'], run: (now) => del
 
 /** 发帖调度（D-055）：TA 的 X 时间线按 MBTI 频率活着 */
 jobs.register({ id: 'posts', on: ['launch', 'foreground'], run: (now) => deliverDuePosts(now) });
+
+/** 别人的互动（D-110）：TA 的帖子下面有身边的人和其他 TA 来评论 */
+jobs.register({ id: 'post-reactions', on: ['launch', 'foreground'], run: () => deliverDueReactions() });
 
 /** 爽约检查（D-079）：过了赴约窗口还没去的约定 → 记忆 + TA 主动说一句 */
 jobs.register({ id: 'missed-plans', on: ['launch', 'foreground'], run: (now) => checkMissedPlans(now) });

@@ -185,11 +185,14 @@ function Bubble({
   read,
   onLongPress,
   onOpenPhoto,
+  onAvatarPress,
 }: {
   msg: ChatMessage;
   color: string;
   name: string;
   characterId?: string;
+  /** 点 TA 的头像（D-110：打开资料页） */
+  onAvatarPress?: () => void;
   /** 我的消息是否显示「已读」（TA 回过话即视为已读） */
   read?: boolean;
   onLongPress?: (msg: ChatMessage) => void;
@@ -239,7 +242,11 @@ function Bubble({
   const bubbleTint = msg.kind === 'card' && msg.card ? cardKinds.get(msg.card.type)?.bubbleColor : undefined;
   return (
     <View style={[styles.msgRow, mine ? styles.msgRowMe : styles.msgRowHim]}>
-      {!mine && <CharAvatar name={name} color={color} size={Space.avatar.bubble} characterId={characterId} />}
+      {!mine && (
+        <Pressable onPress={onAvatarPress} disabled={!onAvatarPress} hitSlop={6}>
+          <CharAvatar name={name} color={color} size={Space.avatar.bubble} characterId={characterId} />
+        </Pressable>
+      )}
       {mine ? meta : null}
       <Pressable
         onLongPress={onLongPress ? () => onLongPress(msg) : undefined}
@@ -310,6 +317,7 @@ export function ChatThread({
   placeholder,
   characterId,
   extras,
+  onAvatarPress,
 }: {
   messages: ChatMessage[];
   color: string;
@@ -335,6 +343,8 @@ export function ChatThread({
   characterId?: string;
   /** 「+」面板的项目（D-081）；不传则没有「+」 */
   extras?: ChatExtra[];
+  /** 点 TA 的头像（D-110：资料页） */
+  onAvatarPress?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState('');
@@ -483,6 +493,7 @@ export function ChatThread({
               read={readIds.has(item.id)}
               onLongPress={openActions}
               onOpenPhoto={setViewingShot}
+              onAvatarPress={onAvatarPress}
             />
           )}
           style={styles.list}

@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
+import { CharacterSheet } from '@/components/character-sheet';
 import { ChatThread, type ReplyRef } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { scriptFor } from '@/content/characters';
@@ -58,6 +59,7 @@ export default function SquareChatScreen() {
   const chat = useAppStore((s) => s.squareChats[characterId]);
   const bond = useAppStore((s) => s.bonds.find((b) => b.characterId === characterId));
   const [typing, setTyping] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const booted = useRef(false);
   const now = useNow();
 
@@ -121,7 +123,10 @@ export default function SquareChatScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <IconSymbol name="chevron.left" size={22} color={Romance.ink} />
         </Pressable>
-        <CharAvatar name={character.name} color={character.color} size={Space.avatar.row} characterId={character.id} />
+        <Pressable onPress={() => setSheetOpen(true)} hitSlop={6}>
+          <CharAvatar name={character.name} color={character.color} size={Space.avatar.row} characterId={character.id} />
+        </Pressable>
+        <CharacterSheet characterId={character.id} visible={sheetOpen} onClose={() => setSheetOpen(false)} />
         <View style={styles.headerText}>
           <Text style={styles.headerName} numberOfLines={1}>
             {character.name}
