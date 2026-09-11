@@ -722,6 +722,10 @@ const en: Record<string, string> = {
   'TA 主动找你': 'They reach out',
   '勿扰时段': 'Quiet hours',
   '这段时间 TA 不会主动发消息，到点了也等到结束再来。': 'No unprompted messages during these hours; anything due waits until they end.',
+  '已把描述放进设定，名字和一句话可以手动补。': 'The description went into Rules; you can fill in the name and one-liner by hand.',
+  '用一段话描述这个世界（可选）': 'Describe this world in a paragraph (optional)',
+  '小说设定、脑子里的画面、一条条的规则都行，最多 {n} 字。': 'Novel lore, a picture in your head, or a list of rules, up to {n} characters.',
+  '漂浮在云海上的城邦，蒸汽机和契约魔法并存，人人都有一只灵兽，没有手机、靠传信鸟联络……': 'A city-state floating above a sea of clouds, steam engines alongside contract magic, everyone has a spirit beast, no phones, messenger birds instead…',
   // __EN_END__
 };
 
@@ -1416,6 +1420,10 @@ const ja: Record<string, string> = {
   'TA 主动找你': '相手からの連絡',
   '勿扰时段': 'おやすみ時間',
   '这段时间 TA 不会主动发消息，到点了也等到结束再来。': 'この時間帯は相手から連絡しません。時間が来ても終わるまで待ちます。',
+  '已把描述放进设定，名字和一句话可以手动补。': '説明は設定欄に入れました。名前とひとことは手で補えます。',
+  '用一段话描述这个世界（可选）': 'この世界をひと続きの文章で（任意）',
+  '小说设定、脑子里的画面、一条条的规则都行，最多 {n} 字。': '小説の設定、頭の中の情景、箇条書きのルールでも。最大 {n} 文字。',
+  '漂浮在云海上的城邦，蒸汽机和契约魔法并存，人人都有一只灵兽，没有手机、靠传信鸟联络……': '雲海に浮かぶ都市国家。蒸気機関と契約魔法が共存し、誰もが霊獣を一匹連れている。スマホはなく、伝書鳥で連絡を取る……',
   // __JA_END__
 };
 
@@ -2113,6 +2121,10 @@ const ko: Record<string, string> = {
   'TA 主动找你': '먼저 연락하기',
   '勿扰时段': '방해 금지 시간',
   '这段时间 TA 不会主动发消息，到点了也等到结束再来。': '이 시간에는 상대가 먼저 메시지를 보내지 않아요. 때가 되어도 끝난 뒤에 와요.',
+  '已把描述放进设定，名字和一句话可以手动补。': '설명은 설정 칸에 넣었어요. 이름과 한 줄 소개는 직접 채울 수 있어요.',
+  '用一段话描述这个世界（可选）': '이 세계를 한 단락으로 설명하기 (선택)',
+  '小说设定、脑子里的画面、一条条的规则都行，最多 {n} 字。': '소설 설정, 머릿속 장면, 규칙 목록 뭐든 좋아요. 최대 {n}자.',
+  '漂浮在云海上的城邦，蒸汽机和契约魔法并存，人人都有一只灵兽，没有手机、靠传信鸟联络……': '구름바다 위에 떠 있는 도시국가. 증기기관과 계약 마법이 공존하고, 누구나 영수 한 마리를 데리고 있다. 휴대폰은 없고 전서조로 연락한다……',
   // __KO_END__
 };
 
