@@ -40,6 +40,8 @@
 
 ## 1. 构建（每次发包）
 
+> **新增原生目标（如分享扩展）后的第一次 build 必须交互式跑**（2026-09-11 构建号 5 记录）：`--non-interactive` 只能走 App Store Connect API 同步能力，给新 bundle id（`com.kotoko.everylove.share-extension`）开 App Groups 时 Apple 会报「request entity is not a valid request document」，重跑无效。去掉 `--non-interactive`、在自己的终端跑：主 App 旧描述文件会提示「no longer valid」→ **不复用、生成新的**（旧的不带 App Groups）；分发证书 → 复用；分享扩展的描述文件 → 生成。之后无人值守的一条命令照旧可用。
+
 ```powershell
 npx eas-cli build -p ios --profile production
 ```
