@@ -14,6 +14,8 @@ import {
   circleBlock,
   encountersBlock,
   parseCircleJSON,
+  parseCircleChatsJSON,
+  buildCircleRefreshUser,
   hisScheduleBlock,
   parseHisScheduleJSON,
   parseReactionsJSON,
@@ -21,6 +23,7 @@ import {
   worldBlock,
 } from '@/content/prompts';
 import { dedupeBonds } from '@/lib/bond';
+import { circleLastAt, circleRefreshIntervalMs, mergeCircleChats } from '@/lib/circle';
 import { outsideQuiet } from '@/lib/reach-out';
 import { setLang } from '@/lib/i18n';
 import { canPublishCharacter, selectableFrom, worldOf, worldSnapshot } from '@/lib/worlds';
@@ -96,6 +99,52 @@ describe('身边的人', () => {
     expect(parsed?.people.map((p) => p.name)).toEqual(['阿哲', '妈']);
     expect(parsed?.chats[0].lines).toHaveLength(2);
     expect(parseCircleJSON('没有 json')).toBeNull();
+  });
+  it('续写（D-124）：只认名单里的人、时间落在区间内且晚于已有、每人最多 40 句', () => {
+    const circle = [
+      { id: 'p1', name: '阿哲', relation: '发小' },
+      { id: 'p2', name: '妈', relation: '妈妈' },
+    ];
+    const since = NOW.getTime() - 12 * 3600_000;
+    const now = NOW.getTime();
+    const existing = { p1: Array.from({ length: 39 }, (_, i) => ({ from: 'them' as const, text: `老${i}`, at: since - 3600_000 + i * 1000 })) };
+    const merged = mergeCircleChats(
+      circle,
+      existing,
+      [
+        { name: '阿哲', lines: [{ from: 'them', text: '周末打球？' }, { from: 'me', text: '行' }] },
+        { name: '路人', lines: [{ from: 'them', text: '不在名单里' }] },
+        { name: '妈', lines: [{ from: 'them', text: '吃了没' }] },
+      ],
+      { since, now }
+    )!;
+    expect(Object.keys(merged).sort()).toEqual(['p1', 'p2']);
+    expect(merged.p1).toHaveLength(40);
+    expect(merged.p1.at(-1)!.text).toBe('行');
+    expect(merged.p1.at(-2)!.at).toBeGreaterThan(existing.p1.at(-1)!.at);
+    for (const l of [...merged.p1.slice(-2), ...merged.p2]) {
+      expect(l.at).toBeGreaterThan(since);
+      expect(l.at).toBeLessThanOrEqual(now);
+    }
+    expect(circleLastAt(merged)).toBeLessThanOrEqual(now);
+    expect(mergeCircleChats(circle, {}, [{ name: '路人', lines: [{ from: 'me', text: 'x' }] }], { since, now })).toBeNull();
+    expect(parseCircleChatsJSON('{"chats":[{"name":"妈","lines":[{"from":"them","text":"吃了没"}]}]}')?.[0].name).toBe('妈');
+    expect(parseCircleChatsJSON('{"people":[]}')).toBeNull();
+    expect(circleRefreshIntervalMs({ mbti: 'ENFP' })).toBeLessThan(circleRefreshIntervalMs({ mbti: 'INFJ' }));
+    const user = buildCircleRefreshUser({
+      now: NOW,
+      weather: '今天晴',
+      hoursSinceLast: 30,
+      recentNotes: ['加班到十点'],
+      recentPosts: [],
+      upcoming: ['09-06 19:00 和阿哲打球'],
+      tails: [{ name: '阿哲', relation: '发小', lines: [{ from: 'them', text: '周末打球？', at: 1 }] }],
+      hisName: '林知夏',
+      herTier: 'independent',
+    });
+    expect(user).toContain('1 天前');
+    expect(user).toContain('阿哲（发小）：阿哲「周末打球？」');
+    expect(user).toContain('不提她');
   });
   it('【你身边的人】进亲密 prompt，没有圈子不出段', () => {
     expect(circleBlock(undefined)).toEqual([]);

@@ -203,8 +203,10 @@ interface AppState {
   setReachPending: (bondId: string, p: ReachPending | undefined) => void;
   /** 广场偶遇留一条记录（D-110）：TA 记得在哪见过她 */
   addEncounter: (characterId: string, e: Encounter) => void;
-  /** TA 身边的人（D-110）：第一次查手机时生成一次 */
-  setCircle: (bondId: string, circle: CirclePerson[], chats: Record<string, CircleLine[]>) => void;
+  /** TA 身边的人（D-110）：第一次查手机时生成一次；fallback = 通用回落，下次再试（D-124） */
+  setCircle: (bondId: string, circle: CirclePerson[], chats: Record<string, CircleLine[]>, fallback?: boolean) => void;
+  /** 续写后的聊天整份替换（D-124） */
+  setCircleChats: (bondId: string, chats: Record<string, CircleLine[]>) => void;
   /** 别人的互动落到帖子上（D-110）：TA 身边的人 / 其他 TA 的评论；同时标记这帖已互动过 */
   addPostComments: (postId: string, comments: PostComment[]) => void;
   addUserEvent: (e: CalendarEvent) => void;
@@ -719,8 +721,12 @@ export const useAppStore = create<AppState>()(
           },
         });
       },
-      setCircle: (bondId, circle, chats) =>
-        set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, circle, circleChats: chats } : b)) }),
+      setCircle: (bondId, circle, chats, fallback) =>
+        set({
+          bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, circle, circleChats: chats, circleFallback: fallback || undefined } : b)),
+        }),
+      setCircleChats: (bondId, chats) =>
+        set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, circleChats: chats } : b)) }),
       addPostComments: (postId, comments) =>
         set({
           posts: get().posts.map((p) =>

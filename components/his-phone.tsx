@@ -24,7 +24,7 @@ import { NOTE_PAPER, Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { planTimeLabel } from '@/lib/appointments';
 import { levelInfo } from '@/lib/bond';
-import { ensureCircle } from '@/lib/circle';
+import { ensureCircle, refreshCircleChats } from '@/lib/circle';
 import { ensureHisSchedule, upcomingHisEvents } from '@/lib/his-schedule';
 import { clockTime, timeAgo } from '@/lib/format';
 import { portraitFor } from '@/lib/imagegen';
@@ -107,8 +107,11 @@ export function PhoneSheet({
       onViewed?.();
       // 记事本补写：到点的 / 还一条没有的，这会儿写上
       void deliverDueHisNotes();
-      // 身边的人（D-110）：第一次打开时生成一次
-      void ensureCircle(bond.id).then(() => setCircleReady(true));
+      // 身边的人（D-110）：第一次打开时生成一次；之后每次打开，隔够久就把和他们的聊天续上（D-124）
+      void ensureCircle(bond.id).then(() => {
+        setCircleReady(true);
+        void refreshCircleChats(bond.id);
+      });
       // TA 自己的作息（D-119）：日程不够就补一周
       void ensureHisSchedule(bond.id);
     }

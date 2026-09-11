@@ -278,8 +278,10 @@ export interface Bond {
   hisEvents?: HisEvent[];
   /** TA 身边的人（D-110）：第一次查手机时生成一次，之后前后一致；进记事本 / 发帖 / 亲密 prompt，X 里会来互动 */
   circle?: CirclePerson[];
-  /** TA 和身边的人的近期聊天（D-110，查手机里的 Message）：personId → 对话 */
+  /** TA 和身边的人的近期聊天（D-110，查手机里的 Message）：personId → 对话；D-124 起隔段时间续写、每人最多留 40 句 */
   circleChats?: Record<string, CircleLine[]>;
+  /** 圈子是通用回落（D-124）：模型当时没写成；下次查手机再试一次，写成就换掉 */
+  circleFallback?: boolean;
 }
 
 /** TA 身边的一个人（D-110）：朋友 / 家人 / 同事——不是角色，不能聊，只在 TA 的世界里出现 */
