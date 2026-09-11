@@ -48,6 +48,8 @@ export default function AdoptScreen() {
 
   const [step, setStep] = useState<Step>('slot');
   const [hisName, setHisName] = useState(character?.name ?? '');
+  // 缔结去重（D-122）：写台词要等网络几秒，这期间连点「去看看你们的手机」曾造出同一 TA 的十段羁绊——ref 同步上锁，进行中直接返回
+  const finishing = useRef(false);
 
   if (!character) return <Redirect href="/" />;
 
@@ -56,8 +58,6 @@ export default function AdoptScreen() {
   // TA 叫她的名字 = 她在这个角色眼中的昵称（D-088）
   const finalNickname = meForCharacter(character.id)?.nickname?.trim() || '你';
 
-  // 缔结去重（D-122）：写台词要等网络几秒，这期间连点「去看看你们的手机」曾造出同一 TA 的十段羁绊——ref 同步上锁，进行中直接返回
-  const finishing = useRef(false);
   const finish = async () => {
     if (finishing.current) return;
     finishing.current = true;
