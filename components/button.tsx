@@ -5,10 +5,12 @@
  * - paper：paper 底、无描边、ink 600（取消 / 次要）
  * - outline：白底 + 1.5px 描边、primary 字 600（「编辑」这类文字动作按钮）
  * size：lg 15 字 · 13×20 内距 / md 14 字 · 11×18 / sm 13 字 · 8×14。禁用 opacity .4。
+ * 连点冷却 600 ms（D-121，`cooldownMs`，0 关闭）：异步动作按钮不会在 disabled 生效前被点第二次。
  */
 
 import { Pressable, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
+import { useGuardedPress } from '@/components/press-guard';
 import { Shape } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 
@@ -23,6 +25,7 @@ export function Button({
   disabled,
   style,
   textStyle,
+  cooldownMs,
 }: {
   label: string;
   onPress?: () => void;
@@ -31,10 +34,13 @@ export function Button({
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  /** 连点冷却毫秒数，默认 600；0 = 不冷却 */
+  cooldownMs?: number;
 }) {
+  const press = useGuardedPress(onPress, cooldownMs);
   return (
     <Pressable
-      onPress={onPress}
+      onPress={press}
       disabled={disabled}
       style={({ pressed }) => [
         styles.base,

@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DiamondBackground } from '@/components/paper-bg';
+import { useGuardedPress } from '@/components/press-guard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
@@ -59,13 +60,17 @@ export function HeaderAction({
   label,
   onPress,
   disabled,
+  cooldownMs,
 }: {
   label: string;
   onPress?: () => void;
   disabled?: boolean;
+  /** 连点冷却毫秒数（D-121），默认 600；0 = 不冷却 */
+  cooldownMs?: number;
 }) {
+  const press = useGuardedPress(onPress, cooldownMs);
   return (
-    <Pressable onPress={onPress} disabled={disabled} hitSlop={10}>
+    <Pressable onPress={press} disabled={disabled} hitSlop={10}>
       <Text style={[styles.action, disabled && styles.actionDisabled]} numberOfLines={1}>
         {label}
       </Text>

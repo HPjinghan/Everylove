@@ -159,6 +159,15 @@ describe('缔结即快照（D-116）', () => {
   });
 });
 
+describe('创造去重（D-121）', () => {
+  it('同一个 id 只进角色库一次', () => {
+    const before = useAppStore.getState().customCharacters.length;
+    useAppStore.getState().addCustomCharacter({ ...custom, id: 'c-dup' });
+    useAppStore.getState().addCustomCharacter({ ...custom, id: 'c-dup' });
+    expect(useAppStore.getState().customCharacters.length).toBe(before + 1);
+  });
+});
+
 describe('她的日历是私密的（D-113）', () => {
   it('没看过她手机的 TA 不会来关心日程；看过之后心跳照投（AI 不可用回落模板）', async () => {
     const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });

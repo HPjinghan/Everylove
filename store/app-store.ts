@@ -648,7 +648,11 @@ export const useAppStore = create<AppState>()(
           ),
         }),
 
-      addCustomCharacter: (c) => set({ customCharacters: [...get().customCharacters, c] }),
+      // 同一个 id 只进一次（D-121）：连点或重放不会造出两份
+      addCustomCharacter: (c) => {
+        if (get().customCharacters.some((x) => x.id === c.id)) return;
+        set({ customCharacters: [...get().customCharacters, c] });
+      },
       setSharedPool: (chars) => set({ sharedPool: chars, sharedPoolAt: Date.now() }),
       setPlan: (p) => set({ plan: p }),
       updateCustomCharacter: (c) => {

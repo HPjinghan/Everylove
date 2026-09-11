@@ -13,7 +13,7 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -53,6 +53,8 @@ import { useAppStore } from '@/store/app-store';
 
 /** 描述导入的最大长度（D-043） */
 const DESC_MAX = 2000;
+/** 提交完成后的冷却（D-121）：这段时间内再点「让 TA 醒来」不响应 */
+const SUBMIT_COOLDOWN_MS = 1000;
 
 /** 主题色块选中外圈：ink 2.5、留 2（同设置页主题点） */
 const SWATCH_RING = { width: 2.5, gap: 2 };
@@ -334,6 +336,9 @@ function CreateForm({ edit }: { edit?: string }) {
   const [lines, setLines] = useState<CharacterLines | null>(init.lines);
   const [linesBusy, setLinesBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  // 提交去重（D-121）：`publishing` 要等一次渲染才禁用按钮，连点会在空档里跑两次 submit → 两个 id；
+  // 这里用 ref 同步上锁，整个 submit（含编辑分支）期间与结束后 1 秒内的再次调用直接返回
+  const submitLockRef = useRef(0);
   // 立绘画风（D-076）：注入生图 prompt 第一行；动漫走蒸汽机、其余走 Qwen
   const [artStyle, setArtStyle] = useState<ArtStyle>(init.artStyle);
 
@@ -555,6 +560,19 @@ function CreateForm({ edit }: { edit?: string }) {
 
   const submit = async () => {
     if (!name.trim()) return;
+    const now = Date.now();
+    if (submitLockRef.current === -1 || now - submitLockRef.current < SUBMIT_COOLDOWN_MS) return;
+    submitLockRef.current = -1; // -1 = 进行中
+    setPublishing(true);
+    try {
+      await submitInner();
+    } finally {
+      submitLockRef.current = Date.now();
+      setPublishing(false);
+    }
+  };
+
+  const submitInner = async () => {
     if (!guard()) return;
 
     // 编辑已创建的角色（D-050）：原位更新，不动热度与羁绊
@@ -579,9 +597,7 @@ function CreateForm({ edit }: { edit?: string }) {
     let character = draftCharacter(id);
     if (!character) return;
     // TA 的台词（D-094）：按人设写一次；写不成先用原型兜底，之后可在「我创建的」里让 TA 重写
-    setPublishing(true);
     const written = await generateCharacterLines(character);
-    setPublishing(false);
     if (written) character = { ...character, lines: written };
     else showToast(t('台词先用通用版，可在「我创建的」里改'));
     // 强制登录判定（D-062）：这是不是第一次把人添加进通讯录
@@ -636,7 +652,9 @@ function CreateForm({ edit }: { edit?: string }) {
   };
 
   const publishLabel = publishing
-    ? t('正在给 TA 写台词…')
+    ? editing
+      ? t('保存中…')
+      : t('正在给 TA 写台词…')
     : ageStatus === 'minor'
       ? t('未成年角色暂不能发布')
       : !portraitUri
