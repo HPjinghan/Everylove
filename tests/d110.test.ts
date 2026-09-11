@@ -20,6 +20,7 @@ import {
   pickOutingOpener,
   worldBlock,
 } from '@/content/prompts';
+import { dedupeBonds } from '@/lib/bond';
 import { outsideQuiet } from '@/lib/reach-out';
 import { setLang } from '@/lib/i18n';
 import { canPublishCharacter, selectableFrom, worldOf, worldSnapshot } from '@/lib/worlds';
@@ -156,6 +157,22 @@ describe('缔结即快照（D-116）', () => {
     useAppStore.getState().updateCustomCharacter({ ...custom, id: 'c-snap', identity: '改过的身份' });
     expect(findCharacter('c-snap')!.identity).toBe(custom.identity);
     expect(useAppStore.getState().customCharacters.find((c) => c.id === 'c-snap')!.identity).toBe('改过的身份');
+  });
+});
+
+describe('一个角色只有一段羁绊（D-122）', () => {
+  it('重复缔结返回已有的那段', () => {
+    useAppStore.getState().addCustomCharacter({ ...custom, id: 'c-once' });
+    const a = useAppStore.getState().createBond({ characterId: 'c-once', name: '澜' });
+    const b = useAppStore.getState().createBond({ characterId: 'c-once', name: '澜' });
+    expect(b).toBe(a);
+    expect(useAppStore.getState().bonds.filter((x) => x.characterId === 'c-once')).toHaveLength(1);
+  });
+  it('dedupeBonds 留消息最多的那段，并列取最早的', () => {
+    const mk = (id: string, createdAt: number, n: number) => ({ id, characterId: 'c', createdAt, messages: new Array(n).fill(0) });
+    const { kept, droppedIds } = dedupeBonds([mk('b1', 1, 2), mk('b2', 2, 5), mk('b3', 3, 5), { ...mk('b4', 4, 0), characterId: 'd' }]);
+    expect(kept.map((b) => b.id)).toEqual(['b2', 'b4']);
+    expect(droppedIds).toEqual(['b1', 'b3']);
   });
 });
 

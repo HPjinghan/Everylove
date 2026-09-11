@@ -13,7 +13,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { bondedPostsFor, CHARACTERS, scriptFor, seedCharactersFor, SQUARE_POSTS } from '@/content/characters';
 import { uid } from '@/lib/format';
 import { applyPaperTint } from '@/constants/theme';
-import { bondLevel, levelLabel } from '@/lib/bond';
+import { bondLevel, dedupeBonds, levelLabel } from '@/lib/bond';
 import { setLang, type Lang } from '@/lib/i18n';
 import { DEFAULT_DOCK, DEFAULT_WALLPAPER, wallpaperTint } from '@/constants/apps';
 import { placeById } from '@/content/places';
@@ -395,6 +395,9 @@ export const useAppStore = create<AppState>()(
 
       createBond: ({ characterId, name, nickname: nicknameInput, birthday: birthdayInput }) => {
         const state = get();
+        // 一个角色只有一段羁绊（D-122）：重复缔结直接返回已有的那段
+        const existing = state.bonds.find((b) => b.characterId === characterId);
+        if (existing) return existing.id;
         const me = meForCharacter(characterId);
         const nickname = (nicknameInput ?? me?.nickname ?? '').trim() || '你';
         const birthday = birthdayInput ?? me?.birthday;
@@ -920,16 +923,29 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'everylove-store',
-      version: 6,
+      version: 7,
       storage: createJSONStorage(() => AsyncStorage),
       // v2：种子角色改版（陆隽行下架、人外上新），清掉指向已删除角色的数据
       // v3：新手流标记（D-058）——已有存档的老用户不重走新手流
       // v4：Dock 默认收窄为通讯录+设置（D-064）——仍是旧默认的存档跟随新默认
       // v5：引擎与 key 不再是用户数据（D-069）——清掉旧存档/云端快照里的 engine/anthropicKey/qianfanKey
       // v6：主题只剩纸面（D-110）——旧配色 id 归 paper；壁纸即主题
+      // v7：一个角色只有一段羁绊（D-122）——缔结连点造出的重复羁绊去重（留消息最多的那段），连带清掉它们的帖子与主动找她的钟
       migrate: (persisted: unknown, version) => {
         const state = persisted as (Partial<AppState> & Record<string, unknown>) | undefined;
         if (!state) return state;
+        if (version < 7 && state.bonds) {
+          const { kept, droppedIds } = dedupeBonds(state.bonds);
+          if (droppedIds.length) {
+            const dropped = new Set(droppedIds);
+            state.bonds = kept;
+            state.posts = (state.posts ?? []).filter((p) => !p.bondId || !dropped.has(p.bondId));
+            for (const key of ['reachSchedule', 'reachPending'] as const) {
+              const rec = state[key] as Record<string, unknown> | undefined;
+              if (rec) state[key] = Object.fromEntries(Object.entries(rec).filter(([id]) => !dropped.has(id))) as never;
+            }
+          }
+        }
         if (version < 6) state.themeId = 'paper';
         if (version < 5) {
           delete state.engine;

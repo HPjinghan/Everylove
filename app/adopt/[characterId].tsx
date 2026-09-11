@@ -8,7 +8,7 @@
 
 import * as Haptics from 'expo-haptics';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   KeyboardAvoidingView,
@@ -56,7 +56,19 @@ export default function AdoptScreen() {
   // TA 叫她的名字 = 她在这个角色眼中的昵称（D-088）
   const finalNickname = meForCharacter(character.id)?.nickname?.trim() || '你';
 
+  // 缔结去重（D-122）：写台词要等网络几秒，这期间连点「去看看你们的手机」曾造出同一 TA 的十段羁绊——ref 同步上锁，进行中直接返回
+  const finishing = useRef(false);
   const finish = async () => {
+    if (finishing.current) return;
+    finishing.current = true;
+    try {
+      await finishInner();
+    } finally {
+      finishing.current = false;
+    }
+  };
+
+  const finishInner = async () => {
     // 打招呼台词走生成（D-094 / D-116）：创建时已写在角色上；当时没写成的，缔结前再写一次，写不成才用原型兜底
     if (character.custom && !character.lines) {
       showToast(t('正在给 TA 写台词…'));

@@ -103,3 +103,22 @@ export function heartGain(paceTurns: number, salt: number): number {
   const jitter = 0.85 + ((Math.abs(salt * 2654435761) % 1000) / 1000) * 0.3;
   return Math.max(1, Math.round(base * jitter));
 }
+
+/**
+ * 一个角色只有一段羁绊（D-122）：缔结按钮连点 / 网络等待期间重复提交曾造出同一 TA 的多段羁绊。
+ * 去重规则：同 characterId 只留一段——消息最多的那段（她真的聊过的），并列取最早缔结的；
+ * 返回留下的与被删掉的 id，调用方据此清理帖子与调度。存档迁移 v7 与 createBond 守门共用。
+ */
+export function dedupeBonds<T extends { id: string; characterId: string; createdAt: number; messages: unknown[] }>(
+  bonds: T[]
+): { kept: T[]; droppedIds: string[] } {
+  const best = new Map<string, T>();
+  for (const b of bonds) {
+    const cur = best.get(b.characterId);
+    if (!cur) best.set(b.characterId, b);
+    else if (b.messages.length > cur.messages.length || (b.messages.length === cur.messages.length && b.createdAt < cur.createdAt))
+      best.set(b.characterId, b);
+  }
+  const keepIds = new Set([...best.values()].map((b) => b.id));
+  return { kept: bonds.filter((b) => keepIds.has(b.id)), droppedIds: bonds.filter((b) => !keepIds.has(b.id)).map((b) => b.id) };
+}
