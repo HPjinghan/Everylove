@@ -64,6 +64,7 @@ npx eas-cli submit -p ios --latest --profile production
 上传后 App Store Connect → **TestFlight** 等处理（10~30 分钟）：
 - **内部测试**：App Store Connect 团队成员（最多 100 人）加进内部群组即可装，不用审核；
 - **外部测试**：建外部群组 → 开「公开链接」发人；**第一个 build 要过 Beta App Review**（通常一天内），之后同版本号的新 build 一般免审。
+- **审核文案**：Test Information / Review Notes / What to Test 的英文原稿在 `docs/APP_REVIEW.md`，直接粘贴；产品变了（真订阅、举报 / 拉黑上线）要同步改。
 - **审核账号**（D-127）：App Store Connect → App Review 信息 / Test Information 的「Sign-in required」填 `test@kotoko.ai` + 密码（密码在 Harper 手里，不进仓库）。App 端 `@kotoko.ai` 邮箱自动走密码登录，其他用户仍是验证码。账号云端存档为空；要重置密码或再建一个，用 Supabase admin API（`SUPABASE_ACCESS_TOKEN` → 管理 API 取 service_role → `POST /auth/v1/admin/users`，`email_confirm: true`）。审核备注里顺带写：虚拟角色对话、有内容安全兜底、第一次入册后才要求登录。
 - 装包的人手机装 **TestFlight** App，点链接/接受邀请即可。Build 有效期 90 天。
 
