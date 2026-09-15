@@ -13,6 +13,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { bondedPostsFor, CHARACTERS, scriptFor, seedCharactersFor, SQUARE_POSTS } from '@/content/characters';
 import { uid } from '@/lib/format';
 import { applyPaperTint } from '@/constants/theme';
+import { DEFAULT_LOVE_MODEL, EMPTY_TRAFFIC, type LoveModelId, type Traffic, trafficAfterUse } from '@/lib/traffic';
 import { emptyHisWallet, ledgerEntry, pushLedger } from '@/lib/wallet';
 import { dedupeBonds, legacyBondLevel, levelLabelOf, levelOf, WARMTH_GAINS, WARMTH_START, warmthAfter, xpGain, type XpSource } from '@/lib/bond';
 import { setLang, type Lang } from '@/lib/i18n';
@@ -137,6 +138,10 @@ interface AppState {
   fortune?: DailyFortune;
   /** 外卖订单（D-129） */
   orders: Order[];
+  /** 流量（D-132）：她每回合扣的计量；免费 / 订阅 / 流量包都进这里 */
+  traffic: Traffic;
+  /** 模型档（D-132）：love-v1 / love-v2，玩家自己切 */
+  loveModel: LoveModelId;
 
   completeOnboarding: (pref: LovePref) => void;
   setLanguage: (l: Lang) => void;
@@ -173,6 +178,11 @@ interface AppState {
   addOrder: (o: Order) => void;
   /** TA 主动的额外动作触发了（D-130）：记下 TA 此刻说了几条，10 条内不再触发 */
   setExtraFired: (bondId: string, count: number, at: number) => void;
+  /** 扣一回合流量（先免费的再余额；Max 不扣），返回实际扣了多少 */
+  useTraffic: (cost: number) => number;
+  /** 进流量：流量包 / 订阅发放（grantAt 传入 = 订阅发的，记发放时刻） */
+  addTraffic: (mb: number, grantAt?: number) => void;
+  setLoveModel: (m: LoveModelId) => void;
   /** TA 的钱包进出；没有钱包先按起点建 */
   adjustHisWallet: (bondId: string, e: { amount: number; kind: LedgerKind; note: string }) => number;
   patchHisWallet: (bondId: string, patch: Partial<HisWallet>) => void;
@@ -315,6 +325,8 @@ const initialData = {
   wallet: { balance: 0, ledger: [] } as Wallet,
   fortune: undefined as DailyFortune | undefined,
   orders: [] as Order[],
+  traffic: EMPTY_TRAFFIC as Traffic,
+  loveModel: DEFAULT_LOVE_MODEL as LoveModelId,
   quietHours: { from: 23, to: 8 },
 };
 
@@ -479,6 +491,17 @@ export const useAppStore = create<AppState>()(
 
       setExtraFired: (bondId, count, at) =>
         set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, extraFired: { count, at } } : b)) }),
+
+      useTraffic: (cost) => {
+        const { traffic, charged } = trafficAfterUse(get().traffic, cost, get().plan);
+        set({ traffic });
+        return charged;
+      },
+
+      addTraffic: (amount, grantAt) =>
+        set({ traffic: { ...get().traffic, balance: get().traffic.balance + amount, ...(grantAt ? { planGrantAt: grantAt } : {}) } }),
+
+      setLoveModel: (m) => set({ loveModel: m }),
 
       adjustHisWallet: (bondId, e) => {
         const b = get().bonds.find((x) => x.id === bondId);

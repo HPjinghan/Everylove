@@ -10,7 +10,7 @@ import { showToast } from '@/components/toast';
 import { parseDateKey } from '@/content/calendar';
 import { buildPeekMyPhoneUser, todayLine } from '@/content/prompts';
 import { modeOf, type TurnScope } from '@/core/modes';
-import { himMsg, respond, runTurn, sendCard, sendText, sysMsg, TURN_ERROR_TOAST_MS, type TurnResult, type TurnUi } from '@/core/turn';
+import { gateBlocked, himMsg, respond, runTurn, sendCard, sendText, sysMsg, TURN_ERROR_TOAST_MS, type TurnResult, type TurnUi } from '@/core/turn';
 import { darkSideCheck, describeAiError, messageContextText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -36,6 +36,7 @@ export function bondedContext(bond: Bond, userText: string): EngineContext | nul
 
 /** 她的语音（D-073）：先上屏，识别成文字后回填、记账，再让 TA 回应识别出的内容 */
 export async function sendVoice(scope: TurnScope, uri: string, durationMs: number, ui?: TurnUi): Promise<TurnResult> {
+  if (gateBlocked(scope)) return { reply: null };
   const mode = modeOf(scope);
   const msg: ChatMessage = {
     id: uid('m'),
@@ -59,11 +60,12 @@ export async function sendVoice(scope: TurnScope, uri: string, durationMs: numbe
   mode.patch(scope, msg.id, { transcript, mediaStatus: undefined });
   const text = messageContextText({ ...msg, transcript, mediaStatus: undefined });
   mode.creditUserTurn(scope, text, 'voice');
-  return runTurn(scope, text, ui);
+  return runTurn(scope, text, ui, { her: true });
 }
 
 /** 她的照片（D-073）：先上屏，视觉模型描述后回填、记账，再让 TA 回应 */
 export async function sendImage(scope: TurnScope, uri: string, ui?: TurnUi): Promise<TurnResult> {
+  if (gateBlocked(scope)) return { reply: null };
   const mode = modeOf(scope);
   const msg: ChatMessage = {
     id: uid('m'),
@@ -86,7 +88,7 @@ export async function sendImage(scope: TurnScope, uri: string, ui?: TurnUi): Pro
   mode.patch(scope, msg.id, { caption, mediaStatus: undefined });
   const text = messageContextText({ ...msg, caption, mediaStatus: undefined });
   mode.creditUserTurn(scope, text, 'image');
-  return runTurn(scope, text, ui);
+  return runTurn(scope, text, ui, { her: true });
 }
 
 /** 记事本最多给 TA 看几条 / 每条多长；她和别人的聊天：几个人、各几句；日历：过去几天 + 接下来几天、最多几条 */

@@ -49,11 +49,29 @@ export function chatProviderPreference(): string {
   return preferred;
 }
 
+/** 玩家在设置里选的模型档对应的供应商（D-132，features/traffic.ts 同步）：只在这家有路（本地 key 或代理）时生效 */
+let userChoice = '';
+export function setUserProviderChoice(id: string): void {
+  userChoice = chatProviders.get(id) ? id : '';
+}
+export function userProviderChoice(): string {
+  return userChoice;
+}
+/** 后台任务（记忆提取 / 解析 / 周薪……）默认走的便宜供应商（D-132）：有路才用，否则跟随当前 */
+export const TASK_CHAT_PROVIDER = 'qianfan';
+
+function hasRoute(p: ChatProvider | undefined): p is ChatProvider {
+  return !!p && chatRouteSync(p) !== 'none';
+}
+
 /** 当前该用哪家：指定 id > 运行期偏好 > 工程配置 EXPO_PUBLIC_AI_ENGINE > 第一个有本地 key 的 > 默认供应商 */
 export function currentChatProvider(id?: string): ChatProvider {
   const wanted = id ?? (preferred || CONFIG.engine);
   const byId = wanted ? chatProviders.get(wanted) : undefined;
   if (byId) return byId;
+  // 玩家的模型档（D-132）：这家有路才用
+  const chosen = !id && !preferred && userChoice ? chatProviders.get(userChoice) : undefined;
+  if (hasRoute(chosen)) return chosen;
   const all = chatProviders.list();
   const p = all.find((x) => x.localKey()) ?? chatProviders.get(DEFAULT_CHAT_PROVIDER) ?? all[0];
   if (!p) throw new Error('底座未启动：没有注册任何聊天供应商（先 import "@/features"）');
@@ -82,7 +100,9 @@ export class AiUnavailableError extends Error {
 
 /** 唯一的对外调用点：选供应商 → 定取路 → 发请求。失败原样抛出，由调用方决定露出还是静默。 */
 export async function completeChat(req: ChatRequest, providerId?: string): Promise<string> {
-  const p = currentChatProvider(providerId);
+  // 后台任务不花她的流量，也别用贵的那家（D-132）：没指定、没有开发者偏好时走便宜供应商
+  const taskCheap = !providerId && !preferred && req.kind === 'task' ? chatProviders.get(TASK_CHAT_PROVIDER) : undefined;
+  const p = hasRoute(taskCheap) ? taskCheap : currentChatProvider(providerId);
   const route = await chatRoute(p);
   if (route === 'none') throw new AiUnavailableError();
   try {

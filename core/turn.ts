@@ -11,6 +11,7 @@ import { cardContextText } from '@/core/cards';
 import { createEmitHook, createWaterfallHook } from '@/core/hooks';
 import { replyMarkers } from '@/core/markers';
 import { modeOf, type ConversationMode, type TurnScope } from '@/core/modes';
+import { createRegistry } from '@/core/registry';
 import { describeAiError, generateReply } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -37,6 +38,27 @@ export interface TurnInfo {
   reply: EngineReply;
   darkSide: boolean;
   ui: TurnUi;
+  /** 她发起的回合（sendText / sendCard / 语音 / 照片）；TA 先开口的 respond 不算——流量只扣她发起的（D-132） */
+  her: boolean;
+}
+
+/** 回合闸门（D-132）：她要开口前逐个问一遍，返回一句原因 = 这回合发不出（顶部轻提示），null = 放行 */
+export interface TurnGate {
+  key: string;
+  check(scope: TurnScope): string | null;
+}
+export const turnGates = createRegistry<TurnGate>('turnGates', (g) => g.key);
+
+/** 过闸门：被拦下返回原因并已提示 */
+export function gateBlocked(scope: TurnScope): string | null {
+  for (const g of turnGates.list()) {
+    const reason = g.check(scope);
+    if (reason) {
+      showToast(reason, { durationMs: TURN_ERROR_TOAST_MS });
+      return reason;
+    }
+  }
+  return null;
 }
 
 export interface BubbleInfo extends TurnInfo {
@@ -81,7 +103,7 @@ export function meMsg(text: string, extra: Partial<ChatMessage> = {}): ChatMessa
  * TA 回一轮。userText 是模型视角的文字（语音 / 照片 / 卡片已经包装过；舞台提示也从这里进），
  * 调用前她的消息应已落会话并记账（sendText / sendCard 会做；respond 则只让 TA 说话）。
  */
-export async function runTurn(scope: TurnScope, userText: string, ui: TurnUi = {}): Promise<TurnResult> {
+export async function runTurn(scope: TurnScope, userText: string, ui: TurnUi = {}, meta: { her?: boolean } = {}): Promise<TurnResult> {
   const mode = modeOf(scope);
   const ctx = mode.context(scope, userText);
   if (!ctx) return { reply: null };
@@ -102,7 +124,7 @@ export async function runTurn(scope: TurnScope, userText: string, ui: TurnUi = {
   if (pace === 'natural') await wait(naturalDelay(userText));
   ui.typing?.(false);
 
-  const info: TurnInfo = { scope, ctx, mode, reply, darkSide: !!reply.darkSide, ui };
+  const info: TurnInfo = { scope, ctx, mode, reply, darkSide: !!reply.darkSide, ui, her: !!meta.her };
   const total = reply.texts.length;
   for (const [i, text] of reply.texts.entries()) {
     if (i > 0 && pace === 'natural') await wait(500);
@@ -137,10 +159,11 @@ export async function sendText(
   text: string,
   opts: { replyTo?: ChatMessage['replyTo']; ui?: TurnUi } = {}
 ): Promise<TurnResult> {
+  if (gateBlocked(scope)) return { reply: null };
   const mode = modeOf(scope);
   mode.append(scope, [meMsg(text, { replyTo: opts.replyTo })]);
   mode.creditUserTurn(scope, text, 'text');
-  return runTurn(scope, text, opts.ui);
+  return runTurn(scope, text, opts.ui, { her: true });
 }
 
 /**
@@ -153,11 +176,12 @@ export async function sendCard(
   prompt: string,
   ui?: TurnUi
 ): Promise<TurnResult & { id: string }> {
+  if (gateBlocked(scope)) return { id: '', reply: null };
   const mode = modeOf(scope);
   const msg: ChatMessage = { id: uid('m'), from: 'me', kind: 'card', text: card.title, card, at: Date.now() };
   mode.append(scope, [msg]);
   mode.creditUserTurn(scope, cardContextText(card), 'card');
-  const r = await runTurn(scope, prompt, ui);
+  const r = await runTurn(scope, prompt, ui, { her: true });
   return { id: msg.id, ...r };
 }
 

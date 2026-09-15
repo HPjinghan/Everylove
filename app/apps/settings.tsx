@@ -25,6 +25,7 @@ import { updateBondMemory } from '@/lib/memory';
 import { authConfigured, isSignedIn, onAuthChange, sessionLabel, signedInSession, signOut } from '@/lib/auth';
 import { t } from '@/lib/i18n';
 import { slotLimit, slotLimitLabel } from '@/lib/bond';
+import { freeLeft, LOVE_MODEL_ORDER, LOVE_MODELS, mb, TRAFFIC_PACKS } from '@/lib/traffic';
 import { deleteCloudData, restoreSnapshot, uploadSnapshot } from '@/lib/sync';
 import { useAppStore } from '@/store/app-store';
 
@@ -230,6 +231,10 @@ export default function MeScreen() {
   const quiet = useAppStore((s) => s.quietHours);
   const plan = useAppStore((s) => s.plan);
   const language = useAppStore((s) => s.language);
+  const traffic = useAppStore((s) => s.traffic);
+  const loveModel = useAppStore((s) => s.loveModel);
+  // 流量（D-132）：今天免费的按进页面那一刻算；扣费后 traffic 变了会重算
+  const [trafficNow] = useState(() => Date.now());
   // 槽位超额（交互改动 9）：降级后已有的羁绊不消失，但不能再新增
   const slotsOver = bonds.length > slotLimit(plan);
 
@@ -384,6 +389,32 @@ export default function MeScreen() {
             onPress={() => subscribe('max')}
           />
           {plan !== 'free' ? <Row label={t('取消订阅（回 Free）')} onPress={() => subscribe('free')} /> : null}
+        </Section>
+
+        <Section title={t('流量（试装模拟，不扣费）')}>
+          <Row label={t('剩余流量')} value={plan === 'max' ? '∞' : mb(traffic.balance)} numeric hint={plan === 'max' ? t('Max 不限流量') : t('今天免费的还剩 {n}', { n: mb(freeLeft(traffic, trafficNow)) })} />
+          {LOVE_MODEL_ORDER.map((id) => {
+            const m = LOVE_MODELS[id];
+            return (
+              <Row
+                key={id}
+                label={loveModel === id ? `${m.label} ✓` : m.label}
+                value={t('{blurb} · 每回合 {n}', { blurb: t(m.blurb), n: mb(m.costMb) })}
+                onPress={() => useAppStore.getState().setLoveModel(id)}
+              />
+            );
+          })}
+          {TRAFFIC_PACKS.map((p) => (
+            <Row
+              key={p.id}
+              label={t('流量包 {n}', { n: mb(p.mb) })}
+              value={t('买（模拟）')}
+              onPress={() => {
+                useAppStore.getState().addTraffic(p.mb);
+                Alert.alert(t('已到账'), mb(p.mb));
+              }}
+            />
+          ))}
         </Section>
 
         <Section title={t('TA 主动找你')}>
