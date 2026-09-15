@@ -66,7 +66,8 @@ describe('她要看', () => {
     expect(him).toContain('没有第二个人');
     const thing = buildHisPhotoPrompt(CHARACTERS[0], { desc: '桌上的姜茶' });
     expect(thing).toContain('没有任何人');
-    expect(thing).not.toContain('天气');
+    // 不带时段 / 温度这类字（「天气图标」那句是禁令，不算）
+    expect(thing).not.toMatch(/°C|今天|上午|下午|晚上|深夜/);
   });
 
   it('没要、也没东西送到：LV1 写了 [发图] 当没写', async () => {
