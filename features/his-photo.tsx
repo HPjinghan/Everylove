@@ -6,7 +6,7 @@
  * 没洗出来标 failed、不重试。主动找她那条也可能带一张（lib/reach-out.ts applyMarkers）。
  */
 
-import { buildHisPhotoPrompt, HIS_PHOTO_MARK, HIS_PHOTO_PATTERN, hisPhotoLines, PHOTO_REQUEST_PATTERN, timeOfDayLine } from '@/content/prompts';
+import { buildHisPhotoPrompt, HIS_PHOTO_MARK, HIS_PHOTO_PATTERN, hisPhotoLines, PHOTO_REQUEST_PATTERN } from '@/content/prompts';
 import { replyMarkers } from '@/core/markers';
 import { ORDER, promptSections } from '@/core/prompt';
 import { BONDED_CHAT } from '@/features/prompts';
@@ -14,7 +14,6 @@ import { extraEligible, extraOffered, himTurnCount } from '@/lib/extras';
 import { uid } from '@/lib/format';
 import { generateScenePhoto, imageKeyReady } from '@/lib/imagegen';
 import type { ChatMessage, EngineContext } from '@/lib/types';
-import { weatherLine } from '@/lib/weather';
 import { useAppStore } from '@/store/app-store';
 
 /** 这一轮是她要看 / 东西送到（看她这句与舞台提示） */
@@ -50,7 +49,7 @@ replyMarkers.register({
     // 主动拍的才记冷却；她要的 / 送到的不占主动的额度
     if (!requested) useAppStore.getState().setExtraFired(bond.id, himTurnCount(useAppStore.getState().bonds.find((b) => b.id === bond.id)?.messages ?? []), now);
     try {
-      const uri = await generateScenePhoto(buildHisPhotoPrompt(ctx.character, { desc, weatherLine: weatherLine(), timeLine: timeOfDayLine(new Date(now)) }), ctx.character);
+      const uri = await generateScenePhoto(buildHisPhotoPrompt(ctx.character, { desc }), ctx.character);
       useAppStore.getState().patchMessage({ bondId: bond.id }, id, { imageUri: uri, mediaStatus: undefined });
     } catch (e) {
       console.warn('[his-photo] 照片没洗出来：', e);

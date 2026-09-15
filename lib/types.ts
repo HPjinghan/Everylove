@@ -193,6 +193,8 @@ export interface Order {
   note?: string;
   /** 送达时刻：状态按 at → arriveAt 推 */
   arriveAt: number;
+  /** 送到后 TA 已报到（D-135，一单一次） */
+  reacted?: boolean;
 }
 
 export interface ChatMessage {

@@ -26,7 +26,9 @@ export function buildOutingPhotoPrompt(
     digest?: string;
   }
 ): string {
-  const sceneLine = `场景：${opts.placeName}——${opts.scene}${opts.weatherLine ? `${opts.weatherLine}。` : ''}`;
+  // 天气只留样子（多云 / 下雨 / 晴），温度、「今天」这些字不进画面（D-135 补，Harper：图上不要星期、时间、天气）
+  const weather = opts.weatherLine?.replace(/[，,]?\s*-?\d+(\.\d+)?\s*°C/g, '').replace(/今天/g, '').trim();
+  const sceneLine = `场景：${opts.placeName}——${opts.scene}${weather ? `${weather}。` : ''}`;
   const doing = opts.digest
     ? `主角此刻正在做的事从这段对话推断（对话里的「她」是按快门的人，不完整入镜）：\n${opts.digest}`
     : '主角正在这个场景里自然地待着。';
@@ -42,6 +44,7 @@ export function buildOutingPhotoPrompt(
     sceneLine,
     doing,
     composition,
+    '画面里不要出现任何文字、日期、时间、天气图标。',
     COMIC_QUALITY,
     COMIC_RULES,
   ].join('\n');
