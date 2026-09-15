@@ -216,8 +216,10 @@ export async function generateReply(ctx: EngineContext, providerId?: string): Pr
   const policy = modes.get(ctx.mode);
   const maxBubbles = policy?.maxBubbles ?? (ctx.mode === 'bonded' ? 2 : 1);
   const stripStage = policy?.stripStage ?? ctx.mode !== 'outing';
-  const bubbles = splitBubbles(text, maxBubbles, ctx.character.name);
-  return stripReplyMarkers({ texts: stripStage ? stripStageDirections(bubbles) : bubbles });
+  // 先剥暗号再拆气泡（D-126）：初识只留第一条气泡，写在末尾另起一段的暗号不能跟着丢
+  const marked = stripReplyMarkers({ texts: [text] });
+  const bubbles = splitBubbles(marked.texts.join('\n\n'), maxBubbles, ctx.character.name);
+  return { ...marked, texts: stripStage ? stripStageDirections(bubbles) : bubbles };
 }
 
 /** 兼容旧名：剥回复暗号（现由 core/markers 的注册表驱动） */

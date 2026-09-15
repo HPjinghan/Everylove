@@ -5,7 +5,7 @@
 
 import { loveStyleByLabel, scriptFor } from '@/content/characters';
 import { cardContextText } from '@/core/cards';
-import { levelInfo } from '@/lib/bond';
+import { LEVEL_NAMES, levelInfoFor } from '@/lib/bond';
 import { getLang, type Lang } from '@/lib/i18n';
 import type { BondMemory, Character, ChatMessage, EngineContext, UserProfile } from '@/lib/types';
 
@@ -300,8 +300,8 @@ export const BONDED_STAGE_NOTES: Record<string, string> = {
 };
 
 /** 阶段感（键 = lib/bond.ts 的 LEVEL_NAMES） */
-export function stageLine(ctx: EngineContext): string {
-  const stage = levelInfo(ctx.bond?.affinity ?? 0).name;
+export function stageLine(ctx: EngineContext, now: Date): string {
+  const stage = ctx.bond ? levelInfoFor(ctx.bond, now.getTime()).name : LEVEL_NAMES[0];
   return `- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`;
 }
 

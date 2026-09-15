@@ -10,6 +10,7 @@ import { deliverDueHisSchedules } from '@/lib/his-schedule';
 import { checkMissedPlans } from '@/lib/outing';
 import { deliverDuePosts, deliverDueReactions } from '@/lib/posts';
 import { deliverDueReachOuts } from '@/lib/reach-out';
+import { deliverDueRecalls } from '@/lib/recall';
 import { initWeather, refreshWeather } from '@/lib/weather';
 import { useAppStore } from '@/store/app-store';
 
@@ -34,6 +35,9 @@ jobs.register({ id: 'post-reactions', on: ['launch', 'foreground'], run: () => d
 
 /** TA 主动找她（D-114）：到点的落进会话，并把下一条写好、排本地通知 */
 jobs.register({ id: 'reach-out', on: ['launch', 'foreground'], run: (now) => deliverDueReachOuts(now) });
+
+/** 推送召回（D-126）：温度到 0 停主动，第 7 / 14 / 30 天各一条通知；点开 App 时到点的那条落进会话 */
+jobs.register({ id: 'recall', on: ['launch', 'foreground'], run: (now) => deliverDueRecalls(now) });
 
 /** 爽约检查（D-079）：过了赴约窗口还没去的约定 → 记忆 + TA 主动说一句 */
 jobs.register({ id: 'missed-plans', on: ['launch', 'foreground'], run: (now) => checkMissedPlans(now) });

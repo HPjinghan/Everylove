@@ -23,7 +23,7 @@ import { characterSecrets, messageContextText, unlockedSecretCount } from '@/con
 import { NOTE_PAPER, Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { planTimeLabel } from '@/lib/appointments';
-import { levelInfo } from '@/lib/bond';
+import { levelOf } from '@/lib/bond';
 import { ensureCircle, refreshCircleChats } from '@/lib/circle';
 import { ensureHisSchedule, upcomingHisEvents } from '@/lib/his-schedule';
 import { clockTime, timeAgo } from '@/lib/format';
@@ -121,7 +121,7 @@ export function PhoneSheet({
   const [now] = useState(() => Date.now());
   const notes = [...(bond.notes ?? [])].sort((a, b) => b.at - a.at);
   const secrets = characterSecrets(character);
-  const unlockedSecrets = unlockedSecretCount(levelInfo(bond.affinity).level, secrets.length);
+  const unlockedSecrets = unlockedSecretCount(levelOf(bond), secrets.length);
   const circle = bond.circle ?? [];
   const circleChats = bond.circleChats ?? {};
 

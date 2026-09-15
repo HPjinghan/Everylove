@@ -13,7 +13,7 @@ import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
-import { levelInfo } from '@/lib/bond';
+import { levelInfoFor } from '@/lib/bond';
 import { callReady } from '@/lib/call';
 import { t } from '@/lib/i18n';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -46,7 +46,7 @@ export default function PhoneScreen() {
           contentContainerStyle={styles.list}
           renderItem={({ item }) => {
             const c = findCharacter(item.characterId);
-            const lv = levelInfo(item.affinity);
+            const lv = levelInfoFor(item);
             return (
               <Card style={styles.row}>
                 <Pressable

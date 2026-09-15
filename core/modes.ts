@@ -5,6 +5,7 @@
  */
 
 import { createRegistry } from '@/core/registry';
+import type { UtteranceKind } from '@/lib/bond';
 import type { ChatMessage, EngineContext } from '@/lib/types';
 
 export type ModeId = EngineContext['mode'];
@@ -22,8 +23,8 @@ export interface ConversationMode {
   context(scope: TurnScope, userText: string): EngineContext | null;
   /** 往会话里落消息（TA 的话、系统条） */
   append(scope: TurnScope, msgs: ChatMessage[], opts?: { unreadDelta?: number }): void;
-  /** 她开口一次的账：心动值 / 羁绊 XP / 轮次（contextText = 这句在模型眼里的文字） */
-  creditUserTurn(scope: TurnScope, contextText: string): void;
+  /** 她开口一次的账：心动值 / 羁绊 XP / 轮次（contextText = 这句在模型眼里的文字；kind = 文字 / 语音 / 照片 / 卡片，D-126 来源表按它记） */
+  creditUserTurn(scope: TurnScope, contextText: string, kind?: UtteranceKind): void;
   /** 就地改一条消息（语音识别 / 看图结果回填） */
   patch(scope: TurnScope, msgId: string, patch: Partial<ChatMessage>): void;
   /** 回复最多拆几条气泡 */

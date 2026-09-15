@@ -5,7 +5,7 @@
  */
 
 import { scriptFor } from '@/content/characters';
-import { levelInfo } from '@/lib/bond';
+import { levelOf } from '@/lib/bond';
 import { herShareTier, type HerShareTier } from '@/lib/her-share';
 import type { Bond, Character, UserProfile } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
@@ -30,12 +30,12 @@ import { worldBlock } from './world';
  */
 export function buildPostReplySystem(
   c: Character,
-  bond: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'memory' | 'circle'> | undefined,
+  bond: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'memory' | 'circle' | 'createdAt' | 'legacyLevel'> | undefined,
   me: UserProfile | undefined
 ): string {
   const script = scriptFor(c);
   const who = bond
-    ? `你的恋人（你叫她「${bond.nickname}」，羁绊 LV${levelInfo(bond.affinity).level}）`
+    ? `你的恋人（你叫她「${bond.nickname}」，羁绊 LV${levelOf(bond)}）`
     : '一个你有点在意的人';
   return [
     `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。你在一个类似 X（推特）的社交应用上发了帖子，${who}在下面评论了你。下面所有规则里，「她」指评论的用户。`,

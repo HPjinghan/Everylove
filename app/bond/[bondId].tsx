@@ -31,7 +31,7 @@ import { sendInvite } from '@/features/invite';
 import { sendLocation } from '@/features/location';
 import { askPasscode } from '@/features/phone-peek';
 import { sendRedPacket } from '@/features/red-packet';
-import { levelInfo } from '@/lib/bond';
+import { levelInfoFor, levelOf } from '@/lib/bond';
 import { callReady } from '@/lib/call';
 import { bondScope, sendImage, sendText, sendVoice } from '@/lib/chat';
 import { daysTogether } from '@/lib/format';
@@ -83,7 +83,7 @@ export default function BondScreen() {
 
   // 「+」面板预告（D-100）：LV1 第一次进来插一条白底 accent 字的提示，只出现一次
   useEffect(() => {
-    if (!bond || bond.hintPlusSeen || levelInfo(bond.affinity).level !== 1) return;
+    if (!bond || bond.hintPlusSeen || levelOf(bond) !== 1) return;
     const store = useAppStore.getState();
     store.appendBond(bond.id, [{ ...sysMsg(t('试试「+」里的外出邀请，把相处从屏幕里拿出来')), tone: 'hint' }]);
     store.markBondHintSeen(bond.id);
@@ -97,7 +97,7 @@ export default function BondScreen() {
   const scope = bondScope(bond.id);
   const ui = { typing: setTyping };
   const myBirthday = meForCharacter(character.id)?.birthday ?? bond.birthday;
-  const lv = levelInfo(bond.affinity);
+  const lv = levelInfoFor(bond);
   const secretCount = characterSecrets(character).length;
   const anniversary = new Date(bond.createdAt);
 

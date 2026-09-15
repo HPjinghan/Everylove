@@ -11,6 +11,7 @@ import { cardKinds } from '@/core/cards';
 import { sendCard, type TurnUi } from '@/core/turn';
 import { sendImage } from '@/lib/chat';
 import { t } from '@/lib/i18n';
+import { useAppStore } from '@/store/app-store';
 
 /** 卡片标题最多留多长 */
 const TITLE_MAX = 80;
@@ -30,6 +31,8 @@ export interface SharedContent {
 /** 她把分享来的内容转进这段羁绊会话 */
 export async function sendShare(bondId: string, content: SharedContent, ui?: TurnUi): Promise<void> {
   const scope = { mode: 'bonded' as const, bondId };
+  // 转给他 = 亲密度来源（D-126，§7 主通道）；卡片 / 照片本身另按一次开口记
+  useAppStore.getState().creditBond(bondId, 'share');
   if (content.imageUri) {
     await sendImage(scope, content.imageUri, ui);
     return;

@@ -6,7 +6,7 @@
  */
 
 import { scriptFor } from '@/content/characters';
-import { levelInfo } from '@/lib/bond';
+import { levelInfo, levelInfoFor } from '@/lib/bond';
 import { daysTogether } from '@/lib/format';
 import type { EngineContext } from '@/lib/types';
 
@@ -34,7 +34,7 @@ export function bondedIntroLine(ctx: EngineContext, now: Date): string {
   const c = ctx.character;
   const bond = ctx.bond;
   const nickname = bond?.nickname ?? '你';
-  const lv = levelInfo(bond?.affinity ?? 0);
+  const lv = bond ? levelInfoFor(bond, now.getTime()) : levelInfo(0);
   const days = bond?.createdAt ? daysTogether(bond.createdAt, now.getTime()) : 1;
   return `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。你们已经加了好友、交换了联系方式，你叫她「${nickname}」，在一起第 ${days} 天，羁绊 LV${lv.level}·${lv.name}。你是主动的那一方——被爱是她不用努力的事。下面所有规则里，「她」指正在和你聊天的用户。`;
 }

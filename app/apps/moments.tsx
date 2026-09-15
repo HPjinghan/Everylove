@@ -75,6 +75,7 @@ function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: 
     if (!text || replying) return;
     setCommentDraft('');
     useAppStore.getState().addMyComment(post.id, text);
+    if (post.bondId) useAppStore.getState().creditBond(post.bondId, 'comment');
     setReplying(true);
     try {
       const reply = await generatePostReply(post, character, bond, text);
@@ -116,7 +117,15 @@ function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: 
               <Text style={styles.actionLabel}>{t('只能看看')}</Text>
             )}
           </Pressable>
-          <Pressable style={styles.action} onPress={() => useAppStore.getState().toggleLike(post.id)}>
+          <Pressable
+            style={styles.action}
+            onPress={() => {
+              const s = useAppStore.getState();
+              // 点赞（不是取消）TA 的帖子 = 亲密度来源（D-126）
+              if (!post.liked && post.bondId) s.creditBond(post.bondId, 'like');
+              s.toggleLike(post.id);
+            }}
+          >
             <MingCute name="heart" size={15} color={post.liked ? Romance.accent : Romance.sub} />
             <Text style={[styles.actionCount, post.liked && styles.actionCountOn]}>{post.likes || ''}</Text>
           </Pressable>

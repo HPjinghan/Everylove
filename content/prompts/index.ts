@@ -44,6 +44,7 @@ export * from './caption';
 export * from './chat';
 export * from './circle';
 export * from './create';
+export * from './heart';
 export * from './heartbeat';
 export * from './his-notes';
 export * from './his-schedule';
@@ -54,9 +55,11 @@ export * from './phone';
 export * from './photo';
 export * from './portrait';
 export * from './reach-out';
+export * from './recall';
 export * from './red-packet';
 export * from './shared';
 export * from './social';
+export * from './warmth';
 export * from './world';
 
 /** 分发器：引擎只调这一个——由 core/prompt 按分段表装配（分段在 features/prompts.ts 与各玩法里注册，D-086） */

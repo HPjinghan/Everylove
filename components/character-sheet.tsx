@@ -12,7 +12,7 @@ import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
-import { levelInfo } from '@/lib/bond';
+import { levelOf } from '@/lib/bond';
 import { timeAgo } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { portraitSource } from '@/lib/imagegen';
@@ -59,7 +59,7 @@ export function CharacterSheet({ characterId, visible, onClose }: { characterId:
           <Text style={styles.identity}>{c.identity}</Text>
           {bond ? (
             <Text style={styles.status}>
-              {t('已在通讯录')} · <Text style={styles.statusNum}>LV{levelInfo(bond.affinity).level}</Text>
+              {t('已在通讯录')} · <Text style={styles.statusNum}>LV{levelOf(bond)}</Text>
             </Text>
           ) : null}
           {!isRealWorld(world) ? <Text style={styles.status}>{t('来自「{world}」', { world: world.name })}</Text> : null}

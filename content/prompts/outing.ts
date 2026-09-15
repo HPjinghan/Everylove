@@ -7,7 +7,7 @@
 import { scriptFor } from '@/content/characters';
 import { ON_TIME_TOLERANCE_MIN } from '@/lib/appointments';
 import { getLang, type Lang } from '@/lib/i18n';
-import { levelInfo } from '@/lib/bond';
+import { levelInfo, levelInfoFor } from '@/lib/bond';
 import type { EngineContext } from '@/lib/types';
 
 import { voiceLines } from './shared';
@@ -17,7 +17,7 @@ export function outingIntroLine(ctx: EngineContext): string {
   const c = ctx.character;
   const bond = ctx.bond;
   const nickname = bond?.nickname ?? '你';
-  const lv = levelInfo(bond?.affinity ?? 0);
+  const lv = bond ? levelInfoFor(bond) : levelInfo(0);
   const o = ctx.outing;
   const stranger = o?.kind === 'stranger';
   const sceneLine = o

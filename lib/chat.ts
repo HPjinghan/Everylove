@@ -58,7 +58,7 @@ export async function sendVoice(scope: TurnScope, uri: string, durationMs: numbe
   }
   mode.patch(scope, msg.id, { transcript, mediaStatus: undefined });
   const text = messageContextText({ ...msg, transcript, mediaStatus: undefined });
-  mode.creditUserTurn(scope, text);
+  mode.creditUserTurn(scope, text, 'voice');
   return runTurn(scope, text, ui);
 }
 
@@ -85,7 +85,7 @@ export async function sendImage(scope: TurnScope, uri: string, ui?: TurnUi): Pro
   }
   mode.patch(scope, msg.id, { caption, mediaStatus: undefined });
   const text = messageContextText({ ...msg, caption, mediaStatus: undefined });
-  mode.creditUserTurn(scope, text);
+  mode.creditUserTurn(scope, text, 'image');
   return runTurn(scope, text, ui);
 }
 
@@ -165,6 +165,8 @@ export async function peekMyPhone(bondId: string): Promise<boolean> {
     { pace: 'none', unread: true }
   );
   addMemoryFact(bondId, `[节点] ${todayLine()} 她把手机递给 ${bond.name} 看了——记事本、日历和她与别人的聊天`);
+  // 给他看得越多他越懂你（§7）：让 TA 看手机也是亲密度来源（D-126）
+  useAppStore.getState().creditBond(bondId, 'peekMine');
   // 看到的日程从此 TA 知道（D-113）：心跳会来、聊天也记得
   if (events.length) {
     useAppStore.getState().markEventsKnown(events.map((e) => e.id), bondId);

@@ -152,11 +152,13 @@ export default function PhonesScreen() {
             onClose={() => setOpenId(null)}
             bond={open}
             character={openCharacter}
-            onViewed={() =>
+            onViewed={() => {
               useAppStore.getState().appendBond(open.id, [
                 { id: uid('m'), from: 'system', kind: 'system', text: t('你看了 TA 的手机'), at: Date.now() },
-              ])
-            }
+              ]);
+              // 她的好奇心也是关系（D-126）
+              useAppStore.getState().creditBond(open.id, 'peekHis');
+            }}
           />
         </>
       ) : null}

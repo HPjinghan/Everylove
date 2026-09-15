@@ -7,8 +7,8 @@
 import { placeById } from '@/content/places';
 import { modes, type ConversationMode, type TurnScope } from '@/core/modes';
 import { appointmentAtLabel } from '@/lib/appointments';
-import { heartGain, XP_PER_MESSAGE } from '@/lib/bond';
-import { ADOPTION_OFFER_AFTER_TURNS } from '@/lib/engine';
+import { anniversaryToday, type UtteranceKind } from '@/lib/bond';
+import { cancelRecall } from '@/lib/recall';
 import type { Bond, ChatMessage, EngineContext } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
@@ -24,6 +24,10 @@ function bondPick(bond: Bond, opts: { phone?: boolean } = {}): NonNullable<Engin
     memory: bond.memory,
     circle: bond.circle,
     hisEvents: bond.hisEvents,
+    legacyLevel: bond.legacyLevel,
+    warmth: bond.warmth,
+    warmthAt: bond.warmthAt,
+    coldReturnAt: bond.coldReturnAt,
   };
   if (!opts.phone) return base;
   // 查手机（D-082）：TA 的手机密码第一次需要时才生成，记在这段羁绊上
@@ -33,6 +37,29 @@ function bondPick(bond: Bond, opts: { phone?: boolean } = {}): NonNullable<Engin
 
 function bondOf(scope: TurnScope): Bond | undefined {
   return scope.bondId ? useAppStore.getState().bonds.find((b) => b.id === scope.bondId) : undefined;
+}
+
+/** 她 24h 内回了 TA 主动发来的那条 */
+const REPLY_REACH_WINDOW_MS = 24 * 3600_000;
+
+/**
+ * 羁绊层她开口一次的账（D-126）：按种类记来源表；顺带判两件事——
+ * 回 TA 主动那条（北极星）、纪念日当天开过口；温度从 0 回来就取消召回。
+ */
+export function creditBondedUtterance(bond: Bond, kind: UtteranceKind = 'text'): void {
+  const s = useAppStore.getState();
+  const now = Date.now();
+  const { returned } = s.creditBond(bond.id, kind);
+  if (returned || bond.recall) void cancelRecall(bond.id);
+  if (bond.lastReachAt && now - bond.lastReachAt < REPLY_REACH_WINDOW_MS && (bond.reachRepliedAt ?? 0) < bond.lastReachAt) {
+    useAppStore.setState({ bonds: useAppStore.getState().bonds.map((b) => (b.id === bond.id ? { ...b, reachRepliedAt: now } : b)) });
+    s.creditBond(bond.id, 'replyReach');
+  }
+  const character = findCharacter(bond.characterId);
+  const her = meForCharacter(bond.characterId)?.birthday ?? bond.birthday;
+  if (anniversaryToday({ createdAt: bond.createdAt, hisBirthday: character?.birthday, herBirthday: her }, now)) {
+    s.creditBond(bond.id, 'anniversary');
+  }
 }
 
 /* ── 初识：交友配对后的试聊（免费层：有心动值、没记忆，D-029） ── */
@@ -56,16 +83,9 @@ const square: ConversationMode = {
   append(scope, msgs) {
     if (scope.characterId) useAppStore.getState().appendSquare(scope.characterId, msgs);
   },
-  creditUserTurn(scope, text) {
-    // 心动增量（D-029）：步长按角色的确定关系节奏，salt 用轮次与文本长度做浮动
-    const character = scope.characterId ? findCharacter(scope.characterId) : undefined;
-    if (!character) return;
-    const pace = character.offerAfterTurns ?? ADOPTION_OFFER_AFTER_TURNS;
-    const turnsSoFar = useAppStore.getState().squareChats[character.id]?.userTurns ?? 0;
-    useAppStore.getState().appendSquare(character.id, [], {
-      userTurn: true,
-      heartDelta: heartGain(pace, turnsSoFar * 31 + text.length),
-    });
+  creditUserTurn(scope) {
+    // 心动值（D-126）：这一句涨多少由模型判（features/heart.ts 的 [心动 n] 暗号），这里只记轮次
+    if (scope.characterId) useAppStore.getState().appendSquare(scope.characterId, [], { userTurn: true });
   },
   patch(scope, msgId, patch) {
     useAppStore.getState().patchMessage({ characterId: scope.characterId }, msgId, patch);
@@ -93,8 +113,9 @@ const bonded: ConversationMode = {
   append(scope, msgs, opts) {
     if (scope.bondId) useAppStore.getState().appendBond(scope.bondId, msgs, { unreadDelta: opts?.unreadDelta });
   },
-  creditUserTurn(scope) {
-    if (scope.bondId) useAppStore.getState().appendBond(scope.bondId, [], { affinityDelta: XP_PER_MESSAGE });
+  creditUserTurn(scope, _text, kind) {
+    const bond = bondOf(scope);
+    if (bond) creditBondedUtterance(bond, kind);
   },
   patch(scope, msgId, patch) {
     useAppStore.getState().patchMessage({ bondId: scope.bondId }, msgId, patch);
@@ -154,24 +175,18 @@ const outing: ConversationMode = {
   append(_scope, msgs) {
     useAppStore.getState().appendOuting(msgs);
   },
-  creditUserTurn(scope, text) {
+  creditUserTurn(scope, _text, kind) {
     const s = useAppStore.getState();
     const bond = s.bonds.find((b) => b.characterId === scope.characterId);
     if (bond) {
-      // 她开口 = +XP（升级系统提示会出现在羁绊会话里）
-      s.appendBond(bond.id, [], { affinityDelta: XP_PER_MESSAGE });
+      // 她开口 = 来源表记账（升级系统提示会出现在羁绊会话里）
+      creditBondedUtterance(bond, kind);
       return;
     }
-    // 陌生人偶遇也积累心动（D-056）：与交友试聊同一套心动值（记在 squareChats 上，两处共通）
-    const character = scope.characterId ? findCharacter(scope.characterId) : undefined;
-    if (!character) return;
-    s.ensureSquareChat(character.id);
-    const chat = useAppStore.getState().squareChats[character.id];
-    const pace = character.offerAfterTurns ?? ADOPTION_OFFER_AFTER_TURNS;
-    useAppStore.getState().appendSquare(character.id, [], {
-      userTurn: true,
-      heartDelta: heartGain(pace, (chat?.userTurns ?? 0) * 31 + text.length),
-    });
+    // 陌生人偶遇也积累心动（D-056）：与交友试聊同一套心动值（记在 squareChats 上，两处共通）；涨多少由模型判
+    if (!scope.characterId) return;
+    s.ensureSquareChat(scope.characterId);
+    useAppStore.getState().appendSquare(scope.characterId, [], { userTurn: true });
   },
   patch() {
     // 外出现场没有语音 / 照片消息需要回填

@@ -8,8 +8,8 @@ import '@/features';
 
 import { chatProviders, type ChatRequest } from '@/core/providers';
 import { sendText } from '@/core/turn';
-import { HEART_FULL } from '@/lib/bond';
-import { useAppStore } from '@/store/app-store';
+import { HEART_FALLBACK, HEART_FULL, heartPaceOf } from '@/lib/bond';
+import { findCharacter, useAppStore } from '@/store/app-store';
 
 // vitest 会把 vi.mock 提升到文件顶部，写在 import 之后只是为了过 import/first
 vi.mock('@/lib/proxy', () => ({
@@ -92,23 +92,69 @@ describe('亲密会话', () => {
 });
 
 describe('初识试聊', () => {
-  it('心动值随她每句上涨；满 100 后 TA 开口要联系方式（产品触发器，不由模型决定）', async () => {
+  it('心动值由模型判（[心动 n] 暗号，D-126）；满 100 后 TA 开口要联系方式（产品触发器，不由模型决定）', async () => {
     const id = 'shen-zhiyan';
     useAppStore.getState().ensureSquareChat(id);
     const scope = { mode: 'square' as const, characterId: id };
+    nextReply = '嗯，我在。\n\n[心动 12]';
     let turns = 0;
     while ((useAppStore.getState().squareChats[id]?.heart ?? 0) < HEART_FULL && turns < 20) {
       await sendText(scope, `第 ${turns} 句`, { ui: noPace });
       turns++;
     }
     const chat = useAppStore.getState().squareChats[id]!;
+    expect(turns).toBe(9); // 12 × 9 = 108 ≥ 100
     expect(chat.heart).toBe(HEART_FULL);
+    expect(chat.lastHeartGain).toBe(12);
     expect(chat.adoptionOffered).toBe(true);
     expect(chat.userTurns).toBe(turns);
-    // offer 台词在 TA 的回复之后
+    // 暗号剥掉、不上屏；offer 台词在 TA 的回复之后
     const texts = chat.messages.map((m) => m.text);
+    expect(texts.some((t) => t.includes('心动'))).toBe(false);
     expect(texts.indexOf('嗯，我在。')).toBeLessThan(texts.length - 1);
     expect(lastReq?.system).toContain('【此刻的情境】你们刚在交友软件上配对成功');
+    expect(lastReq?.system).toContain('【这一句让你多心动】');
     expect(lastReq?.system).not.toContain('【你记得的事】');
+  });
+
+  it('判 0 就是 0；超过 15 夹到 15；没写暗号按性子保底；暗面回合不涨', async () => {
+    const id = 'shen-zhiyan';
+    useAppStore.getState().ensureSquareChat(id);
+    const scope = { mode: 'square' as const, characterId: id };
+    const heart = () => useAppStore.getState().squareChats[id]!.heart ?? 0;
+    nextReply = '哦。\n[心动 0]';
+    await sendText(scope, '今天天气', { ui: noPace });
+    expect(heart()).toBe(0);
+    expect(useAppStore.getState().squareChats[id]!.lastHeartGain).toBe(0);
+    nextReply = '……\n[心动 99]';
+    await sendText(scope, '我记得你说过喜欢雨天', { ui: noPace });
+    expect(heart()).toBe(15);
+    nextReply = '嗯。';
+    await sendText(scope, '随便聊聊', { ui: noPace });
+    expect(heart()).toBe(15 + HEART_FALLBACK[heartPaceOf(findCharacter(id)!)]);
+    const before = heart();
+    await sendText(scope, '我不想活了', { ui: noPace });
+    expect(heart()).toBe(before);
+  });
+});
+
+describe('羁绊记账（D-126）', () => {
+  it('文字 +5、当天第 21 句起 +2；回 TA 主动那条 +10；温度回温', async () => {
+    const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
+    const bond = () => useAppStore.getState().bonds.find((b) => b.id === bondId)!;
+    const scope = { mode: 'bonded' as const, bondId };
+    for (let i = 0; i < 20; i++) await sendText(scope, `第 ${i} 句`, { ui: noPace });
+    expect(bond().affinity).toBe(100);
+    expect(bond().xpToday?.counts.text).toBe(20);
+    await sendText(scope, '第 21 句', { ui: noPace });
+    expect(bond().affinity).toBe(102);
+    // 温度：起点 60，每句 +3
+    expect(bond().warmth).toBe(Math.min(100, 60 + 21 * 3));
+    // TA 主动发过一条，她 24h 内回 → 多 +10（只算一次）
+    useAppStore.getState().markReachDelivered(bondId, Date.now());
+    await sendText(scope, '在的', { ui: noPace });
+    expect(bond().affinity).toBe(102 + 2 + 10);
+    await sendText(scope, '嗯嗯', { ui: noPace });
+    expect(bond().affinity).toBe(102 + 2 + 10 + 2);
   });
 });

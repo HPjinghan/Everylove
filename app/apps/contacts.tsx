@@ -13,7 +13,7 @@ import { CharAvatar } from '@/components/char-avatar';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
-import { HEART_FULL, levelInfo } from '@/lib/bond';
+import { HEART_FULL, levelInfoFor } from '@/lib/bond';
 import { t } from '@/lib/i18n';
 import { useAppStore } from '@/store/app-store';
 
@@ -36,7 +36,7 @@ export default function ContactsScreen() {
 
   const entries: Entry[] = [
     ...bonds.map((b) => {
-      const lv = levelInfo(b.affinity);
+      const lv = levelInfoFor(b);
       return {
         key: b.id,
         characterId: b.characterId,

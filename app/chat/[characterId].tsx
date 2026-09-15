@@ -154,6 +154,7 @@ export default function SquareChatScreen() {
         <View style={styles.heartTrack}>
           <View style={[styles.heartFill, { width: `${heart}%` }]} />
         </View>
+        {!offered && (chat?.lastHeartGain ?? 0) > 0 ? <Text style={styles.heartGain}>+{chat?.lastHeartGain}</Text> : null}
         <Text style={styles.heartNum}>
           {heart}/{HEART_FULL}
         </Text>
@@ -247,6 +248,8 @@ const styles = themed(() =>
     },
     heartFill: { height: '100%', backgroundColor: Romance.accent },
     heartNum: { fontFamily: Fonts.labelBold, fontSize: 12, color: Romance.accentStrong },
+    // 这一句涨了多少（D-126）：小字，0 不显示
+    heartGain: { fontFamily: Fonts.label, fontSize: 11, color: Romance.accent },
     // offer 卡：白卡描边，贴在输入栏上方
     cta: {
       flexDirection: 'row',

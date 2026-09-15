@@ -50,7 +50,14 @@ export function sessionExpired(s: OutingSession, now = Date.now()): boolean {
 export function enterPlace(placeId: string): OutingSession | null {
   const s = useAppStore.getState().outingSession;
   if (s && (s.placeId !== placeId || sessionExpired(s))) finishOuting();
-  return useAppStore.getState().startOuting(placeId);
+  const before = useAppStore.getState().outingSession?.id;
+  const session = useAppStore.getState().startOuting(placeId);
+  // 新开的一场才记账（D-126）：赴约 / 偶遇是亲密度来源；续上的不重复记
+  if (session && session.id !== before && session.kind !== 'stranger') {
+    const bond = useAppStore.getState().bonds.find((b) => b.characterId === session.characterId);
+    if (bond) useAppStore.getState().creditBond(bond.id, session.kind === 'date' ? 'date' : 'encounter');
+  }
+  return session;
 }
 
 /** 结束外出：留记录（store）+ 现场对话并进记忆（后台、静默失败） */
@@ -116,6 +123,9 @@ export async function shootPhoto(
   const at = Date.now();
   const store = useAppStore.getState();
   store.addAlbumShot({ id: uid('ph'), uri, at, characterId: character.id, caption, placeId: place.id });
+  // 按快门也是亲密度来源（D-126）
+  const shotBond = store.bonds.find((b) => b.characterId === character.id);
+  if (shotBond) store.creditBond(shotBond.id, 'photo');
   if (store.outingSession?.id === session.id) {
     store.appendOuting([
       { id: uid('m'), from: 'me', kind: 'image', text: caption, imageUri: uri, polaroid: true, at },

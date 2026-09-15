@@ -45,11 +45,12 @@ import {
   squareVoiceBlock,
   stageLine,
   userProfileBlock,
+  warmthLine,
   worldBlock,
 } from '@/content/prompts';
 import { dateKey } from '@/content/calendar';
 import { ORDER, promptSections, type PromptMode } from '@/core/prompt';
-import { levelInfo } from '@/lib/bond';
+import { levelOf } from '@/lib/bond';
 import type { EngineContext } from '@/lib/types';
 
 /** 羁绊层的三个用法：亲密聊天 / 通话 / TA 写记事本——共用人设、台词样本、记忆、秘密（chat.ts 的亲密段） */
@@ -108,25 +109,28 @@ promptSections.register({ name: 'square-situation', modes: SQUARE, order: ORDER.
 /* ── 记忆与秘密（只在羁绊层，商业承重墙；陌生人偶遇没有） ── */
 promptSections.register({ name: 'memory', modes: BONDED_FAMILY, order: ORDER.memory, lines: (ctx) => memoryBlockFor(ctx.bond?.memory) });
 promptSections.register({ name: 'memory-outing', modes: OUTING, order: ORDER.memory, lines: (ctx) => (isStranger(ctx) ? [] : memoryBlockFor(ctx.bond?.memory)) });
-promptSections.register({ name: 'secrets', modes: BONDED_FAMILY, order: ORDER.secrets, lines: (ctx) => secretsBlock(ctx.character, levelInfo(ctx.bond?.affinity ?? 0).level) });
+promptSections.register({ name: 'secrets', modes: BONDED_FAMILY, order: ORDER.secrets, lines: (ctx, env) => secretsBlock(ctx.character, ctx.bond ? levelOf(ctx.bond, env.now.getTime()) : 1) });
 promptSections.register({
   name: 'secrets-outing',
   modes: OUTING,
   order: ORDER.secrets,
-  lines: (ctx) => (isStranger(ctx) ? [] : secretsBlock(ctx.character, levelInfo(ctx.bond?.affinity ?? 0).level)),
+  lines: (ctx, env) => (isStranger(ctx) ? [] : secretsBlock(ctx.character, ctx.bond ? levelOf(ctx.bond, env.now.getTime()) : 1)),
 });
 
 /* ── 分寸与追法的落地 ── */
 promptSections.register({ name: 'square-manner', modes: SQUARE, order: ORDER.manner, lines: () => SQUARE_MANNER });
 promptSections.register({ name: 'love-rules', modes: BONDED_CHAT, order: ORDER.manner, lines: () => BONDED_LOVE_RULES });
 promptSections.register({ name: 'initiative', modes: BONDED_CHAT, order: ORDER.initiative, lines: (ctx) => initiativeLine(ctx.character) });
-promptSections.register({ name: 'stage', modes: BONDED_CHAT, order: ORDER.stage, lines: (ctx) => [stageLine(ctx)] });
+promptSections.register({ name: 'stage', modes: BONDED_CHAT, order: ORDER.stage, lines: (ctx, env) => [stageLine(ctx, env.now)] });
+// 温度（D-126）：疏远 / 久别归来时多一句口吻；热络 / 平常不加字
+promptSections.register({ name: 'warmth', modes: BONDED_CHAT, order: ORDER.warmth, lines: (ctx, env) => warmthLine(ctx, env.now) });
 promptSections.register({ name: 'outing-manner', modes: OUTING, order: ORDER.manner, lines: () => OUTING_MANNER });
 // 记事本：TA 自己的生活（D-098；她出现多少按分量 D-099）——和聊天的「怎么爱她」占同一个槽位
 promptSections.register({ name: 'note-life', modes: NOTE, order: ORDER.manner, lines: (ctx) => hisNoteLifeLines(ctx.character) });
 promptSections.register({ name: 'stranger-manner', modes: OUTING, order: ORDER.strangerManner, lines: (ctx) => (isStranger(ctx) ? OUTING_STRANGER_MANNER : []) });
 // 外出里阶段感在主动性之前（与亲密相反）
-promptSections.register({ name: 'stage-outing', modes: OUTING, order: ORDER.outingStage, lines: (ctx) => (isStranger(ctx) ? [] : [stageLine(ctx)]) });
+promptSections.register({ name: 'stage-outing', modes: OUTING, order: ORDER.outingStage, lines: (ctx, env) => (isStranger(ctx) ? [] : [stageLine(ctx, env.now)]) });
+promptSections.register({ name: 'warmth-outing', modes: OUTING, order: ORDER.outingStage, lines: (ctx, env) => (isStranger(ctx) ? [] : warmthLine(ctx, env.now)) });
 promptSections.register({ name: 'initiative-outing', modes: OUTING, order: ORDER.outingInitiative, lines: (ctx) => (isStranger(ctx) ? [] : initiativeLine(ctx.character)) });
 
 /* ── 红线与输出格式（红线段对应 CLAUDE.md §9，勿删） ── */

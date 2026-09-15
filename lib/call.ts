@@ -55,5 +55,7 @@ export function logCall(bondId: string, ms: number): void {
   useAppStore.getState().appendBond(bondId, [
     { id: uid('m'), from: 'system', kind: 'system', text: `📞 ${formatCallDuration(ms)}`, at: Date.now() },
   ]);
+  // 电话每整分钟也记一笔（D-126）：通话是最贵的陪伴
+  for (let i = 0; i < Math.floor(ms / 60_000); i++) useAppStore.getState().creditBond(bondId, 'callMinute');
   void detectAppointment(bondId);
 }

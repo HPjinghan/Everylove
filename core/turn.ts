@@ -113,7 +113,7 @@ export async function runTurn(scope: TurnScope, userText: string, ui: TurnUi = {
   for (const m of replyMarkers.list()) {
     if (!reply.flags?.[m.key]) continue;
     try {
-      await m.apply({ scope, ctx, mode });
+      await m.apply({ scope, ctx, mode, value: reply.values?.[m.key] });
     } catch (e) {
       console.warn(`[marker:${m.key}] 落状态失败：`, e);
     }
@@ -131,7 +131,7 @@ export async function sendText(
 ): Promise<TurnResult> {
   const mode = modeOf(scope);
   mode.append(scope, [meMsg(text, { replyTo: opts.replyTo })]);
-  mode.creditUserTurn(scope, text);
+  mode.creditUserTurn(scope, text, 'text');
   return runTurn(scope, text, opts.ui);
 }
 
@@ -148,7 +148,7 @@ export async function sendCard(
   const mode = modeOf(scope);
   const msg: ChatMessage = { id: uid('m'), from: 'me', kind: 'card', text: card.title, card, at: Date.now() };
   mode.append(scope, [msg]);
-  mode.creditUserTurn(scope, cardContextText(card));
+  mode.creditUserTurn(scope, cardContextText(card), 'card');
   const r = await runTurn(scope, prompt, ui);
   return { id: msg.id, ...r };
 }

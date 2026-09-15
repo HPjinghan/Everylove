@@ -45,6 +45,7 @@ features/      玩法：往插槽里注册；只 import core / lib / store / con
   voice-reply.ts TA 偶尔发语音（bubble 钩子）
   memory.ts      记忆提取（after 钩子）
   appointment.ts 约定识别（after 钩子）
+  heart.ts       心动判分（prompt 分段 + 带数值的暗号 [心动 n] + 缺暗号保底，D-126）
   adoption.ts    心动满的 offer（after 钩子，产品触发器）
   schedulers.ts  后台任务登记
 lib/           领域模块（引擎门面、记忆、外出、通话、媒体、语音……）；lib/chat.ts 是界面唯一的会话入口

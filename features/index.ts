@@ -17,6 +17,7 @@ import '@/features/share';
 import '@/features/voice-reply';
 import '@/features/memory';
 import '@/features/appointment';
+import '@/features/heart';
 import '@/features/adoption';
 
 import '@/features/schedulers';

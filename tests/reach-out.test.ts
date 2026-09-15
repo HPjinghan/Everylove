@@ -69,6 +69,25 @@ describe('调度', () => {
   });
 });
 
+describe('温度（D-126）', () => {
+  it('疏远时每 3 天最多一条；久别（温度 0）主动停、写好的作废', async () => {
+    expect(reachIntervalMs({ initiative: 'high', mbti: 'ENFP' }, 2000, 0, 'distant')).toBe(3 * DAY);
+    expect(reachIntervalMs({ initiative: 'mid' }, 0, 0.5, 'warm')).toBeLessThan(reachIntervalMs({ initiative: 'mid' }, 0, 0.5, 'plain'));
+    const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
+    useAppStore.getState().markBondRead(bondId);
+    const now = new Date(2026, 8, 10, 12, 0).getTime();
+    await deliverDueReachOuts(now);
+    const due = useAppStore.getState().reachSchedule[bondId];
+    // 温度掉到 0（起点 60，每天 −8 → 8 天后）
+    useAppStore.setState({ bonds: useAppStore.getState().bonds.map((b) => (b.id === bondId ? { ...b, warmthAt: now - 10 * DAY } : b)) });
+    const before = useAppStore.getState().bonds.find((b) => b.id === bondId)!.messages.length;
+    expect(await deliverDueReachOuts(due + 1)).toBe(0);
+    expect(useAppStore.getState().bonds.find((b) => b.id === bondId)!.messages.length).toBe(before);
+    // 钟留在原地（她回来后按新上下文重排）
+    expect(useAppStore.getState().reachSchedule[bondId]).toBe(due);
+  });
+});
+
 describe('舞台提示', () => {
   it('带此刻、她多久没说话、TA 的日子，且要求不问在吗', () => {
     const line = buildReachOutUserLine({

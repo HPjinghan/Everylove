@@ -44,7 +44,11 @@ export const ORDER = {
   outingStage: 140,
   outingInitiative: 145,
   stage: 150,
+  /** 温度（D-126）：疏远 / 久别那一句，紧跟阶段感 */
+  warmth: 152,
   hardRules: 200,
+  /** 心动判分（D-126）：初识 / 广场陌生人的暗号规则，在输出格式之前 */
+  heart: 205,
   output: 210,
   length: 220,
 } as const;

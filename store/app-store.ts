@@ -13,7 +13,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { bondedPostsFor, CHARACTERS, scriptFor, seedCharactersFor, SQUARE_POSTS } from '@/content/characters';
 import { uid } from '@/lib/format';
 import { applyPaperTint } from '@/constants/theme';
-import { bondLevel, dedupeBonds, levelLabel } from '@/lib/bond';
+import { dedupeBonds, legacyBondLevel, levelLabelOf, levelOf, WARMTH_GAINS, WARMTH_START, warmthAfter, xpGain, type XpSource } from '@/lib/bond';
 import { setLang, type Lang } from '@/lib/i18n';
 import { DEFAULT_DOCK, DEFAULT_WALLPAPER, wallpaperTint } from '@/constants/apps';
 import { placeById } from '@/content/places';
@@ -36,6 +36,7 @@ import type {
   OutingSession,
   Post,
   PostComment,
+  RecallState,
   SquareChat,
   UserProfile,
   WorldBook,
@@ -142,6 +143,12 @@ interface AppState {
     msgs: ChatMessage[],
     opts?: { userTurn?: boolean; offered?: boolean; heartDelta?: number }
   ) => void;
+  /** 亲密度记账（D-126）：按来源表加 XP（当天递减 + 日上限）与温度；返回实际加的分与是否久别归来 */
+  creditBond: (bondId: string, source: XpSource) => { gain: number; returned: boolean };
+  /** TA 的一条主动消息落进会话了（她 24h 内回话算「回复 TA 主动」） */
+  markReachDelivered: (bondId: string, at: number) => void;
+  /** 推送召回状态（lib/recall.ts） */
+  setRecall: (bondId: string, recall: RecallState | undefined) => void;
   /** 缔结（D-088）：TA 对她的称呼 = 她在这个角色眼中的昵称，生日抄自身份；两者不再在缔结时问 */
   createBond: (input: {
     characterId: string;
@@ -389,11 +396,44 @@ export const useAppStore = create<AppState>()(
               lastActiveAt: Date.now(),
               userTurns: chat.userTurns + (opts?.userTurn ? 1 : 0),
               heart: Math.min(100, (chat.heart ?? 0) + (opts?.heartDelta ?? 0)),
+              // 心动条上露出这一句涨了多少（D-126）：只在有判分时更新
+              lastHeartGain: opts?.heartDelta !== undefined ? opts.heartDelta : chat.lastHeartGain,
               adoptionOffered: chat.adoptionOffered || !!opts?.offered,
             },
           },
         });
       },
+
+      creditBond: (bondId, source) => {
+        const now = Date.now();
+        const b = get().bonds.find((x) => x.id === bondId);
+        if (!b) return { gain: 0, returned: false };
+        const { gain, today } = xpGain(source, b.xpToday, now);
+        const { warmth, returned } = warmthAfter(b, WARMTH_GAINS[source] ?? 0, now);
+        set({
+          bonds: get().bonds.map((x) =>
+            x.id === bondId
+              ? {
+                  ...x,
+                  xpToday: today,
+                  warmth,
+                  warmthAt: now,
+                  coldReturnAt: returned ? now : x.coldReturnAt,
+                  // 温度动了，按旧「到 0」排的召回作废（通知由 lib/recall.ts 取消）
+                  recall: undefined,
+                }
+              : x
+          ),
+        });
+        get().appendBond(bondId, [], { affinityDelta: gain });
+        return { gain, returned };
+      },
+
+      markReachDelivered: (bondId, at) =>
+        set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, lastReachAt: at } : b)) }),
+
+      setRecall: (bondId, recall) =>
+        set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, recall } : b)) }),
 
       createBond: ({ characterId, name, nickname: nicknameInput, birthday: birthdayInput }) => {
         const state = get();
@@ -445,6 +485,10 @@ export const useAppStore = create<AppState>()(
           birthday,
           createdAt: now,
           affinity: 0, // 羁绊 LV1 从零开始（心动值已在暧昧期满 100，D-029/D-052）
+          levelShown: 1,
+          // 温度从起点开始（D-126）
+          warmth: WARMTH_START,
+          warmthAt: now,
           messages: [...squareMsgs, ceremony, ...greeting],
           // 缔结后落桌面（D-058 方案 B）：打招呼计未读——桌面横幅就是「点进去」的教学
           unread: greeting.length,
@@ -480,24 +524,20 @@ export const useAppStore = create<AppState>()(
         set({
           bonds: get().bonds.map((b) => {
             if (b.id !== bondId) return b;
+            const now = Date.now();
             const nextXp = b.affinity + (opts?.affinityDelta ?? 0);
-            const leveled = bondLevel(nextXp) > bondLevel(b.affinity);
-            // 升级瞬间：会话里出现系统提示（成长可感知，D-029）
-            const extra: ChatMessage[] = leveled
-              ? [
-                  {
-                    id: uid('m'),
-                    from: 'system' as const,
-                    kind: 'system' as const,
-                    text: `羁绊升级 · ${levelLabel(nextXp)}`,
-                    at: Date.now(),
-                  },
-                ]
-              : [];
+            // 升级瞬间（D-029 / D-126）：XP 与天数都到才算；只宣布过一次（天数是后到的也在下一次记账时补出）
+            const shown = b.levelShown ?? levelOf(b, now);
+            const level = levelOf({ ...b, affinity: nextXp }, now);
+            const extra: ChatMessage[] =
+              level > shown
+                ? [{ id: uid('m'), from: 'system' as const, kind: 'system' as const, text: `羁绊升级 · ${levelLabelOf(level)}`, at: now }]
+                : [];
             return {
               ...b,
               messages: [...b.messages, ...msgs, ...extra],
               affinity: nextXp,
+              levelShown: Math.max(shown, level),
               unread: b.unread + (opts?.unreadDelta ?? 0),
             };
           }),
@@ -929,7 +969,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'everylove-store',
-      version: 7,
+      version: 8,
       storage: createJSONStorage(() => AsyncStorage),
       // v2：种子角色改版（陆隽行下架、人外上新），清掉指向已删除角色的数据
       // v3：新手流标记（D-058）——已有存档的老用户不重走新手流
@@ -937,9 +977,18 @@ export const useAppStore = create<AppState>()(
       // v5：引擎与 key 不再是用户数据（D-069）——清掉旧存档/云端快照里的 engine/anthropicKey/qianfanKey
       // v6：主题只剩纸面（D-110）——旧配色 id 归 paper；壁纸即主题
       // v7：一个角色只有一段羁绊（D-122）——缔结连点造出的重复羁绊去重（留消息最多的那段），连带清掉它们的帖子与主动找她的钟
+      // v8：亲密度数值体系（D-126）——新曲线下等级只升不降（legacyLevel）、温度从起点开始、当天记账清零
       migrate: (persisted: unknown, version) => {
         const state = persisted as (Partial<AppState> & Record<string, unknown>) | undefined;
         if (!state) return state;
+        if (version < 8 && state.bonds) {
+          const now = Date.now();
+          state.bonds = state.bonds.map((b) => {
+            const legacyLevel = legacyBondLevel(b.affinity);
+            const level = Math.max(legacyLevel, levelOf({ affinity: b.affinity, createdAt: b.createdAt, legacyLevel }, now));
+            return { ...b, legacyLevel, levelShown: level, warmth: WARMTH_START, warmthAt: now, xpToday: undefined, recall: undefined };
+          });
+        }
         if (version < 7 && state.bonds) {
           const { kept, droppedIds } = dedupeBonds(state.bonds);
           if (droppedIds.length) {

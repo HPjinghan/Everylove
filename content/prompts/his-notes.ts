@@ -8,7 +8,7 @@
  */
 
 import { assembleSystemPrompt } from '@/core/prompt';
-import { levelInfo } from '@/lib/bond';
+import { levelInfo, levelInfoFor } from '@/lib/bond';
 import { daysTogether } from '@/lib/format';
 import { herShareTier, type HerShareTier } from '@/lib/her-share';
 import type { Character, EngineContext, HisNote } from '@/lib/types';
@@ -27,7 +27,7 @@ export function noteIntroLine(ctx: EngineContext, now: Date): string {
   const c = ctx.character;
   const bond = ctx.bond;
   const nickname = bond?.nickname ?? '她';
-  const lv = levelInfo(bond?.affinity ?? 0);
+  const lv = bond ? levelInfoFor(bond, now.getTime()) : levelInfo(0);
   const days = bond?.createdAt ? daysTogether(bond.createdAt, now.getTime()) : 1;
   return `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。现在你在自己的记事本里写一条——写给自己看的，不是发给谁的消息。你有恋人，你叫她「${nickname}」，在一起第 ${days} 天，羁绊 LV${lv.level}·${lv.name}；${NOTE_INTRO_HER[herShareTier(c)]}。下面所有规则里，「她」指你的恋人。`;
 }

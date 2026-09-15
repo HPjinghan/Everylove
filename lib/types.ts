@@ -1,5 +1,7 @@
 /** 全自动恋爱 — 核心类型 */
 
+import type { XpToday } from '@/lib/bond';
+
 export type ArchetypeId = 'gentle' | 'sharp' | 'ceo' | 'nonhuman';
 
 export type LovePref = 'male' | 'female' | 'any' | 'nonhuman';
@@ -212,6 +214,8 @@ export interface SquareChat {
   heart?: number;
   /** 广场偶遇的记录（D-110）：TA 记得在哪见过她、聊了什么；进初识 / 广场 prompt，也在 TA 的资料页里显示 */
   encounters?: Encounter[];
+  /** 上一句让 TA 心动了多少（D-126，模型判 0–15；心动条上露出 +n） */
+  lastHeartGain?: number;
 }
 
 /** 一次广场偶遇（D-110） */
@@ -282,6 +286,32 @@ export interface Bond {
   circleChats?: Record<string, CircleLine[]>;
   /** 圈子是通用回落（D-124）：模型当时没写成；下次查手机再试一次，写成就换掉 */
   circleFallback?: boolean;
+  /* ── 亲密度数值体系（D-126，lib/bond.ts） ── */
+  /** 当天的 XP 记账：日期 / 合计 / 各来源次数（4:00 起算，日期变了就清） */
+  xpToday?: XpToday;
+  /** 温度上次结算值与时刻（此刻的值按天线性掉，warmthNow） */
+  warmth?: number;
+  warmthAt?: number;
+  /** TA 上一条主动消息落进会话的时刻；她 24h 内回话 = 「回复 TA 主动」来源 */
+  lastReachAt?: number;
+  /** 她已经回过 lastReachAt 那条了 */
+  reachRepliedAt?: number;
+  /** 温度从 0 回来的时刻：一小时内 TA 的口吻按「久别」 */
+  coldReturnAt?: number;
+  /** 老存档迁移记下的等级下限（等级只升不降） */
+  legacyLevel?: number;
+  /** 会话里已经宣布过的等级（升级系统条只出一次；天数到了也在下一次记账时补出） */
+  levelShown?: number;
+  /** 推送召回（温度到 0 之后第 7 / 14 / 30 天各一条，lib/recall.ts） */
+  recall?: RecallState;
+}
+
+/** 推送召回的状态（D-126） */
+export interface RecallState {
+  /** 按哪一次「到 0」排的（温度重算就作废） */
+  zeroAt: number;
+  /** 三条：到点时刻、写好的话、本地通知 id、是否已落进会话 */
+  items: { due: number; texts: string[]; notifId?: string; landed?: boolean }[];
 }
 
 /** TA 身边的一个人（D-110）：朋友 / 家人 / 同事——不是角色，不能聊，只在 TA 的世界里出现 */
@@ -445,7 +475,20 @@ export interface EngineContext {
   /** bonded/outing 模式下的关系信息（含记忆库、缔结时间，注入系统 prompt） */
   bond?: Pick<
     Bond,
-    'name' | 'nickname' | 'affinity' | 'birthday' | 'memory' | 'createdAt' | 'phoneCode' | 'phoneUnlocked' | 'circle' | 'hisEvents'
+    | 'name'
+    | 'nickname'
+    | 'affinity'
+    | 'birthday'
+    | 'memory'
+    | 'createdAt'
+    | 'phoneCode'
+    | 'phoneUnlocked'
+    | 'circle'
+    | 'hisEvents'
+    | 'legacyLevel'
+    | 'warmth'
+    | 'warmthAt'
+    | 'coldReturnAt'
   >;
   /** 广场偶遇的记录（D-110）：初识 / 广场模式注入——TA 记得见过她 */
   encounters?: Encounter[];
@@ -476,4 +519,6 @@ export interface EngineReply {
    * 回合管线据此调用各暗号的 apply 落状态（D-086）
    */
   flags?: Record<string, boolean>;
+  /** 带数值的暗号（D-126 [心动 n]）：按 key 存捕获到的文本 */
+  values?: Record<string, string>;
 }
