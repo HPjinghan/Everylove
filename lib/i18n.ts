@@ -784,7 +784,7 @@ const en: Record<string, string> = {
   '给自己点的{item}': '{item} for yourself',
   '给谁点': 'Order for',
   '订单': 'Orders',
-  '这单没下成': "This order didn't go through",
+  '这单没下成': 'This order did not go through',
   '骑手取餐中': 'Courier picking up',
   '奶茶店': 'Tea shop',
   '珍珠奶茶': 'Bubble milk tea',
