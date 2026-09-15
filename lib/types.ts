@@ -169,6 +169,30 @@ export interface ChatCard {
   bondId?: string;
   /** 外卖：骑手几点送到 */
   arriveAt?: number;
+  /** 外卖（D-129）：对应 store.orders 里的那一单 */
+  orderId?: string;
+}
+
+/** 外卖订单（D-129，store.orders）：她点的（给自己 / 给 TA）与 TA 给她点的都在这 */
+export interface OrderItem {
+  /** 中文名（菜单键，界面 t()；TA 自由写的就是原文） */
+  name: string;
+  qty: number;
+  price: number;
+}
+export interface Order {
+  id: string;
+  at: number;
+  /** 谁点的 */
+  from: 'me' | 'him';
+  /** 给 TA 点的 / TA 点的：那段羁绊；给自己点的为空 */
+  bondId?: string;
+  storeId?: string;
+  items: OrderItem[];
+  total: number;
+  note?: string;
+  /** 送达时刻：状态按 at → arriveAt 推 */
+  arriveAt: number;
 }
 
 export interface ChatMessage {
@@ -333,7 +357,7 @@ export interface Wallet {
   ledger: LedgerEntry[];
 }
 
-/** TA 的钱包（Bond.wallet）：缔结 ¥2000 起，周薪按人设估一次、每周到账 */
+/** TA 的钱包（Bond.wallet）：缔结 2000 Coin 起，周薪按人设估一次、每周到账 */
 export interface HisWallet {
   balance: number;
   ledger: LedgerEntry[];

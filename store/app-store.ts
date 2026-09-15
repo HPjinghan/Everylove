@@ -14,6 +14,9 @@ import { bondedPostsFor, CHARACTERS, scriptFor, seedCharactersFor, SQUARE_POSTS 
 import { uid } from '@/lib/format';
 import { applyPaperTint } from '@/constants/theme';
 import { emptyHisWallet, ledgerEntry, pushLedger } from '@/lib/wallet';
+
+/** 外卖订单最多留几单（D-129） */
+const ORDERS_MAX = 50;
 import { dedupeBonds, legacyBondLevel, levelLabelOf, levelOf, WARMTH_GAINS, WARMTH_START, warmthAfter, xpGain, type XpSource } from '@/lib/bond';
 import { setLang, type Lang } from '@/lib/i18n';
 import { DEFAULT_DOCK, DEFAULT_WALLPAPER, wallpaperTint } from '@/constants/apps';
@@ -38,6 +41,7 @@ import type {
   DailyFortune,
   HisWallet,
   LedgerKind,
+  Order,
   Post,
   PostComment,
   RecallState,
@@ -131,6 +135,8 @@ interface AppState {
   wallet: Wallet;
   /** 今天抽过的日签（D-128） */
   fortune?: DailyFortune;
+  /** 外卖订单（D-129） */
+  orders: Order[];
 
   completeOnboarding: (pref: LovePref) => void;
   setLanguage: (l: Lang) => void;
@@ -164,6 +170,7 @@ interface AppState {
   /** 零钱进出（D-128）：正入负出，出账不超过余额；返回实际记的数 */
   creditWallet: (e: { amount: number; kind: LedgerKind; note: string; bondId?: string }) => number;
   setFortune: (f: DailyFortune) => void;
+  addOrder: (o: Order) => void;
   /** TA 的钱包进出；没有钱包先按起点建 */
   adjustHisWallet: (bondId: string, e: { amount: number; kind: LedgerKind; note: string }) => number;
   patchHisWallet: (bondId: string, patch: Partial<HisWallet>) => void;
@@ -305,6 +312,7 @@ const initialData = {
   reachPending: {} as Record<string, ReachPending>,
   wallet: { balance: 0, ledger: [] } as Wallet,
   fortune: undefined as DailyFortune | undefined,
+  orders: [] as Order[],
   quietHours: { from: 23, to: 8 },
 };
 
@@ -465,6 +473,8 @@ export const useAppStore = create<AppState>()(
 
       setFortune: (f) => set({ fortune: f }),
 
+      addOrder: (o) => set({ orders: [...get().orders, o].slice(-ORDERS_MAX) }),
+
       adjustHisWallet: (bondId, e) => {
         const b = get().bonds.find((x) => x.id === bondId);
         if (!b) return 0;
@@ -533,7 +543,7 @@ export const useAppStore = create<AppState>()(
           // 温度从起点开始（D-126）
           warmth: WARMTH_START,
           warmthAt: now,
-          // TA 的钱包（D-128）：¥2000 起，周薪之后估
+          // TA 的钱包（D-128）：2000 Coin 起，周薪之后估
           wallet: emptyHisWallet(now),
           messages: [...squareMsgs, ceremony, ...greeting],
           // 缔结后落桌面（D-058 方案 B）：打招呼计未读——桌面横幅就是「点进去」的教学
@@ -1024,7 +1034,7 @@ export const useAppStore = create<AppState>()(
       // v6：主题只剩纸面（D-110）——旧配色 id 归 paper；壁纸即主题
       // v7：一个角色只有一段羁绊（D-122）——缔结连点造出的重复羁绊去重（留消息最多的那段），连带清掉它们的帖子与主动找她的钟
       // v8：亲密度数值体系（D-126）——新曲线下等级只升不降（legacyLevel）、温度从起点开始、当天记账清零
-      // v9：零钱（D-128）——老羁绊补 TA 的钱包（¥2000 起，周薪从现在起算）
+      // v9：零钱（D-128）——老羁绊补 TA 的钱包（2000 Coin 起，周薪从现在起算）
       migrate: (persisted: unknown, version) => {
         const state = persisted as (Partial<AppState> & Record<string, unknown>) | undefined;
         if (!state) return state;

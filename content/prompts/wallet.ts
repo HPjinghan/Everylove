@@ -29,7 +29,7 @@ export function hisWalletLines(
   const balance = w?.balance ?? 0;
   const lines = [
     `【你的钱包】你有自己的钱：余额 ${money(balance)}${w?.job ? `，每周有一笔收入（${w.job}）` : ''}。`,
-    `- 你可以主动花在她身上，两种方式，写在回复最后、各自单独一行（她看不到这行，她会收到一张卡片）：给她发红包写 ${RED_PACKET_FROM_HIM_MARK}；给她点外卖写 ${DELIVERY_FROM_HIM_MARK}（价格是数字，¥30 左右一份）。`,
+    `- 你可以主动花在她身上，两种方式，写在回复最后、各自单独一行（她看不到这行，她会收到一张卡片）：给她发红包写 ${RED_PACKET_FROM_HIM_MARK}；给她点外卖写 ${DELIVERY_FROM_HIM_MARK}（价格是数字，单位 Coin，30 左右一份）。`,
     `- 只在有理由时：她说累 / 加班 / 生病 / 没吃饭 / 下雨，节日或她的生日，她刚好提到想吃什么，她给你发了红包想还礼。不要每次都发，一天各最多一次；金额别超过余额，按你的性格和你们的关系拿捏（${TIER_LINES[herShareTier(c)]}）。`,
     '- 她开口要钱：按你的性格处理，可以逗她、可以拒绝，你不是提款机；不用钱哄她回来、不拿钱说事。',
   ];

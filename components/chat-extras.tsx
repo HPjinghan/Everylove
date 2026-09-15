@@ -104,7 +104,7 @@ export function InviteSheet({
 
 /* ── 红包：金额 + 留言（试装是游戏币，不扣费） ── */
 
-const RED_PACKET_PRESETS = [5.2, 13.14, 52, 99, 520];
+const RED_PACKET_PRESETS = [6, 13, 52, 99, 520];
 
 export function RedPacketSheet({
   visible,
@@ -127,14 +127,14 @@ export function RedPacketSheet({
   return (
     <Sheet visible={visible} title={t('红包')} onClose={onClose}>
       <Card style={styles.amountCard}>
-        <Text style={styles.amount}>¥ {value != null && Number.isFinite(value) && value > 0 ? value.toFixed(2) : '0.00'}</Text>
+        <Text style={styles.amount}>{money(value != null && Number.isFinite(value) && value > 0 ? value : 0)}</Text>
         <Text style={[styles.balance, value != null && value > balance && styles.balanceShort]}>{t('零钱 {n}', { n: money(balance) })}</Text>
       </Card>
       <View style={styles.chips}>
         {RED_PACKET_PRESETS.map((n) => (
           <Chip
             key={n}
-            label={n.toFixed(2)}
+            label={String(n)}
             selected={!custom.trim() && amount === n}
             onPress={() => {
               setAmount(n);
@@ -145,9 +145,9 @@ export function RedPacketSheet({
       </View>
       <Input
         value={custom}
-        onChangeText={(v) => setCustom(v.replace(/[^\d.]/g, ''))}
+        onChangeText={(v) => setCustom(v.replace(/[^\d]/g, ''))}
         placeholder={t('或者自己填个数')}
-        keyboardType="decimal-pad"
+        keyboardType="number-pad"
         maxLength={7}
       />
       <Input value={note} onChangeText={setNote} placeholder={t('留一句话')} maxLength={30} />

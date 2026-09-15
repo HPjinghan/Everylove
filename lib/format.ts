@@ -42,10 +42,12 @@ export function daysTogether(createdAt: number, now = Date.now()): number {
   return Math.max(1, Math.floor((now - createdAt) / 86400000) + 1);
 }
 
-/** 零钱（D-128）¥ 显示：整数不带小数，其余两位 */
+/** 零钱单位（D-129，Harper：不用 ¥，用一个自己的货币）：Coin，整数 */
+export const COIN = 'Coin';
+
+/** 零钱显示：「120 Coin」（数字与 Coin 都是拉丁，可走 Fredoka） */
 export function money(n: number): string {
-  const v = Math.round(n * 100) / 100;
-  return Number.isInteger(v) ? `¥${v}` : `¥${v.toFixed(2)}`;
+  return `${Math.round(n)} ${COIN}`;
 }
 
 let idCounter = 0;

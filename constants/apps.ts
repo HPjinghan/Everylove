@@ -36,6 +36,8 @@ export const DESKTOP_APPS: DesktopApp[] = [
   { id: 'worlds', label: '世界书', icon: 'planet', route: '/apps/worlds' },
   // 日签（D-128）：每天一次水晶球抽签给零钱；她的钱包与账单也在这
   { id: 'fortune', label: '日签', icon: 'sparkles', route: '/apps/fortune' },
+  // 外卖（D-129）：像一个外卖平台——给自己或给 TA 点、骑手进度、订单记录
+  { id: 'delivery', label: '外卖', icon: 'takeout', route: '/apps/delivery' },
   { id: 'settings', label: '设置', icon: 'settings', route: '/apps/settings' },
 ];
 

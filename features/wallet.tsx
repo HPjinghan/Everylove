@@ -50,7 +50,7 @@ replyMarkers.register({
     if (!giftAllowed(bond.wallet, 'redpacket', now)) return;
     const { amount: asked, note } = parseGiftPayload(value ?? '', 'redpacket');
     const balance = bond.wallet?.balance ?? 0;
-    const amount = Math.min(asked ?? 0, balance);
+    const amount = Math.round(Math.min(asked ?? 0, balance));
     if (!(amount >= 1)) return;
     const id = uid('m');
     const msg: ChatMessage = {
@@ -85,15 +85,18 @@ replyMarkers.register({
     const [lo, hi] = DELIVERY_ETA_MIN;
     const arriveAt = now + (lo + Math.random() * (hi - lo)) * 60_000;
     const id = uid('m');
+    const orderId = uid('o');
     const msg: ChatMessage = {
       id,
       from: 'him',
       kind: 'card',
       text: item,
-      card: { type: 'delivery', title: item, subtitle: note, amount: price, fromHim: true, arriveAt, msgId: id, bondId: bond.id },
+      card: { type: 'delivery', title: item, subtitle: note, amount: price, fromHim: true, arriveAt, msgId: id, bondId: bond.id, orderId },
       at: now,
     };
     store.adjustHisWallet(bond.id, { amount: -price, kind: 'delivery', note: t('给她点的{item}', { item }) });
+    // 也进她的外卖 App「订单」（D-129）
+    store.addOrder({ id: orderId, at: now, from: 'him', bondId: bond.id, items: [{ name: item, qty: 1, price }], total: price, note, arriveAt });
     store.patchHisWallet(bond.id, { gifts: giftsAfter(bond.wallet, 'delivery', now) });
     mode.append(scope, [msg], { unreadDelta: unread ? 1 : 0 });
     const ok = await hasNotificationPermission().catch(() => false);
@@ -105,7 +108,9 @@ replyMarkers.register({
 cardKinds.register({
   type: 'delivery',
   contextText: (c) =>
-    `（你给她点了一份${c.title}${c.subtitle ? `，留言「${c.subtitle}」` : ''}，${(c.arriveAt ?? 0) <= Date.now() ? '已经送到了' : '骑手还在路上'}）`,
+    c.fromHim
+      ? `（你给她点了一份${c.title}${c.subtitle ? `，留言「${c.subtitle}」` : ''}，${(c.arriveAt ?? 0) <= Date.now() ? '已经送到了' : '骑手还在路上'}）`
+      : `（她给你点了一份外卖：${c.title}${c.subtitle ? `，留言「${c.subtitle}」` : ''}，${(c.arriveAt ?? 0) <= Date.now() ? '已经送到了' : '骑手还在路上'}）`,
   render: (c, dark) => <DeliveryCard title={c.title} subtitle={c.subtitle} arriveAt={c.arriveAt ?? 0} dark={dark} />,
 });
 

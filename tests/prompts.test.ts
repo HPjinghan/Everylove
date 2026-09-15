@@ -116,9 +116,9 @@ describe('消息进模型上下文的文字', () => {
     expect(
       [
         { id: '1', from: 'me', kind: 'card', text: '', at, card: { type: 'invite', title: '明天 15:00 · 街角咖啡馆' } },
-        { id: '2', from: 'me', kind: 'card', text: '', at, card: { type: 'redpacket', title: '¥5.20', subtitle: '买杯咖啡' } },
-        { id: '3', from: 'me', kind: 'card', text: '', at, card: { type: 'redpacket', title: '¥5.20', claimed: true } },
-        { id: '4', from: 'me', kind: 'card', text: '', at, card: { type: 'redpacket', title: '¥5.20', declined: true } },
+        { id: '2', from: 'me', kind: 'card', text: '', at, card: { type: 'redpacket', title: '52 Coin', subtitle: '买杯咖啡' } },
+        { id: '3', from: 'me', kind: 'card', text: '', at, card: { type: 'redpacket', title: '52 Coin', claimed: true } },
+        { id: '4', from: 'me', kind: 'card', text: '', at, card: { type: 'redpacket', title: '52 Coin', declined: true } },
         { id: '5', from: 'me', kind: 'card', text: '', at, card: { type: 'phoneRequest', title: '想看看你的手机' } },
         { id: '6', from: 'me', kind: 'card', text: '', at, card: { type: 'location', title: '西湖', subtitle: '杭州市西湖区' } },
       ].map((m) => messageContextText(m as never))

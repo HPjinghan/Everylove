@@ -7,6 +7,8 @@ import '@/features';
 
 import { chatProviders } from '@/core/providers';
 import { sendText } from '@/core/turn';
+import { orderStatus, orderTitle, placeOrder } from '@/lib/delivery';
+import { money } from '@/lib/format';
 import { drawFortune, FORTUNES, giftAllowed, giftsAfter, HIS_WALLET_START, parseGiftPayload, parseSalaryJSON, weeklySalaryFallback } from '@/lib/wallet';
 import { useAppStore } from '@/store/app-store';
 
@@ -27,6 +29,54 @@ beforeEach(() => {
 });
 
 const noPace = { pace: 'none' as const };
+
+describe('Coin', () => {
+  it('显示整数 + Coin，不用 ¥', () => {
+    expect(money(120)).toBe('120 Coin');
+    expect(money(5.2)).toBe('5 Coin');
+    expect(money(2000)).not.toContain('¥');
+  });
+});
+
+describe('外卖模拟（D-129）', () => {
+  it('状态按时间推：接单 → 取餐 → 在路上 → 送达', () => {
+    const at = 1_000_000;
+    const o = { at, arriveAt: at + 15 * 60_000 };
+    expect(orderStatus(o, at + 60_000)).toBe('accepted');
+    expect(orderStatus(o, at + 3 * 60_000)).toBe('pickup');
+    expect(orderStatus(o, at + 10 * 60_000)).toBe('riding');
+    expect(orderStatus(o, at + 15 * 60_000)).toBe('delivered');
+    expect(orderTitle({ items: [{ name: '珍珠奶茶', qty: 2, price: 18 }, { name: '饭团', qty: 1, price: 8 }] })).toBe('珍珠奶茶 ×2、饭团');
+  });
+
+  it('给自己点：扣 Coin、进订单；零钱不够下不了；给 TA 点：会话里多一张外卖卡片、TA 回一句', async () => {
+    const s = () => useAppStore.getState();
+    expect((await placeOrder({ storeId: 'tea', items: [{ itemId: 'milk-tea', qty: 1 }], to: 'me' })).ok).toBe(false);
+    s().creditWallet({ amount: 100, kind: 'fortune', note: '日签' });
+    const r = await placeOrder({ storeId: 'tea', items: [{ itemId: 'milk-tea', qty: 2 }], note: '奖励自己', to: 'me' });
+    expect(r.ok).toBe(true);
+    expect(s().wallet.balance).toBe(100 - 36);
+    expect(s().orders).toHaveLength(1);
+    expect(s().orders[0].items[0]).toEqual({ name: '珍珠奶茶', qty: 2, price: 18 });
+    expect(s().orders[0].from).toBe('me');
+    expect(s().orders[0].arriveAt).toBeGreaterThan(s().orders[0].at);
+    const bondId = s().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
+    const before = s().bonds.find((b) => b.id === bondId)!.messages.length;
+    nextReply = '姜茶？你倒是记得我怕冷。';
+    const r2 = await placeOrder({ storeId: 'store', items: [{ itemId: 'ginger-tea', qty: 1 }], to: bondId });
+    expect(r2.ok).toBe(true);
+    // 卡片与回复是异步落的：等一拍
+    await new Promise((res) => setTimeout(res, 50));
+    const msgs = s().bonds.find((b) => b.id === bondId)!.messages;
+    expect(msgs.length).toBe(before + 2);
+    expect(msgs[before].card?.type).toBe('delivery');
+    expect(msgs[before].card?.fromHim).toBeFalsy();
+    expect(msgs[before + 1].text).toBe('姜茶？你倒是记得我怕冷。');
+    expect(s().orders).toHaveLength(2);
+    expect(s().orders[1].bondId).toBe(bondId);
+    expect(s().wallet.balance).toBe(100 - 36 - 10);
+  });
+});
 
 describe('日签', () => {
   it('五档按权重抽；金额落在各档区间；r1 = 0 大吉、r1 → 1 末吉', () => {
