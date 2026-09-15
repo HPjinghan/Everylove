@@ -44,7 +44,7 @@ describe('她要看', () => {
     const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
     const scope = { mode: 'bonded' as const, bondId };
     const bond = () => useAppStore.getState().bonds.find((b) => b.id === bondId)!;
-    nextReply = '喏。\n[发图 桌上一杯冒着热气的姜茶]';
+    nextReply = '喏。\n[发图 东西|桌上一杯冒着热气的姜茶]';
     await sendText(scope, '你桌上的那杯拍给我看', { ui: noPace });
     await wait(20);
     const photo = bond().messages.at(-1)!;
@@ -53,6 +53,20 @@ describe('她要看', () => {
     expect(photo.caption).toBe('桌上一杯冒着热气的姜茶');
     expect(photo.imageUri).toBe('file:///tmp/photo.jpg');
     expect(bond().extraFired).toBeUndefined();
+  });
+
+  it('她要看他本人：写「自拍」那段 → 主角入镜；缺省只拍东西；两种都不能有别人', async () => {
+    const { buildHisPhotoPrompt, parseHisPhotoPayload } = await import('@/content/prompts');
+    const { CHARACTERS } = await import('@/content/characters');
+    expect(parseHisPhotoPayload('自拍|举着一串糖葫芦')).toEqual({ withHim: true, desc: '举着一串糖葫芦' });
+    expect(parseHisPhotoPayload('东西|桌上的姜茶')).toEqual({ withHim: false, desc: '桌上的姜茶' });
+    expect(parseHisPhotoPayload('桌上的姜茶')).toEqual({ withHim: false, desc: '桌上的姜茶' });
+    const him = buildHisPhotoPrompt(CHARACTERS[0], { desc: '举着一串糖葫芦', withHim: true });
+    expect(him).toContain('主角本人入镜');
+    expect(him).toContain('没有第二个人');
+    const thing = buildHisPhotoPrompt(CHARACTERS[0], { desc: '桌上的姜茶' });
+    expect(thing).toContain('没有任何人');
+    expect(thing).not.toContain('天气');
   });
 
   it('没要、也没东西送到：LV1 写了 [发图] 当没写', async () => {
@@ -78,7 +92,7 @@ describe('外卖送到', () => {
     const order = s().orders[0];
     // 还没到：不报到
     expect(await deliverDueArrivals(order.arriveAt - 60_000)).toBe(0);
-    nextReply = '到了，还烫着。\n[发图 手里一杯姜茶，杯壁上有水汽]';
+    nextReply = '到了，还烫着。\n[发图 东西|一杯姜茶，杯壁上有水汽]';
     expect(await deliverDueArrivals(order.arriveAt + 60_000)).toBe(1);
     await wait(20);
     const msgs = s().bonds.find((b) => b.id === bondId)!.messages;
