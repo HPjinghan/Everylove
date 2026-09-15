@@ -2,7 +2,8 @@
  * Onboarding（D-035；D-080 并成一步；D-100 纸面）：语言 →「先让 TA 们认识你」。
  * 昵称与「更倾向于和什么样的人建立关系」必填（后者既是全性向声明，也是交友推荐的口味过滤，原独立一步「你想被谁爱？」并入此处）；
  * 其余（性别/称呼/职业/生日）都可跳过，完整设定稍后在 设置 → 我的身份 里补充，也能为单个角色使用不同身份。
- * 第一步底部「已有账号？登录」（D-096）：换了手机的老用户直接登录把 TA 们接回来，不重走新手流（语言还没选，所以三语并排）。
+ * 第一步「已有账号？去登录」（D-096 → D-125 提到语言按钮正下方、outline 按钮）：换了手机的老用户直接登录把 TA 们接回来，不重走新手流（语言还没选，所以多语并排）。
+ * 默认语言 English（D-125）：没选过语言的新装机（TestFlight 公测面向海外）一打开就是英文，语言按钮 English 排第一。
  * 纸面：paper 底 + 菱格暗纹；字段用 Field / Input，选项用 Chip，主按钮 Button——无阴影、无描边输入框、r6。
  */
 
@@ -11,7 +12,6 @@ import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -31,8 +31,8 @@ import type { LovePref, UserProfile } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
 const LANGS: { key: Lang; label: string }[] = [
-  { key: 'zh', label: '中文' },
   { key: 'en', label: 'English' },
+  { key: 'zh', label: '中文' },
   { key: 'ja', label: '日本語' },
   { key: 'ko', label: '한국어' },
 ];
@@ -83,12 +83,14 @@ export default function OnboardingScreen() {
           ))}
         </View>
         {authConfigured() ? (
-          <Pressable
-            style={styles.signIn}
-            hitSlop={12}
-            onPress={() => router.push({ pathname: '/auth', params: { restore: '1' } })}>
-            <Text style={styles.signInText}>已有账号？登录 · Sign in · ログイン</Text>
-          </Pressable>
+          <View style={styles.signIn}>
+            <Text style={styles.signInHint}>Already have an account? · 已有账号？</Text>
+            <Button
+              label="Sign in · 去登录 · ログイン · 로그인"
+              variant="outline"
+              onPress={() => router.push({ pathname: '/auth', params: { restore: '1' } })}
+            />
+          </View>
         ) : null}
       </View>
     );
@@ -195,8 +197,8 @@ const styles = themed(() =>
     },
     hint: { fontSize: 14, color: Romance.sub, marginTop: 10 },
     options: { marginTop: 40, gap: 10 },
-    signIn: { marginTop: 'auto', alignSelf: 'center', paddingVertical: 18 },
-    signInText: { fontSize: 14, fontWeight: '500', color: Romance.sub },
+    signIn: { marginTop: 36, gap: 10 },
+    signInHint: { fontSize: 14, fontWeight: '500', color: Romance.sub, textAlign: 'center' },
     meContent: { flexGrow: 1 },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     submit: { marginTop: 30 },

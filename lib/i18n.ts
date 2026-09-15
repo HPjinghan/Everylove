@@ -1,7 +1,7 @@
 /**
  * i18n（D-066 三语 → D-101 四语：中 / 英 / 日 / 韩）。
  * 约定：**中文原文即键**——界面写 t('中文')，en/ja 词典查不到时回落中文（漏词不崩，只是没翻译）。
- * 插值：t('和{name}的约会', { name })。语言存 store.language，onboarding 第 0 步选择，设置可改。
+ * 插值：t('和{name}的约会', { name })。语言存 store.language（默认 'en'，D-125），onboarding 第 0 步选择，设置可改。
  * 注意：角色台词库（content/characters.ts 的开场白/offer/仪式台词）暂未三语——真模型输出语言由 prompts 的语言行控制
  * （内容本地化是另一场战役，见 OPEN_QUESTIONS #23；脚本引擎已删，D-069）。
  */
@@ -13,7 +13,7 @@ export function localeOf(lang: Lang = current): string {
   return lang === 'zh' ? 'zh-CN' : lang === 'ja' ? 'ja-JP' : lang === 'ko' ? 'ko-KR' : 'en-US';
 }
 
-let current: Lang = 'zh';
+let current: Lang = 'en'; // D-125：默认英文，与 store 初始值一致；持久化过的语言在 _layout 启动时 setLang 回来
 
 export function setLang(l: Lang): void {
   current = l;

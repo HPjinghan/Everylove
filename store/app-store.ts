@@ -243,7 +243,7 @@ interface AppState {
 
 const initialData = {
   onboarded: false,
-  language: 'zh' as Lang,
+  language: 'en' as Lang, // D-125：没选过语言默认英文（TestFlight 公测面向海外）
   introDone: false,
   introRevealSeen: false,
   lovePref: undefined as LovePref | undefined,

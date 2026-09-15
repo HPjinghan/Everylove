@@ -4,8 +4,13 @@
  * - react-native / expo-* / react-native-maps → 只提供 import 时会碰到的名字，其余按需返回空组件
  * - constants/theme → 只提供 applyThemeColors 与 themed（store 与卡片样式调）
  * - lib/weather → 固定的天气句（prompt 快照要确定性）
+ * - 测试默认语言钉为中文（D-125 起 App 默认 English，快照与断言都是中文写的；单测要别的语言自己 setLang）
  */
-import { vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
+
+import { setLang } from '@/lib/i18n';
+
+beforeEach(() => setLang('zh'));
 
 const mem = new Map<string, string>();
 vi.mock('@react-native-async-storage/async-storage', () => ({
