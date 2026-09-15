@@ -44,6 +44,7 @@ export * from './caption';
 export * from './chat';
 export * from './circle';
 export * from './create';
+export * from './delivery';
 export * from './heart';
 export * from './heartbeat';
 export * from './his-photo';

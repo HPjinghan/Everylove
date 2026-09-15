@@ -7,6 +7,7 @@ import { jobs } from '@/core/jobs';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { deliverDueHisNotes } from '@/lib/his-notes';
 import { deliverDueHisSchedules } from '@/lib/his-schedule';
+import { deliverDueArrivals } from '@/lib/delivery';
 import { checkMissedPlans } from '@/lib/outing';
 import { deliverDuePosts, deliverDueReactions } from '@/lib/posts';
 import { deliverDueReachOuts } from '@/lib/reach-out';
@@ -36,6 +37,9 @@ jobs.register({ id: 'post-reactions', on: ['launch', 'foreground'], run: () => d
 
 /** TA 主动找她（D-114）：到点的落进会话，并把下一条写好、排本地通知 */
 jobs.register({ id: 'reach-out', on: ['launch', 'foreground'], run: (now) => deliverDueReachOuts(now) });
+
+/** 外卖送到（D-135）：她给 TA 点的到了，TA 说一句、拍一张 */
+jobs.register({ id: 'delivery-arrivals', on: ['launch', 'foreground'], run: (now) => deliverDueArrivals(now) });
 
 /** TA 的周薪（D-128）：钱包没建的建、周薪没估的估一次、到期的入账 */
 jobs.register({ id: 'salary', on: ['launch', 'foreground'], run: (now) => deliverDueSalaries(now) });

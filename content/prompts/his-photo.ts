@@ -1,8 +1,9 @@
 /**
- * TA 主动发图（D-130）：给模型看的字 + 生图 prompt。
- * - 聊天里这一轮被给了选项时，TA 可以在回复末尾写 [发图 一句话描述]（她看不到这行，她会收到一张照片）——拍的是 TA 此刻眼前的东西；
+ * TA 发图（D-130 → D-135）：给模型看的字 + 生图 prompt。
+ * - 两种时刻：**她要看的 / 东西刚送到她点的**（随时可以）；**主动拍一张**（只在这一轮被给了选项时，lib/extras.ts 三道门）。
+ * - 回复末尾写 [发图 一句话描述]（她看不到这行，她会收到照片）——拍的是 TA 此刻眼前的东西；
  * - 照片按外出拍照同一套画风（角色的立绘画风）生成：第一人称随手拍，TA 自己不入镜或只入镜一点点，没有她、没有别人。
- * 解析、生成与落消息在 features/his-photo.tsx；三道门在 lib/extras.ts。
+ * 解析、生成与落消息在 features/his-photo.tsx。
  */
 
 import type { Character } from '@/lib/types';
@@ -13,11 +14,21 @@ import { portraitStyleFor } from './portrait';
 export const HIS_PHOTO_MARK = '[发图 一句话描述]';
 export const HIS_PHOTO_PATTERN = /\[发图\s*([^\]]*)\]/;
 
-export const HIS_PHOTO_LINES = [
-  `【发一张照片】这一轮如果顺手，可以在回复最后单独一行写 ${HIS_PHOTO_MARK}（她看不到这行，她会收到照片）：拍的是你此刻眼前的东西——你在做的事、桌上的、窗外的、路上的、刚买的。`,
-  '- 描述写具体的画面（光线、东西、地方），一句话；你自己不入镜或只入镜一只手、一角衣袖；不拍她、不拍别人。',
-  '- 不硬拍：聊到了、想让她看见才拍；这一轮不合适就不写。',
-];
+/** 她的话 / 舞台提示里出现这些 = 这一轮是「她要看」或「东西送到了」，发图不受主动那三道门管 */
+export const PHOTO_REQUEST_PATTERN = /看看|拍给|拍一张|拍张|发张|发一张|照片|图片|图给|长什么样|到了吗|送到|photo|pic|picture|写真|見せ|사진|보여/i;
+
+export function hisPhotoLines(offeredProactive: boolean): string[] {
+  const lines = [
+    `【发照片】她让你拍给她看、问你东西长什么样，或者她点的外卖 / 礼物刚送到你手上——这些时刻可以在回复最后单独一行写 ${HIS_PHOTO_MARK}（她看不到这行，她会收到照片），拍的是你此刻眼前的东西。`,
+    '- 描述写具体的画面（光线、东西、地方），一句话；你自己不入镜或只入镜一只手、一角衣袖；不拍她、不拍别人。',
+  ];
+  lines.push(
+    offeredProactive
+      ? '- 这一轮如果顺手，也可以主动拍一张你在做的事、桌上的、窗外的给她；不硬拍，聊到才拍。'
+      : '- 她没要、也没有东西送到就不拍。'
+  );
+  return lines;
+}
 
 /** 生图 prompt：TA 用手机随手拍的一张——画风跟角色走 */
 export function buildHisPhotoPrompt(character: Character, opts: { desc: string; weatherLine?: string; timeLine?: string }): string {

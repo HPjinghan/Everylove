@@ -6,7 +6,9 @@
  */
 
 import { menuItem, menuStore } from '@/content/menu';
-import { sendCard } from '@/core/turn';
+import { deliveryArrivedUserLine } from '@/content/prompts';
+import { respond, sendCard } from '@/core/turn';
+import { bondScope } from '@/lib/chat';
 import { money, uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { hasNotificationPermission, scheduleArrivalNotification } from '@/lib/notifications';
@@ -104,6 +106,32 @@ export async function placeOrder(input: PlaceOrderInput): Promise<{ ok: true; or
     );
   }
   return { ok: true, orderId: order.id };
+}
+
+/** 送到多久内还值得报到（更早的只标掉不说） */
+const ARRIVAL_WINDOW_MS = 12 * 3600_000;
+const arriving = new Set<string>();
+
+/** 启动 / 回前台：她给 TA 点的外卖到了 → TA 主动说一句、拍一张（D-135）；一单只报到一次。返回报到的单数 */
+export async function deliverDueArrivals(now = Date.now()): Promise<number> {
+  let n = 0;
+  for (const o of useAppStore.getState().orders) {
+    if (o.from !== 'me' || !o.bondId || o.reacted || o.arriveAt > now || arriving.has(o.id)) continue;
+    arriving.add(o.id);
+    try {
+      useAppStore.getState().markOrderReacted(o.id);
+      if (now - o.arriveAt > ARRIVAL_WINDOW_MS) continue;
+      const { reply } = await respond(
+        bondScope(o.bondId),
+        deliveryArrivedUserLine({ title: orderTitle(o), note: o.note, minutesAgo: (now - o.arriveAt) / 60_000 }),
+        { pace: 'none', unread: true }
+      );
+      if (reply) n++;
+    } finally {
+      arriving.delete(o.id);
+    }
+  }
+  return n;
 }
 
 /** 给 Coin 显示的一份小计 */

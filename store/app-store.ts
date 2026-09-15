@@ -181,6 +181,8 @@ interface AppState {
   creditWallet: (e: { amount: number; kind: LedgerKind; note: string; bondId?: string }) => number;
   setFortune: (f: DailyFortune) => void;
   addOrder: (o: Order) => void;
+  /** 外卖送到、TA 已报到（D-135） */
+  markOrderReacted: (orderId: string) => void;
   /** TA 主动的额外动作触发了（D-130）：记下 TA 此刻说了几条，10 条内不再触发 */
   setExtraFired: (bondId: string, count: number, at: number) => void;
   /** 扣一回合流量（先免费的再余额；Max 不扣），返回实际扣了多少 */
@@ -495,6 +497,8 @@ export const useAppStore = create<AppState>()(
       setFortune: (f) => set({ fortune: f }),
 
       addOrder: (o) => set({ orders: [...get().orders, o].slice(-ORDERS_MAX) }),
+
+      markOrderReacted: (orderId) => set({ orders: get().orders.map((o) => (o.id === orderId ? { ...o, reacted: true } : o)) }),
 
       setExtraFired: (bondId, count, at) =>
         set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, extraFired: { count, at } } : b)) }),
