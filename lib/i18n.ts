@@ -816,6 +816,7 @@ const en: Record<string, string> = {
   '一支玫瑰': 'A single rose',
   '照片冲洗中…': 'Developing the photo…',
   '照片没洗出来': 'The photo did not come out',
+  '这个时间已经过了': 'That time has already passed',
   // __EN_END__
 };
 
@@ -1604,6 +1605,7 @@ const ja: Record<string, string> = {
   '一支玫瑰': 'バラ一輪',
   '照片冲洗中…': '現像中…',
   '照片没洗出来': '現像できなかった',
+  '这个时间已经过了': 'その時間はもう過ぎています',
   // __JA_END__
 };
 
@@ -2395,6 +2397,7 @@ const ko: Record<string, string> = {
   '一支玫瑰': '장미 한 송이',
   '照片冲洗中…': '사진 현상 중…',
   '照片没洗出来': '사진이 나오지 않았어요',
+  '这个时间已经过了': '그 시간은 이미 지났어요',
   // __KO_END__
 };
 
