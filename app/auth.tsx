@@ -3,7 +3,7 @@
  * - 常规入口：设置 → 账号 · 云端；可返回
  * - 强制点（force=1）：第一次把人添加进通讯录之后——TA 值得一个存得住的家；无返回键
  * - 已有账号（restore=1，D-096）：onboarding 第一步底部「已有账号？登录」——新手机上把 TA 们接回来，不重走新手流
- * 登录方式：Apple（主打）+ 邮箱验证码（需项目配 SMTP，见 D-054 补记）。
+ * 登录方式：Apple（主打）+ 邮箱验证码（需项目配 SMTP，见 D-054 补记）；审核 / 测试账号（isPasswordAccount，D-127）改走邮箱 + 密码。
  * 成功后先对账（reconcileNow）再走：云端有存档、本机是空的 → 静默接回 → 落桌面；
  * 本机与云端都有关系 → 问她「接回云端 / 用本机覆盖」；云端没存档 → 本机第一份传上去、照常继续。
  * 纸面：paper 底 + 菱格；66 白图块内 cloud 图标；Apple 按钮 ink 底 r6（不用纯黑）；输入框 Input、主按钮 Button；无阴影。
@@ -34,8 +34,10 @@ import { Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import {
   authConfigured,
+  isPasswordAccount,
   sendEmailOtp,
   signInWithApple,
+  signInWithPassword,
   verifyEmailOtp,
 } from '@/lib/auth';
 import { reconcileNow, resolveConflict } from '@/lib/sync';
@@ -51,6 +53,8 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [password, setPassword] = useState('');
+  const passwordMode = isPasswordAccount(email);
   const [busy, setBusy] = useState(false);
 
   /** 不登录了：从 onboarding 来的回 onboarding，其余回桌面 */
@@ -110,7 +114,10 @@ export default function AuthScreen() {
     if (busy) return;
     setBusy(true);
     try {
-      if (!otpSent) {
+      if (passwordMode) {
+        await signInWithPassword(email.trim(), password);
+        await afterSignIn();
+      } else if (!otpSent) {
         await sendEmailOtp(email.trim());
         setOtpSent(true);
         Alert.alert(t('验证码已发出'), t('去邮箱看看（也翻翻垃圾箱）。'));
@@ -119,7 +126,7 @@ export default function AuthScreen() {
         await afterSignIn();
       }
     } catch (e) {
-      Alert.alert(otpSent ? t('验证失败') : t('发送失败'), (e as Error).message ?? t('稍后再试。'));
+      Alert.alert(otpSent || passwordMode ? t('验证失败') : t('发送失败'), (e as Error).message ?? t('稍后再试。'));
     } finally {
       setBusy(false);
     }
@@ -136,7 +143,8 @@ export default function AuthScreen() {
     );
   }
 
-  const emailDisabled = busy || !email.trim() || (otpSent && !otp.trim());
+  const emailDisabled =
+    busy || !email.trim() || (passwordMode ? !password : otpSent && !otp.trim());
 
   return (
     <View style={styles.screen}>
@@ -185,7 +193,18 @@ export default function AuthScreen() {
             autoCorrect={false}
             keyboardType="email-address"
           />
-          {otpSent ? (
+          {passwordMode ? (
+            <Input
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              placeholder={t('密码')}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              onSubmitEditing={doEmail}
+            />
+          ) : otpSent ? (
             <Input
               style={styles.input}
               value={otp}
@@ -196,7 +215,7 @@ export default function AuthScreen() {
             />
           ) : null}
           <Button
-            label={otpSent ? t('验证并登录') : t('发送验证码')}
+            label={passwordMode ? t('登录') : otpSent ? t('验证并登录') : t('发送验证码')}
             disabled={emailDisabled}
             onPress={doEmail}
             style={styles.emailBtn}

@@ -1,7 +1,7 @@
 # DECISIONS.md — 现行决策总账（按主题合并）
 
 > **怎么用**：一个主题一条，写**现在的口径**；被推翻的旧口径只在「曾经」留一行（编号 + 一句话）。某个编号当时的完整理由、验证与影响文件，到 `docs/archive/DECISIONS-log-2026-08-13_09-06.md` 按编号搜（冻结存档，D-001～D-096 逐条原文）。
-> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-126**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
+> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-128**（D-126 亲密度数值体系由另一会话在写））；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换 + 「曾经」加一行；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
 > 代码注释里的 D-编号一律按索引表查；D-087 / D-088 各撞号一次，用 a / b 区分。
 
 ## 编号索引
@@ -119,6 +119,7 @@
 | D-123 | 09-11 | 世界书描述导入：编辑页顶部「用一段话描述这个世界」→ `worldParseSystem` 整理成名字 / 一句话 / 设定，失败回落规则解析（同创造页 D-043） | E6 |
 | D-124 | 09-11 | 身边的人：通用回落标记后下次重试、首次生成 token 上限 900 → 1800；聊天随日子续写（查手机时隔够久按 TA 最近的日子写 1–3 段，每人留 40 句，失败不动） | F6 |
 | D-125 | 09-15 | TestFlight 公测前：默认语言 English（没选过语言的新装机一打开就是英文，测试环境钉回中文）；onboarding 第一屏「已有账号？去登录」提到语言按钮正下方做成 outline 按钮、English 排第一 | H2 / G1 |
+| D-127 | 09-15 | App Store 审核账号：Supabase 建带密码的 test@kotoko.ai（admin API，邮箱已确认）；登录页对 `@kotoko.ai` 邮箱改走邮箱 + 密码（`isPasswordAccount` / `signInWithPassword`），其他用户照旧 OTP | G2 |
 | D-119 | 09-10 | TA 自己的作息：`Bond.hisEvents` 按周由模型补写（上班 / 和朋友的约 / 家事，人只用身边的人），进【你的日程】（羁绊层所有用途）、查手机的日历里显示 | F6 / C1 |
 | D-118 | 09-10 | 「TA 正在看你的手机」回放：让 TA 看手机时全屏把她的记事本 / 日历 / Message 逐个翻开、停在他看的那条上（同一份 peekPayload，纯回放），放完且 TA 回了话显示「放下了手机」 | F6 |
 | D-117 | 09-10 | 分享流落地：expo-share-intent 原生分享扩展（app.json 插件，需 EAS Build），别的 App 分享 → 「转给他」选人 → 文字 / 链接走 share 卡片、图片走 sendImage；红线 2 舞台提示 | F9 |
@@ -336,7 +337,8 @@
 
 ### G2 · 账号、登录墙、云同步
 - **现行**：`lib/auth.ts`（Supabase：**Apple 登录主打** + 邮箱 OTP——免费层默认邮件服务没有 6 位码，需配自定义 SMTP；供应商抽象，界面只认导出）；`lib/sync.ts`（**云端为主、本地缓存**：整份 zustand 快照 ↔ `snapshots` 表（jsonb，RLS 仅本人），store 变化标脏 + 15 s 防抖上传、退后台冲刷、启动 / 登录 / 回前台**对账** `reconcileNow`（单飞））。**对账规则**（纯函数 `planReconcile`，`tests/sync.test.ts` 锁定）：云端无备份 → 本机第一份传上去；**这台手机没和这个账号对过账**（`meta.lastSyncedAt === 0` 或 `meta.userId` 是别的账号；D-096 前没记账号的旧存档视为同一账号）→ 本机不许覆盖云端：本机空（`localIsFresh`：没 onboarding，或既没羁绊也没自创角色；试聊记录不算）→ 静默拉云端，本机有关系 → `conflict` 由登录界面问「接回云端的 / 用本机覆盖云端」；同步过的手机 → 本机脏 → 推（正在用的设备赢），云端更新 → 拉。**登录界面** `app/auth.tsx` 三种入口：设置（可返回）/ **强制墙**（第一次把人加进通讯录后 `?force=1`，无「先不了」，之后不再重复强制）/ **已有账号**（onboarding 第一步 `?restore=1`，「欢迎回来」，可返回）；登录成功后**先对账再走**（云端有存档且本机空 → 接回 → 落桌面，桌面按存档决定落点）。游客 = 纯本地完整体验（匿名会话只作代理凭证，B2）；登录只为云备份「换手机也不会失去 TA」。删除：设置内「删除云端数据」（删 snapshots + 退出），账号本体删除待服务端函数。含聊天与记忆，按最高敏感级。建表 `docs/supabase-setup.sql`；env `EXPO_PUBLIC_SUPABASE_URL/_ANON_KEY`。
-- **编号**：D-054（含补记）→ D-057 → D-062 → D-088a → D-096。
+- **审核 / 测试账号（D-127）**：Beta App Review 与 App Review 的「Sign-in required」要一组账号 + 密码，OTP 收不到邮件。Supabase 项目本来就开着 email + password（`external_email_enabled`，最短 6 位），用 admin API 建了 `test@kotoko.ai`（`email_confirm: true`，user_metadata.role = app-review-tester，密码只放 App Store Connect 的登录信息栏与 Harper 手里，不进仓库）。App 端：`lib/auth.ts` `isPasswordAccount(email)`——域名在 `PASSWORD_DOMAINS`（现只有 kotoko.ai）的邮箱走 `signInWithPassword`；登录页输入这类邮箱时验证码栏换成密码栏、按钮「登录」，其他邮箱与 Apple 登录一字不动。审核账号的云端存档是空的，审核员从 onboarding 走到第一次入册再登录即可。
+- **编号**：D-054（含补记）→ D-057 → D-062 → D-088a → D-096 → D-127。
 - **曾经**：D-054 无登录墙、本地优先 + 60 s 防抖、登录时一律弹「恢复 / 覆盖」（→ D-062 强制墙、D-057 云端为主 15 s + 自动对账、D-096 只在新设备冲突时弹）；D-057「正在用的设备赢」无前提（→ D-096 加「对过账」前提）。
 
 ## H. 文案、语言与设计

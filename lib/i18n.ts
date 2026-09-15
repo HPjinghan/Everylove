@@ -726,6 +726,8 @@ const en: Record<string, string> = {
   '用一段话描述这个世界（可选）': 'Describe this world in a paragraph (optional)',
   '小说设定、脑子里的画面、一条条的规则都行，最多 {n} 字。': 'Novel lore, a picture in your head, or a list of rules, up to {n} characters.',
   '漂浮在云海上的城邦，蒸汽机和契约魔法并存，人人都有一只灵兽，没有手机、靠传信鸟联络……': 'A city-state floating above a sea of clouds, steam engines alongside contract magic, everyone has a spirit beast, no phones, messenger birds instead…',
+  '密码': 'Password',
+  '登录': 'Sign in',
   // __EN_END__
 };
 
@@ -1424,6 +1426,8 @@ const ja: Record<string, string> = {
   '用一段话描述这个世界（可选）': 'この世界をひと続きの文章で（任意）',
   '小说设定、脑子里的画面、一条条的规则都行，最多 {n} 字。': '小説の設定、頭の中の情景、箇条書きのルールでも。最大 {n} 文字。',
   '漂浮在云海上的城邦，蒸汽机和契约魔法并存，人人都有一只灵兽，没有手机、靠传信鸟联络……': '雲海に浮かぶ都市国家。蒸気機関と契約魔法が共存し、誰もが霊獣を一匹連れている。スマホはなく、伝書鳥で連絡を取る……',
+  '密码': 'パスワード',
+  '登录': 'ログイン',
   // __JA_END__
 };
 
@@ -2125,6 +2129,8 @@ const ko: Record<string, string> = {
   '用一段话描述这个世界（可选）': '이 세계를 한 단락으로 설명하기 (선택)',
   '小说设定、脑子里的画面、一条条的规则都行，最多 {n} 字。': '소설 설정, 머릿속 장면, 규칙 목록 뭐든 좋아요. 최대 {n}자.',
   '漂浮在云海上的城邦，蒸汽机和契约魔法并存，人人都有一只灵兽，没有手机、靠传信鸟联络……': '구름바다 위에 떠 있는 도시국가. 증기기관과 계약 마법이 공존하고, 누구나 영수 한 마리를 데리고 있다. 휴대폰은 없고 전서조로 연락한다……',
+  '密码': '비밀번호',
+  '登录': '로그인',
   // __KO_END__
 };
 

@@ -135,6 +135,21 @@ export async function verifyEmailOtp(email: string, code: string): Promise<Sessi
   return data.session!;
 }
 
+/** 审核 / 测试账号（D-127）：这些域名的邮箱走密码登录——App Store 审核员要的是「账号 + 密码」，收不到验证码邮件 */
+const PASSWORD_DOMAINS = ['kotoko.ai'];
+export function isPasswordAccount(email: string): boolean {
+  const domain = email.trim().toLowerCase().split('@')[1];
+  return !!domain && PASSWORD_DOMAINS.includes(domain);
+}
+
+export async function signInWithPassword(email: string, password: string): Promise<Session> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase 未配置');
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data.session!;
+}
+
 export async function signOut(): Promise<void> {
   await getSupabase()?.auth.signOut();
 }
