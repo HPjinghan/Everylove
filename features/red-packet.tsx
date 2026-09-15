@@ -5,6 +5,7 @@
 
 import { StyleSheet, Text, View } from 'react-native';
 
+import { showToast } from '@/components/toast';
 import { RED_PACKET_MARK, RED_PACKET_RULE } from '@/content/prompts';
 import { Romance, themed } from '@/constants/theme';
 import { cardKinds } from '@/core/cards';
@@ -12,6 +13,8 @@ import { replyMarkers } from '@/core/markers';
 import { ORDER, promptSections } from '@/core/prompt';
 import { sendCard, type TurnUi } from '@/core/turn';
 import { BONDED_CHAT } from '@/features/prompts';
+import { ClaimRedPacket } from '@/features/wallet';
+import { money } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { useAppStore } from '@/store/app-store';
 
@@ -26,8 +29,12 @@ replyMarkers.register({
     const store = useAppStore.getState();
     const bond = scope.bondId ? store.bonds.find((b) => b.id === scope.bondId) : undefined;
     if (!bond) return;
-    const packet = [...bond.messages].reverse().find((m) => m.card?.type === 'redpacket' && !m.card.claimed);
+    const packet = [...bond.messages].reverse().find((m) => m.card?.type === 'redpacket' && !m.card.fromHim && !m.card.claimed);
     if (packet?.card) {
+      // 之前没拆退回过的，这次拆了再扣一次（D-128 零钱）；TA 那边入账
+      const amount = packet.card.amount ?? 0;
+      if (packet.card.declined && amount > 0) store.creditWallet({ amount: -amount, kind: 'redpacket', note: t('给 {name} 的红包', { name: bond.name }), bondId: bond.id });
+      if (amount > 0) store.adjustHisWallet(bond.id, { amount, kind: 'redpacket', note: t('她的红包') });
       store.patchMessage({ bondId: bond.id }, packet.id, { card: { ...packet.card, claimed: true, declined: false } });
     }
   },
@@ -38,13 +45,19 @@ cardKinds.register({
   type: 'redpacket',
   bubbleColor: '#E5533D',
   contextText: (c) =>
-    `（她给你发了一个 ${c.title} 的红包${c.subtitle ? `，留言「${c.subtitle}」` : ''}${c.claimed ? '，你拆了' : c.declined ? '，你没拆' : ''}）`,
+    c.fromHim
+      ? `（你给她发了一个 ${c.title} 的红包${c.subtitle ? `，留言「${c.subtitle}」` : ''}${c.claimed ? '，她收下了' : ''}）`
+      : `（她给你发了一个 ${c.title} 的红包${c.subtitle ? `，留言「${c.subtitle}」` : ''}${c.claimed ? '，你拆了' : c.declined ? '，你没拆' : ''}）`,
   render: (c) => (
     <View style={styles.red}>
       <Text style={styles.kicker}>🧧 {t('红包')}</Text>
       <Text style={styles.amount}>{c.title}</Text>
       {c.subtitle ? <Text style={styles.note}>{c.subtitle}</Text> : null}
-      <Text style={styles.state}>{c.claimed ? t('已领取') : c.declined ? t('TA 没拆') : t('等 TA 拆开')}</Text>
+      {c.fromHim && c.msgId && c.bondId ? (
+        <ClaimRedPacket msgId={c.msgId} bondId={c.bondId} amount={c.amount ?? 0} claimed={c.claimed} />
+      ) : (
+        <Text style={styles.state}>{c.claimed ? t('已领取') : c.declined ? t('TA 没拆') : t('等 TA 拆开')}</Text>
+      )}
     </View>
   ),
 });
@@ -52,14 +65,25 @@ cardKinds.register({
 /** 她发红包：卡片上屏 → TA 按性格决定拆不拆；这轮没拆就标「TA 没拆」（之后聊到了还能拆） */
 export async function sendRedPacket(bondId: string, amount: number, note: string, ui?: TurnUi): Promise<void> {
   const scope = { mode: 'bonded' as const, bondId };
+  const store = useAppStore.getState();
+  const bond = store.bonds.find((b) => b.id === bondId);
+  if (!bond) return;
+  // 零钱（D-128）：先从她的钱包扣；不够就发不出
+  if (store.wallet.balance < amount) {
+    showToast(t('零钱不够了'));
+    return;
+  }
+  store.creditWallet({ amount: -amount, kind: 'redpacket', note: t('给 {name} 的红包', { name: bond.name }), bondId });
   const { id } = await sendCard(
     scope,
-    { type: 'redpacket', title: `¥${amount.toFixed(2)}`, subtitle: note, amount },
-    `（她给你发了一个 ¥${amount.toFixed(2)} 的红包，留言「${note}」。按你的性格和你们的关系决定拆不拆：拆了就在回复最后单独一行写 ${RED_PACKET_MARK}；不拆就说说为什么或逗她。）`,
+    { type: 'redpacket', title: money(amount), subtitle: note, amount },
+    `（她给你发了一个 ${money(amount)} 的红包，留言「${note}」。按你的性格和你们的关系决定拆不拆：拆了就在回复最后单独一行写 ${RED_PACKET_MARK}；不拆就说说为什么或逗她。）`,
     ui
   );
   const after = useAppStore.getState().bonds.find((b) => b.id === bondId)?.messages.find((m) => m.id === id);
   if (after?.card && !after.card.claimed) {
+    // TA 没拆：钱退回她的零钱（之后聊到了再拆会再扣）
+    useAppStore.getState().creditWallet({ amount, kind: 'refund', note: t('{name} 没拆的红包', { name: bond.name }), bondId });
     useAppStore.getState().patchMessage({ bondId }, id, { card: { ...after.card, declined: true } });
   }
 }

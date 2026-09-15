@@ -90,6 +90,8 @@ export default function BondScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bondId]);
 
+  // 零钱余额（D-128）：红包面板看它；hooks 要在提前 return 之前
+  const walletBalance = useAppStore((s) => s.wallet.balance);
   if (!bond) return <Redirect href="/apps/messages" />;
   const character = findCharacter(bond.characterId);
   if (!character) return <Redirect href="/apps/messages" />;
@@ -220,7 +222,7 @@ export default function BondScreen() {
       />
 
       <InviteSheet visible={sheet === 'invite'} onClose={() => setSheet(null)} onPick={onInvite} />
-      <RedPacketSheet visible={sheet === 'redpacket'} onClose={() => setSheet(null)} onSend={onRedPacket} />
+      <RedPacketSheet visible={sheet === 'redpacket'} onClose={() => setSheet(null)} onSend={onRedPacket} balance={walletBalance} />
       <LocationPicker visible={sheet === 'location'} onClose={() => setSheet(null)} onSend={onLocation} />
       {/* 查手机（D-082/D-084）：没解锁是 iPhone 式锁屏（猜 / 问 TA 要），解锁后才是手机内容 */}
       <PhoneLock

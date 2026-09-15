@@ -10,6 +10,7 @@ import '@/features/modes';
 
 import '@/features/invite';
 import '@/features/red-packet';
+import '@/features/wallet';
 import '@/features/location';
 import '@/features/phone-peek';
 import '@/features/share';

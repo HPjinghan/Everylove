@@ -26,7 +26,7 @@ import { planTimeLabel } from '@/lib/appointments';
 import { levelOf } from '@/lib/bond';
 import { ensureCircle, refreshCircleChats } from '@/lib/circle';
 import { ensureHisSchedule, upcomingHisEvents } from '@/lib/his-schedule';
-import { clockTime, timeAgo } from '@/lib/format';
+import { clockTime, money, timeAgo } from '@/lib/format';
 import { portraitFor } from '@/lib/imagegen';
 import { deliverDueHisNotes } from '@/lib/his-notes';
 import { getLang, localeOf, t } from '@/lib/i18n';
@@ -41,7 +41,7 @@ const TILE = 60;
 /** 她那一格在 Message / 通讯录里的 id */
 const HER = 'her';
 
-type PhoneApp = 'messages' | 'contacts' | 'notes' | 'calendar' | 'album';
+type PhoneApp = 'messages' | 'contacts' | 'notes' | 'calendar' | 'album' | 'wallet';
 
 const APPS: { id: PhoneApp; label: string; icon: MingCuteName }[] = [
   { id: 'messages', label: 'Message', icon: 'chat' },
@@ -49,6 +49,8 @@ const APPS: { id: PhoneApp; label: string; icon: MingCuteName }[] = [
   { id: 'notes', label: '记事本', icon: 'notebook' },
   { id: 'calendar', label: '日历', icon: 'calendar' },
   { id: 'album', label: '相册', icon: 'album' },
+  // 钱包（D-128）：TA 的零钱与账单（周薪、给她的红包 / 外卖）
+  { id: 'wallet', label: '钱包', icon: 'wallet' },
 ];
 
 function dayParts(at: number): { md: string; wd: string } {
@@ -373,6 +375,36 @@ export function PhoneSheet({
             </ScrollView>
           ) : null}
 
+          {app === 'wallet' ? (
+            <ScrollView contentContainerStyle={styles.listBody}>
+              <Card style={styles.walletCard}>
+                <Text style={styles.walletLabel}>{t('零钱')}</Text>
+                <Text style={styles.walletBalance}>{money(bond.wallet?.balance ?? 0)}</Text>
+                {bond.wallet?.job ? <Text style={styles.walletJob}>{bond.wallet.job}</Text> : null}
+              </Card>
+              <Card style={styles.walletLedger}>
+                {(bond.wallet?.ledger ?? []).length ? (
+                  [...(bond.wallet?.ledger ?? [])].reverse().map((e, i) => (
+                    <View key={e.id} style={[styles.walletRow, i > 0 && styles.walletRowLine]}>
+                      <View style={styles.walletRowBody}>
+                        <Text style={styles.walletRowTitle} numberOfLines={1}>
+                          {e.note}
+                        </Text>
+                        <Text style={styles.walletRowSub}>{timeAgo(e.at)}</Text>
+                      </View>
+                      <Text style={[styles.walletAmount, e.amount < 0 && styles.walletAmountOut]}>
+                        {e.amount < 0 ? '-' : '+'}
+                        {money(Math.abs(e.amount))}
+                      </Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.empty}>{t('…')}</Text>
+                )}
+              </Card>
+            </ScrollView>
+          ) : null}
+
           {app === 'album' ? (
             <ScrollView contentContainerStyle={styles.albumBody}>
               {photos.length ? (
@@ -416,6 +448,19 @@ const styles = themed(() =>
       paddingHorizontal: 5,
     },
     badgeText: { fontFamily: Fonts.labelBold, fontSize: 12, color: '#FFFFFF' },
+    // 钱包（D-128）
+    walletCard: { alignItems: 'center', paddingVertical: 22 },
+    walletLabel: { fontSize: 12, color: Romance.sub },
+    walletBalance: { fontFamily: Fonts.labelBold, fontSize: 30, color: Romance.ink, marginTop: 4 },
+    walletJob: { fontSize: 12, color: Romance.sub, marginTop: 6 },
+    walletLedger: { paddingVertical: 4, marginTop: 10 },
+    walletRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 12 },
+    walletRowLine: { borderTopWidth: Shape.stroke, borderTopColor: Romance.stroke },
+    walletRowBody: { flex: 1 },
+    walletRowTitle: { fontSize: 14, fontWeight: '600', color: Romance.ink },
+    walletRowSub: { fontSize: 11, color: Romance.sub, marginTop: 2 },
+    walletAmount: { fontFamily: Fonts.labelBold, fontSize: 14, color: Romance.accentStrong },
+    walletAmountOut: { color: Romance.ink },
     // 内页
     screen: { flex: 1, backgroundColor: Romance.bg },
     header: {

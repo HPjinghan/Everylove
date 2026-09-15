@@ -37,6 +37,8 @@ export const ORDER = {
   secrets: 100,
   phone: 110,
   redPacket: 120,
+  /** TA 的钱包（D-128）：紧跟红包规则 */
+  wallet: 122,
   manner: 130,
   strangerManner: 135,
   initiative: 140,

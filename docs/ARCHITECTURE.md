@@ -39,7 +39,8 @@ features/      玩法：往插槽里注册；只 import core / lib / store / con
   prompts.ts     基础分段（人设 / 时间 / 她是谁 / 记忆 / 分寸 / 红线 / 输出格式）
   modes.ts       初识 / 亲密 / 外出 / 通话
   invite.tsx     外出邀请：卡片 + sendInvite
-  red-packet.tsx 红包：prompt 分段 + 暗号 + 卡片 + sendRedPacket
+  red-packet.tsx 红包：prompt 分段 + 暗号 + 卡片 + sendRedPacket（从零钱扣，D-128）
+  wallet.tsx     TA 主动花钱（D-128）：【你的钱包】分段 + 暗号 [发红包 …] / [点外卖 …] + 外卖卡片 + 她点开 TA 的红包
   location.tsx   位置：卡片 + sendLocation
   phone-peek.tsx 查手机：prompt 分段 + 暗号 + 卡片 + askPasscode
   voice-reply.ts TA 偶尔发语音（bubble 钩子）

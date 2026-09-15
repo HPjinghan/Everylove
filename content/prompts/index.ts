@@ -59,6 +59,7 @@ export * from './recall';
 export * from './red-packet';
 export * from './shared';
 export * from './social';
+export * from './wallet';
 export * from './warmth';
 export * from './world';
 

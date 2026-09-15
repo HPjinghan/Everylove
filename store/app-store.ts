@@ -13,6 +13,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { bondedPostsFor, CHARACTERS, scriptFor, seedCharactersFor, SQUARE_POSTS } from '@/content/characters';
 import { uid } from '@/lib/format';
 import { applyPaperTint } from '@/constants/theme';
+import { emptyHisWallet, ledgerEntry, pushLedger } from '@/lib/wallet';
 import { dedupeBonds, legacyBondLevel, levelLabelOf, levelOf, WARMTH_GAINS, WARMTH_START, warmthAfter, xpGain, type XpSource } from '@/lib/bond';
 import { setLang, type Lang } from '@/lib/i18n';
 import { DEFAULT_DOCK, DEFAULT_WALLPAPER, wallpaperTint } from '@/constants/apps';
@@ -34,10 +35,14 @@ import type {
   LovePref,
   OutingPlan,
   OutingSession,
+  DailyFortune,
+  HisWallet,
+  LedgerKind,
   Post,
   PostComment,
   RecallState,
   SquareChat,
+  Wallet,
   UserProfile,
   WorldBook,
 } from '@/lib/types';
@@ -45,6 +50,9 @@ import type {
 /** 到点前写好的主动消息（D-114） */
 export interface ReachPending {
   texts: string[];
+  /** 写好时带的暗号（D-128：TA 主动那条可能带外卖 / 红包），到点落进会话后再落状态 */
+  flags?: Record<string, boolean>;
+  values?: Record<string, string>;
   due: number;
   generatedAt: number;
   notifId?: string;
@@ -119,6 +127,10 @@ interface AppState {
   reachSchedule: Record<string, number>;
   /** 到点前写好的下一条（D-114）：bondId → 文字 + 到点时间 + 写好的时间 + 本地通知 id；她在写好之后又说过话就作废重写 */
   reachPending: Record<string, ReachPending>;
+  /** 她的零钱（D-128） */
+  wallet: Wallet;
+  /** 今天抽过的日签（D-128） */
+  fortune?: DailyFortune;
 
   completeOnboarding: (pref: LovePref) => void;
   setLanguage: (l: Lang) => void;
@@ -149,6 +161,12 @@ interface AppState {
   markReachDelivered: (bondId: string, at: number) => void;
   /** 推送召回状态（lib/recall.ts） */
   setRecall: (bondId: string, recall: RecallState | undefined) => void;
+  /** 零钱进出（D-128）：正入负出，出账不超过余额；返回实际记的数 */
+  creditWallet: (e: { amount: number; kind: LedgerKind; note: string; bondId?: string }) => number;
+  setFortune: (f: DailyFortune) => void;
+  /** TA 的钱包进出；没有钱包先按起点建 */
+  adjustHisWallet: (bondId: string, e: { amount: number; kind: LedgerKind; note: string }) => number;
+  patchHisWallet: (bondId: string, patch: Partial<HisWallet>) => void;
   /** 缔结（D-088）：TA 对她的称呼 = 她在这个角色眼中的昵称，生日抄自身份；两者不再在缔结时问 */
   createBond: (input: {
     characterId: string;
@@ -285,6 +303,8 @@ const initialData = {
   sharedWorldsAt: 0,
   reachSchedule: {} as Record<string, number>,
   reachPending: {} as Record<string, ReachPending>,
+  wallet: { balance: 0, ledger: [] } as Wallet,
+  fortune: undefined as DailyFortune | undefined,
   quietHours: { from: 23, to: 8 },
 };
 
@@ -435,6 +455,30 @@ export const useAppStore = create<AppState>()(
       setRecall: (bondId, recall) =>
         set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, recall } : b)) }),
 
+      creditWallet: (e) => {
+        const w = get().wallet;
+        const amount = e.amount < 0 ? -Math.min(-e.amount, w.balance) : e.amount;
+        if (!amount) return 0;
+        set({ wallet: { balance: Math.round((w.balance + amount) * 100) / 100, ledger: pushLedger(w.ledger, ledgerEntry({ ...e, amount })) } });
+        return amount;
+      },
+
+      setFortune: (f) => set({ fortune: f }),
+
+      adjustHisWallet: (bondId, e) => {
+        const b = get().bonds.find((x) => x.id === bondId);
+        if (!b) return 0;
+        const w = b.wallet ?? emptyHisWallet();
+        const amount = e.amount < 0 ? -Math.min(-e.amount, w.balance) : e.amount;
+        if (!amount) return 0;
+        const wallet: HisWallet = { ...w, balance: Math.round((w.balance + amount) * 100) / 100, ledger: pushLedger(w.ledger, ledgerEntry({ ...e, amount, bondId })) };
+        set({ bonds: get().bonds.map((x) => (x.id === bondId ? { ...x, wallet } : x)) });
+        return amount;
+      },
+
+      patchHisWallet: (bondId, patch) =>
+        set({ bonds: get().bonds.map((x) => (x.id === bondId ? { ...x, wallet: { ...(x.wallet ?? emptyHisWallet()), ...patch } } : x)) }),
+
       createBond: ({ characterId, name, nickname: nicknameInput, birthday: birthdayInput }) => {
         const state = get();
         // 一个角色只有一段羁绊（D-122）：重复缔结直接返回已有的那段
@@ -489,6 +533,8 @@ export const useAppStore = create<AppState>()(
           // 温度从起点开始（D-126）
           warmth: WARMTH_START,
           warmthAt: now,
+          // TA 的钱包（D-128）：¥2000 起，周薪之后估
+          wallet: emptyHisWallet(now),
           messages: [...squareMsgs, ceremony, ...greeting],
           // 缔结后落桌面（D-058 方案 B）：打招呼计未读——桌面横幅就是「点进去」的教学
           unread: greeting.length,
@@ -969,7 +1015,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'everylove-store',
-      version: 8,
+      version: 9,
       storage: createJSONStorage(() => AsyncStorage),
       // v2：种子角色改版（陆隽行下架、人外上新），清掉指向已删除角色的数据
       // v3：新手流标记（D-058）——已有存档的老用户不重走新手流
@@ -978,9 +1024,14 @@ export const useAppStore = create<AppState>()(
       // v6：主题只剩纸面（D-110）——旧配色 id 归 paper；壁纸即主题
       // v7：一个角色只有一段羁绊（D-122）——缔结连点造出的重复羁绊去重（留消息最多的那段），连带清掉它们的帖子与主动找她的钟
       // v8：亲密度数值体系（D-126）——新曲线下等级只升不降（legacyLevel）、温度从起点开始、当天记账清零
+      // v9：零钱（D-128）——老羁绊补 TA 的钱包（¥2000 起，周薪从现在起算）
       migrate: (persisted: unknown, version) => {
         const state = persisted as (Partial<AppState> & Record<string, unknown>) | undefined;
         if (!state) return state;
+        if (version < 9 && state.bonds) {
+          const now = Date.now();
+          state.bonds = state.bonds.map((b) => (b.wallet ? b : { ...b, wallet: emptyHisWallet(now) }));
+        }
         if (version < 8 && state.bonds) {
           const now = Date.now();
           state.bonds = state.bonds.map((b) => {

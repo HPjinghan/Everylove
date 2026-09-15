@@ -34,6 +34,8 @@ export const DESKTOP_APPS: DesktopApp[] = [
   { id: 'phones', label: '查手机', icon: 'phoneEye', route: '/apps/phones' },
   // 世界书（D-110）：默认现实世界，可创建别的世界并收藏；创造角色时从收藏里选，决定 TA 所处的世界与认知
   { id: 'worlds', label: '世界书', icon: 'planet', route: '/apps/worlds' },
+  // 日签（D-128）：每天一次水晶球抽签给零钱；她的钱包与账单也在这
+  { id: 'fortune', label: '日签', icon: 'sparkles', route: '/apps/fortune' },
   { id: 'settings', label: '设置', icon: 'settings', route: '/apps/settings' },
 ];
 

@@ -67,8 +67,10 @@ export function history(lines: [ChatMessage['from'], string][]): ChatMessage[] {
   }));
 }
 
-export const bondBase: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'birthday' | 'createdAt' | 'memory'> = {
+export const bondBase: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'birthday' | 'createdAt' | 'memory' | 'wallet'> = {
   name: '沈之言',
+  // 零钱（D-128）：TA 的钱包
+  wallet: { balance: 2380, ledger: [], weekly: 3500, job: '讲师的薪水', lastSalaryAt: NOW.getTime() - 3 * 86_400_000 },
   nickname: '小满',
   affinity: 160,
   birthday: '11-02',

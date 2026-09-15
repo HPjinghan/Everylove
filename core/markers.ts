@@ -14,6 +14,8 @@ export interface MarkerInfo {
   mode: ConversationMode;
   /** 带数值的暗号（pattern 的第一个捕获组），如 [心动 7] → '7' */
   value?: string;
+  /** 暗号落出来的消息要不要计未读（她不在这个会话页时，如 TA 主动那条带的外卖） */
+  unread?: boolean;
 }
 
 export interface ReplyMarker {

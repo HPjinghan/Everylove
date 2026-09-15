@@ -42,6 +42,12 @@ export function daysTogether(createdAt: number, now = Date.now()): number {
   return Math.max(1, Math.floor((now - createdAt) / 86400000) + 1);
 }
 
+/** 零钱（D-128）¥ 显示：整数不带小数，其余两位 */
+export function money(n: number): string {
+  const v = Math.round(n * 100) / 100;
+  return Number.isInteger(v) ? `¥${v}` : `¥${v.toFixed(2)}`;
+}
+
 let idCounter = 0;
 export function uid(prefix = 'id'): string {
   idCounter = (idCounter + 1) % 10000;

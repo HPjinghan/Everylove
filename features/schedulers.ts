@@ -11,6 +11,7 @@ import { checkMissedPlans } from '@/lib/outing';
 import { deliverDuePosts, deliverDueReactions } from '@/lib/posts';
 import { deliverDueReachOuts } from '@/lib/reach-out';
 import { deliverDueRecalls } from '@/lib/recall';
+import { deliverDueSalaries } from '@/lib/salary';
 import { initWeather, refreshWeather } from '@/lib/weather';
 import { useAppStore } from '@/store/app-store';
 
@@ -35,6 +36,9 @@ jobs.register({ id: 'post-reactions', on: ['launch', 'foreground'], run: () => d
 
 /** TA 主动找她（D-114）：到点的落进会话，并把下一条写好、排本地通知 */
 jobs.register({ id: 'reach-out', on: ['launch', 'foreground'], run: (now) => deliverDueReachOuts(now) });
+
+/** TA 的周薪（D-128）：钱包没建的建、周薪没估的估一次、到期的入账 */
+jobs.register({ id: 'salary', on: ['launch', 'foreground'], run: (now) => deliverDueSalaries(now) });
 
 /** 推送召回（D-126）：温度到 0 停主动，第 7 / 14 / 30 天各一条通知；点开 App 时到点的那条落进会话 */
 jobs.register({ id: 'recall', on: ['launch', 'foreground'], run: (now) => deliverDueRecalls(now) });

@@ -110,17 +110,25 @@ export async function runTurn(scope: TurnScope, userText: string, ui: TurnUi = {
     mode.append(scope, [msg], { unreadDelta: ui.unread ? 1 : 0 });
   }
 
+  await applyMarkers(scope, reply, { ctx, unread: ui.unread });
+
+  await turnHooks.after.emit(info);
+  return { reply };
+}
+
+/** 按 flags 逐个落暗号；回合外（主动找她）也能用——ctx 不传就按 scope 现组 */
+export async function applyMarkers(scope: TurnScope, reply: EngineReply, opts: { ctx?: EngineContext; unread?: boolean } = {}): Promise<void> {
+  const mode = modeOf(scope);
+  const ctx = opts.ctx ?? mode.context(scope, '');
+  if (!ctx) return;
   for (const m of replyMarkers.list()) {
     if (!reply.flags?.[m.key]) continue;
     try {
-      await m.apply({ scope, ctx, mode, value: reply.values?.[m.key] });
+      await m.apply({ scope, ctx, mode, value: reply.values?.[m.key], unread: opts.unread });
     } catch (e) {
       console.warn(`[marker:${m.key}] 落状态失败：`, e);
     }
   }
-
-  await turnHooks.after.emit(info);
-  return { reply };
 }
 
 /** 她发一句文字：落会话 + 记账 → TA 回 */

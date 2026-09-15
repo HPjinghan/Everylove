@@ -162,6 +162,13 @@ export interface ChatCard {
   /** 位置：真实坐标（D-084，卡片里带一小块地图） */
   lat?: number;
   lon?: number;
+  /** TA 发来的（D-128 红包 / 外卖）：她点开红包才入账 */
+  fromHim?: boolean;
+  /** TA 发来的卡片记下自己在哪，好让卡片上的按钮改到它 */
+  msgId?: string;
+  bondId?: string;
+  /** 外卖：骑手几点送到 */
+  arriveAt?: number;
 }
 
 export interface ChatMessage {
@@ -304,6 +311,49 @@ export interface Bond {
   levelShown?: number;
   /** 推送召回（温度到 0 之后第 7 / 14 / 30 天各一条，lib/recall.ts） */
   recall?: RecallState;
+  /** TA 的钱包（D-128） */
+  wallet?: HisWallet;
+}
+
+/** 零钱账本（D-128）：她的钱包与 TA 的钱包共用 */
+export type LedgerKind = 'fortune' | 'redpacket' | 'delivery' | 'salary' | 'refund';
+export interface LedgerEntry {
+  id: string;
+  at: number;
+  /** 正入负出 */
+  amount: number;
+  kind: LedgerKind;
+  note: string;
+  bondId?: string;
+}
+
+/** 她的钱包（store.wallet） */
+export interface Wallet {
+  balance: number;
+  ledger: LedgerEntry[];
+}
+
+/** TA 的钱包（Bond.wallet）：缔结 ¥2000 起，周薪按人设估一次、每周到账 */
+export interface HisWallet {
+  balance: number;
+  ledger: LedgerEntry[];
+  /** 每周到账多少；没估过为空（lib/wallet.ts ensureSalary） */
+  weekly?: number;
+  /** 钱从哪来（一句话，进 prompt） */
+  job?: string;
+  /** 上次发薪时刻（缔结时起算） */
+  lastSalaryAt?: number;
+  /** 今天给她送过几次（每天每种最多一次） */
+  gifts?: { day: string; redpacket: number; delivery: number };
+}
+
+/** 日签（store.fortune）：今天抽过的那一签 */
+export interface DailyFortune {
+  day: string;
+  luck: 'great' | 'good' | 'fair' | 'small' | 'last';
+  amount: number;
+  /** 签文（中文键，显示时 t()） */
+  text: string;
 }
 
 /** 推送召回的状态（D-126） */
@@ -489,6 +539,7 @@ export interface EngineContext {
     | 'warmth'
     | 'warmthAt'
     | 'coldReturnAt'
+    | 'wallet'
   >;
   /** 广场偶遇的记录（D-110）：初识 / 广场模式注入——TA 记得见过她 */
   encounters?: Encounter[];

@@ -10,12 +10,13 @@
  */
 
 import { buildReachOutUserLine } from '@/content/prompts';
-import { bondedContext } from '@/lib/chat';
+import { applyMarkers } from '@/core/turn';
+import { bondedContext, bondScope } from '@/lib/chat';
 import { bondLevel, DISTANT_MIN_INTERVAL_MS, WARMTH_REACH_MULT, warmthBand, warmthNow, type WarmthBand } from '@/lib/bond';
 import { generateReply, stripStageDirections } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { cancelScheduled, hasNotificationPermission, scheduleArrivalNotification } from '@/lib/notifications';
-import type { Bond, Character, ChatMessage } from '@/lib/types';
+import type { Bond, Character, ChatMessage, EngineReply } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
@@ -117,18 +118,20 @@ export async function deliverDueReachOuts(now = Date.now()): Promise<number> {
         useAppStore.getState().setReachDue(bond.id, outsideQuiet(now + DEFER_MIN_MS + Math.random() * (DEFER_MAX_MS - DEFER_MIN_MS)));
         continue;
       }
-      const texts = await textsForDelivery(fresh, character, now);
+      const reply = await replyForDelivery(fresh, character, now);
       // 不管发没发成，先排下一次的钟：失败不会每次回前台都重试轰炸
       useAppStore.getState().setReachDue(bond.id, nextReachAt(now, character, fresh));
       await clearPending(bond.id);
-      if (texts) {
+      if (reply) {
         useAppStore.getState().appendBond(
           bond.id,
-          texts.map((text, i) => ({ id: uid('m'), from: 'him' as const, kind: 'text' as const, text, at: now + i })),
-          { unreadDelta: texts.length }
+          reply.texts.map((text, i) => ({ id: uid('m'), from: 'him' as const, kind: 'text' as const, text, at: now + i })),
+          { unreadDelta: reply.texts.length }
         );
         // 她 24h 内回这条 = 「回复 TA 主动」来源（D-126，北极星）
         useAppStore.getState().markReachDelivered(bond.id, now);
+        // TA 主动那条也可能带一份外卖 / 一个红包（D-128）：按暗号落状态、计未读
+        if (reply.flags) await applyMarkers(bondScope(bond.id), reply, { unread: true });
         delivered++;
       }
     } finally {
@@ -151,11 +154,11 @@ export async function deliverDueReachOuts(now = Date.now()): Promise<number> {
   return delivered;
 }
 
-/** 到点要发的文字：写好的那条还新鲜就用它，否则现写 */
-async function textsForDelivery(bond: Bond, character: Character, now: number): Promise<string[] | null> {
+/** 到点要发的那条：写好的还新鲜就用它（连暗号一起），否则现写 */
+async function replyForDelivery(bond: Bond, character: Character, now: number): Promise<EngineReply | null> {
   const pending = useAppStore.getState().reachPending[bond.id];
   const her = lastFrom(bond.messages, 'me');
-  if (pending && (!her || her.at < pending.generatedAt)) return pending.texts;
+  if (pending && (!her || her.at < pending.generatedAt)) return { texts: pending.texts, flags: pending.flags, values: pending.values };
   return generateReachOut(bond, character, new Date(now));
 }
 
@@ -165,12 +168,14 @@ async function preparePending(bond: Bond, character: Character, due: number): Pr
   const her = lastFrom(bond.messages, 'me');
   if (pending && pending.due === due && (!her || her.at < pending.generatedAt)) return;
   await clearPending(bond.id);
-  const texts = await generateReachOut(bond, character, new Date(due));
-  if (!texts) return;
+  const reply = await generateReachOut(bond, character, new Date(due));
+  if (!reply) return;
   // 权限在缔结那一刻问过（D-120）；这里只看有没有，不再弹
   const ok = await hasNotificationPermission().catch(() => false);
-  const notifId = ok ? await scheduleArrivalNotification(bond.name, texts.join(' '), new Date(due), bond.id) : null;
-  useAppStore.getState().setReachPending(bond.id, { texts, due, generatedAt: Date.now(), notifId: notifId ?? undefined });
+  const notifId = ok ? await scheduleArrivalNotification(bond.name, reply.texts.join(' '), new Date(due), bond.id) : null;
+  useAppStore
+    .getState()
+    .setReachPending(bond.id, { texts: reply.texts, flags: reply.flags, values: reply.values, due, generatedAt: Date.now(), notifId: notifId ?? undefined });
 }
 
 async function clearPending(bondId: string): Promise<void> {
@@ -180,8 +185,8 @@ async function clearPending(bondId: string): Promise<void> {
   useAppStore.getState().setReachPending(bondId, undefined);
 }
 
-/** 亲密模式整套 prompt + 舞台提示 → TA 主动的一两句；不可用 / 失败返回 null */
-async function generateReachOut(bond: Bond, character: Character, at: Date): Promise<string[] | null> {
+/** 亲密模式整套 prompt + 舞台提示 → TA 主动的一两句（连暗号）；不可用 / 失败返回 null */
+async function generateReachOut(bond: Bond, character: Character, at: Date): Promise<EngineReply | null> {
   const posts = useAppStore.getState().posts;
   const her = lastFrom(bond.messages, 'me');
   const lastMsg = [...bond.messages].reverse().find((m) => m.from !== 'system' && m.text);
@@ -198,7 +203,7 @@ async function generateReachOut(bond: Bond, character: Character, at: Date): Pro
   try {
     const reply = await generateReply(ctx);
     const texts = stripStageDirections(reply.texts).filter(Boolean);
-    return texts.length ? texts : null;
+    return texts.length ? { ...reply, texts } : null;
   } catch (e) {
     console.warn('[reach-out] 主动消息没写成，本周期跳过：', e);
     return null;

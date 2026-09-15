@@ -17,6 +17,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { PLACES, type Place } from '@/content/places';
+import { money } from '@/lib/format';
 import { t } from '@/lib/i18n';
 
 export type ExtraSheet = 'invite' | 'phone' | 'redpacket' | 'location' | null;
@@ -109,21 +110,25 @@ export function RedPacketSheet({
   visible,
   onClose,
   onSend,
+  balance,
 }: {
   visible: boolean;
   onClose: () => void;
   onSend: (amount: number, note: string) => void;
+  /** 她的零钱余额（D-128）：超过发不出 */
+  balance: number;
 }) {
   const [amount, setAmount] = useState<number | null>(52);
   const [custom, setCustom] = useState('');
   const [note, setNote] = useState('');
   const value = custom.trim() ? Number(custom) : amount;
-  const ok = value != null && Number.isFinite(value) && value > 0 && value <= 9999;
+  const ok = value != null && Number.isFinite(value) && value > 0 && value <= 9999 && value <= balance;
 
   return (
     <Sheet visible={visible} title={t('红包')} onClose={onClose}>
       <Card style={styles.amountCard}>
-        <Text style={styles.amount}>¥ {ok ? value!.toFixed(2) : '0.00'}</Text>
+        <Text style={styles.amount}>¥ {value != null && Number.isFinite(value) && value > 0 ? value.toFixed(2) : '0.00'}</Text>
+        <Text style={[styles.balance, value != null && value > balance && styles.balanceShort]}>{t('零钱 {n}', { n: money(balance) })}</Text>
       </Card>
       <View style={styles.chips}>
         {RED_PACKET_PRESETS.map((n) => (
@@ -175,6 +180,8 @@ const styles = themed(() =>
     // 金额：白卡 + accent Fredoka（不再用红）
     amountCard: { paddingVertical: 28, alignItems: 'center' },
     amount: { fontFamily: Fonts.labelBold, fontSize: 30, color: Romance.accentStrong },
+    balance: { fontSize: 12, color: Romance.sub, marginTop: 6 },
+    balanceShort: { color: Romance.accentStrong },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     submit: { marginTop: 6 },
   })
