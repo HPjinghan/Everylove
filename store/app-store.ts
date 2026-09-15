@@ -1066,7 +1066,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'everylove-store',
-      version: 9,
+      version: 10,
       storage: createJSONStorage(() => AsyncStorage),
       // v2：种子角色改版（陆隽行下架、人外上新），清掉指向已删除角色的数据
       // v3：新手流标记（D-058）——已有存档的老用户不重走新手流
@@ -1076,9 +1076,15 @@ export const useAppStore = create<AppState>()(
       // v7：一个角色只有一段羁绊（D-122）——缔结连点造出的重复羁绊去重（留消息最多的那段），连带清掉它们的帖子与主动找她的钟
       // v8：亲密度数值体系（D-126）——新曲线下等级只升不降（legacyLevel）、温度从起点开始、当天记账清零
       // v9：零钱（D-128）——老羁绊补 TA 的钱包（2000 Coin 起，周薪从现在起算）
+      // v10：桌面布局全部回默认（D-136，Harper：强制把所有人的布局刷新成默认首页）
       migrate: (persisted: unknown, version) => {
         const state = persisted as (Partial<AppState> & Record<string, unknown>) | undefined;
         if (!state) return state;
+        if (version < 10) {
+          state.desktopSlots = {};
+          state.desktopOrder = [];
+          state.desktopDock = DEFAULT_DOCK;
+        }
         if (version < 9 && state.bonds) {
           const now = Date.now();
           state.bonds = state.bonds.map((b) => (b.wallet ? b : { ...b, wallet: emptyHisWallet(now) }));

@@ -544,9 +544,10 @@ export default function Desktop() {
       <DiamondBackground />
 
       <View style={{ paddingTop: insets.top }}>
-        {/* Message 快捷路径：未读横幅——一人直达会话，多人合并进 Message */}
+        {/* Message 快捷路径：未读横幅——一人直达会话，多人合并进 Message。绝对定位叠在时钟上（D-136）：不挤压下面，网格行数不随它变 */}
         {unreadBonds.length > 0 && !editMode ? (
           <Pressable
+            style={[styles.notifWrap, { top: insets.top + Space.screen }]}
             onPress={() =>
               unreadBonds.length === 1
                 ? router.push({
@@ -735,11 +736,11 @@ const styles = themed(() =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Romance.bg },
     // 未读横幅：白卡描边，38 paper 图块 + chat 图标
+    // 叠在时钟上、不占布局（D-136）
+    notifWrap: { position: 'absolute', left: Space.screen, right: Space.screen, zIndex: 2 },
     notif: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginHorizontal: Space.screen,
-      marginTop: Space.screen,
       gap: Space.inlineLoose,
     },
     notifIconWrap: {
