@@ -337,6 +337,8 @@ export interface Bond {
   recall?: RecallState;
   /** TA 的钱包（D-128） */
   wallet?: HisWallet;
+  /** TA 主动的额外动作（D-130）上一次触发时 TA 已说了几条（10 条冷却，lib/extras.ts） */
+  extraFired?: { count: number; at: number };
 }
 
 /** 零钱账本（D-128）：她的钱包与 TA 的钱包共用 */
@@ -564,6 +566,7 @@ export interface EngineContext {
     | 'warmthAt'
     | 'coldReturnAt'
     | 'wallet'
+    | 'extraFired'
   >;
   /** 广场偶遇的记录（D-110）：初识 / 广场模式注入——TA 记得见过她 */
   encounters?: Encounter[];

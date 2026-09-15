@@ -289,6 +289,11 @@ function Bubble({
               <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>{t('TA 没看清这张')}</Text>
             ) : null}
           </View>
+        ) : msg.kind === 'image' && !msg.imageUri ? (
+          // TA 主动发的照片（D-130）：还在生成 / 没生成出来
+          <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>
+            {msg.mediaStatus === 'failed' ? t('照片没洗出来') : t('照片冲洗中…')}
+          </Text>
         ) : msg.kind === 'card' && msg.card ? (
           <CardBody msg={msg} dark={textDark} />
         ) : (

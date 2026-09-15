@@ -127,6 +127,8 @@ describe('TA 主动送东西', () => {
     const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
     const bond = () => useAppStore.getState().bonds.find((b) => b.id === bondId)!;
     expect(bond().wallet?.balance).toBe(HIS_WALLET_START);
+    // 等级门（D-130）：外卖要 LV3（300 XP + 3 天）
+    useAppStore.setState({ bonds: useAppStore.getState().bonds.map((b) => (b.id === bondId ? { ...b, affinity: 300, createdAt: Date.now() - 5 * 24 * 3600_000 } : b)) });
     nextReply = '别熬了。\n[发红包 52|去买杯热的]';
     await sendText({ mode: 'bonded', bondId }, '加班到现在', { ui: noPace });
     const packet = bond().messages.at(-1)!;
@@ -143,7 +145,8 @@ describe('TA 主动送东西', () => {
     await sendText({ mode: 'bonded', bondId }, '还有吗', { ui: noPace });
     expect(bond().wallet?.balance).toBe(HIS_WALLET_START - 52);
     expect(bond().messages.at(-1)!.text).toBe('再给你一个。');
-    // 外卖
+    // 外卖（先把 10 条冷却清掉，D-130）
+    useAppStore.setState({ bonds: useAppStore.getState().bonds.map((b) => (b.id === bondId ? { ...b, extraFired: undefined } : b)) });
     nextReply = '先吃点东西。\n[点外卖 姜茶|20|趁热]';
     await sendText({ mode: 'bonded', bondId }, '有点冷', { ui: noPace });
     const food = bond().messages.at(-1)!;

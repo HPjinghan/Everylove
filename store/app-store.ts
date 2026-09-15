@@ -171,6 +171,8 @@ interface AppState {
   creditWallet: (e: { amount: number; kind: LedgerKind; note: string; bondId?: string }) => number;
   setFortune: (f: DailyFortune) => void;
   addOrder: (o: Order) => void;
+  /** TA 主动的额外动作触发了（D-130）：记下 TA 此刻说了几条，10 条内不再触发 */
+  setExtraFired: (bondId: string, count: number, at: number) => void;
   /** TA 的钱包进出；没有钱包先按起点建 */
   adjustHisWallet: (bondId: string, e: { amount: number; kind: LedgerKind; note: string }) => number;
   patchHisWallet: (bondId: string, patch: Partial<HisWallet>) => void;
@@ -474,6 +476,9 @@ export const useAppStore = create<AppState>()(
       setFortune: (f) => set({ fortune: f }),
 
       addOrder: (o) => set({ orders: [...get().orders, o].slice(-ORDERS_MAX) }),
+
+      setExtraFired: (bondId, count, at) =>
+        set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, extraFired: { count, at } } : b)) }),
 
       adjustHisWallet: (bondId, e) => {
         const b = get().bonds.find((x) => x.id === bondId);

@@ -29,6 +29,7 @@ function bondPick(bond: Bond, opts: { phone?: boolean } = {}): NonNullable<Engin
     warmthAt: bond.warmthAt,
     coldReturnAt: bond.coldReturnAt,
     wallet: bond.wallet,
+    extraFired: bond.extraFired,
   };
   if (!opts.phone) return base;
   // 查手机（D-082）：TA 的手机密码第一次需要时才生成，记在这段羁绊上

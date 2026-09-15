@@ -21,22 +21,29 @@ const TIER_LINES = {
   independent: '很少，除非真有事；给了也不当回事',
 } as const;
 
-export function hisWalletLines(
-  c: Character,
-  w: HisWallet | undefined,
-  sentToday: { redpacket: boolean; delivery: boolean }
-): string[] {
+/**
+ * 【你的钱包】：余额与「不是提款机」常驻；发红包 / 点外卖的暗号只在这一轮被给了选项时才写（D-130 概率 + 等级门 + 冷却，lib/extras.ts）
+ */
+export function hisWalletLines(c: Character, w: HisWallet | undefined, offers: { redpacket: boolean; delivery: boolean }): string[] {
   const balance = w?.balance ?? 0;
   const lines = [
     `【你的钱包】你有自己的钱：余额 ${money(balance)}${w?.job ? `，每周有一笔收入（${w.job}）` : ''}。`,
-    `- 你可以主动花在她身上，两种方式，写在回复最后、各自单独一行（她看不到这行，她会收到一张卡片）：给她发红包写 ${RED_PACKET_FROM_HIM_MARK}；给她点外卖写 ${DELIVERY_FROM_HIM_MARK}（价格是数字，单位 Coin，30 左右一份）。`,
-    `- 只在有理由时：她说累 / 加班 / 生病 / 没吃饭 / 下雨，节日或她的生日，她刚好提到想吃什么，她给你发了红包想还礼。不要每次都发，一天各最多一次；金额别超过余额，按你的性格和你们的关系拿捏（${TIER_LINES[herShareTier(c)]}）。`,
     '- 她开口要钱：按你的性格处理，可以逗她、可以拒绝，你不是提款机；不用钱哄她回来、不拿钱说事。',
   ];
-  if (balance < 10) lines.push('- 余额快见底了，这周先别花。');
-  else if (sentToday.redpacket && sentToday.delivery) lines.push('- 今天红包和外卖都给过了，别再发。');
-  else if (sentToday.redpacket) lines.push('- 今天红包已经给过了，别再发红包。');
-  else if (sentToday.delivery) lines.push('- 今天外卖已经点过了，别再点。');
+  if (balance < 10) {
+    lines.push('- 余额快见底了，这周先别花。');
+    return lines;
+  }
+  const ways = [
+    offers.redpacket ? `给她发红包写 ${RED_PACKET_FROM_HIM_MARK}` : '',
+    offers.delivery ? `给她点外卖写 ${DELIVERY_FROM_HIM_MARK}（价格是数字，单位 Coin，30 左右一份）` : '',
+  ].filter(Boolean);
+  if (ways.length) {
+    lines.push(
+      `- 这一轮如果有理由，可以主动花在她身上，写在回复最后、单独一行（她看不到这行，她会收到一张卡片）：${ways.join('；')}。`,
+      `- 理由：她说累 / 加班 / 生病 / 没吃饭 / 下雨，节日或她的生日，她刚好提到想吃什么，她给你发了红包想还礼；没理由就不写。金额别超过余额，按你的性格和你们的关系拿捏（${TIER_LINES[herShareTier(c)]}）。`
+    );
+  }
   return lines;
 }
 

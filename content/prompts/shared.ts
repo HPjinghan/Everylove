@@ -24,6 +24,9 @@ export function messageContextText(m: ChatMessage): string {
     body = m.transcript?.trim() ? `（语音）${m.transcript.trim()}` : '';
   } else if (m.from === 'me' && m.kind === 'image') {
     body = m.caption?.trim() ? `（她发来一张照片：${m.caption.trim()}）${body ? ' ' + body : ''}` : '';
+  } else if (m.from === 'him' && m.kind === 'image' && !m.polaroid) {
+    // TA 主动发的照片（D-130）：TA 记得自己拍了什么
+    body = m.caption?.trim() ? `（你发了一张照片：${m.caption.trim()}）${body ? ' ' + body : ''}` : body;
   }
   if (!body) return '';
   if (m.replyTo?.text) {

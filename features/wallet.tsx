@@ -20,7 +20,8 @@ import { money, uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { hasNotificationPermission, scheduleArrivalNotification } from '@/lib/notifications';
 import type { ChatMessage } from '@/lib/types';
-import { DELIVERY_DEFAULT_PRICE, DELIVERY_ETA_MIN, fortuneDayKey, giftAllowed, giftsAfter, parseGiftPayload } from '@/lib/wallet';
+import { extraEligible, extraOffered, himTurnCount } from '@/lib/extras';
+import { DELIVERY_DEFAULT_PRICE, DELIVERY_ETA_MIN, giftAllowed, giftsAfter, parseGiftPayload } from '@/lib/wallet';
 import { useAppStore } from '@/store/app-store';
 
 /* ── prompt：TA 知道自己有多少钱、今天送过什么 ── */
@@ -30,10 +31,12 @@ promptSections.register({
   order: ORDER.wallet,
   lines: (ctx, env) => {
     if (!ctx.bond) return [];
-    const w = ctx.bond.wallet;
-    const day = fortuneDayKey(env.now.getTime());
-    const g = w?.gifts && w.gifts.day === day ? w.gifts : undefined;
-    return hisWalletLines(ctx.character, w, { redpacket: (g?.redpacket ?? 0) > 0, delivery: (g?.delivery ?? 0) > 0 });
+    const now = env.now.getTime();
+    // 三道门（D-130）：等级 / 10 条冷却 / 概率——过了才把暗号给模型
+    return hisWalletLines(ctx.character, ctx.bond.wallet, {
+      redpacket: extraOffered(ctx.bond, ctx.character, 'redpacket', ctx.history, now),
+      delivery: extraOffered(ctx.bond, ctx.character, 'delivery', ctx.history, now),
+    });
   },
 });
 
@@ -47,7 +50,7 @@ replyMarkers.register({
     const bond = scope.bondId ? store.bonds.find((b) => b.id === scope.bondId) : undefined;
     if (!bond) return;
     const now = Date.now();
-    if (!giftAllowed(bond.wallet, 'redpacket', now)) return;
+    if (!extraEligible(bond, 'redpacket', bond.messages, now) || !giftAllowed(bond.wallet, 'redpacket', now)) return;
     const { amount: asked, note } = parseGiftPayload(value ?? '', 'redpacket');
     const balance = bond.wallet?.balance ?? 0;
     const amount = Math.round(Math.min(asked ?? 0, balance));
@@ -64,6 +67,7 @@ replyMarkers.register({
     store.adjustHisWallet(bond.id, { amount: -amount, kind: 'redpacket', note: t('给她的红包') });
     store.patchHisWallet(bond.id, { gifts: giftsAfter(bond.wallet, 'redpacket', now) });
     mode.append(scope, [msg], { unreadDelta: unread ? 1 : 0 });
+    useAppStore.getState().setExtraFired(bond.id, himTurnCount(useAppStore.getState().bonds.find((b) => b.id === bond.id)?.messages ?? []), now);
   },
 });
 
@@ -77,7 +81,7 @@ replyMarkers.register({
     const bond = scope.bondId ? store.bonds.find((b) => b.id === scope.bondId) : undefined;
     if (!bond) return;
     const now = Date.now();
-    if (!giftAllowed(bond.wallet, 'delivery', now)) return;
+    if (!extraEligible(bond, 'delivery', bond.messages, now) || !giftAllowed(bond.wallet, 'delivery', now)) return;
     const { item, amount: asked, note } = parseGiftPayload(value ?? '', 'delivery');
     if (!item) return;
     const price = Math.round(asked ?? DELIVERY_DEFAULT_PRICE);
@@ -99,6 +103,7 @@ replyMarkers.register({
     store.addOrder({ id: orderId, at: now, from: 'him', bondId: bond.id, items: [{ name: item, qty: 1, price }], total: price, note, arriveAt });
     store.patchHisWallet(bond.id, { gifts: giftsAfter(bond.wallet, 'delivery', now) });
     mode.append(scope, [msg], { unreadDelta: unread ? 1 : 0 });
+    useAppStore.getState().setExtraFired(bond.id, himTurnCount(useAppStore.getState().bonds.find((b) => b.id === bond.id)?.messages ?? []), now);
     const ok = await hasNotificationPermission().catch(() => false);
     if (ok) void scheduleArrivalNotification(bond.name, t('你的{item}到了', { item }), new Date(arriveAt), bond.id);
   },

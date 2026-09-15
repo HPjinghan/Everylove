@@ -46,6 +46,7 @@ export * from './circle';
 export * from './create';
 export * from './heart';
 export * from './heartbeat';
+export * from './his-photo';
 export * from './his-notes';
 export * from './his-schedule';
 export * from './image-common';
