@@ -6,7 +6,7 @@
  * 没洗出来标 failed、不重试。主动找她那条也可能带一张（lib/reach-out.ts applyMarkers）。
  */
 
-import { buildHisPhotoPrompt, HIS_PHOTO_MARK, HIS_PHOTO_PATTERN, hisPhotoLines, PHOTO_REQUEST_PATTERN } from '@/content/prompts';
+import { buildHisPhotoPrompt, HIS_PHOTO_MARK, HIS_PHOTO_PATTERN, hisPhotoLines, parseHisPhotoPayload, PHOTO_REQUEST_PATTERN } from '@/content/prompts';
 import { replyMarkers } from '@/core/markers';
 import { ORDER, promptSections } from '@/core/prompt';
 import { BONDED_CHAT } from '@/features/prompts';
@@ -38,7 +38,7 @@ replyMarkers.register({
   async apply({ scope, mode, ctx, value, unread }) {
     const store = useAppStore.getState();
     const bond = scope.bondId ? store.bonds.find((b) => b.id === scope.bondId) : undefined;
-    const desc = (value ?? '').trim();
+    const { withHim, desc } = parseHisPhotoPayload(value ?? '');
     if (!bond || !desc || !imageKeyReady()) return;
     const now = Date.now();
     const requested = photoRequested(ctx);
@@ -49,7 +49,7 @@ replyMarkers.register({
     // 主动拍的才记冷却；她要的 / 送到的不占主动的额度
     if (!requested) useAppStore.getState().setExtraFired(bond.id, himTurnCount(useAppStore.getState().bonds.find((b) => b.id === bond.id)?.messages ?? []), now);
     try {
-      const uri = await generateScenePhoto(buildHisPhotoPrompt(ctx.character, { desc }), ctx.character);
+      const uri = await generateScenePhoto(buildHisPhotoPrompt(ctx.character, { desc, withHim }), ctx.character);
       useAppStore.getState().patchMessage({ bondId: bond.id }, id, { imageUri: uri, mediaStatus: undefined });
     } catch (e) {
       console.warn('[his-photo] 照片没洗出来：', e);

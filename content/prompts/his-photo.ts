@@ -11,7 +11,7 @@ import type { Character } from '@/lib/types';
 import { COMIC_QUALITY, COMIC_RULES, COMIC_STYLE, comicSubjectLine } from './image-common';
 import { portraitStyleFor } from './portrait';
 
-export const HIS_PHOTO_MARK = '[发图 一句话描述]';
+export const HIS_PHOTO_MARK = '[发图 自拍或东西|一句话描述]';
 export const HIS_PHOTO_PATTERN = /\[发图\s*([^\]]*)\]/;
 
 /** 她的话 / 舞台提示里出现这些 = 这一轮是「她要看」或「东西送到了」，发图不受主动那三道门管 */
@@ -19,8 +19,9 @@ export const PHOTO_REQUEST_PATTERN = /看看|拍给|拍一张|拍张|发张|发�
 
 export function hisPhotoLines(offeredProactive: boolean): string[] {
   const lines = [
-    `【发照片】她让你拍给她看、问你东西长什么样，或者她点的外卖 / 礼物刚送到你手上——这些时刻可以在回复最后单独一行写 ${HIS_PHOTO_MARK}（她看不到这行，她会收到照片），拍的是你此刻眼前的东西。`,
-    '- 描述写具体的画面（光线、东西、地方），一句话；只拍东西本身，你自己不入镜、也不拍手，不拍她、不拍别人。',
+    `【发照片】她让你拍给她看、问你东西长什么样，或者她点的外卖 / 礼物刚送到你手上——这些时刻可以在回复最后单独一行写 ${HIS_PHOTO_MARK}（她看不到这行，她会收到照片）。`,
+    '- 第一段按她要看的写：她要看你（自拍、你举着什么、你穿了什么）写「自拍」，画面里有你；她要看东西（外卖、桌上的、窗外的）写「东西」，画面里只有东西、没有人也没有手。第二段一句话写具体画面（光线、东西、地方）。',
+    '- 任何情况画面里都没有别人：没有第二个人，也没有别人的手、影子、身体；不拍她。',
   ];
   lines.push(
     offeredProactive
@@ -30,17 +31,27 @@ export function hisPhotoLines(offeredProactive: boolean): string[] {
   return lines;
 }
 
+/** 暗号第一段：她要看人还是东西（缺省东西） */
+export function parseHisPhotoPayload(payload: string): { withHim: boolean; desc: string } {
+  const parts = payload.split(/[|｜]/).map((s) => s.trim());
+  if (parts.length >= 2) return { withHim: /自拍|人|自己|我/.test(parts[0]), desc: parts.slice(1).join(' ').trim() };
+  return { withHim: false, desc: parts[0] ?? '' };
+}
+
 /**
- * 生图 prompt：TA 用手机随手拍的一张——画风跟角色走。只画她要看的那样东西：不带星期、时间、天气这些字，画面里不出现文字；
- * 画面里没有任何人、也没有手（D-135 补，Harper：「不要用合影那种，会出现一只对方的手；他收到东西默认家里是一个人」）。
+ * 生图 prompt：TA 用手机随手拍的一张——画风跟角色走。不带星期、时间、天气这些字，画面里不出现文字；
+ * 按她要的定（D-135 补，Harper）：要看他 → 主角入镜（自拍 / 举着东西），单人；要看东西 → 只有东西、没有人也没有手。
+ * 任何情况没有别人：不能有第二个人、别人的手或影子（他收到东西默认家里就他一个人）。
  */
-export function buildHisPhotoPrompt(character: Character, opts: { desc: string }): string {
+export function buildHisPhotoPrompt(character: Character, opts: { desc: string; withHim?: boolean }): string {
   const styleLine = portraitStyleFor(character).line || COMIC_STYLE;
   return [
     styleLine,
     comicSubjectLine(character),
     `一张主角用手机随手拍的照片：${opts.desc.trim()}。`,
-    '构图：第一人称随手拍——镜头只对着眼前的东西（桌上的、手边的、窗外的）；画面里没有任何人，也没有手、手指、手臂、衣袖，不是合影。生活感、不摆拍。画面里不要出现任何文字、日期、时间、天气图标。',
+    opts.withHim
+      ? '构图：主角自己拍的——主角本人入镜（自拍或按描述举着 / 穿着那样东西），单人构图、中近景，神态自然；画面里只有主角一个人，没有第二个人、没有别人的手或影子。生活感、不摆拍。画面里不要出现任何文字、日期、时间、天气图标。'
+      : '构图：第一人称随手拍——镜头只对着眼前的东西（桌上的、手边的、窗外的）；画面里没有任何人，也没有手、手指、手臂、衣袖，不是合影。生活感、不摆拍。画面里不要出现任何文字、日期、时间、天气图标。',
     COMIC_QUALITY,
     COMIC_RULES,
   ].join('\n');

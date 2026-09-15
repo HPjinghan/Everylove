@@ -8,6 +8,6 @@ export function deliveryArrivedUserLine(input: { title: string; note?: string; m
   return [
     `（她给你点的外卖${when}送到你手上了：${input.title}${input.note ? `，留言「${input.note}」` : ''}。`,
     '说一句收到时的感觉——按你的性格，喜欢的东西就是喜欢，不客套；1-2 句，像随手发的。',
-    `顺手拍一张给她看：在回复最后单独一行写 [发图 一句话描述你拍到的它]（她看不到这行，她会收到照片）。）`,
+    `顺手拍一张给她看：在回复最后单独一行写 [发图 东西|一句话描述你拍到的它]（只拍东西，画面里没有人；她看不到这行，她会收到照片）。）`,
   ].join('\n');
 }
