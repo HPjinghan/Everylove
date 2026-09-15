@@ -80,6 +80,8 @@ npx eas-cli submit -p ios --latest --profile production
   npx eas-cli@latest update --channel production --environment production --platform ios --skip-bundler --non-interactive --message "..."   # 新版 eas-cli 非交互必须带 --environment
   ```
 
+  **导出前先 `git status`**：`expo export` 打的是磁盘上的工作区，不是 HEAD。2026-09-15 另一个 Claude 会话正在同一目录里改 `lib/bond.ts`（未提交的 D-126 数值），被一起打进 production，只好 `eas update:republish --group <上一组> --destination-channel production --message …` 回滚。工作区不干净时到临时目录 `git worktree add --detach <dir> <commit>`、`cmd /c rmdir` 能删的 junction 把 `node_modules` 接过去（`New-Item -ItemType Junction`）、在那里导出 + 发布，完事 `git worktree remove --force`。
+
   Expo Go 朋友那条同理，`--channel production` 换成 `--channel preview`。导出如果在 90% 左右报 worker 被 SIGTERM，多半是机器上还挂着别的 node 进程（如没退出的 vitest），杀掉再跑。
 
 - **动了 `app.json` 插件、原生依赖（新的 expo-* 原生模块、react-native-maps 之类）、SDK**：必须重新 `build` + `submit`，**不要**只推 update（runtimeVersion 用的是 sdkVersion 策略，同 runtime 的旧包会拿到不兼容的 JS）。
