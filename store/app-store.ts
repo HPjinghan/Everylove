@@ -14,9 +14,6 @@ import { bondedPostsFor, CHARACTERS, scriptFor, seedCharactersFor, SQUARE_POSTS 
 import { uid } from '@/lib/format';
 import { applyPaperTint } from '@/constants/theme';
 import { emptyHisWallet, ledgerEntry, pushLedger } from '@/lib/wallet';
-
-/** 外卖订单最多留几单（D-129） */
-const ORDERS_MAX = 50;
 import { dedupeBonds, legacyBondLevel, levelLabelOf, levelOf, WARMTH_GAINS, WARMTH_START, warmthAfter, xpGain, type XpSource } from '@/lib/bond';
 import { setLang, type Lang } from '@/lib/i18n';
 import { DEFAULT_DOCK, DEFAULT_WALLPAPER, wallpaperTint } from '@/constants/apps';
@@ -52,6 +49,9 @@ import type {
 } from '@/lib/types';
 
 /** 到点前写好的主动消息（D-114） */
+/** 外卖订单最多留几单（D-129） */
+const ORDERS_MAX = 50;
+
 export interface ReachPending {
   texts: string[];
   /** 写好时带的暗号（D-128：TA 主动那条可能带外卖 / 红包），到点落进会话后再落状态 */
