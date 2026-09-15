@@ -9,6 +9,7 @@
  */
 
 import { AudioQuality, IOSOutputFormat, RecordingPresets, type RecordingOptions } from 'expo-audio';
+import { GenerationBlockedError, generationBlocked, reportUsage } from '@/core/usage';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 
@@ -98,7 +99,13 @@ type AsrResponse = { err_no?: number; err_msg?: string; result?: string[] };
  */
 export async function transcribeVoice(uri: string): Promise<string> {
   const lang = getLang();
-  if (speechConfigured()) return transcribeWhisperDirect(uri, lang);
+  const blocked = generationBlocked('asr');
+  if (blocked) throw new GenerationBlockedError(blocked);
+  if (speechConfigured()) {
+    const text = await transcribeWhisperDirect(uri, lang);
+    reportUsage({ kind: 'asr', provider: 'speech', seconds: 15, estimated: true });
+    return text;
+  }
   const route = await aiRoute('qianfan');
   if (route === 'none') throw new AiUnavailableError();
   const info = await FileSystem.getInfoAsync(uri);
@@ -136,6 +143,8 @@ export async function transcribeVoice(uri: string): Promise<string> {
   }
   const text = (data.result ?? []).join('').trim();
   if (!text) throw new Error(t('没听清这段语音（识别结果为空）'));
+  // 16 kHz 16 bit ≈ 32 KB / 秒
+  reportUsage({ kind: 'asr', provider: 'baidu', seconds: len / 32000, estimated: true });
   return text;
 }
 
@@ -145,6 +154,8 @@ type ChatJson = { choices?: { message?: { content?: string } }[] };
 export async function describeImage(uri: string): Promise<string> {
   const route = await aiRoute('qianfan');
   if (route === 'none') throw new AiUnavailableError();
+  const blocked = generationBlocked('vision');
+  if (blocked) throw new GenerationBlockedError(blocked);
   const small = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1024 } }], {
     compress: 0.75,
     format: ImageManipulator.SaveFormat.JPEG,
@@ -179,5 +190,6 @@ export async function describeImage(uri: string): Promise<string> {
   }
   const caption = data.choices?.[0]?.message?.content?.trim();
   if (!caption) throw new Error('empty caption');
+  reportUsage({ kind: 'vision', provider: QIANFAN_VISION_MODEL });
   return caption.replace(/\s+/g, ' ').slice(0, 400);
 }

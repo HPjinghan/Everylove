@@ -1,15 +1,16 @@
 /**
- * 流量与模型档（D-132）：先扣免费再扣余额、Max 不扣、按模型档计价、不够就发不出（她的话不落会话）、
- * 订阅每月发流量、后台任务不扣、模型档 → 供应商的选路。
+ * 流量与模型档（D-132 / D-133）：按真实用量折 MB（聊天按 token × 供应商倍率、生图按张、合成按字、识别按秒）、先扣免费再扣余额、Max 不扣、
+ * 用完她发不出、后台生成也被闸门拦下、订阅每月发流量、模型档 → 供应商的选路。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import '@/features';
 
-import { chatProviders, currentChatProvider, setUserProviderChoice } from '@/core/providers';
+import { chatProviders, completeChat, currentChatProvider, setUserProviderChoice } from '@/core/providers';
+import { estimateTokens, GenerationBlockedError } from '@/core/usage';
 import { sendText } from '@/core/turn';
-import { canAfford, DAILY_FREE_MB, freeLeft, LOVE_MODELS, mb, PLAN_MONTHLY_MB, planGrantsDue, trafficAfterUse, trafficDayKey } from '@/lib/traffic';
 import { grantPlanTraffic } from '@/features/traffic';
+import { available, DAILY_FREE_MB, freeLeft, IMAGE_MB, LOVE_MODELS, mb, mbForUsage, PLAN_MONTHLY_MB, planGrantsDue, trafficAfterUse, trafficDayKey } from '@/lib/traffic';
 import { useAppStore } from '@/store/app-store';
 
 vi.mock('@/lib/proxy', () => ({
@@ -20,41 +21,59 @@ vi.mock('@/lib/proxy', () => ({
   },
 }));
 
-chatProviders.register({ id: 'fake-traffic', label: 'fake', localKey: () => 'k', async complete() { return '嗯。'; } });
+/** 假供应商：带真实 usage 回来 */
+let usage: { inputTokens: number; outputTokens: number } | undefined = { inputTokens: 3000, outputTokens: 80 };
+chatProviders.register({
+  id: 'fake-traffic',
+  label: 'fake',
+  localKey: () => 'k',
+  async complete() {
+    return usage ? { text: '嗯。', usage } : '嗯。';
+  },
+});
 
 beforeEach(() => {
   useAppStore.getState().resetAll();
+  usage = { inputTokens: 3000, outputTokens: 80 };
 });
 
 const DAY = 24 * 3600_000;
 const NOW = new Date(2026, 8, 15, 12).getTime();
 const noPace = { pace: 'none' as const };
 
-describe('计量', () => {
-  it('先用今天免费的 30 MB，再扣余额；Max 不扣；跨天免费的重置', () => {
+describe('换算', () => {
+  it('聊天按 token × 供应商倍率；生图按张；合成按字；识别按秒；看图固定', () => {
+    expect(mbForUsage({ kind: 'chat', provider: 'qianfan', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(3.08);
+    expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(15.4);
+    expect(mbForUsage({ kind: 'chat', provider: 'fake', inputTokens: 1000 })).toBe(1);
+    expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 1 })).toBe(IMAGE_MB);
+    expect(mbForUsage({ kind: 'tts', provider: 'baidu', chars: 400 })).toBe(2);
+    expect(mbForUsage({ kind: 'asr', provider: 'baidu', seconds: 30 })).toBe(0.5);
+    expect(mbForUsage({ kind: 'vision', provider: 'x' })).toBe(3);
+    expect(LOVE_MODELS.v1.mbPerKTok).toBe(1);
+    expect(LOVE_MODELS.v2.mbPerKTok).toBe(5);
+    expect(estimateTokens('今天好累啊')).toBe(5);
+    expect(estimateTokens('hello world')).toBe(3);
+  });
+
+  it('先用今天免费的 100 MB，再扣余额；Max 不扣；跨天免费的重置', () => {
     const t0 = { balance: 10, freeDay: '', freeUsed: 0 };
     expect(freeLeft(t0, NOW)).toBe(DAILY_FREE_MB);
     const a = trafficAfterUse(t0, 5, 'free', NOW);
     expect(a).toEqual({ traffic: { balance: 10, freeDay: trafficDayKey(NOW), freeUsed: 5 }, charged: 5 });
-    const b = trafficAfterUse({ ...a.traffic, freeUsed: 28 }, 5, 'free', NOW);
-    expect(b.traffic.freeUsed).toBe(30);
+    const b = trafficAfterUse({ ...a.traffic, freeUsed: 98 }, 5, 'free', NOW);
+    expect(b.traffic.freeUsed).toBe(100);
     expect(b.traffic.balance).toBe(7);
-    expect(canAfford({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 30 }, 1, 'free', NOW)).toBe(false);
-    expect(canAfford({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 30 }, 1, 'max', NOW)).toBe(true);
-    expect(trafficAfterUse({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 30 }, 5, 'max', NOW).charged).toBe(0);
-    expect(freeLeft({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 30 }, NOW + DAY)).toBe(DAILY_FREE_MB);
+    expect(available({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 100 }, 'free', NOW)).toBe(0);
+    expect(available({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 100 }, 'max', NOW)).toBe(Infinity);
+    expect(trafficAfterUse({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 100 }, 5, 'max', NOW).charged).toBe(0);
+    expect(freeLeft({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 100 }, NOW + DAY)).toBe(DAILY_FREE_MB);
     expect(mb(1240)).toBe('1,240 MB');
+    expect(mb(3.08)).toBe('3.1 MB');
     expect(mb(Infinity)).toBe('∞');
   });
 
-  it('模型档：love-v1 1 MB / 回合，love-v2 5 MB / 回合', () => {
-    expect(LOVE_MODELS.v1.costMb).toBe(1);
-    expect(LOVE_MODELS.v2.costMb).toBe(5);
-    expect(LOVE_MODELS.v1.provider).toBe('qianfan');
-    expect(LOVE_MODELS.v2.provider).toBe('anthropic');
-  });
-
-  it('订阅每月发一笔：Pro 2000 MB，最多补 2 笔；Free / Max 不发', () => {
+  it('订阅每月发一笔：Pro 6000 MB，最多补 2 笔；Free / Max 不发', () => {
     expect(planGrantsDue({ balance: 0, freeDay: '', freeUsed: 0 }, 'pro', NOW)).toBe(1);
     expect(planGrantsDue({ balance: 0, freeDay: '', freeUsed: 0, planGrantAt: NOW - 10 * DAY }, 'pro', NOW)).toBe(0);
     expect(planGrantsDue({ balance: 0, freeDay: '', freeUsed: 0, planGrantAt: NOW - 100 * DAY }, 'pro', NOW)).toBe(2);
@@ -68,36 +87,43 @@ describe('计量', () => {
   });
 });
 
-describe('回合闸门', () => {
-  it('她每开口一回合扣当前模型档；用完发不出、她的话不落会话；换 love-v2 一回合扣 5', async () => {
+describe('扣账与闸门', () => {
+  it('每次调用按供应商返回的 usage 扣；没 usage 按字数估；用完她发不出、话不落会话；买了包能发；Max 不扣', async () => {
     const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
     const scope = { mode: 'bonded' as const, bondId };
     const s = () => useAppStore.getState();
     await sendText(scope, '在吗', { ui: noPace });
-    expect(s().traffic.freeUsed).toBe(1);
-    s().setLoveModel('v2');
+    // 假供应商不在换算表里按 1 MB / 千 token：3080 token → 3.08
+    expect(s().traffic.freeUsed).toBeCloseTo(3.08);
+    usage = undefined;
     await sendText(scope, '今天好累', { ui: noPace });
-    expect(s().traffic.freeUsed).toBe(6);
+    // 按字数估：系统 prompt 两千多 token
+    expect(s().traffic.freeUsed).toBeGreaterThan(4);
+    expect(s().traffic.freeUsed).toBeLessThan(10);
     // 免费用完、余额 0：发不出，她的话不落会话
     useAppStore.setState({ traffic: { ...s().traffic, freeUsed: DAILY_FREE_MB, balance: 0 } });
     const before = s().bonds.find((b) => b.id === bondId)!.messages.length;
     const r = await sendText(scope, '还在吗', { ui: noPace });
     expect(r.reply).toBeNull();
     expect(s().bonds.find((b) => b.id === bondId)!.messages.length).toBe(before);
-    // 买了流量包就能发
-    s().addTraffic(500);
+    // 后台生成也被拦下
+    await expect(completeChat({ system: 'x', turns: [{ role: 'user', content: 'y' }], maxTokens: 10, kind: 'task' })).rejects.toBeInstanceOf(GenerationBlockedError);
+    // 买了流量包就能发；一笔可以把余额用穿
+    usage = { inputTokens: 3000, outputTokens: 80 };
+    s().addTraffic(2);
     await sendText(scope, '买了流量', { ui: noPace });
-    expect(s().traffic.balance).toBe(495);
+    expect(s().traffic.balance).toBe(0);
+    expect((await sendText(scope, '再来', { ui: noPace })).reply).toBeNull();
     // Max 不扣
     s().setPlan('max');
     await sendText(scope, '订了 Max', { ui: noPace });
-    expect(s().traffic.balance).toBe(495);
+    expect(s().traffic.balance).toBe(0);
+    expect(s().bonds.find((b) => b.id === bondId)!.messages.at(-1)!.text).toBe('嗯。');
   });
 });
 
 describe('选路', () => {
   it('玩家的模型档只在那家有路时生效；没有路就跟随原来的顺序（测试里落到假供应商）', () => {
-    // 测试环境两家都没 key、代理不通：选了也落回假供应商
     setUserProviderChoice('anthropic');
     expect(currentChatProvider().id).not.toBe('anthropic');
     setUserProviderChoice('');

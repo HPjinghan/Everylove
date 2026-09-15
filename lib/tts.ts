@@ -11,6 +11,7 @@
  */
 
 import * as FileSystem from 'expo-file-system/legacy';
+import { generationBlocked, reportUsage } from '@/core/usage';
 
 import { pronounFor } from '@/content/prompts';
 import { CONFIG } from '@/core/config';
@@ -179,6 +180,7 @@ export async function synthesizeVoice(
   character: Character
 ): Promise<string | undefined> {
   if (!ttsReady() || !text.trim()) return undefined;
+  // 生成闸门（D-133）：流量用完了不合成（缓存过的照放）
   const tex = text.trim().slice(0, MAX_CHARS);
   const speechVoice = voiceFor(character, 'speech');
   const baiduVoice = voiceFor(character, 'baidu');
@@ -189,6 +191,7 @@ export async function synthesizeVoice(
 
   const cached = await FileSystem.getInfoAsync(local).catch(() => null);
   if (cached?.exists) return local;
+  if (generationBlocked('tts')) return undefined;
   const pending = inflight.get(cacheKey);
   if (pending) return pending;
 
@@ -211,6 +214,7 @@ export async function synthesizeVoice(
       await FileSystem.writeAsStringAsync(local, b64, {
         encoding: FileSystem.EncodingType.Base64,
       });
+      reportUsage({ kind: 'tts', provider: route, chars: tex.length });
       return local;
     } catch (e) {
       console.warn('[tts] 语音合成失败：', e);

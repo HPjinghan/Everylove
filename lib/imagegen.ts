@@ -13,6 +13,7 @@ import { seedPortrait } from '@/content/portraits';
 import { buildPortraitPrompt, imageModelFor, PORTRAIT_NEGATIVE } from '@/content/prompts';
 // （外出拍照的 prompt 由调用方拼好传入，见 content/prompts/photo.ts 的 buildOutingPhotoPrompt，D-051）
 import { CONFIG } from '@/core/config';
+import { GenerationBlockedError, generationBlocked, reportUsage } from '@/core/usage';
 import { postJsonWithTimeout, proxyJson, proxyReadySync } from '@/lib/proxy';
 import { uid } from '@/lib/format';
 import type { Character } from '@/lib/types';
@@ -49,6 +50,9 @@ const IMAGE_TIMEOUT_MS = 180_000;
  * model 由画风决定（D-076：动漫 → 蒸汽机，其余 → qwen-image）；不传按工程默认。
  */
 async function generateImage(prompt: string, subdir = 'portraits', model: string = QIANFAN_IMAGE_MODEL): Promise<string> {
+  // 生成闸门（D-133）：流量用完了就不画
+  const blocked = generationBlocked('image');
+  if (blocked) throw new GenerationBlockedError(blocked);
   const key = imageKey();
   const muse = model.startsWith(MUSE_MODEL_PREFIX);
   // qwen-image 带反向提示（D-092：别把名字画进画面）；蒸汽机不收该参数
@@ -73,6 +77,7 @@ async function generateImage(prompt: string, subdir = 'portraits', model: string
   }
   const url = data.data?.[0]?.url;
   if (!url) throw new Error('no image url');
+  reportUsage({ kind: 'image', provider: model, images: 1 });
   return downloadTo(url, subdir, uid('img'));
 }
 

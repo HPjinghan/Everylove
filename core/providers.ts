@@ -8,6 +8,7 @@
 
 import { CONFIG } from '@/core/config';
 import { createRegistry } from '@/core/registry';
+import { estimateTokens, GenerationBlockedError, generationBlocked, reportUsage } from '@/core/usage';
 import { t } from '@/lib/i18n';
 import { proxyAvailable, proxyReadySync } from '@/lib/proxy';
 
@@ -24,6 +25,12 @@ export interface ChatRequest {
 
 export type AiRoute = 'direct' | 'proxy' | 'none';
 
+/** 供应商返回：纯文本，或带上真实 usage（D-133 按 token 计流量；没有就按字数估） */
+export interface ChatResult {
+  text: string;
+  usage?: { inputTokens: number; outputTokens: number };
+}
+
 export interface ChatProvider {
   /** 供应商 id，也是 EXPO_PUBLIC_AI_ENGINE 的取值 */
   id: string;
@@ -31,8 +38,8 @@ export interface ChatProvider {
   label: string;
   /** 本地直连用的 key；空 = 没配 */
   localKey(): string;
-  /** 发一次请求并返回纯文本；route = proxy 时 key 在服务端，走 lib/proxy */
-  complete(req: ChatRequest, route: Exclude<AiRoute, 'none'>): Promise<string>;
+  /** 发一次请求并返回文本（可带 usage）；route = proxy 时 key 在服务端，走 lib/proxy */
+  complete(req: ChatRequest, route: Exclude<AiRoute, 'none'>): Promise<string | ChatResult>;
 }
 
 export const chatProviders = createRegistry<ChatProvider>('chatProviders', (p) => p.id);
@@ -105,8 +112,19 @@ export async function completeChat(req: ChatRequest, providerId?: string): Promi
   const p = hasRoute(taskCheap) ? taskCheap : currentChatProvider(providerId);
   const route = await chatRoute(p);
   if (route === 'none') throw new AiUnavailableError();
+  // 生成闸门（D-133）：流量用完了就不花
+  const blocked = generationBlocked('chat');
+  if (blocked) throw new GenerationBlockedError(blocked);
   try {
-    return await p.complete(req, route);
+    const r = await p.complete(req, route);
+    const result: ChatResult = typeof r === 'string' ? { text: r } : r;
+    // 报用量：供应商给了就用真的，没给按字数估
+    const usage = result.usage ?? {
+      inputTokens: estimateTokens(req.system + req.turns.map((x) => x.content).join('\n')),
+      outputTokens: estimateTokens(result.text),
+    };
+    reportUsage({ kind: 'chat', provider: p.id, reqKind: req.kind, estimated: !result.usage, ...usage });
+    return result.text;
   } catch (e) {
     console.warn(`[provider] ${p.id}${route === 'proxy' ? '（代理）' : ''} 调用失败：`, e);
     throw e;

@@ -399,7 +399,7 @@ export default function MeScreen() {
               <Row
                 key={id}
                 label={loveModel === id ? `${m.label} ✓` : m.label}
-                value={t('{blurb} · 每回合 {n}', { blurb: t(m.blurb), n: mb(m.costMb) })}
+                value={t('{blurb} · 每千 token {n}', { blurb: t(m.blurb), n: mb(m.mbPerKTok) })}
                 onPress={() => useAppStore.getState().setLoveModel(id)}
               />
             );

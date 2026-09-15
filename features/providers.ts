@@ -8,8 +8,8 @@ import { CONFIG } from '@/core/config';
 import { chatProviders, type ChatProvider } from '@/core/providers';
 import { proxyJson } from '@/lib/proxy';
 
-type AnthropicJson = { content: { type: string; text?: string }[] };
-type OpenAIJson = { choices?: { message?: { content?: string } }[] };
+type AnthropicJson = { content: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
+type OpenAIJson = { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
 
 /** 默认就开着思考的 Claude 家族（Opus 5 / Fable）：思考 token 也算进 max_tokens，角色回话的 300 预算会被吃光 → 加余量、压低 effort（D-108） */
 const THINKING_ON_BY_DEFAULT = /^claude-(opus-5|fable|mythos)/;
@@ -45,11 +45,13 @@ const anthropic: ChatProvider = {
     } else {
       data = await proxyJson<AnthropicJson>('anthropic.messages', body);
     }
-    return data.content
+    const text = data.content
       .filter((b) => b.type === 'text' && b.text)
       .map((b) => b.text)
       .join('')
       .trim();
+    // D-133：真实 usage 报给流量（思考 token 也算在 output 里）
+    return data.usage ? { text, usage: { inputTokens: data.usage.input_tokens ?? 0, outputTokens: data.usage.output_tokens ?? 0 } } : text;
   },
 };
 
@@ -76,7 +78,8 @@ const qianfan: ChatProvider = {
     } else {
       data = await proxyJson<OpenAIJson>('qianfan.chat', body);
     }
-    return (data.choices?.[0]?.message?.content ?? '').trim();
+    const text = (data.choices?.[0]?.message?.content ?? '').trim();
+    return data.usage ? { text, usage: { inputTokens: data.usage.prompt_tokens ?? 0, outputTokens: data.usage.completion_tokens ?? 0 } } : text;
   },
 };
 

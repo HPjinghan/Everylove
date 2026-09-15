@@ -1,31 +1,34 @@
 /**
- * 流量计量（D-132）：她每发起一回合就扣当前模型档的流量；不够就发不出（顶部轻提示）。
- * 一个玩法一个文件：回合闸门（core/turn 的 turnGates）+ 回合后扣费（after 钩子，只对她发起的回合）+ 模型档 → 供应商的同步
- * + 订阅每月发流量（启动 / 回前台任务）。后台生成（TA 主动 / 召回 / 记事本 / 发帖 / 周薪）不走闸门也不扣。
+ * 流量计量（D-132 / D-133）：每一次花钱的调用（core/usage 报上来的用量）都折成 MB 从她的流量扣；用完了她发不出、TA 的后台生成也停。
+ * 一个玩法一个文件：回合闸门（她要开口先看还有没有）+ 生成闸门（真要调模型 / 生图前再问一声）+ 用量 → 扣账 + 模型档 → 供应商同步
+ * + 订阅每月发流量（启动 / 回前台任务）。
  */
 
 import { jobs } from '@/core/jobs';
 import { setUserProviderChoice } from '@/core/providers';
-import { turnGates, turnHooks } from '@/core/turn';
+import { turnGates } from '@/core/turn';
+import { setGenerationGate, usageHooks } from '@/core/usage';
 import { t } from '@/lib/i18n';
-import { canAfford, DEFAULT_LOVE_MODEL, LOVE_MODELS, PLAN_MONTHLY_MB, planGrantsDue, turnCostMb } from '@/lib/traffic';
+import { available, DEFAULT_LOVE_MODEL, LOVE_MODELS, mbForUsage, PLAN_MONTHLY_MB, planGrantsDue } from '@/lib/traffic';
 import { useAppStore } from '@/store/app-store';
 
-/* ── 闸门：她要开口，先看流量够不够这一回合 ── */
+function left(): number {
+  const s = useAppStore.getState();
+  return available(s.traffic, s.plan);
+}
+
+/* ── 回合闸门：她要开口，先看流量还有没有（一笔可以把余额用穿，之后就发不出了） ── */
 turnGates.register({
   key: 'traffic',
-  check() {
-    const s = useAppStore.getState();
-    const cost = turnCostMb(s.loveModel ?? DEFAULT_LOVE_MODEL);
-    return canAfford(s.traffic, cost, s.plan) ? null : t('流量用完了');
-  },
+  check: () => (left() > 0 ? null : t('流量用完了')),
 });
 
-/* ── 扣费：TA 回上了才扣（模型失败不扣） ── */
-turnHooks.after.on(({ her, darkSide }) => {
-  if (!her || darkSide) return;
-  const s = useAppStore.getState();
-  s.useTraffic(turnCostMb(s.loveModel ?? DEFAULT_LOVE_MODEL));
+/* ── 生成闸门：后台生成 / 生图 / 语音在真要花钱前再问一声（用完 = 这次不做，各自静默跳过） ── */
+setGenerationGate(() => (left() > 0 ? null : t('流量用完了')));
+
+/* ── 用量 → 扣账：底座报多少就折多少 ── */
+usageHooks.on((e) => {
+  useAppStore.getState().useTraffic(mbForUsage(e));
 });
 
 /* ── 模型档 → 供应商：玩家在设置里切，store 变了就同步给取路 ── */
@@ -41,7 +44,7 @@ useAppStore.subscribe((s) => {
   }
 });
 
-/* ── 订阅每月发一笔（Pro 2000 MB；Max 不限不发；Free 不发） ── */
+/* ── 订阅每月发一笔（Pro 6000 MB；Max 不限不发；Free 不发） ── */
 export function grantPlanTraffic(now = Date.now()): number {
   const s = useAppStore.getState();
   const n = planGrantsDue(s.traffic, s.plan, now);

@@ -828,6 +828,7 @@ const en: Record<string, string> = {
   '流量（试装模拟，不扣费）': 'Data (test build, no charge)',
   '轻快，省流量': 'Quick, light on data',
   '更细腻，更懂你': 'Finer, knows you better',
+  '{blurb} · 每千 token {n}': '{blurb} · {n} per 1K tokens',
   // __EN_END__
 };
 
@@ -1628,6 +1629,7 @@ const ja: Record<string, string> = {
   '流量（试装模拟，不扣费）': 'データ（テスト版・課金なし）',
   '轻快，省流量': '軽快、データ節約',
   '更细腻，更懂你': 'より繊細に、あなたをわかってくれる',
+  '{blurb} · 每千 token {n}': '{blurb} · 1K トークンあたり {n}',
   // __JA_END__
 };
 
@@ -2431,6 +2433,7 @@ const ko: Record<string, string> = {
   '流量（试装模拟，不扣费）': '데이터(테스트 빌드, 과금 없음)',
   '轻快，省流量': '가볍고 데이터 절약',
   '更细腻，更懂你': '더 섬세하게, 더 잘 아는',
+  '{blurb} · 每千 token {n}': '{blurb} · 1K 토큰당 {n}',
   // __KO_END__
 };
 
