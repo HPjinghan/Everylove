@@ -47,6 +47,8 @@ describe('换算', () => {
     expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(15.4);
     expect(mbForUsage({ kind: 'chat', provider: 'fake', inputTokens: 1000 })).toBe(1);
     expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 1 })).toBe(IMAGE_MB);
+    expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 2 })).toBe(IMAGE_MB * 2);
+    expect(mbForUsage({ kind: 'image', provider: 'musesteamer', outputTokens: 2000 })).toBe(6);
     expect(mbForUsage({ kind: 'tts', provider: 'baidu', chars: 400 })).toBe(2);
     expect(mbForUsage({ kind: 'asr', provider: 'baidu', seconds: 30 })).toBe(0.5);
     expect(mbForUsage({ kind: 'vision', provider: 'x' })).toBe(3);
@@ -93,8 +95,9 @@ describe('扣账与闸门', () => {
     const scope = { mode: 'bonded' as const, bondId };
     const s = () => useAppStore.getState();
     await sendText(scope, '在吗', { ui: noPace });
-    // 假供应商不在换算表里按 1 MB / 千 token：3080 token → 3.08
+    // 假供应商不在换算表里按 1 MB / 千 token：3080 token → 3.08；流水记一笔
     expect(s().traffic.freeUsed).toBeCloseTo(3.08);
+    expect(s().trafficLog.at(-1)).toMatchObject({ kind: 'reply', provider: 'fake-traffic', mb: 3.08, tokens: 3080, estimated: false });
     usage = undefined;
     await sendText(scope, '今天好累', { ui: noPace });
     // 按字数估：系统 prompt 两千多 token

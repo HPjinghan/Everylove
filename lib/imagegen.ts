@@ -59,7 +59,7 @@ async function generateImage(prompt: string, subdir = 'portraits', model: string
   const body = muse
     ? { model, prompt, size: '1024x1024' }
     : { model, prompt, size: '1024x1024', n: 1, negative_prompt: PORTRAIT_NEGATIVE };
-  let data: { data?: { url?: string }[] };
+  let data: { data?: { url?: string }[]; usage?: { generated_images?: number; output_tokens?: number; total_tokens?: number } };
   if (key) {
     const endpoint = muse
       ? 'https://qianfan.baidubce.com/v2/musesteamer/images/generations'
@@ -77,7 +77,10 @@ async function generateImage(prompt: string, subdir = 'portraits', model: string
   }
   const url = data.data?.[0]?.url;
   if (!url) throw new Error('no image url');
-  reportUsage({ kind: 'image', provider: model, images: 1 });
+  // 真实用量（D-134）：API 返回了张数 / token 就按它，否则按 1 张
+  const u = data.usage;
+  const images = u?.generated_images && u.generated_images > 0 ? u.generated_images : u?.output_tokens || u?.total_tokens ? undefined : 1;
+  reportUsage({ kind: 'image', provider: model, images, outputTokens: u?.output_tokens ?? u?.total_tokens, estimated: !u });
   return downloadTo(url, subdir, uid('img'));
 }
 

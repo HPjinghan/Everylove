@@ -34,6 +34,8 @@ export const LOVE_MODEL_ORDER: LoveModelId[] = ['v1', 'v2'];
 /** 聊天按供应商折算（没列的按 1）；其余按件 / 按字 / 按秒 */
 export const CHAT_MB_PER_KTOK: Record<string, number> = { qianfan: 1, anthropic: 5 };
 export const IMAGE_MB = 15;
+/** 生图模型按 token 计费时（返回 output_tokens）每千 token 折多少 MB */
+export const IMAGE_MB_PER_KTOK = 3;
 export const TTS_CHARS_PER_MB = 200;
 export const ASR_SECONDS_PER_MB = 60;
 export const VISION_MB = 3;
@@ -46,6 +48,8 @@ export function mbForUsage(e: UsageEvent): number {
       return (((e.inputTokens ?? 0) + (e.outputTokens ?? 0)) / 1000) * rate;
     }
     case 'image':
+      // 千帆按张计费：API 返回几张就记几张；返回的是 token（部分模型）就按 token 折
+      if (e.outputTokens && !e.images) return (e.outputTokens / 1000) * IMAGE_MB_PER_KTOK;
       return IMAGE_MB * (e.images ?? 1);
     case 'tts':
       return Math.max(0.1, (e.chars ?? 0) / TTS_CHARS_PER_MB);

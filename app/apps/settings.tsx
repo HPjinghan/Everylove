@@ -404,6 +404,7 @@ export default function MeScreen() {
               />
             );
           })}
+          <Row label={t('流水')} onPress={() => router.push('/apps/traffic-log' as never)} />
           {TRAFFIC_PACKS.map((p) => (
             <Row
               key={p.id}
@@ -437,6 +438,12 @@ export default function MeScreen() {
         </Section>
 
         <Section title={t('开发者（试装）')}>
+          <Row
+            label={t('GM：加 1000 MB')}
+            value={mb(traffic.balance)}
+            numeric
+            onPress={() => useAppStore.getState().addTraffic(1000)}
+          />
           <Row
             label={t('AI 引擎')}
             value={enginePref ? engineLabel() : `${engineLabel()} · ${t('跟随配置')}`}

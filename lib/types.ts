@@ -382,6 +382,18 @@ export interface DailyFortune {
   text: string;
 }
 
+/** 流量流水（D-134）：每一笔用量折了多少 MB */
+export interface TrafficEntry {
+  id: string;
+  at: number;
+  kind: 'reply' | 'task' | 'image' | 'tts' | 'asr' | 'vision';
+  provider: string;
+  mb: number;
+  /** 聊天 / 生图的 token 数（有就记） */
+  tokens?: number;
+  estimated?: boolean;
+}
+
 /** 推送召回的状态（D-126） */
 export interface RecallState {
   /** 按哪一次「到 0」排的（温度重算就作废） */

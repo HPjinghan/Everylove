@@ -44,6 +44,7 @@ import type {
   PostComment,
   RecallState,
   SquareChat,
+  TrafficEntry,
   Wallet,
   UserProfile,
   WorldBook,
@@ -52,6 +53,8 @@ import type {
 /** 到点前写好的主动消息（D-114） */
 /** 外卖订单最多留几单（D-129） */
 const ORDERS_MAX = 50;
+/** 流量流水最多留几笔（D-134） */
+const TRAFFIC_LOG_MAX = 200;
 
 export interface ReachPending {
   texts: string[];
@@ -142,6 +145,8 @@ interface AppState {
   traffic: Traffic;
   /** 模型档（D-132）：love-v1 / love-v2，玩家自己切 */
   loveModel: LoveModelId;
+  /** 流量流水（D-134，最近 200 笔） */
+  trafficLog: TrafficEntry[];
 
   completeOnboarding: (pref: LovePref) => void;
   setLanguage: (l: Lang) => void;
@@ -183,6 +188,7 @@ interface AppState {
   /** 进流量：流量包 / 订阅发放（grantAt 传入 = 订阅发的，记发放时刻） */
   addTraffic: (mb: number, grantAt?: number) => void;
   setLoveModel: (m: LoveModelId) => void;
+  logTraffic: (e: Omit<TrafficEntry, 'id' | 'at'>) => void;
   /** TA 的钱包进出；没有钱包先按起点建 */
   adjustHisWallet: (bondId: string, e: { amount: number; kind: LedgerKind; note: string }) => number;
   patchHisWallet: (bondId: string, patch: Partial<HisWallet>) => void;
@@ -327,6 +333,7 @@ const initialData = {
   orders: [] as Order[],
   traffic: EMPTY_TRAFFIC as Traffic,
   loveModel: DEFAULT_LOVE_MODEL as LoveModelId,
+  trafficLog: [] as TrafficEntry[],
   quietHours: { from: 23, to: 8 },
 };
 
@@ -502,6 +509,8 @@ export const useAppStore = create<AppState>()(
         set({ traffic: { ...get().traffic, balance: get().traffic.balance + amount, ...(grantAt ? { planGrantAt: grantAt } : {}) } }),
 
       setLoveModel: (m) => set({ loveModel: m }),
+
+      logTraffic: (e) => set({ trafficLog: [...get().trafficLog, { id: uid('tr'), at: Date.now(), ...e }].slice(-TRAFFIC_LOG_MAX) }),
 
       adjustHisWallet: (bondId, e) => {
         const b = get().bonds.find((x) => x.id === bondId);

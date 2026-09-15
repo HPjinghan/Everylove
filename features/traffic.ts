@@ -28,7 +28,17 @@ setGenerationGate(() => (left() > 0 ? null : t('流量用完了')));
 
 /* ── 用量 → 扣账：底座报多少就折多少 ── */
 usageHooks.on((e) => {
-  useAppStore.getState().useTraffic(mbForUsage(e));
+  const cost = mbForUsage(e);
+  const s = useAppStore.getState();
+  s.useTraffic(cost);
+  const tokens = (e.inputTokens ?? 0) + (e.outputTokens ?? 0);
+  s.logTraffic({
+    kind: e.kind === 'chat' ? (e.reqKind === 'task' ? 'task' : 'reply') : e.kind,
+    provider: e.provider,
+    mb: Math.round(cost * 100) / 100,
+    tokens: tokens || undefined,
+    estimated: e.estimated,
+  });
 });
 
 /* ── 模型档 → 供应商：玩家在设置里切，store 变了就同步给取路 ── */
