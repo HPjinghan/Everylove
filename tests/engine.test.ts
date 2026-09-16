@@ -52,6 +52,19 @@ describe('splitBubbles / stripStageDirections', () => {
   });
 });
 
+describe('客户端分段（D-137）', () => {
+  it('两句以上按句末标点拆成两条、长度均衡；一句不拆；模型自己空行分的照用；max 1 不拆', () => {
+    expect(splitBubbles('到家了？我也刚到，猫在门口等我。', 2)).toEqual(['到家了？', '我也刚到，猫在门口等我。']);
+    expect(splitBubbles('嗯，我刚到家，猫在门口等我。你呢，还在画？别熬太晚。', 2)).toEqual(['嗯，我刚到家，猫在门口等我。', '你呢，还在画？别熬太晚。']);
+    expect(splitBubbles('我也刚到，猫在门口等我。', 2)).toEqual(['我也刚到，猫在门口等我。']);
+    expect(splitBubbles('嗯。', 2)).toEqual(['嗯。']);
+    expect(splitBubbles('到家了？我也刚到。', 1)).toEqual(['到家了？我也刚到。']);
+    expect(splitBubbles('Just got home. The cat was waiting at the door! You?', 2)).toEqual(['Just got home.', 'The cat was waiting at the door! You?']);
+    expect(splitBubbles('版本 5.20 出了。你更新了吗？', 2)).toEqual(['版本 5.20 出了。', '你更新了吗？']);
+    expect(splitBubbles('第一句。第二句。第三句。', 3)).toEqual(['第一句。', '第二句。', '第三句。']);
+  });
+});
+
 describe('applyReplyMarkers', () => {
   it('剥掉标记并置位；全剥空留省略号', () => {
     expect(applyReplyMarkers({ texts: ['密码是 4821', '[解锁手机]'] })).toEqual({

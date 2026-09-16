@@ -145,17 +145,56 @@ export function buildTurns(history: ChatMessage[], userText: string): ChatTurn[]
 }
 
 /**
- * 把模型回复拆成气泡：亲密模式允许用空行分成最多 2 条（prompt 里约定），初识模式只取第一段。
- * 顺手去掉模型偶尔加的名字前缀（「沈之言：」）与包裹引号。
+ * 把模型回复拆成气泡（D-137：分段在客户端做，不指望模型自己用空行）：
+ * 1. 先按空行拆（模型自己分好的照用）；2. 还没拆到 max 条就按句子拆——两句以上的回复在句末标点处断开，长度尽量均衡；
+ * 初识 / 外出 / 通话 max = 1 不拆。顺手去掉模型偶尔加的名字前缀（「沈之言：」）与包裹引号。
  */
 export function splitBubbles(text: string, max: number, name?: string): string[] {
+  const cap = Math.max(1, max);
   const parts = text
     .split(/\n\s*\n/)
     .map((t) => t.trim())
     .map((t) => (name && t.startsWith(name) ? t.replace(/^[^：:]*[：:]\s*/, '') : t))
     .map((t) => t.replace(/^[「"“]([\s\S]*)[」"”]$/, '$1').trim())
-    .filter(Boolean);
-  return parts.slice(0, Math.max(1, max));
+    .filter(Boolean)
+    .slice(0, cap);
+  if (parts.length >= cap || parts.length !== 1) return parts;
+  return splitBySentences(parts[0], cap);
+}
+
+/** 句子：到句末标点（中英日韩）为止，带上后面的引号 / 括号；单换行也算一句的边界 */
+const SENTENCE_RE = /[^。！？!?…\n]+(?:[。！？!?…]+|\.(?=\s|$)|\n|$)[」』"”'’）)]*\s*/g;
+/** 短于这个字数的回复不拆 */
+const SPLIT_MIN_CHARS = 8;
+
+/** 两句以上就拆成最多 max 条：在句末标点处断，长度尽量均衡；一句话不拆 */
+export function splitBySentences(text: string, max: number): string[] {
+  const t = text.trim();
+  if (max <= 1 || t.length < SPLIT_MIN_CHARS) return [t];
+  // 句子带着自己后面的空格（英文句间的空格不能丢），最后再 trim
+  const sentences = (t.match(SENTENCE_RE) ?? []).filter((s) => s.trim());
+  if (sentences.length < 2) return [t];
+  const n = Math.min(max, sentences.length);
+  const lens = sentences.map((s) => s.trim().length);
+  const total = lens.reduce((a, b) => a + b, 0);
+  const target = total / n;
+  // 逐条凑：下一句加进来离目标更近就加，否则收口；最后一条把剩下的全收
+  const out: string[] = [];
+  let i = 0;
+  for (let k = 0; k < n - 1; k++) {
+    let cur = sentences[i];
+    let len = lens[i];
+    i++;
+    const mustLeave = n - 1 - k; // 后面每条至少留一句
+    while (i < sentences.length - mustLeave && Math.abs(len + lens[i] - target) <= Math.abs(len - target)) {
+      cur += sentences[i];
+      len += lens[i];
+      i++;
+    }
+    out.push(cur);
+  }
+  out.push(sentences.slice(i).join(''));
+  return out.map((s) => s.trim()).filter(Boolean);
 }
 
 /**

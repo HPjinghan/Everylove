@@ -62,7 +62,7 @@ describe('外卖模拟（D-129）', () => {
     expect(s().orders[0].arriveAt).toBeGreaterThan(s().orders[0].at);
     const bondId = s().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
     const before = s().bonds.find((b) => b.id === bondId)!.messages.length;
-    nextReply = '姜茶？你倒是记得我怕冷。';
+    nextReply = '你倒是记得我怕冷。';
     const r2 = await placeOrder({ storeId: 'store', items: [{ itemId: 'ginger-tea', qty: 1 }], to: bondId });
     expect(r2.ok).toBe(true);
     // 卡片与回复是异步落的：等一拍
@@ -71,7 +71,7 @@ describe('外卖模拟（D-129）', () => {
     expect(msgs.length).toBe(before + 2);
     expect(msgs[before].card?.type).toBe('delivery');
     expect(msgs[before].card?.fromHim).toBeFalsy();
-    expect(msgs[before + 1].text).toBe('姜茶？你倒是记得我怕冷。');
+    expect(msgs[before + 1].text).toBe('你倒是记得我怕冷。');
     expect(s().orders).toHaveLength(2);
     expect(s().orders[1].bondId).toBe(bondId);
     expect(s().wallet.balance).toBe(100 - 36 - 10);
