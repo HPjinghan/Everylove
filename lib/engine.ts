@@ -163,7 +163,8 @@ export function splitBubbles(text: string, max: number, name?: string): string[]
 }
 
 /** 句子：到句末标点（中英日韩）为止，带上后面的引号 / 括号；单换行也算一句的边界 */
-const SENTENCE_RE = /[^。！？!?…\n]+(?:[。！？!?…]+|\.(?=\s|$)|\n|$)[」』"”'’）)]*\s*/g;
+// 正文用懒匹配：英文句号不在排除集里（小数点 5.20 要保住），贪婪会一路吃到下一个「！」
+const SENTENCE_RE = /[^。！？!?…\n]+?(?:[。！？!?…]+|\.(?=\s|$)|\n|$)[」』"”'’）)]*\s*/g;
 /** 短于这个字数的回复不拆 */
 const SPLIT_MIN_CHARS = 8;
 
