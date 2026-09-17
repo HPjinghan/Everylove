@@ -8,6 +8,7 @@
  */
 
 import { getLang, type Lang } from '@/lib/i18n';
+import { stripTrailingPeriod } from '@/lib/text';
 import type { ArchetypeId, Character } from '@/lib/types';
 
 import * as en from './en';
@@ -93,17 +94,29 @@ export function scriptFor(c: Character): CharacterScript {
   const pack = PACKS[langOf(c)];
   const base = pack.CHAR_SCRIPTS[c.id] ?? pack.ARCHETYPE_DEFAULTS[c.archetype === 'nonhuman' ? 'gentle' : c.archetype];
   const own = c.lines;
-  if (!own) return base;
+  if (!own) return plainEndings(base);
   const opening = nonEmpty(own.opening);
   const offer = nonEmpty(own.offer);
   const arrival = nonEmpty(own.arrival);
-  return {
+  return plainEndings({
     ...base,
     opening: opening.length ? opening : base.opening,
     offer: offer.length ? offer : base.offer,
     arrival: arrival.length ? arrival.map((text) => ({ text })) : base.arrival,
     persona: own.persona?.trim() || base.persona,
     pursuit: own.pursuit?.trim() || base.pursuit,
+  });
+}
+
+/** D-145：TA 的台词末尾不带句号——上屏的开场 / 要联系方式 / 打招呼，以及进 prompt 的样本一并去掉，让模型照着学 */
+function plainEndings(s: CharacterScript): CharacterScript {
+  return {
+    ...s,
+    opening: s.opening.map(stripTrailingPeriod),
+    square: s.square.map(stripTrailingPeriod),
+    offer: s.offer.map(stripTrailingPeriod),
+    bonded: s.bonded.map(stripTrailingPeriod),
+    arrival: s.arrival.map((a) => ({ ...a, text: stripTrailingPeriod(a.text) })),
   };
 }
 

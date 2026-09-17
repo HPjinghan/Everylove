@@ -97,7 +97,7 @@ describe('外卖送到', () => {
     expect(await deliverDueArrivals(order.arriveAt + 60_000)).toBe(1);
     await wait(20);
     const msgs = s().bonds.find((b) => b.id === bondId)!.messages;
-    expect(msgs.at(-2)!.text).toBe('到了，还烫着。');
+    expect(msgs.at(-2)!.text).toBe('到了，还烫着');
     expect(msgs.at(-1)!.kind).toBe('image');
     expect(s().bonds.find((b) => b.id === bondId)!.unread).toBeGreaterThan(0);
     expect(s().orders[0].reacted).toBe(true);

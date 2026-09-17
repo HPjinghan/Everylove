@@ -26,6 +26,7 @@ import {
   type AiRoute,
   type ChatTurn,
 } from '@/core/providers';
+import { stripTrailingPeriods } from '@/lib/text';
 import type { ChatMessage, EngineContext, EngineReply } from '@/lib/types';
 
 // 全部 prompt 文本都在 content/prompts/（D-017/D-087）；这里只负责调用与组装历史。
@@ -259,7 +260,9 @@ export async function generateReply(ctx: EngineContext, providerId?: string): Pr
   // 先剥暗号再拆气泡（D-126）：初识只留第一条气泡，写在末尾另起一段的暗号不能跟着丢
   const marked = stripReplyMarkers({ texts: [text] });
   const bubbles = splitBubbles(marked.texts.join('\n\n'), maxBubbles, ctx.character.name);
-  return { ...marked, texts: stripStage ? stripStageDirections(bubbles) : bubbles };
+  const texts = stripStage ? stripStageDirections(bubbles) : bubbles;
+  // D-145：末尾句号在前端去掉（真人不这样）；通话的字要送去合成，留着
+  return { ...marked, texts: ctx.mode === 'call' ? texts : stripTrailingPeriods(texts) };
 }
 
 /** 兼容旧名：剥回复暗号（现由 core/markers 的注册表驱动） */

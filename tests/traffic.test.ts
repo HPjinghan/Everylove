@@ -121,7 +121,7 @@ describe('扣账与闸门', () => {
     s().setPlan('max');
     await sendText(scope, '订了 Max', { ui: noPace });
     expect(s().traffic.balance).toBe(0);
-    expect(s().bonds.find((b) => b.id === bondId)!.messages.at(-1)!.text).toBe('嗯。');
+    expect(s().bonds.find((b) => b.id === bondId)!.messages.at(-1)!.text).toBe('嗯');
   });
 });
 

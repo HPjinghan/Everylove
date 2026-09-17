@@ -59,8 +59,8 @@ describe('亲密会话', () => {
     const tail = bond.messages.slice(-4).map((m) => [m.from, m.text]);
     expect(tail).toEqual([
       ['me', '你的手机密码多少呀'],
-      ['him', '密码是 4821，别乱翻。'],
-      ['him', '看完记得给我说一声。'],
+      ['him', '密码是 4821，别乱翻'],
+      ['him', '看完记得给我说一声'],
       ['system', 'TA 同意让你看手机了'],
     ]);
     // 模型看到的：系统 prompt 带手机密码；最后一轮是她这句

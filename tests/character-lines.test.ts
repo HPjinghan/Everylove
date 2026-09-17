@@ -45,7 +45,7 @@ describe('parseCharacterLines', () => {
 
 describe('scriptFor 用角色自己的台词', () => {
   it('没有台词时回落原型兜底', () => {
-    expect(scriptFor(base).opening[0]).toBe('哦，你就是那个……算了，说吧。');
+    expect(scriptFor(base).opening[0]).toBe('哦，你就是那个……算了，说吧');
   });
   it('有台词时逐项覆盖，空的仍回落', () => {
     const c: Character = {
@@ -53,9 +53,9 @@ describe('scriptFor 用角色自己的台词', () => {
       lines: { opening: ['学姐。', '', '  '], offer: ['我想和你在一起。'], arrival: ['嗯。', '今天很累。'], persona: '林知夏，嘴硬心软。' },
     };
     const s = scriptFor(c);
-    expect(s.opening).toEqual(['学姐。']);
-    expect(s.offer).toEqual(['我想和你在一起。']);
-    expect(s.arrival.map((a) => a.text)).toEqual(['嗯。', '今天很累。']);
+    expect(s.opening).toEqual(['学姐']);
+    expect(s.offer).toEqual(['我想和你在一起']);
+    expect(s.arrival.map((a) => a.text)).toEqual(['嗯', '今天很累']);
     expect(s.persona).toBe('林知夏，嘴硬心软。');
     // 没给的追法回落原型
     expect(s.pursuit).toContain('竹马式');

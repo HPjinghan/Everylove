@@ -71,7 +71,7 @@ describe('外卖模拟（D-129）', () => {
     expect(msgs.length).toBe(before + 2);
     expect(msgs[before].card?.type).toBe('delivery');
     expect(msgs[before].card?.fromHim).toBeFalsy();
-    expect(msgs[before + 1].text).toBe('你倒是记得我怕冷。');
+    expect(msgs[before + 1].text).toBe('你倒是记得我怕冷');
     expect(s().orders).toHaveLength(2);
     expect(s().orders[1].bondId).toBe(bondId);
     expect(s().wallet.balance).toBe(100 - 36 - 10);
@@ -167,7 +167,7 @@ describe('TA 主动送东西', () => {
     nextReply = '再给你一个。\n[发红包 520|拿着]';
     await sendText({ mode: 'bonded', bondId }, '还有吗', { ui: noPace });
     expect(bond().wallet?.balance).toBe(HIS_WALLET_START - 52);
-    expect(bond().messages.at(-1)!.text).toBe('再给你一个。');
+    expect(bond().messages.at(-1)!.text).toBe('再给你一个');
     // 外卖（先把 10 条冷却清掉，D-130）
     useAppStore.setState({ bonds: useAppStore.getState().bonds.map((b) => (b.id === bondId ? { ...b, extraFired: undefined } : b)) });
     nextReply = '先吃点东西。\n[点外卖 姜茶|20|趁热]';
