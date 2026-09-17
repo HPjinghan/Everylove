@@ -1,7 +1,7 @@
 # DECISIONS.md — 现行决策总账（按主题合并）
 
 > **怎么用**：一个主题一条，只写**现在的口径**；被推翻、已下线的不保留（2026-09-15 Harper：「已废弃的删掉」）——要看历史，D-001～D-096 的逐条原文在 `docs/archive/DECISIONS-log-2026-08-13_09-06.md`，之后的查 git 历史。
-> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-139**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换、旧的直接删（索引里被推翻的编号也删）；整个机制下线 = 连条目一起删；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
+> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-140**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换、旧的直接删（索引里被推翻的编号也删）；整个机制下线 = 连条目一起删；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
 > 代码注释里的 D-编号一律按索引表查；索引里没有的编号 = 已废弃的决策（原文在存档或 git）；D-087 / D-088 各撞号一次，用 a / b 区分。
 
 ## 编号索引
@@ -71,7 +71,7 @@
 | D-071 | 09-02 | 调图工具多模型；千帆文生图盘点 | A5 / B4 |
 | D-072 | 09-02 | gen-image.bat 纯 ASCII + CRLF | A5 |
 | D-073 | 09-02 | Message 语音 / 照片实装；TTS 改百度 | F2 / B3 |
-| D-074 | 09-02 | TA 偶尔发语音；多语种语音通道 | B3 / F2 |
+| D-074 | 09-02 | TA 偶尔发语音 | B3 / F2 |
 | D-075 | 09-02 | 调图工具画风选项 | A5 |
 | D-076 | 09-02 | App 立绘画风八选一、动漫走蒸汽机 | B4 / E2 |
 | D-077 | 09-02 | 打电话上线（管线式） | C4 |
@@ -110,6 +110,7 @@
 | D-124 | 09-11 | 身边的人：通用回落标记后下次重试、首次生成 token 上限 900 → 1800；聊天随日子续写（查手机时隔够久按 TA 最近的日子写 1–3 段，每人留 40 句，失败不动） | F6 |
 | D-125 | 09-15 | TestFlight 公测前：默认语言 English（没选过语言的新装机一打开就是英文，测试环境钉回中文）；onboarding 第一屏「已有账号？去登录」提到语言按钮正下方做成 outline 按钮、English 排第一 | H2 / G1 |
 | D-126 | 09-15 | 亲密度数值体系：心动改模型判 0–15（[心动 n] 暗号、按性子保底）；XP 来源表 15 种 + 当天递减 + 日上限 150；等级 = XP 门槛 100/200/300/500/900 × 天数下限 0/3/7/21/60，只升不降；温度 0–100 每天 −8，疏远降频、到 0 停主动进推送召回（7 / 14 / 30 天各一条后停） | D1 / D2 / D7 / D8 |
+| D-139 | 09-17 | 语音供应商：识别按语言分流（中 / 英百度、日 / 韩 Whisper 通道 = Groq）；合成换 Fish Audio，每个角色自己的音色（创造 ⑧ 推荐三把可换一批、试听），音色池只收授权声线；识别 / 合成配置拆开 | B3 |
 | D-138 | 09-17 | 零钱拆成两个 App：钱包（余额 + Coin 流水，只看）；日签改名幸运签、两页——日签（水晶球）+ 转盘（投 50 / 100 / 200 / 500，十格等概率 ×0.5 / ×1.2 / ×2 / ×5，期望 1.53 故意大方，Coin 与经济不挂钩） | F10 |
 | D-137 | 09-16 | 气泡分段在客户端做：模型空行优先，没分好就按句末标点拆成最多两条、长度均衡，一句不拆（不依赖模型输出格式，换模型也分段） | C1 |
 | D-136 | 09-15 | 桌面：未读横幅绝对定位叠在时钟上、不再挤压网格（行数不随它变 2 / 3 行）；存档 v10 把所有人的桌面布局（格位 / 顺序 / Dock）刷回默认 | F1 |
@@ -174,9 +175,16 @@
 - **现行**：`supabase/functions/ai`（Edge Function，已部署，verify_jwt 开）是唯一自有服务端组件：services = qianfan.chat / qianfan.images / qianfan.musesteamer / anthropic.messages / baidu.asr / baidu.asr_pro / baidu.tts / speech.transcribe / speech.synthesize；上游 key 在 Supabase Secrets；按用户**每日限量 500 次**（`ai_usage` 表，`AI_DAILY_LIMIT` 可调，是防盗刷不是付费墙）；`SPEECH_*` 没配返回 503 让客户端回落百度。客户端 `lib/proxy.ts` 三层取路（见 B1）。**超时（D-109）**：RN 的 fetch 不能设超时、iOS 落到 NSURLSession 默认 60 s——qwen-image 生图约 50～60 s、经代理更久，线上「合影 / 拍 TA」因此失败；`postJsonWithTimeout` 用 XMLHttpRequest 显式设 timeout（代理默认 90 s，生图直连与代理都传 180 s），超时 / 断网抛带原因的 Error，拍照与立绘失败弹窗把 `describeAiError` 带出来。线上排查记录：Supabase 函数 secrets 没有 `ANTHROPIC_API_KEY`（切 Claude 回 503），需 `supabase secrets set`；函数日志表为空、用量远低于限额。**游客身份**：没本地 key 且没会话时 `ensureGuestSession()` 自动 Supabase 匿名登录（Anonymous sign-ins 已开），代理按匿名用户 id 限量；**匿名不算登录**——登录墙 / 账号区 / 云备份 / 共享池发布只认 `isSignedIn()` / `signedInSession()`；之后 Apple / 邮箱登录直接换成正式用户。分发包不带任何上游 key。
 - **编号**：D-057、D-073/D-074/D-076（services 增补）、D-088a。
 
-### B3 · 语音：识别 / 合成 / 多语种通道
-- **现行**（`lib/media.ts` / `lib/tts.ts`）：她的语音 → **OpenAI 兼容语音服务优先**（Whisper 协议 `POST {base}/audio/transcriptions`，`EXPO_PUBLIC_SPEECH_BASE_URL/_API_KEY/_ASR_MODEL/_TTS_MODEL/_TTS_VOICE_HE|SHE|TA`，中 / 英 / 日全语种；OpenAI / Groq / 硅基流动 / 百炼同一套接口，换家只改 env）→ 未配置回落 **百度 ASR**（`vop.baidu.com`，极速版 80001 普通话 / 1737 英语，同一把千帆 key；录音 16k 单声道 wav、最长 59 s 自动停）；**不支持日语**（日语必须配 OpenAI 兼容通道，选哪家见 OPEN_QUESTIONS #25）。TA 的语音合成：配了 OpenAI 兼容则走其 `/audio/speech`，否则 **百度 `tsn.baidu.com/text2audio`**（音色按人称 他 4193 度泽言 / 她 4194 度嫣然 / TA 4115 度小贤，`EXPO_PUBLIC_BAIDU_TTS_PER` 可换）；按（通道 + 模型 + 音色 + 文本）缓存本机；失败气泡显示「语音暂时没接通」可看文字。**TA 偶尔主动发语音**（`shouldSendVoice`）：只在羁绊会话，只挑最后一条 2~80 字的气泡，概率 高 30% / 中 18% / 低 10%，她刚发过语音 +40%（上限 85%）；当前通道不会说界面语言时不发。多语种通道按官方接口写、**未实测**（本机无 key）。
-- **编号**：D-030（语音占位）→ D-048 → D-073 → D-074。
+### B3 · 语音：识别 / 合成 / 角色音色
+- **现行**（**D-139**，`lib/media.ts` 识别、`lib/tts.ts` 合成、`lib/speech.ts` 纯逻辑、`content/voices.ts` 音色池、`components/voice-picker.tsx`；Harper：「识别我其实可以继续用百度，合成换成小鱼，有了新的声线之后创建和编辑角色的时候就可以允许用户选择音色，推荐三个，不满意可以刷新」）：
+  - **她的语音 → 文字，按界面语言分流**（`asrChannelFor`）：中 / 英走 **百度 ASR**（`vop.baidu.com`，极速版 80001 普通话 / 1737 英语，同一把千帆 key、免费且快；录音 16k 单声道 wav、最长 59 s 自动停）；日 / 韩走 **Whisper 协议通道**（`EXPO_PUBLIC_ASR_BASE_URL / _API_KEY / _MODEL`，默认 Groq `whisper-large-v3-turbo`，$0.04 / 小时、按 10 s 起计；OpenAI / 硅基流动 / 百炼同一套接口，换家只改 env）；哪些语言走 Whisper 由 `EXPO_PUBLIC_ASR_LANGS`（默认 `ja,ko`，`all` = 全部）定；只有 Whisper 时中文也走它。百度不会的语言、Whisper 又没接上 → 直接露出「这门语言的语音识别还没接上」，不假装听到。走代理时先乐观试 `asr.transcribe`，服务端 503「asr not configured」再回落百度。
+  - **TA 的语音合成 → Fish Audio**（`POST api.fish.audio/v1/tts`，`EXPO_PUBLIC_FISH_API_KEY`，模型 header 默认 `s2.1-pro`、免费期可填 `s2.1-pro-free`；中 / 英 / 日 / 韩全语种，`latency: balanced`、mp3）→ 未配置回落 **百度 `tsn.baidu.com/text2audio`**（只会中 / 英；音色按人称 他 4193 / 她 4194 / TA 4115，`EXPO_PUBLIC_BAIDU_TTS_PER` 可换）；代理同序（`fish.tts` 503「fish not configured」再百度）。按（通道 + 模型 + 音色 + 文本）缓存本机；失败气泡显示「语音暂时没接通」可看文字。OpenAI 兼容 `/audio/speech` 通道（D-074）下线。
+  - **每个角色自己的音色** `Character.voiceId`（Fish reference_id；缔结即随角色快照进羁绊，语音气泡与电话共用同一把嗓子）。取值顺序 `defaultVoiceId`：角色选的 > 种子预定（`SEED_VOICES`，`id@lang` 优先）> 音色池同语言同性别第一把 > `EXPO_PUBLIC_FISH_VOICE_HE|SHE|TA` > Fish 默认声。
+  - **音色池** `content/voices.ts`：**不用 Fish 两百万个公共声线**（大量模仿真人 / 未授权，红线 1）——只收 Fish 官方授权（licensed）与明确可商用的，按语言 × 性别 × 气质（温柔 / 低沉 / 清冷 / 少年感 / 御姐 / 活泼 / 沙哑 / 甜 / 成熟 / 人外）打标；`npm run fish-voices`（`scripts/fish-voices.mjs`，需 `FISH_API_KEY`）从声库按语言各拉 30 把生成草稿，**人工听过筛过再提交**。池子为空的语言不显示音色入口（无供给不摆）。
+  - **创造 ⑧ TA 的声音**（`VoicePicker`）：按角色的语言（当前界面语言）× 性别（nonbinary 不限）× 提示词（恋爱类型 / 种族命中气质标签）推荐三把（`recommendVoices`，命中多的靠前、同分按池序），每把可试听一句（开场白优先，否则「今天也在想你。」，`previewVoice` 走同一套合成与缓存）；「换一批」下一批、池子转完循环；不选 = 默认。已选的不在本批也露出来。玩家切语言后原音色照用（Fish 声线能跨语言，会带口音），去编辑页可换。
+  - **TA 偶尔主动发语音**（D-074，`shouldSendVoice`）：只在羁绊会话，只挑最后一条 2~80 字的气泡，概率 高 30% / 中 18% / 低 10%，她刚发过语音 +40%（上限 85%）；当前通道不会说界面语言时不发（`ttsSpeaksLang`：Fish 全会、百度只中 / 英、代理乐观放行）。
+  - 端到端语音（Gemini Live 这类，可打断）仍等 dev build（#26）；Fish / Groq 接口按官方文档写，**待 key 实测**。
+- **编号**：D-030（语音占位）→ D-048 → D-073 → D-074 → D-139。
 
 ### B4 · 图像生成：只剩立绘与外出拍照
 - **现行**：文生图走百度千帆（`lib/imagegen.ts`，与聊天共用 key）。**立绘 prompt = 画风行 → 主体 → `PORTRAIT_SYSTEM`（Harper 给定文案）+ 末行 `COMIC_RULES` 红线句**（「氛围暧昧克制、无露骨；不模仿真人」是红线 #1/#5 的 prompt 侧实现，只有 Harper 明示才去）；主体行**不写角色名**（qwen-image 会把名字画进画面），写「画面主角是一位男性 / 女性 / 一个角色：外貌」；外貌一句话别写鞋 / 腿（会拉成全身）；反向提示 `PORTRAIT_NEGATIVE`（文字 / 字母 / 水印 / Q 版 / 全身 / 多人，蒸汽机不收）。**画风八选一** `PORTRAIT_STYLES`（`Character.artStyle`，缺省 shojo 少女漫·水彩 = 原画风）：动漫 → 蒸汽机 Air-Image（专用端点、代理服务 `qianfan.musesteamer`，约 10 秒）、其余 → qwen-image（约 1 分钟）；`imageModelFor()` 按画风选模型，立绘与外出拍照共用。**种子角色内置立绘随包分发**（`assets/portraits/` + `content/portraits.ts`，`scripts/gen-seed-portraits.mts` 生成，串行 + 429 重试；英 / 日版共用原 id 立绘）；取用统一 `portraitSource` / `portraitFor`（本机 `store.portraits` > 内置）。**外出拍照**（`buildOutingPhotoPrompt` + `generateScenePhoto`）：第一行同画风，合影中她只入镜侧影 / 手、不画清晰正脸；洗好即 `store.addAlbumShot`。千帆按分钟限频，三张并发会撞 429。

@@ -72,6 +72,8 @@ export interface Character {
   secrets?: string;
   /** 立绘画风（D-076）：创造 ⑦ 选择；缺省按 shojo（= 原工程画风）。立绘与外出拍照共用 */
   artStyle?: PortraitStyleId;
+  /** TA 的声音（D-139）：Fish Audio 音色 id，创造 ⑧ 从推荐里选；缺省按语言 × 人称从音色池取默认。语音气泡与电话共用 */
+  voiceId?: string;
   /** 聊几句后 TA 会想确定关系（默认 4，见 lib/engine ADOPTION_OFFER_AFTER_TURNS） */
   offerAfterTurns?: number;
   /** 所在的世界（D-110）：世界书 id；缺省 / 找不到 = 现实世界（当前）。非现实世界会作为【你所在的世界】注入所有 prompt */

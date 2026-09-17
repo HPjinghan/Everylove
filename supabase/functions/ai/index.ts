@@ -6,8 +6,8 @@
  *   qianfan.chat / qianfan.images / anthropic.messages（JSON 透传）
  *   baidu.asr / baidu.asr_pro（百度语音识别，JSON；D-073）
  *   baidu.tts（百度短文本语音合成 tsn.baidu.com/text2audio，body 为表单字段对象；D-073，替代已下线的 qianfan.tts）
- *   speech.transcribe / speech.synthesize（OpenAI 兼容语音服务：Whisper 协议识别 + /audio/speech 合成，中/英/日全语种；D-074。
- *     Secrets：SPEECH_BASE_URL / SPEECH_API_KEY / SPEECH_ASR_MODEL / SPEECH_TTS_MODEL；没配返回 503「speech not configured」，客户端回落百度）
+ *   asr.transcribe（Whisper 协议识别，日 / 韩用；D-139。Secrets：ASR_BASE_URL / ASR_API_KEY / ASR_MODEL；没配返回 503「asr not configured」，客户端回落百度）
+ *   fish.tts（Fish Audio 合成 api.fish.audio/v1/tts，body 原样透传；D-139。Secrets：FISH_API_KEY / FISH_MODEL；没配返回 503「fish not configured」，客户端回落百度）
  * 返回：上游 JSON 原样透传；上游返回二进制音频则包成 { audio_base64 }。
  * 部署：supabase functions deploy ai（verify_jwt 开启——平台先验 JWT，函数内再取 user 限流）。
  */
@@ -80,37 +80,36 @@ Deno.serve(async (req) => {
       return new Response(await r.text(), { status: r.status, headers: JSON_HEADERS });
     }
 
-    // OpenAI 兼容语音服务（D-074）：Whisper 协议识别 + /audio/speech 合成；key 只在 Secrets
-    if (service === 'speech.transcribe' || service === 'speech.synthesize') {
-      const base = (Deno.env.get('SPEECH_BASE_URL') ?? '').replace(/\/+$/, '');
-      const key = Deno.env.get('SPEECH_API_KEY') ?? '';
-      if (!base || !key) return json({ error: 'speech not configured' }, 503);
+    // Whisper 协议识别（D-139）：key 只在 Secrets
+    if (service === 'asr.transcribe') {
+      const base = (Deno.env.get('ASR_BASE_URL') ?? '').replace(/\/+$/, '');
+      const key = Deno.env.get('ASR_API_KEY') ?? '';
+      if (!base || !key) return json({ error: 'asr not configured' }, 503);
       const b = body as Record<string, string>;
-      if (service === 'speech.transcribe') {
-        const bin = atob(b.audio_base64 ?? '');
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        const form = new FormData();
-        form.append('file', new Blob([bytes], { type: b.mime || 'audio/wav' }), b.filename || 'voice.wav');
-        form.append('model', Deno.env.get('SPEECH_ASR_MODEL') || 'whisper-1');
-        if (b.language) form.append('language', b.language);
-        form.append('response_format', 'json');
-        const r = await fetch(`${base}/audio/transcriptions`, {
-          method: 'POST',
-          headers: { authorization: `Bearer ${key}` },
-          body: form,
-        });
-        return new Response(await r.text(), { status: r.status, headers: JSON_HEADERS });
-      }
-      const r = await fetch(`${base}/audio/speech`, {
+      const bin = atob(b.audio_base64 ?? '');
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const form = new FormData();
+      form.append('file', new Blob([bytes], { type: b.mime || 'audio/wav' }), b.filename || 'voice.wav');
+      form.append('model', Deno.env.get('ASR_MODEL') || 'whisper-large-v3-turbo');
+      if (b.language) form.append('language', b.language);
+      form.append('response_format', 'json');
+      const r = await fetch(`${base}/audio/transcriptions`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-        body: JSON.stringify({
-          model: Deno.env.get('SPEECH_TTS_MODEL') || 'gpt-4o-mini-tts',
-          input: b.input,
-          voice: b.voice,
-          response_format: b.response_format || 'mp3',
-        }),
+        headers: { authorization: `Bearer ${key}` },
+        body: form,
+      });
+      return new Response(await r.text(), { status: r.status, headers: JSON_HEADERS });
+    }
+
+    // Fish Audio 合成（D-139）：body（text / reference_id / format / latency）原样透传，模型走 header
+    if (service === 'fish.tts') {
+      const key = Deno.env.get('FISH_API_KEY') ?? '';
+      if (!key) return json({ error: 'fish not configured' }, 503);
+      const r = await fetch('https://api.fish.audio/v1/tts', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}`, model: Deno.env.get('FISH_MODEL') || 's2.1-pro' },
+        body: JSON.stringify(body),
       });
       return await audioOrJson(r);
     }

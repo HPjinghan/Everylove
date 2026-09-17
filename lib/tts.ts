@@ -1,12 +1,11 @@
 /**
- * 语音合成（D-048；D-073 改百度接口；D-074 加多语种通道 + TA 偶尔发语音）。
+ * 语音合成（D-048；D-073 改百度接口；D-074 TA 偶尔发语音；D-139 换 Fish Audio + 角色音色）。
  * 通道（synthesizeVoice 自动选）：
- *   1. OpenAI 兼容语音服务（EXPO_PUBLIC_SPEECH_*，/audio/speech，中/英/日全语种；与语音识别共用同一组配置）——配了就优先；
+ *   1. Fish Audio `POST api.fish.audio/v1/tts`（EXPO_PUBLIC_FISH_API_KEY；中 / 英 / 日 / 韩全语种；音色 = 角色的 voiceId，见 lib/speech defaultVoiceId）——配了就优先；
  *   2. 百度短文本语音合成 `tsn.baidu.com/text2audio`（与千帆同一把 bce-v3 key；只会中/英混读）：
  *      音色（per）按人称 他→4193 度泽言 / 她→4194 度嫣然 / TA→4115 度小贤，EXPO_PUBLIC_BAIDU_TTS_PER 可覆盖；
- *   3. 走代理（分发包，无本地 key）：先试代理侧的 OpenAI 兼容通道（服务端配了 SPEECH_* 才有），没配回落百度。
- * ~~千帆 /v2/audio/speech + qwen-tts~~ 已下线（2026-09-02 实测所有模型/路径均 404）。
- * 返回 mp3，按（通道+音色+文本）缓存到本机，同一句话不重复扣费。
+ *   3. 走代理（分发包，无本地 key）：先试代理侧的 Fish（服务端配了 FISH_API_KEY 才有），没配回落百度。
+ * 返回 mp3，按（通道+模型+音色+文本）缓存到本机，同一句话不重复扣费。
  * 失败返回 undefined——语音气泡显示「语音暂时没接通」并可看文字（Metro 有 [tts] 日志）。
  */
 
@@ -16,43 +15,47 @@ import { generationBlocked, reportUsage } from '@/core/usage';
 import { pronounFor } from '@/content/prompts';
 import { CONFIG } from '@/core/config';
 import { getLang, type Lang } from '@/lib/i18n';
-import { SPEECH_API_KEY, SPEECH_BASE_URL, SPEECH_UNCONFIGURED, speechConfigured } from '@/lib/media';
 import { proxyJson, proxyReadySync } from '@/lib/proxy';
+import { defaultVoiceId } from '@/lib/speech';
 import type { Character } from '@/lib/types';
 
 const BAIDU_TTS_URL = 'https://tsn.baidu.com/text2audio';
+const FISH_TTS_URL = 'https://api.fish.audio/v1/tts';
 const ENV_PER = CONFIG.baiduTtsPer;
 const ENV_QIANFAN_KEY = CONFIG.qianfanKey;
-const SPEECH_TTS_MODEL = CONFIG.speech.ttsModel;
-/** OpenAI 兼容通道的音色（按人称）：默认 OpenAI 音色名；硅基流动 / 百炼等换成各自的音色 id（见 .env.example） */
-const SPEECH_VOICE = CONFIG.speech.voice;
+const FISH_KEY = CONFIG.fish.apiKey;
+const FISH_MODEL = CONFIG.fish.model;
 /** 百度 tex 上限 1024 GBK 字节（约 500 汉字）；气泡本来就短，保守截断 */
 const MAX_CHARS = 300;
+/** 代理侧没配 FISH_API_KEY 时的固定回应（supabase/functions/ai），客户端据此回落百度 */
+export const FISH_UNCONFIGURED = 'fish not configured';
 
-type TtsProvider = 'speech' | 'baidu';
+type TtsProvider = 'fish' | 'baidu';
 
-/** 可发声 = 配了 OpenAI 兼容语音服务，或本地有千帆 key（百度直连），或已登录（走服务端代理，D-057） */
+export function fishConfigured(): boolean {
+  return Boolean(FISH_KEY);
+}
+
+/** 可发声 = 配了 Fish，或本地有千帆 key（百度直连），或已登录（走服务端代理，D-057） */
 export function ttsReady(): boolean {
-  return speechConfigured() || Boolean(ENV_QIANFAN_KEY) || proxyReadySync();
+  return fishConfigured() || Boolean(ENV_QIANFAN_KEY) || proxyReadySync();
 }
 
 /**
- * 当前 TTS 通道会不会说这门语言：百度只有中/英，日语 / 韩语要靠 OpenAI 兼容通道；
+ * 当前 TTS 通道会不会说这门语言：百度只有中/英，日语 / 韩语要靠 Fish；
  * 走代理时以服务端配置为准（这里乐观放行）。
  */
 export function ttsSpeaksLang(lang: Lang): boolean {
-  if (speechConfigured()) return true;
+  if (fishConfigured()) return true;
   if (lang !== 'ja' && lang !== 'ko') return true;
   return !ENV_QIANFAN_KEY && proxyReadySync();
 }
 
-/** 音色：按人称给默认，env 可覆盖 */
+/** 音色：Fish = 角色选的 / 默认（lib/speech）；百度 = 按人称给默认，env 可覆盖 */
 export function voiceFor(character: Character, provider: TtsProvider): string {
-  const p = pronounFor(character);
-  if (provider === 'speech') {
-    return p === '他' ? SPEECH_VOICE.he : p === '她' ? SPEECH_VOICE.she : SPEECH_VOICE.ta;
-  }
+  if (provider === 'fish') return character.voiceId || defaultVoiceId(character, getLang());
   if (ENV_PER) return ENV_PER;
+  const p = pronounFor(character);
   return p === '他' ? '4193' : p === '她' ? '4194' : '4115';
 }
 
@@ -119,24 +122,25 @@ async function audioBase64(res: Response, label: string): Promise<string> {
   return toBase64(buf);
 }
 
-/** 通道 1：OpenAI 兼容 /audio/speech 直连 */
-async function speechDirect(input: string, voice: string): Promise<string> {
-  const res = await fetch(`${SPEECH_BASE_URL}/audio/speech`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${SPEECH_API_KEY}` },
-    body: JSON.stringify({ model: SPEECH_TTS_MODEL, input, voice, response_format: 'mp3' }),
-  });
-  return audioBase64(res, 'Speech TTS');
+/** Fish 请求体：reference_id 空 = Fish 默认声；latency balanced 兼顾首包与自然度 */
+function fishBody(text: string, voiceId: string): Record<string, unknown> {
+  return { text, reference_id: voiceId || undefined, format: 'mp3', latency: 'balanced' };
 }
 
-/** 通道 3a：代理侧的 OpenAI 兼容通道（服务端 SPEECH_* 没配会抛 speech not configured） */
-async function speechProxy(input: string, voice: string): Promise<string> {
-  const data = await proxyJson<{ audio_base64?: string; error?: string }>('speech.synthesize', {
-    input,
-    voice,
-    response_format: 'mp3',
+/** 通道 1：Fish 直连 */
+async function fishDirect(text: string, voiceId: string): Promise<string> {
+  const res = await fetch(FISH_TTS_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${FISH_KEY}`, model: FISH_MODEL },
+    body: JSON.stringify(fishBody(text, voiceId)),
   });
-  if (!data.audio_base64) throw new Error(`Speech TTS: ${data.error ?? 'no audio'}`);
+  return audioBase64(res, 'Fish TTS');
+}
+
+/** 通道 3a：Fish 走代理（服务端 FISH_API_KEY 没配会抛 fish not configured） */
+async function fishProxy(text: string, voiceId: string): Promise<string> {
+  const data = await proxyJson<{ audio_base64?: string; error?: string }>('fish.tts', fishBody(text, voiceId));
+  if (!data.audio_base64) throw new Error(`Fish TTS: ${data.error ?? 'no audio'}`);
   return data.audio_base64;
 }
 
@@ -172,25 +176,20 @@ async function baiduProxy(tex: string, per: string): Promise<string> {
 const inflight = new Map<string, Promise<string | undefined>>();
 
 /**
- * 合成一句语音，返回本机音频 URI；不可用 / 失败返回 undefined（调用方显示占位）。
+ * 合成核心：给定两条通道各自的音色，按取路合成并缓存。
  * 同一句话并发只打一次接口。
  */
-export async function synthesizeVoice(
-  text: string,
-  character: Character
-): Promise<string | undefined> {
+async function synthesize(text: string, voices: { fish: string; baidu: string }): Promise<string | undefined> {
   if (!ttsReady() || !text.trim()) return undefined;
-  // 生成闸门（D-133）：流量用完了不合成（缓存过的照放）
   const tex = text.trim().slice(0, MAX_CHARS);
-  const speechVoice = voiceFor(character, 'speech');
-  const baiduVoice = voiceFor(character, 'baidu');
-  const route = speechConfigured() ? 'speech' : ENV_QIANFAN_KEY ? 'baidu' : 'proxy';
-  const cacheKey = hash(`${route}|${SPEECH_TTS_MODEL}|${speechVoice}|${baiduVoice}|${tex}`);
+  const route: 'fish' | 'baidu' | 'proxy' = fishConfigured() ? 'fish' : ENV_QIANFAN_KEY ? 'baidu' : 'proxy';
+  const cacheKey = hash(`${route}|${FISH_MODEL}|${voices.fish}|${voices.baidu}|${tex}`);
   const dir = `${FileSystem.documentDirectory}tts/`;
   const local = `${dir}${cacheKey}.mp3`;
 
   const cached = await FileSystem.getInfoAsync(local).catch(() => null);
   if (cached?.exists) return local;
+  // 生成闸门（D-133）：流量用完了不合成（缓存过的照放）
   if (generationBlocked('tts')) return undefined;
   const pending = inflight.get(cacheKey);
   if (pending) return pending;
@@ -199,16 +198,16 @@ export async function synthesizeVoice(
     try {
       await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => {});
       let b64: string;
-      if (route === 'speech') {
-        b64 = await speechDirect(tex, speechVoice);
+      if (route === 'fish') {
+        b64 = await fishDirect(tex, voices.fish);
       } else if (route === 'baidu') {
-        b64 = await baiduDirect(tex, baiduVoice);
+        b64 = await baiduDirect(tex, voices.baidu);
       } else {
         try {
-          b64 = await speechProxy(tex, speechVoice);
+          b64 = await fishProxy(tex, voices.fish);
         } catch (e) {
-          if (!String(e).includes(SPEECH_UNCONFIGURED)) throw e;
-          b64 = await baiduProxy(tex, baiduVoice);
+          if (!String(e).includes(FISH_UNCONFIGURED)) throw e;
+          b64 = await baiduProxy(tex, voices.baidu);
         }
       }
       await FileSystem.writeAsStringAsync(local, b64, {
@@ -225,4 +224,15 @@ export async function synthesizeVoice(
   })();
   inflight.set(cacheKey, job);
   return job;
+}
+
+/** 合成 TA 的一句话（音色按角色），返回本机音频 URI；不可用 / 失败返回 undefined（调用方显示占位） */
+export function synthesizeVoice(text: string, character: Character): Promise<string | undefined> {
+  return synthesize(text, { fish: voiceFor(character, 'fish'), baidu: voiceFor(character, 'baidu') });
+}
+
+/** 试听一把音色（创造 ⑧）：指定 Fish 音色 id 合成一句；没配 Fish 时按人称回落百度 */
+export function previewVoice(text: string, voiceId: string, pronoun: '他' | '她' | 'TA'): Promise<string | undefined> {
+  const baidu = ENV_PER || (pronoun === '他' ? '4193' : pronoun === '她' ? '4194' : '4115');
+  return synthesize(text, { fish: voiceId, baidu });
 }

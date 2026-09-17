@@ -34,6 +34,7 @@ import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { Chip } from '@/components/chip';
 import { Field, Input } from '@/components/input';
+import { VoicePicker } from '@/components/voice-picker';
 import { REAL_WORLD_ID } from '@/content/worlds';
 import { canPublishCharacter, selectableFrom, worldSnapshot } from '@/lib/worlds';
 import { showToast } from '@/components/toast';
@@ -47,6 +48,7 @@ import { completeText, describeAiError } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { generateCharacterLines } from '@/lib/character-lines';
 import { generatePortraitFor, imageKeyReady } from '@/lib/imagegen';
+import { VOICE_SAMPLE_LINE } from '@/lib/speech';
 import { publishCharacter, unpublishCharacter } from '@/lib/pool';
 import type { Character, CharacterLines } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
@@ -153,6 +155,8 @@ type FormInit = {
   palette: number;
   portraitUri: string | undefined;
   artStyle: ArtStyle;
+  /** TA 的声音（D-139）：Fish 音色 id；undefined = 默认 */
+  voiceId: string | undefined;
   advancedOpen: boolean;
   race: string;
   raceCustom: string;
@@ -185,6 +189,7 @@ const BLANK_FORM: FormInit = {
   palette: 0,
   portraitUri: undefined,
   artStyle: DEFAULT_PORTRAIT_STYLE,
+  voiceId: undefined,
   advancedOpen: false,
   race: '人类',
   raceCustom: '',
@@ -227,6 +232,7 @@ function formFor(c: Character): FormInit {
     palette: pi >= 0 ? pi : 0,
     portraitUri: useAppStore.getState().portraits[c.id],
     artStyle: c.artStyle ?? DEFAULT_PORTRAIT_STYLE,
+    voiceId: c.voiceId,
     advancedOpen: true,
     ...race,
     birthMonth: bm,
@@ -341,6 +347,8 @@ function CreateForm({ edit }: { edit?: string }) {
   const submitLockRef = useRef(0);
   // 立绘画风（D-076）：注入生图 prompt 第一行；动漫走蒸汽机、其余走 Qwen
   const [artStyle, setArtStyle] = useState<ArtStyle>(init.artStyle);
+  // TA 的声音（D-139）：从音色池推荐里选；不选 = 按语言 × 人称默认
+  const [voiceId, setVoiceId] = useState<string | undefined>(init.voiceId);
 
   // ── 高级（新建默认收起，编辑时展开） ──
   const [advancedOpen, setAdvancedOpen] = useState(init.advancedOpen);
@@ -493,6 +501,7 @@ function CreateForm({ edit }: { edit?: string }) {
       taboos: taboos.trim() || undefined,
       secrets: secrets.trim() || undefined,
       artStyle,
+      voiceId,
       offerAfterTurns: offerTurns,
       hook: style ? style.desc.split('；')[0] : t('TA 在等一个点开 TA 的人。'),
       intro: t('……你捏出来的 TA，正在看你。'),
@@ -844,6 +853,16 @@ function CreateForm({ edit }: { edit?: string }) {
               />
             </View>
           </Field>
+
+          <VoicePicker
+            lang={getLang()}
+            gender={gender}
+            hints={[loveStyle, race === '其他' ? raceCustom : race]}
+            value={voiceId}
+            onChange={setVoiceId}
+            sampleText={lines?.opening?.[0] ?? t(VOICE_SAMPLE_LINE)}
+            pronoun={GENDERS.find((x) => x.key === gender)!.pronoun}
+          />
 
           {/* ───────── 高级选项（收起） ───────── */}
           <Pressable style={styles.advToggle} onPress={toggleAdvanced}>
