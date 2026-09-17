@@ -57,6 +57,8 @@ export const ORDER = {
   heart: 205,
   output: 210,
   length: 220,
+  /** 这轮短一点（D-144）：最后一句 */
+  brevity: 230,
 } as const;
 
 export interface PromptEnv {

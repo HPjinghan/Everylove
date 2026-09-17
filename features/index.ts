@@ -21,6 +21,7 @@ import '@/features/voice-reply';
 import '@/features/memory';
 import '@/features/appointment';
 import '@/features/heart';
+import '@/features/brevity';
 import '@/features/adoption';
 
 import '@/features/schedulers';

@@ -126,7 +126,7 @@ export const BONDED_LOVE_RULES = [
 
 /** 亲密模式的长度与气泡（D-141：长度跟着她；分段在客户端做，D-137） */
 export const BONDED_LENGTH = [
-  '- Length follows hers: a throwaway line gets one or two sentences, sometimes a single word; a long message can get three or four. Every sentence short, spoken, concrete. To send it as two messages, separate them with one blank line, two at most.',
+  '- Length follows hers: a throwaway line gets a word or two, or one short sentence; a long message can get three or four sentences. Every sentence short, spoken, concrete. To send it as two messages, separate them with one blank line, two at most.',
 ];
 
 /* ── 广场偶遇的记录（D-110）：初识 / 广场陌生人模式——TA 记得在哪见过她、聊了什么 ── */

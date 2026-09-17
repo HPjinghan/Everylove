@@ -16,6 +16,7 @@
  *   memory.ts        记忆提取（含外出 / 记事本并入的说明段）
  *   social.ts        X 回帖与发帖
  *   appointment.ts   约定识别 / 爽约那一句
+ *   brevity.ts       这轮短一点：一两个字的回复（D-144）
  *   caption.ts       看图
  *   heartbeat.ts     心跳三段式模板
  *   create.ts        创造描述解析
@@ -39,6 +40,7 @@ import { assembleSystemPrompt } from '@/core/prompt';
 import type { EngineContext } from '@/lib/types';
 
 export * from './appointment';
+export * from './brevity';
 export * from './call';
 export * from './caption';
 export * from './chat';
