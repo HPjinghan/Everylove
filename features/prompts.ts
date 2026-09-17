@@ -44,6 +44,7 @@ import {
   squareSituationLines,
   squareVoiceBlock,
   stageLine,
+  TALK_MANNER,
   userProfileBlock,
   warmthLine,
   worldBlock,
@@ -132,6 +133,8 @@ promptSections.register({ name: 'stranger-manner', modes: OUTING, order: ORDER.s
 promptSections.register({ name: 'stage-outing', modes: OUTING, order: ORDER.outingStage, lines: (ctx, env) => (isStranger(ctx) ? [] : [stageLine(ctx, env.now)]) });
 promptSections.register({ name: 'warmth-outing', modes: OUTING, order: ORDER.outingStage, lines: (ctx, env) => (isStranger(ctx) ? [] : warmthLine(ctx, env.now)) });
 promptSections.register({ name: 'initiative-outing', modes: OUTING, order: ORDER.outingInitiative, lines: (ctx) => (isStranger(ctx) ? [] : initiativeLine(ctx.character)) });
+// 像个人一样说话（D-141）：四种对话共用，在各模式分寸之后、红线之前；记事本不带
+promptSections.register({ name: 'talk-manner', modes: TALK, order: ORDER.talk, lines: () => TALK_MANNER });
 
 /* ── 红线与输出格式（红线段对应 CLAUDE.md §9，勿删） ── */
 promptSections.register({ name: 'hard-rules', modes: 'all', order: ORDER.hardRules, lines: () => CHAT_HARD_RULES_OF() });
