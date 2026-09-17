@@ -82,10 +82,13 @@ export const turnHooks = {
 
 export const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/** 「TA 在打字」的时长：按她那句的长度 */
-export function naturalDelay(text: string): number {
-  return 700 + Math.min(1200, text.length * 40);
+/** TA 打这条要多久（D-146）：按 TA 这条气泡的长度——起步 0.6 s，每个字 60 ms，最长 3.2 s；第二条之前再停一下 */
+export function typingDelay(text: string, index = 0): number {
+  return (index > 0 ? 400 : 0) + 600 + Math.min(2600, text.length * 60);
 }
+
+/** 兼容旧名 */
+export const naturalDelay = typingDelay;
 
 export function sysMsg(text: string): ChatMessage {
   return { id: uid('m'), from: 'system', kind: 'system', text, at: Date.now() };
@@ -121,13 +124,16 @@ export async function runTurn(scope: TurnScope, userText: string, ui: TurnUi = {
     }
     return { reply: null, error: e };
   }
-  if (pace === 'natural') await wait(naturalDelay(userText));
-  ui.typing?.(false);
 
   const info: TurnInfo = { scope, ctx, mode, reply, darkSide: !!reply.darkSide, ui, her: !!meta.her };
   const total = reply.texts.length;
+  // 每条气泡：「正在输入」按这条的长度停一会儿再上屏（D-146）；模型已经花掉的时间不再另算
   for (const [i, text] of reply.texts.entries()) {
-    if (i > 0 && pace === 'natural') await wait(500);
+    if (pace === 'natural') {
+      ui.typing?.(true);
+      await wait(typingDelay(text, i));
+    }
+    ui.typing?.(false);
     const msg = await turnHooks.bubble.run(himMsg(text), { ...info, index: i, total });
     mode.append(scope, [msg], { unreadDelta: ui.unread ? 1 : 0 });
   }
