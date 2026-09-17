@@ -20,7 +20,6 @@ import {
   buildPostReplyUserPrompt,
   characterLinesSystem,
   characterParseSystem,
-  worldParseSystem,
   heartbeatLine,
   imageCaptionSystem,
   IMAGE_CAPTION_USER,
@@ -154,10 +153,6 @@ describe('心跳与创造', () => {
   it('创造描述解析（中 / 英）', () => {
     expect(characterParseSystem('zh')).toMatchSnapshot();
     expect(characterParseSystem('en')).toMatchSnapshot();
-  });
-  it('世界书描述解析（D-123）', () => {
-    expect(worldParseSystem('zh')).toMatchSnapshot();
-    expect(worldParseSystem('en')).toMatchSnapshot();
   });
   it('TA 的台词（中 / 日 / 韩）+ 角色卡', () => {
     expect(characterLinesSystem('zh')).toMatchSnapshot();

@@ -20,13 +20,11 @@ import {
   parseHisScheduleJSON,
   parseReactionsJSON,
   pickOutingOpener,
-  worldBlock,
 } from '@/content/prompts';
 import { dedupeBonds } from '@/lib/bond';
 import { circleLastAt, circleRefreshIntervalMs, mergeCircleChats } from '@/lib/circle';
 import { outsideQuiet } from '@/lib/reach-out';
 import { setLang } from '@/lib/i18n';
-import { canPublishCharacter, selectableFrom, worldOf, worldSnapshot } from '@/lib/worlds';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
 import { bondedCtx, custom, NOW, squareCtx } from './fixtures';
@@ -34,61 +32,6 @@ import { bondedCtx, custom, NOW, squareCtx } from './fixtures';
 beforeEach(() => {
   setLang('zh');
   useAppStore.getState().resetAll();
-});
-
-describe('世界书', () => {
-  it('现实世界不出段；别的世界带名字、一句话、设定与认知规则', () => {
-    expect(worldBlock(custom)).toEqual([]);
-    useAppStore.getState().addWorldBook({
-      id: 'w1',
-      name: '云海之上',
-      summary: '漂浮在云海上的城邦。',
-      rules: '没有手机，靠传信鸟联络\n人人都有一只灵兽',
-      createdAt: 1,
-      updatedAt: 1,
-    });
-    const lines = worldBlock({ worldId: 'w1' });
-    expect(lines[0]).toBe('[The world you live in] 云海之上: 漂浮在云海上的城邦。');
-    expect(lines).toContain('- 没有手机，靠传信鸟联络');
-    expect(lines.join('\n')).toContain('know only what exists in it');
-    // 找不到的世界 = 现实世界
-    expect(worldBlock({ worldId: 'gone' })).toEqual([]);
-  });
-  it('系统 prompt 里紧跟角色设定', () => {
-    useAppStore.getState().addWorldBook({ id: 'w1', name: '云海之上', summary: '云上城邦。', createdAt: 1, updatedAt: 1 });
-    const text = buildChatSystemPrompt({ ...squareCtx, character: { ...squareCtx.character, worldId: 'w1' } }, NOW);
-    expect(text).toContain('[The world you live in] 云海之上: 云上城邦。');
-    expect(text.indexOf('[The world you live in]')).toBeGreaterThan(text.indexOf('[Who you are]'));
-  });
-});
-
-describe('世界书共享（D-111）', () => {
-  const w = (id: string, visibility?: 'private' | 'public') => ({ id, name: id, summary: '', createdAt: 1, updatedAt: 1, visibility });
-  it('绑定了别人看不见的世界的角色不能公开；公开 / 共享 / 现实世界可以', () => {
-    useAppStore.getState().addWorldBook(w('mine-private'));
-    useAppStore.getState().addWorldBook(w('mine-public', 'public'));
-    useAppStore.getState().setSharedWorlds([{ ...w('theirs', 'public'), shared: true }]);
-    expect(canPublishCharacter({})).toBe(true);
-    expect(canPublishCharacter({ worldId: 'mine-private' })).toBe(false);
-    expect(canPublishCharacter({ worldId: 'mine-public' })).toBe(true);
-    expect(canPublishCharacter({ worldId: 'theirs' })).toBe(true);
-  });
-  it('绑定即快照（D-112）：角色带着当时的设定与版本，世界之后更新 / 删除都不影响；没快照的旧存档按 id 找，找不到回落现实世界', () => {
-    useAppStore.getState().addWorldBook({ ...w('w1', 'public'), summary: '第一版' });
-    const snap = worldSnapshot('w1')!;
-    expect(snap.version).toBe(1);
-    useAppStore.getState().updateWorldBook({ ...useAppStore.getState().worldBooks[0], summary: '第二版' });
-    expect(useAppStore.getState().worldBooks[0].version).toBe(2);
-    expect(worldOf({ worldId: 'w1', world: snap }).summary).toBe('第一版');
-    expect(worldOf({ worldId: 'w1' }).summary).toBe('第二版');
-    useAppStore.getState().removeWorldBook('w1');
-    expect(worldOf({ worldId: 'w1', world: snap }).summary).toBe('第一版');
-    expect(worldOf({ worldId: 'w1' }).id).toBe('real');
-    // 世界删了 = 别人看不见 → 不能再新公开
-    expect(canPublishCharacter({ worldId: 'w1', world: snap })).toBe(false);
-    const shared = [{ ...w('theirs', 'public'), shared: true }];
-    expect(selectableFrom([], shared, ['theirs']).map((x) => x.id)).toEqual(['real', 'theirs']);
-  });
 });
 
 describe('身边的人', () => {

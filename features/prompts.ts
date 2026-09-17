@@ -47,7 +47,6 @@ import {
   TALK_MANNER,
   userProfileBlock,
   warmthLine,
-  worldBlock,
 } from '@/content/prompts';
 import { dateKey } from '@/content/calendar';
 import { ORDER, promptSections, type PromptMode } from '@/core/prompt';
@@ -74,8 +73,7 @@ promptSections.register({ name: 'intro-outing', modes: OUTING, order: ORDER.intr
 promptSections.register({ name: 'persona', modes: 'all', order: ORDER.persona, lines: (ctx) => [`[Who you are] ${scriptFor(ctx.character).persona}`] });
 promptSections.register({ name: 'pursuit', modes: TALK, order: ORDER.pursuit, lines: (ctx) => [`[How you pursue] ${pursuitLine(ctx.character)}`] });
 promptSections.register({ name: 'profile', modes: 'all', order: ORDER.profile, lines: (ctx) => characterProfileBlock(ctx.character) });
-// 世界书（D-110）：TA 所在的世界，现实世界不出段；身边的人只在羁绊层（陌生人偶遇没有）
-promptSections.register({ name: 'world', modes: 'all', order: ORDER.world, lines: (ctx) => worldBlock(ctx.character) });
+// 身边的人（D-110）只在羁绊层（陌生人偶遇没有）
 promptSections.register({ name: 'circle', modes: BONDED_FAMILY, order: ORDER.circle, lines: (ctx) => circleBlock(ctx.bond?.circle) });
 promptSections.register({ name: 'circle-outing', modes: OUTING, order: ORDER.circle, lines: (ctx) => (isStranger(ctx) ? [] : circleBlock(ctx.bond?.circle)) });
 // TA 自己的作息（D-119）：羁绊层都知道自己接下来要干嘛

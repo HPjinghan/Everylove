@@ -20,7 +20,6 @@
  *   caption.ts       看图
  *   heartbeat.ts     心跳三段式模板
  *   create.ts        创造描述解析
- *   world.ts         世界书：TA 所在的世界（D-110）
  *   circle.ts        TA 身边的人：生成 + 注入（D-110）
  *   reach-out.ts     TA 主动找她的舞台提示（D-114）
  *   his-schedule.ts  TA 自己的作息：生成 + 注入（D-119）
@@ -65,7 +64,6 @@ export * from './shared';
 export * from './social';
 export * from './wallet';
 export * from './warmth';
-export * from './world';
 
 /** 分发器：引擎只调这一个——由 core/prompt 按分段表装配（分段在 features/prompts.ts 与各玩法里注册，D-086） */
 export function buildChatSystemPrompt(ctx: EngineContext, now: Date = new Date()): string {

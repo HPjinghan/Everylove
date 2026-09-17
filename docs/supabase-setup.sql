@@ -34,6 +34,7 @@ create policy "shared characters insert" on public.shared_characters for insert 
 create policy "shared characters update" on public.shared_characters for update using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
 create policy "shared characters delete" on public.shared_characters for delete using (auth.uid() = owner_id);
 
+-- shared_worlds：世界书已下线（D-150），这张表留着不用；新环境可以不建
 create table if not exists public.shared_worlds (
   id text primary key,
   owner_id uuid not null references auth.users (id) on delete cascade,

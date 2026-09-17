@@ -20,8 +20,7 @@ export const ORDER = {
   persona: 10,
   pursuit: 20,
   profile: 30,
-  /** 世界书与身边的人（D-110）：紧跟角色设定 */
-  world: 32,
+  /** 身边的人（D-110）：紧跟角色设定 */
   circle: 34,
   voice: 40,
   now: 50,

@@ -21,7 +21,6 @@ import {
   timeOfDayLine,
   userProfileBlock,
 } from './shared';
-import { worldBlock } from './world';
 
 /**
  * X（原朋友圈）的评论回复实装模型：短、口语、带着发帖时的心情。
@@ -42,7 +41,6 @@ export function buildPostReplySystem(
     `【你是谁】${script.persona}`,
     `【你的追法】${pursuitLine(c)}`,
     ...characterProfileBlock(c),
-    ...worldBlock(c),
     ...circleBlock(bond?.circle),
     ...userProfileBlock(me, bond ? 'bonded' : 'square'),
     ...sharedMemoryBlock(c),
@@ -85,7 +83,6 @@ export function buildCharacterPostSystem(
     `【你是谁】${script.persona}`,
     `【你的追法】${pursuitLine(c)}`,
     ...characterProfileBlock(c),
-    ...worldBlock(c),
     ...circleBlock(bond?.circle),
     ...(bond ? memoryBlockFor(bond.memory) : []),
     '【发帖的写法】',
@@ -137,7 +134,6 @@ export function buildPostReactionsSystem(c: Character, authors: ReactionAuthor[]
   return [
     `一个类似 X（推特）的社交应用上，虚构角色「${c.name}」（${c.identity}）发了一条帖子。请写下面这些人在评论区的反应——他们都是这个世界里的人，认识 ${c.name}：`,
     ...authors.map((a) => `- ${a.name}：${a.who}`),
-    ...worldBlock(c),
     '【写法】',
     '- 挑其中 1–3 个人各评论一句：短、口语、像熟人随手回的（调侃、关心、接梗、约饭、吐槽都行），每人的口气要配得上他和发帖人的关系。',
     `- ${c.name} 可以回其中一条（一句，按 ${c.name} 的性格），也可以不回。`,

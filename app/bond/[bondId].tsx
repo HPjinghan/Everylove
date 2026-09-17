@@ -161,7 +161,7 @@ export default function BondScreen() {
       {update ? (
         <Pressable
           onPress={() =>
-            Alert.alert(t('换成作者的最新设定？'), t('聊天记录、记忆、等级都留着，只换设定、台词、世界与声音。换了不能退回。'), [
+            Alert.alert(t('换成作者的最新设定？'), t('聊天记录、记忆、等级都留着，只换设定、台词与声音。换了不能退回。'), [
               { text: t('取消'), style: 'cancel' },
               {
                 text: t('换'),

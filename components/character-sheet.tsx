@@ -16,7 +16,6 @@ import { levelOf } from '@/lib/bond';
 import { timeAgo } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { portraitSource } from '@/lib/imagegen';
-import { isRealWorld, worldOf } from '@/lib/worlds';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
 /** 立绘宽度（居中，3:4） */
@@ -30,7 +29,6 @@ export function CharacterSheet({ characterId, visible, onClose }: { characterId:
   if (!c) return null;
   const portrait = portraitSource(c.id, stored);
   const name = bond?.name ?? c.name;
-  const world = worldOf(c);
   const encounters = [...(chat?.encounters ?? [])].reverse();
 
   return (
@@ -62,7 +60,6 @@ export function CharacterSheet({ characterId, visible, onClose }: { characterId:
               {t('已在通讯录')} · <Text style={styles.statusNum}>LV{levelOf(bond)}</Text>
             </Text>
           ) : null}
-          {!isRealWorld(world) ? <Text style={styles.status}>{t('来自「{world}」', { world: world.name })}</Text> : null}
 
           <Card style={styles.card}>
             <Text style={styles.hook}>「{c.hook}」</Text>

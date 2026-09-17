@@ -9,7 +9,6 @@ import type { Bond, Character, HisEvent } from '@/lib/types';
 
 import { circleBlock } from './circle';
 import { characterProfileBlock, langName } from './shared';
-import { worldBlock } from './world';
 
 export const HIS_SCHEDULE_DAYS = 7;
 export const HIS_SCHEDULE_MIN = 3;
@@ -21,7 +20,6 @@ export function buildHisScheduleSystem(c: Character, bond: Pick<Bond, 'nickname'
     `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。现在要写你自己接下来一周的日程——你的日历，不是和恋人${bond ? `（你叫她「${bond.nickname}」）` : ''}的约定。`,
     `【你是谁】${script.persona}`,
     ...characterProfileBlock(c),
-    ...worldBlock(c),
     ...circleBlock(bond?.circle),
     '【要写的东西】',
     `- 接下来 ${HIS_SCHEDULE_DAYS} 天里 ${HIS_SCHEDULE_MIN}–${HIS_SCHEDULE_MAX} 条安排：上班 / 值班 / 出差、和朋友家人的约、看医生、健身、爱好、要办的杂事……按你的身份和作息过实，像真人的日历：有的带钟点、有的只写在某一天。`,

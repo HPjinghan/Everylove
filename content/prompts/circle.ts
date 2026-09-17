@@ -10,7 +10,6 @@ import type { HerShareTier } from '@/lib/her-share';
 import type { Bond, Character, CircleLine, CirclePerson } from '@/lib/types';
 
 import { characterProfileBlock, langName, timeOfDayLine } from './shared';
-import { worldBlock } from './world';
 
 /** 身边的人的数量范围与聊天条数 */
 export const CIRCLE_MIN = 4;
@@ -28,7 +27,6 @@ export function buildCircleSystem(c: Character, bond: Pick<Bond, 'nickname'> | u
     `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。现在要把你身边的人写出来——你的世界里除了恋人${bond ? `（你叫她「${bond.nickname}」）` : ''}还有别人：家人、朋友、同事、邻居……`,
     `【你是谁】${script.persona}`,
     ...characterProfileBlock(c),
-    ...worldBlock(c),
     '【要写的东西】',
     `- ${CIRCLE_MIN}–${CIRCLE_MAX} 个身边的人：每人一个名字（按你的身份与世界起名，不用真实名人）、和你的关系（妈妈 / 发小 / 同事 / 室友 / 邻居……）、一句话（你眼里这个人是什么样）。关系要有远近：至少一个家人、一个多年的朋友、一个工作或日常里常见的人。`,
     `- 其中 ${CIRCLE_CHATS} 个人和你最近的聊天：每段 ${CIRCLE_CHAT_LINES} 句左右，你和对方交替，口语、日常（约饭、催你、吐槽、分享、家里的事），像真的手机聊天记录；不写她的事，最多一句旁敲侧击。`,
@@ -135,7 +133,6 @@ export function buildCircleRefreshSystem(c: Character, bond: Pick<Bond, 'nicknam
     `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。现在要把你这段时间和身边的人新聊的几句写出来——你的日子在往前走，手机里的对话也在往前走。你的恋人叫「${bond.nickname}」。`,
     `【你是谁】${script.persona}`,
     ...characterProfileBlock(c),
-    ...worldBlock(c),
     ...circleBlock(bond.circle),
     '【要写的东西】',
     `- 从名单里挑 1–${CIRCLE_REFRESH_MAX} 个人，写你们这段时间新聊的：每段 2–${CIRCLE_REFRESH_LINES_MAX} 句，你和对方交替，口语、具体、像真的手机聊天（约饭、催你、吐槽、分享、家里的事、工作上的小麻烦）。`,
