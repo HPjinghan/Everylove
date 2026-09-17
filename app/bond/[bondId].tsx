@@ -2,14 +2,14 @@
  * 羁绊会话（D-100 纸面）：加好友之后的家。
  * 顶栏自绘：‹、头像 36、名 17/600、「羁绊 LVn · 阶段 ›」12/500 primary（整块点开「TA 的主页」）、右侧只留电话；下沿 1.5px ink。
  * LV1 首次进入插一条「+」面板预告（白底 accent 字，只一次，bond.hintPlusSeen）。
- * 「TA 的主页」= 原 profile Modal 扩展：统计卡 + 三个动作图块（电话 / 查手机 / 约 TA）+ 信息卡（Card + Divider 分区）。
+ * 「TA 的主页」= 原 profile Modal 扩展：统计卡 + 信息卡（Card + Divider 分区）；三个动作图块已下线（D-147：与顶栏电话、「+」面板重复）。
  * 开门/离席已下线（D-046）：加好友即在线，TA 一直会回消息。
  * 回合走底座管线（D-086）：这里只管界面——她说的话交给 lib/chat，卡片交给各玩法的 send 函数；
  * 记忆 / 约定识别 / 偶尔发语音 / 回复暗号都是管线上的钩子，不在这个文件里。
  */
 
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,7 +19,7 @@ import { InviteSheet, RedPacketSheet, type ExtraSheet } from '@/components/chat-
 import { ChatThread, type ReplyRef } from '@/components/chat-thread';
 import { PhoneSheet } from '@/components/his-phone';
 import { LocationPicker } from '@/components/location-picker';
-import { MingCute, type MingCuteName } from '@/components/mingcute';
+import { MingCute } from '@/components/mingcute';
 import { PhoneLock } from '@/components/phone-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space } from '@/constants/design';
@@ -44,18 +44,6 @@ import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 /** Fredoka 只给数字与拉丁（D-100）：生日这类可能带中文的值回落系统字体 */
 const LATIN = /^[\x20-\x7E]*$/;
 
-/** 主页的动作图块：60 白底无描边、图标 ink 30、标签 12 */
-function ActionTile({ icon, label, onPress }: { icon: MingCuteName; label: string; onPress: () => void }) {
-  return (
-    <Pressable style={styles.tile} onPress={onPress}>
-      <View style={styles.tileBox}>
-        <MingCute name={icon} size={Space.iconTile} color={Romance.ink} />
-      </View>
-      <Text style={styles.tileLabel}>{label}</Text>
-    </Pressable>
-  );
-}
-
 function InfoRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <View style={styles.infoRow}>
@@ -73,9 +61,6 @@ export default function BondScreen() {
   const [typing, setTyping] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sheet, setSheet] = useState<ExtraSheet>(null);
-  /** 主页里点了动作：等主页这张 sheet 收完再开下一层（iOS 上两个 Modal 不能同时切换） */
-  const afterProfile = useRef<(() => void) | null>(null);
-
   const messageCount = bond?.messages.length ?? 0;
   useEffect(() => {
     if (bond && bond.unread > 0) {
@@ -141,12 +126,6 @@ export default function BondScreen() {
       return;
     }
     router.push({ pathname: '/call/[characterId]', params: { characterId: character.id } });
-  };
-
-  /** 主页三个动作：先收起主页，收完再做 */
-  const fromProfile = (fn: () => void) => {
-    afterProfile.current = fn;
-    setProfileOpen(false);
   };
 
   const infoRows: ReactNode[] = [
@@ -283,12 +262,7 @@ export default function BondScreen() {
         visible={profileOpen}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setProfileOpen(false)}
-        onDismiss={() => {
-          const fn = afterProfile.current;
-          afterProfile.current = null;
-          fn?.();
-        }}>
+        onRequestClose={() => setProfileOpen(false)}>
         <View style={styles.profile}>
           <View style={styles.profileHeader}>
             <Text style={styles.profileTitle}>{t('TA 的主页')}</Text>
@@ -316,12 +290,6 @@ export default function BondScreen() {
                 <Text style={styles.statNum}>{daysTogether(bond.createdAt)}</Text>
                 <Text style={styles.statLabel}>{t('在一起的天数')}</Text>
               </Card>
-            </View>
-
-            <View style={styles.tiles}>
-              <ActionTile icon="phoneSimple" label={t('电话')} onPress={() => fromProfile(startCall)} />
-              <ActionTile icon="phoneEye" label={t('查手机')} onPress={() => fromProfile(() => setSheet('phone'))} />
-              <ActionTile icon="location" label={t('约 TA')} onPress={() => fromProfile(() => setSheet('invite'))} />
             </View>
 
             <Card padded={false} style={styles.info}>
@@ -385,17 +353,6 @@ const styles = themed(() =>
     },
     lvFill: { height: '100%', backgroundColor: Romance.accent },
     lvText: { fontFamily: Fonts.label, fontSize: 10, color: Romance.sub, marginTop: 4 },
-    tiles: { flexDirection: 'row', justifyContent: 'center', gap: Space.tileGapLoose, marginTop: Space.tileGap },
-    tile: { alignItems: 'center', gap: 6 },
-    tileBox: {
-      width: Space.appTile,
-      height: Space.appTile,
-      borderRadius: Shape.radius,
-      backgroundColor: Romance.card,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    tileLabel: { fontSize: 12, fontWeight: '500', color: Romance.ink },
     info: { alignSelf: 'stretch', marginTop: Space.tileGap },
     infoRow: {
       flexDirection: 'row',
