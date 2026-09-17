@@ -67,7 +67,7 @@ export function hisScheduleBlock(events: HisEvent[] | undefined, today: string, 
   if (!list.length) return [];
   const label = (d: string) => {
     const diff = Math.round((Date.parse(d) - Date.parse(today)) / 86400_000);
-    return diff === 0 ? '今天' : diff === 1 ? '明天' : diff === 2 ? '后天' : d.slice(5);
+    return diff === 0 ? 'today' : diff === 1 ? 'tomorrow' : diff === 2 ? 'the day after tomorrow' : d.slice(5);
   };
-  return ['【你的日程】你自己接下来的安排（说话时记得，别和它冲突；提到时前后一致）：', ...list.map((e) => `- ${label(e.date)}${e.time ? ` ${e.time}` : ''}：${e.title}`)];
+  return ["[Your schedule] Your own upcoming plans (keep them in mind as you talk, don't contradict them; stay consistent when you mention them):", ...list.map((e) => `- ${label(e.date)}${e.time ? ` ${e.time}` : ''}: ${e.title}`)];
 }

@@ -19,14 +19,14 @@ export const PHOTO_REQUEST_PATTERN = /看看|拍给|拍一张|拍张|发张|发�
 
 export function hisPhotoLines(offeredProactive: boolean): string[] {
   const lines = [
-    `【发照片】她让你拍给她看、问你东西长什么样，或者她点的外卖 / 礼物刚送到你手上——这些时刻可以在回复最后单独一行写 ${HIS_PHOTO_MARK}（她看不到这行，她会收到照片）。`,
-    '- 第一段按她要看的写：她要看你（自拍、你举着什么、你穿了什么）写「自拍」，画面里有你；她要看东西（外卖、桌上的、窗外的）写「东西」，画面里只有东西、没有人也没有手。第二段一句话写具体画面（光线、东西、地方）。',
-    '- 任何情况画面里都没有别人：没有第二个人，也没有别人的手、影子、身体；不拍她。',
+    `[Sending photos] When she asks you to snap something for her, asks what something looks like, or the food / gift she ordered has just reached you — at these moments you may write ${HIS_PHOTO_MARK} on a separate final line of your reply (she can't see the line; she receives a photo).`,
+    '- The first part follows what she wants to see: if she wants to see you (a selfie, you holding something, what you\'re wearing) write "自拍" and you are in the frame; if she wants to see a thing (the food, something on the desk, the view outside) write "东西" and the frame holds only the thing — no people, no hands. The second part is one sentence describing the actual picture (light, object, place).',
+    "- In every case no one else is in the frame: no second person, no one else's hands, shadow or body; never photograph her.",
   ];
   lines.push(
     offeredProactive
-      ? '- 这一轮如果顺手，也可以主动拍一张你在做的事、桌上的、窗外的给她；不硬拍，聊到才拍。'
-      : '- 她没要、也没有东西送到就不拍。'
+      ? "- This turn, if it fits, you may also snap something on your own — what you're doing, what's on the desk, the view outside — for her; don't force it, only when the conversation gets there."
+      : "- If she didn't ask and nothing has been delivered, don't send one."
   );
   return lines;
 }

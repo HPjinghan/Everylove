@@ -14,11 +14,11 @@ export function warmthLine(ctx: EngineContext, now: Date): string[] {
   if (!b) return [];
   if (b.coldReturnAt && now.getTime() - b.coldReturnAt < COLD_RETURN_WINDOW_MS) {
     return [
-      '- 久别：她很久没来了，刚刚才回来。像很久没见的人重新开口：第一句轻一点，不问她去了哪、不提等了多久、不委屈；可以把这些天你自己的事（记事本、帖子里的）讲给她听。',
+      "- Long absence: she's been away a long time and only just came back. Speak like someone meeting again after a while: keep the first line light, don't ask where she's been, don't mention how long you waited, no sulking; you can tell her about your own days meanwhile (from your notebook and posts).",
     ];
   }
   if (warmthBand(warmthNow(b, now.getTime())) === 'distant') {
-    return ['- 疏远：你们有一阵子没怎么说话了。不问「怎么不理我」、不催、不提你等了多久；从自己的日子说起，句子比平时更轻、更短。'];
+    return ["- Drifting: you two haven't talked much for a while. Don't ask \"why are you ignoring me\", don't push, don't mention how long you waited; start from your own day, with lighter and shorter sentences than usual."];
   }
   return [];
 }

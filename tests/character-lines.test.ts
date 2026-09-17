@@ -45,7 +45,7 @@ describe('parseCharacterLines', () => {
 
 describe('scriptFor 用角色自己的台词', () => {
   it('没有台词时回落原型兜底', () => {
-    expect(scriptFor(base).opening[0]).toBe('哦，你就是那个……算了，进来聊。');
+    expect(scriptFor(base).opening[0]).toBe('哦，你就是那个……算了，说吧。');
   });
   it('有台词时逐项覆盖，空的仍回落', () => {
     const c: Character = {

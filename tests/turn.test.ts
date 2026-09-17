@@ -64,7 +64,7 @@ describe('亲密会话', () => {
       ['system', 'TA 同意让你看手机了'],
     ]);
     // 模型看到的：系统 prompt 带手机密码；最后一轮是她这句
-    expect(lastReq?.system).toContain(`你的手机密码是 ${bond.phoneCode}`);
+    expect(lastReq?.system).toContain(`Your phone passcode is ${bond.phoneCode}`);
     expect(lastReq?.turns.at(-1)).toEqual({ role: 'user', content: '你的手机密码多少呀' });
     expect(lastReq?.kind).toBe('reply');
   });
@@ -112,9 +112,9 @@ describe('初识试聊', () => {
     const texts = chat.messages.map((m) => m.text);
     expect(texts.some((t) => t.includes('心动'))).toBe(false);
     expect(texts.indexOf('嗯，我在。')).toBeLessThan(texts.length - 1);
-    expect(lastReq?.system).toContain('【此刻的情境】你们刚在交友软件上配对成功');
-    expect(lastReq?.system).toContain('【这一句让你多心动】');
-    expect(lastReq?.system).not.toContain('【你记得的事】');
+    expect(lastReq?.system).toContain('[Right now] You two just matched on a dating app');
+    expect(lastReq?.system).toContain('[How much this line moved you]');
+    expect(lastReq?.system).not.toContain('[What you remember]');
   });
 
   it('判 0 就是 0；超过 15 夹到 15；没写暗号按性子保底；暗面回合不涨', async () => {

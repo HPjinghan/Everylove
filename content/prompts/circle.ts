@@ -181,8 +181,8 @@ export function buildCircleRefreshUser(input: CircleRefreshInput): string {
 export function circleBlock(circle: CirclePerson[] | undefined): string[] {
   if (!circle?.length) return [];
   return [
-    '【你身边的人】这些人真的在你生活里，提到时前后一致（同名、同关系），不凭空多出别的家人朋友：',
-    ...circle.map((p) => `- ${p.name}（${p.relation}）${p.note ? `：${p.note}` : ''}`),
+    "[People around you] These people are really in your life; stay consistent when you mention them (same names, same relations), and don't invent additional family or friends out of nowhere:",
+    ...circle.map((p) => `- ${p.name} (${p.relation})${p.note ? `: ${p.note}` : ''}`),
   ];
 }
 

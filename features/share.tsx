@@ -18,7 +18,7 @@ const TITLE_MAX = 80;
 
 cardKinds.register({
   type: 'share',
-  contextText: (c) => `（她把在别处看到的一条内容转给了你：「${c.title}」${c.subtitle ? `，链接 ${c.subtitle}` : ''}）`,
+  contextText: (c) => `(She forwarded you something she saw elsewhere: "${c.title}"${c.subtitle ? `, link ${c.subtitle}` : ''})`,
   render: (c, dark) => <CardShell emoji="🔗" kicker={t('转给你')} title={c.title} subtitle={c.subtitle} dark={dark} />,
 });
 

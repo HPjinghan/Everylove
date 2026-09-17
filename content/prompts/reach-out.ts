@@ -26,19 +26,19 @@ export function buildReachOutUserLine(input: ReachOutInput): string {
     input.hoursSinceHer === null
       ? '你们还没怎么聊过。'
       : input.hoursSinceHer < 1
-        ? '她刚刚还在。'
+        ? 'She was here just now.'
         : input.hoursSinceHer < 24
-          ? `她上次说话是 ${Math.round(input.hoursSinceHer)} 小时前。`
-          : `她上次说话是 ${Math.round(input.hoursSinceHer / 24)} 天前。`;
+          ? `She last spoke ${Math.round(input.hoursSinceHer)} hours ago.`
+          : `She last spoke ${Math.round(input.hoursSinceHer / 24)} days ago.`;
   const lines = [
-    `（你想到她了，主动给她发一条消息——不是在回她。现在是${timeOfDayLine(input.now)}，${input.weather}。${since}`,
+    `(You thought of her and are sending her a message on your own — this is not a reply. It's ${timeOfDayLine(input.now)}, ${input.weather}. ${since}`,
   ];
-  if (input.last) lines.push(`会话里最后一条是${input.last.from === 'me' ? '她' : '你'}说的：「${input.last.text.slice(0, 60)}」。`);
-  if (input.recentNotes.length) lines.push('你最近的日子（记事本里写过的）：', ...input.recentNotes.map((n) => `- ${n}`));
-  if (input.recentPosts.length) lines.push('你最近发过的帖：', ...input.recentPosts.map((p) => `- ${p}`));
+  if (input.last) lines.push(`The last message in the chat was ${input.last.from === 'me' ? 'hers' : 'yours'}: "${input.last.text.slice(0, 60)}".`);
+  if (input.recentNotes.length) lines.push('Your recent days (from your notebook):', ...input.recentNotes.map((n) => `- ${n}`));
+  if (input.recentPosts.length) lines.push('Posts you made recently:', ...input.recentPosts.map((p) => `- ${p}`));
   lines.push(
-    '写法：从你自己此刻正在做的事、刚看见的东西、忽然想起的事说起，也可以接着上次聊到的往下说；1-2 句，像随手发的。',
-    '不问「在吗」，不催她回、不问她为什么不说话、不提你等了多久；不重复你上一条说过的。）'
+    "How: start from what you're doing right now, something you just saw, or something that suddenly came to mind; you can also pick up where you last left off. 1–2 sentences, like something dashed off.",
+    "Don't ask \"you there?\", don't push her to reply, don't ask why she's gone quiet, don't mention how long you waited; don't repeat what you said last time.)"
   );
   return lines.join('\n');
 }

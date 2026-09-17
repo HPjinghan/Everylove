@@ -48,17 +48,17 @@ describe('世界书', () => {
       updatedAt: 1,
     });
     const lines = worldBlock({ worldId: 'w1' });
-    expect(lines[0]).toBe('【你所在的世界】云海之上：漂浮在云海上的城邦。');
+    expect(lines[0]).toBe('[The world you live in] 云海之上: 漂浮在云海上的城邦。');
     expect(lines).toContain('- 没有手机，靠传信鸟联络');
-    expect(lines.join('\n')).toContain('只知道这个世界里有的东西');
+    expect(lines.join('\n')).toContain('know only what exists in it');
     // 找不到的世界 = 现实世界
     expect(worldBlock({ worldId: 'gone' })).toEqual([]);
   });
   it('系统 prompt 里紧跟角色设定', () => {
     useAppStore.getState().addWorldBook({ id: 'w1', name: '云海之上', summary: '云上城邦。', createdAt: 1, updatedAt: 1 });
     const text = buildChatSystemPrompt({ ...squareCtx, character: { ...squareCtx.character, worldId: 'w1' } }, NOW);
-    expect(text).toContain('【你所在的世界】云海之上：云上城邦。');
-    expect(text.indexOf('【你所在的世界】')).toBeGreaterThan(text.indexOf('【你是谁】'));
+    expect(text).toContain('[The world you live in] 云海之上: 云上城邦。');
+    expect(text.indexOf('[The world you live in]')).toBeGreaterThan(text.indexOf('[Who you are]'));
   });
 });
 
@@ -150,8 +150,8 @@ describe('身边的人', () => {
     expect(circleBlock(undefined)).toEqual([]);
     const circle = [{ id: 'p1', name: '阿哲', relation: '发小', note: '损友' }];
     const text = buildChatSystemPrompt({ ...bondedCtx, bond: { ...bondedCtx.bond!, circle } }, NOW);
-    expect(text).toContain('【你身边的人】');
-    expect(text).toContain('- 阿哲（发小）：损友');
+    expect(text).toContain('[People around you]');
+    expect(text).toContain('- 阿哲 (发小): 损友');
   });
 });
 
@@ -160,8 +160,8 @@ describe('广场偶遇的记忆', () => {
     const encounters = [{ at: 1, placeName: '广场', summary: '她：排队的人好多\n沈之言：应该很好吃吧' }];
     expect(encountersBlock({ ...squareCtx, encounters: [] })).toEqual([]);
     const text = buildChatSystemPrompt({ ...squareCtx, encounters }, NOW);
-    expect(text).toContain('【你们见过】');
-    expect(text).toContain('- 在广场：她：排队的人好多');
+    expect(text).toContain("[You've met]");
+    expect(text).toContain('- At 广场: 她：排队的人好多');
   });
   it('store：偶遇记录最多留 5 条', () => {
     for (let i = 0; i < 7; i++) useAppStore.getState().addEncounter('shen-zhiyan', { at: i, placeName: '广场', summary: `第 ${i} 次` });
@@ -259,7 +259,7 @@ describe('TA 自己的作息（D-119）', () => {
     const parsed = parseHisScheduleJSON('{"events":[{"date":"2026-09-11","time":"9:00","title":"早会"},{"date":"bad","title":"x"}]}');
     expect(parsed).toEqual([{ date: '2026-09-11', time: '09:00', title: '早会' }]);
     const block = hisScheduleBlock([{ id: 'a', date: '2026-09-11', time: '09:00', title: '早会' }, { id: 'b', date: '2026-09-09', title: '过去的' }], '2026-09-10');
-    expect(block[1]).toBe('- 明天 09:00：早会');
+    expect(block[1]).toBe('- tomorrow 09:00: 早会');
     expect(block).toHaveLength(2);
   });
 });

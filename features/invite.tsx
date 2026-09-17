@@ -13,7 +13,7 @@ import { useAppStore } from '@/store/app-store';
 
 cardKinds.register({
   type: 'invite',
-  contextText: (c) => `（她发来一张外出邀请：${c.title}）`,
+  contextText: (c) => `(She sent you an invitation to go out: ${c.title})`,
   render: (c, dark) => <CardShell emoji="🚶" kicker={t('外出邀请')} title={c.title} subtitle={c.subtitle} dark={dark} />,
 });
 

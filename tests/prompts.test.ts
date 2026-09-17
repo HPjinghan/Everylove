@@ -49,17 +49,17 @@ describe('系统 prompt 装配', () => {
   it('TA 的记事本：她出现多少按分量（D-099）', () => {
     const devoted = { ...noteCtx, character: { ...noteCtx.character, loveStyle: '依恋型', mbti: 'INFP' } };
     const cool = { ...noteCtx, character: { ...noteCtx.character, loveStyle: '冷静大人', mbti: 'INTJ' } };
-    expect(buildHisNoteSystem(devoted, NOW)).toContain('她占了你心思的大半');
-    expect(buildHisNoteSystem(devoted, NOW)).toContain('她会常常冒出来');
-    expect(buildHisNoteSystem(cool, NOW)).toContain('不是这本子的主题');
-    expect(buildHisNoteSystem(cool, NOW)).toContain('她偶尔出现，一笔带过');
+    expect(buildHisNoteSystem(devoted, NOW)).toContain('she takes up most of your thoughts');
+    expect(buildHisNoteSystem(devoted, NOW)).toContain('She keeps popping up');
+    expect(buildHisNoteSystem(cool, NOW)).toContain('not the subject of this notebook');
+    expect(buildHisNoteSystem(cool, NOW)).toContain('She appears occasionally, in passing');
   });
   it('TA 的记事本：不带她的资料卡与聊天规则，带自己的生活（D-098）', () => {
     const sys = buildHisNoteSystem(noteCtx, NOW);
-    expect(sys).toContain('【你自己的生活】');
-    expect(sys).toContain('【她的边界，优先级最高】');
-    expect(sys).toContain('【你记得的事】');
-    for (const gone of ['【关于她】', '【你的追法】', '【怎么爱她】', '【你的手机】', '【红包】', '主动联系强度']) {
+    expect(sys).toContain('[Your own life]');
+    expect(sys).toContain('[Her boundaries — highest priority]');
+    expect(sys).toContain('[What you remember]');
+    for (const gone of ['[About her]', '[How you pursue]', '[How you love her]', '[Your phone]', '[Red packets]', 'Initiative:']) {
       expect(sys).not.toContain(gone);
     }
   });
@@ -102,7 +102,7 @@ describe('系统 prompt 装配', () => {
     expect(ja).toContain('日本語');
     expect(ko).toContain('한국어');
     expect(ko).toContain('109');
-    const strip = (p: string) => p.replace(/^- 始终用.*$/m, '').replace(/^- 若她表达自伤.*$/m, '');
+    const strip = (p: string) => p.replace(/^- Always speak.*$/m, '').replace(/^- If she expresses self-harm.*$/m, '');
     expect(en).toContain('988');
     expect(ja).toContain('0120-279-338');
     expect(strip(en)).toBe(strip(ja));

@@ -50,7 +50,7 @@ describe('种子角色按语言分发', () => {
       custom: true,
       lang: 'ja',
     };
-    expect(scriptFor(custom).opening[0]).toBe('ああ、君があの……いや、いい。話せば。');
+    expect(scriptFor(custom).opening[0]).toBe('ああ、君があの……いや、いい。話せ。');
     expect(bondedPostsFor(custom)[0].text).toContain('関係ないだろ');
     // 旧存档没有 lang：按当前界面语言
     setLang('en');

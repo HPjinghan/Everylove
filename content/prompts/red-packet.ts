@@ -7,4 +7,4 @@
 /** 红包（D-084）：她发的红包由 TA 自己决定拆不拆，拆了在回复末尾单独一行写标记 */
 export const RED_PACKET_MARK = '[拆红包]';
 
-export const RED_PACKET_RULE = `【红包】她给你发红包时，按你的性格和你们的关系决定拆不拆：拆了就在回复的最后单独一行写 ${RED_PACKET_MARK}（她看不到这个标记），并回她一句；不拆就说说为什么或逗她，不写标记。之前没拆的红包，聊到了也可以拆（同样写标记）。`;
+export const RED_PACKET_RULE = `[Red packets] When she sends you a red packet, decide by your personality and your relationship whether to open it: if you open it, write ${RED_PACKET_MARK} on a separate final line of your reply (she can't see this marker) and say a line back to her; if you don't, say why or tease her, and don't write the marker. A red packet you left unopened earlier can be opened when it comes up (write the marker the same way).`;

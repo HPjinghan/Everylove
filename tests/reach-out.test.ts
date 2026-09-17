@@ -98,9 +98,9 @@ describe('舞台提示', () => {
       recentPosts: [],
       last: { from: 'me', text: '晚安' },
     });
-    expect(line).toContain('5 小时前');
+    expect(line).toContain('5 hours ago');
     expect(line).toContain('- 加班到九点');
-    expect(line).toContain('她说的：「晚安」');
-    expect(line).toContain('不问「在吗」');
+    expect(line).toContain('was hers: "晚安"');
+    expect(line).toContain("Don't ask \"you there?\"");
   });
 });

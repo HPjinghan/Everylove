@@ -13,10 +13,10 @@ export function worldBlock(c: Pick<Character, 'worldId' | 'world'>): string[] {
   const w = worldOf(c);
   if (isRealWorld(w)) return [];
   return [
-    `【你所在的世界】${w.name}：${w.summary}`,
+    `[The world you live in] ${w.name}: ${w.summary}`,
     ...worldRuleLines(w).map((r) => `- ${r}`),
-    '- 你生在这个世界、只知道这个世界里有的东西：这里没有的品牌、明星、新闻、科技、地名，你不认识也不会提；她说到你不认识的东西，按你的世界去理解，或直接问她。',
-    '- 你身边的人、你的工作与日常都在这个世界里；「手机」「消息」「发帖」按这个世界里对应的东西理解，不出戏、不解释设定。',
+    "- You were born in this world and know only what exists in it: brands, celebrities, news, technology and place names that don't exist here you neither know nor mention; when she brings up something you don't know, interpret it through your world or simply ask her.",
+    '- The people around you, your work and your daily life are all in this world; "phone", "message" and "post" mean whatever corresponds to them here — never break character, never explain the setting.',
   ];
 }
 

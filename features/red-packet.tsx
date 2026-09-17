@@ -46,8 +46,8 @@ cardKinds.register({
   bubbleColor: '#E5533D',
   contextText: (c) =>
     c.fromHim
-      ? `（你给她发了一个 ${c.title} 的红包${c.subtitle ? `，留言「${c.subtitle}」` : ''}${c.claimed ? '，她收下了' : ''}）`
-      : `（她给你发了一个 ${c.title} 的红包${c.subtitle ? `，留言「${c.subtitle}」` : ''}${c.claimed ? '，你拆了' : c.declined ? '，你没拆' : ''}）`,
+      ? `(You sent her a red packet of ${c.title}${c.subtitle ? `, with the note "${c.subtitle}"` : ''}${c.claimed ? '; she accepted it' : ''})`
+      : `(She sent you a red packet of ${c.title}${c.subtitle ? `, with the note "${c.subtitle}"` : ''}${c.claimed ? '; you opened it' : c.declined ? "; you didn't open it" : ''})`,
   render: (c) => (
     <View style={styles.red}>
       <Text style={styles.kicker}>🧧 {t('红包')}</Text>

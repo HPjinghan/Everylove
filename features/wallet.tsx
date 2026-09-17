@@ -114,8 +114,8 @@ cardKinds.register({
   type: 'delivery',
   contextText: (c) =>
     c.fromHim
-      ? `（你给她点了一份${c.title}${c.subtitle ? `，留言「${c.subtitle}」` : ''}，${(c.arriveAt ?? 0) <= Date.now() ? '已经送到了' : '骑手还在路上'}）`
-      : `（她给你点了一份外卖：${c.title}${c.subtitle ? `，留言「${c.subtitle}」` : ''}，${(c.arriveAt ?? 0) <= Date.now() ? '已经送到了' : '骑手还在路上'}）`,
+      ? `(You ordered her ${c.title}${c.subtitle ? `, with the note "${c.subtitle}"` : ''}; ${(c.arriveAt ?? 0) <= Date.now() ? 'it has been delivered' : 'the courier is still on the way'})`
+      : `(She ordered you food: ${c.title}${c.subtitle ? `, with the note "${c.subtitle}"` : ''}; ${(c.arriveAt ?? 0) <= Date.now() ? 'it has been delivered' : 'the courier is still on the way'})`,
   render: (c, dark) => <DeliveryCard title={c.title} subtitle={c.subtitle} arriveAt={c.arriveAt ?? 0} dark={dark} />,
 });
 

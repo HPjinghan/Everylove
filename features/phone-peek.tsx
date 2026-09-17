@@ -33,7 +33,7 @@ replyMarkers.register({
 /* ── 卡片：想看看你的手机 ── */
 cardKinds.register({
   type: 'phoneRequest',
-  contextText: () => '（她想看你的手机，问你要密码）',
+  contextText: () => '(She wants to look at your phone and is asking for the passcode.)',
   render: (c, dark) => <CardShell emoji="📱" kicker={t('查手机')} title={c.title} subtitle={c.subtitle} dark={dark} />,
 });
 

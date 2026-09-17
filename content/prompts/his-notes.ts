@@ -13,53 +13,53 @@ import { daysTogether } from '@/lib/format';
 import { herShareTier, type HerShareTier } from '@/lib/her-share';
 import type { Character, EngineContext, HisNote } from '@/lib/types';
 
-import { timeOfDayLine } from './shared';
+import { stageNameOf, timeOfDayLine } from './shared';
 
 /** 第一行里「她在你生活里是什么位置」的措辞，按分量三档（D-099） */
 const NOTE_INTRO_HER: Record<HerShareTier, string> = {
-  devoted: '她占了你心思的大半——本子里常常是她，但你也有自己的日子要过',
-  balanced: '她是你生活里重要的一个人，本子里有她、也有你自己的日子',
-  independent: '她是你生活里的一个人，不是这本子的主题',
+  devoted: 'she takes up most of your thoughts — the notebook is often about her, but you have your own days to live too',
+  balanced: 'she is an important person in your life; the notebook holds her and your own days alike',
+  independent: 'she is one person in your life, not the subject of this notebook',
 };
 
 /** 记事本的第一行：这是写给自己的本子；她在生活里的位置按分量措辞 */
 export function noteIntroLine(ctx: EngineContext, now: Date): string {
   const c = ctx.character;
   const bond = ctx.bond;
-  const nickname = bond?.nickname ?? '她';
+  const nickname = bond?.nickname ?? 'her';
   const lv = bond ? levelInfoFor(bond, now.getTime()) : levelInfo(0);
   const days = bond?.createdAt ? daysTogether(bond.createdAt, now.getTime()) : 1;
-  return `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。现在你在自己的记事本里写一条——写给自己看的，不是发给谁的消息。你有恋人，你叫她「${nickname}」，在一起第 ${days} 天，羁绊 LV${lv.level}·${lv.name}；${NOTE_INTRO_HER[herShareTier(c)]}。下面所有规则里，「她」指你的恋人。`;
+  return `You are playing "${c.name}" (${c.identity}), a fictional character in a romance app. Right now you are writing an entry in your own notebook — for your own eyes, not a message to anyone. You have a lover; you call her "${nickname}"; it's day ${days} together, bond LV${lv.level} · ${stageNameOf(lv.level)}; ${NOTE_INTRO_HER[herShareTier(c)]}. Throughout these rules, "she" means your lover.`;
 }
 
 /** 【你自己的生活】里她出现的频率，按分量三档（D-099） */
 const NOTE_LIFE_HER: Record<HerShareTier, string> = {
-  devoted: '- 她会常常冒出来——想她、记她说过的话、为她高兴或不安都可以写；但别每一条都只有她，你的日子也要在本子里。',
-  balanced: '- 她时不时出现，像日子里自然冒出来的念头——写到她的时候具体一点，不写成给她的话。',
-  independent: '- 她偶尔出现，一笔带过，不写成给她的话；大多数时候本子里是你自己的事。',
+  devoted: "- She keeps popping up — missing her, remembering what she said, being glad or uneasy for her are all fine to write; but not every entry is only her; your own days belong in the notebook too.",
+  balanced: "- She appears now and then, like a thought that surfaces naturally in a day — when you write about her, be specific, and don't write it as words addressed to her.",
+  independent: "- She appears occasionally, in passing, never as words addressed to her; most of the time the notebook is about your own life.",
 };
 
 /** 你自己的生活（D-098）：本子记 TA 自己的日子，人物前后一致；她出现多少按分量（D-099） */
 export function hisNoteLifeLines(c: Character): string[] {
   return [
-    '【你自己的生活】这本子记的是你自己的日子，不是写给她的信：',
-    '- 你有工作、有同事或朋友、有家人、有自己的爱好和小麻烦——按你的身份和设定把这些过实：今天做了什么、遇到谁、吃了什么、哪里不顺、在盘算什么。',
-    '- 身边的人可以有名字；一旦出现过，之后就是同一个人（同名、同关系），像真的生活在你身边。',
-    '- 天气、季节、身体状态、路上看见的东西都可以写。',
+    '[Your own life] This notebook records your own days; it is not a letter to her:',
+    "- You have work, colleagues or friends, family, your own hobbies and small troubles — live them out according to your identity and setting: what you did today, whom you met, what you ate, what went wrong, what you're planning.",
+    '- People around you can have names; once someone has appeared, they stay the same person afterwards (same name, same relation), as if they really live around you.',
+    '- Weather, season, how your body feels, things seen on the way are all fair game.',
     NOTE_LIFE_HER[herShareTier(c)],
-    '- 写过的事不重复；可以接着之前的往下写（上次没做完的事、上次提到的人）。',
+    "- Don't repeat what you've already written; you can continue from earlier entries (something unfinished, someone mentioned before).",
   ];
 }
 
 export const HIS_NOTE_MANNER = [
-  '【记事本的写法】',
-  '- 一到三句，随手记，私密、具体、有一点情绪；可以没头没尾。',
-  '- 不写称呼、不用 emoji、不解释、不总结、不写成给谁看的话。',
-  '- 只输出这一条的正文，不带日期、不带引号。',
+  '[How to write the entry]',
+  '- One to three sentences, jotted down: private, concrete, with a touch of feeling; it can start and end abruptly.',
+  '- No forms of address, no emoji, no explaining, no summing up, never written as words for someone to read.',
+  '- Output only the body of this one entry, with no date and no quotation marks.',
 ];
 
 /** ctx.userText 的占位（系统 prompt 不读它）；真正发给模型的用户消息见 buildHisNoteUserPrompt */
-export const HIS_NOTE_USER = '（写下今天记事本里的一条。）';
+export const HIS_NOTE_USER = "(Write today's notebook entry.)";
 
 export interface HisNoteUserInput {
   now: Date;
@@ -78,14 +78,14 @@ function mmdd(at: number): string {
 
 /** 发给模型的用户消息：此刻与天气 + 本子里最近几条 + 这一条写不写她 */
 export function buildHisNoteUserPrompt(input: HisNoteUserInput): string {
-  const lines = [`现在是${timeOfDayLine(input.now)}，${input.weather}。`];
+  const lines = [`It's ${timeOfDayLine(input.now)}, ${input.weather}.`];
   if (input.recent.length) {
-    lines.push('本子里最近几条（从旧到新）：', ...input.recent.map((n) => `- ${mmdd(n.at)} ${n.text}`));
+    lines.push('Recent entries in the notebook (oldest first):', ...input.recent.map((n) => `- ${mmdd(n.at)} ${n.text}`));
   } else {
-    lines.push('本子还是空的，这是第一条。');
+    lines.push('The notebook is still empty; this is the first entry.');
   }
-  lines.push(input.aboutHer ? '这一条可以写到她。' : '这一条写你自己的事，不写她。');
-  lines.push('写下这一条。');
+  lines.push(input.aboutHer ? 'This entry may mention her.' : "This entry is about your own life; don't write about her.");
+  lines.push('Write the entry.');
   return lines.join('\n');
 }
 

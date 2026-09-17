@@ -244,8 +244,20 @@ export function tempNow(w: DayWeather, now: Date = new Date()): number {
   return Math.round(w.lo + (w.hi - w.lo) * t);
 }
 
-/** 给 prompt 的一句话：「今天多云，气温 23℃ 上下」 */
+/** 给 prompt 的一句话（英语，D-142）：「cloudy today, around 23°C」 */
+const CONDITION_EN: Record<string, string> = {
+  sunny: 'sunny',
+  cloudy: 'cloudy',
+  overcast: 'overcast',
+  fog: 'foggy',
+  drizzle: 'drizzling',
+  rain: 'rainy',
+  storm: 'thunderstorms',
+  snow: 'snowing',
+  windy: 'windy',
+};
+
 export function weatherLine(now: Date = new Date()): string {
   const w = todayWeather(now);
-  return `今天${w.label}，气温 ${tempNow(w, now)}℃ 上下`;
+  return `${CONDITION_EN[w.id] ?? w.label} today, around ${tempNow(w, now)}°C`;
 }

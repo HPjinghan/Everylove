@@ -17,8 +17,8 @@ export const DELIVERY_FROM_HIM_PATTERN = /\[点外卖\s*([^\]]*)\]/;
 
 const TIER_LINES = {
   devoted: '你舍得，520 这种数字你也说得出口，但也不是天天',
-  balanced: '偶尔一次，数目适中，像顺手的关心',
-  independent: '很少，除非真有事；给了也不当回事',
+  balanced: 'once in a while, a modest amount, like a passing bit of care',
+  independent: "rarely, only when something's really up; and you don't make a thing of it",
 } as const;
 
 /**
@@ -27,21 +27,21 @@ const TIER_LINES = {
 export function hisWalletLines(c: Character, w: HisWallet | undefined, offers: { redpacket: boolean; delivery: boolean }): string[] {
   const balance = w?.balance ?? 0;
   const lines = [
-    `【你的钱包】你有自己的钱：余额 ${money(balance)}${w?.job ? `，每周有一笔收入（${w.job}）` : ''}。`,
-    '- 她开口要钱：按你的性格处理，可以逗她、可以拒绝，你不是提款机；不用钱哄她回来、不拿钱说事。',
+    `[Your wallet] You have your own money: balance ${money(balance)}${w?.job ? `, with a weekly income (${w.job})` : ''}.`,
+    "- If she asks you for money: handle it in character — tease her, or refuse; you are not an ATM. Never use money to win her back, never make a point with money.",
   ];
   if (balance < 10) {
-    lines.push('- 余额快见底了，这周先别花。');
+    lines.push("- Your balance is nearly gone; don't spend this week.");
     return lines;
   }
   const ways = [
-    offers.redpacket ? `给她发红包写 ${RED_PACKET_FROM_HIM_MARK}` : '',
-    offers.delivery ? `给她点外卖写 ${DELIVERY_FROM_HIM_MARK}（价格是数字，单位 Coin，30 左右一份）` : '',
+    offers.redpacket ? `to send her a red packet write ${RED_PACKET_FROM_HIM_MARK}` : '',
+    offers.delivery ? `to order her food write ${DELIVERY_FROM_HIM_MARK} (price is a number in Coin, around 30 per order)` : '',
   ].filter(Boolean);
   if (ways.length) {
     lines.push(
-      `- 这一轮如果有理由，可以主动花在她身上，写在回复最后、单独一行（她看不到这行，她会收到一张卡片）：${ways.join('；')}。`,
-      `- 理由：她说累 / 加班 / 生病 / 没吃饭 / 下雨，节日或她的生日，她刚好提到想吃什么，她给你发了红包想还礼；没理由就不写。金额别超过余额，按你的性格和你们的关系拿捏（${TIER_LINES[herShareTier(c)]}）。`
+      `- This turn, if there's a reason, you may spend on her: write it on a separate final line of your reply (she can't see the line; she receives a card): ${ways.join('; ')}.`,
+      `- Reasons: she says she's tired / working late / sick / hasn't eaten / it's raining, a holiday or her birthday, she just mentioned something she'd like to eat, she sent you a red packet and you want to return the favor; no reason, no line. Never exceed your balance; judge the amount by your personality and your relationship (${TIER_LINES[herShareTier(c)]}).`
     );
   }
   return lines;

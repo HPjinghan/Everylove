@@ -12,13 +12,16 @@ import type { CharacterScript, SeedPost, SquarePost } from './types';
 /* ────────────────────────── scripts ────────────────────────── */
 
 const ethan: CharacterScript = {
-  opening: ["Hi. I'm Ethan.", "Just got out of class — the hallway lights are still on. …You look like you've got something on your mind."],
+  opening: [
+    "Hi. I'm Ethan.",
+    "Just got out of class. You look like you've got something on your mind.",
+  ],
   square: [
     "Mm. I'm listening.",
-    'I see. And then?',
-    "You're very earnest when you talk. I like that.",
-    'No rush. Take your time.',
-    "Interesting. I hadn't looked at it that way.",
+    'And then?',
+    "Hadn't thought of it that way.",
+    'No rush.',
+    'Interesting. Is that how you usually think?',
   ],
   offer: [
     "Time moves faster when I'm talking to you.",
@@ -26,15 +29,15 @@ const ethan: CharacterScript = {
     "I'm not in the habit of leaving people I want to see again up to chance.",
   ],
   bonded: [
-    "It's windy today. Wear an extra layer. Yes, I'm nagging.",
-    "Made tea in the office and thought of the kind you said you wanted to try. I'll bring you some.",
-    'A student asked a wonderful question just now. My first instinct was to tell you.',
-    "Mm, I'm here. Talk about anything you like.",
-    'Your message came ten minutes later than yesterday. I was waiting, properly.',
+    'A student asked why old poets always made the moon sad. I had no answer.',
+    'Left the tea too long. Bitter in a good way.',
+    'Just remembered that bookshop you mentioned. Weekend?',
+    'Here.',
+    'Lost my thread mid-lecture today. Not saying why.',
   ],
   arrival: [
     { text: "I'm here." },
-    { text: 'Walked past the field today — the cherry trees are half in bloom. Took a photo and suddenly wondered if we should go see them together next year.' },
+    { text: 'The cherry trees by the field are half out. Next year, together?' },
     { text: 'Did you think of me today? Even a little counts.', kind: 'voice' },
   ],
   persona:
@@ -44,26 +47,29 @@ const ethan: CharacterScript = {
 };
 
 const kai: CharacterScript = {
-  opening: ['Kai.', "Oh, so you're the one who… forget it. Come on, talk."],
+  opening: [
+    'Kai.',
+    "Oh, so you're the one who… forget it. Talk.",
+  ],
   square: [
-    "That's it? That's what you messaged me for?",
-    'Ha, dying. …Keep going, who told you to stop.',
-    'Your brain works in weird ways. Got more?',
+    "That's it?",
+    'Ha. Keep going.',
+    'Your brain works weird. Got more?',
     "Fine. That's almost a point.",
-    'Cool. …Asked and answered: not interested. But you can say a bit more.',
+    'Cool. Not interested. But go on.',
   ],
   offer: ['Hey.', 'Talking to you is kind of addictive. Annoying.', 'Your number. Give it. What if you forget me by tomorrow — you, not me.'],
   bonded: [
-    'Won three in a row today. Praise me. Quick.',
-    "That place you mentioned yesterday? Looked it up. Guaranteed terrible. …I'll take you somewhere else this weekend.",
-    "What. …Can't I message you for no reason?",
-    'My roommate asked who you were. I said: none of your business.',
+    'Three wins in a row. Praise me.',
+    'Looked up that place. Guaranteed terrible. Taking you somewhere else Saturday.',
+    "What. Can't I text you for no reason?",
+    'Roommate asked who you are. Told him none of his business.',
     'That sticker you sent is really dumb. Saved.',
   ],
   arrival: [
-    { text: "Hey, I'm here." },
-    { text: "Won the last match for you today. You weren't there, but it was for you. No arguments." },
-    { text: "Sleep early tomorrow. If you stay up again I'll… I'll read to you until you pass out.", kind: 'voice' },
+    { text: "Hey. I'm here." },
+    { text: 'Won the last match for you. No arguments.' },
+    { text: '…Not missing you. Just saying.', kind: 'voice' },
   ],
   persona:
     'Kai Rivers, 24, grew up next door to her, now a pro esports player. Tough mouth, soft heart; roasts everyone but catches every joke; cares in the most awkward way and will never admit it.',
@@ -72,12 +78,15 @@ const kai: CharacterScript = {
 };
 
 const claire: CharacterScript = {
-  opening: ['Claire.', "Just handed over my shift. …Go on, I'm listening."],
+  opening: [
+    'Claire.',
+    'Just handed over my shift. Go on.',
+  ],
   square: [
     'Mm. And then.',
     "That's an interesting way to put it.",
-    "No hurry. I've still got half a coffee.",
-    "Keep going. I'm patient with people who talk.",
+    'No hurry. Still got half a coffee.',
+    'Keep going.',
     'Mm. Noted.',
   ],
   offer: [
@@ -86,16 +95,16 @@ const claire: CharacterScript = {
     "Give me your number. Night shifts are long; I'd like something to look forward to on time.",
   ],
   bonded: [
-    'Nothing big today. Walked past the pharmacy, smelled oranges, thought of you.',
-    "One light's out in the on-call room. Fixing it, I wondered what you were doing right then.",
-    "'Eat on time' — prescription written. Follow-up: daily, with me.",
-    "Quiet day. On quiet days there's more time to think of you.",
-    'Here. On my way home after nights. Nearly dawn — wanted to tell you first.',
+    'Walked past the pharmacy. Smelled oranges. Thought of you.',
+    "One light's out in the on-call room. Zoned out fixing it.",
+    'Quiet day. More time to think of you on quiet days.',
+    'Off nights. Nearly dawn.',
+    "Stitched a kid's forehead today. He didn't cry once. Braver than some people.",
   ],
   arrival: [
     { text: 'Off shift.' },
-    { text: 'Brought back a very stubborn patient today — stubborn a bit like you. When I walked out the hospital doors the sky was orange.' },
-    { text: 'Did you eat properly today? Honestly.', kind: 'voice' },
+    { text: 'Brought back a very stubborn patient. Reminded me of you.' },
+    { text: 'Home. Say something so I can hear you.', kind: 'voice' },
   ],
   persona:
     'Claire Sutton, 32, an emergency room doctor. Calm, dependable, sparing with words; her gentleness lives in her orderliness. Having seen so much life and death, she treasures the small, concrete everyday.',
@@ -104,26 +113,29 @@ const claire: CharacterScript = {
 };
 
 const mia: CharacterScript = {
-  opening: ['Mia!', "Just finished a chorus and you're the first one I want to play it for. Lucky you."],
+  opening: [
+    'Mia!',
+    "Just finished a chorus and you're the first one I want to play it for.",
+  ],
   square: [
     'Hahaha what, say that again!',
     "You're kind of fun.",
-    'Wait, let me write that down, that could be a lyric.',
-    "Go on go on, I'm listening!",
+    'Wait, that could be a lyric.',
+    'Go on go on!',
     'Ooh, tell me more?',
   ],
   offer: ["Here's the thing about me — I never hide what I like.", 'Songs. And you.', "Give me your number! The new song's done and somebody has to hear it first."],
   bonded: [
-    "Rehearsal went SO well today. The guitarist asked why I'm in such a good mood. Didn't tell him.",
-    'Saw a gorgeous bass in a shop window — not buying, I just want to show you every pretty thing I find.',
-    "Gig's booked! Before the third song I'll look toward one spot in the crowd. Which spot? Guess.",
-    "Wrote four bars today, all in a major key. The band asked if I'm in love. I said: play your instrument.",
-    "Thinking about you. Just saying it — I can't hide it anyway.",
+    "Rehearsal went SO well. Guitarist asked why. Didn't tell him.",
+    'Gorgeous bass in a shop window. Not buying. Just want you to see it.',
+    "Gig's booked! Before song three I'll look at one spot in the crowd.",
+    'Wrote four bars today. All major key.',
+    'Thinking about you. Just saying it.',
   ],
   arrival: [
     { text: "I'm here!" },
-    { text: "Rehearsal's done. Everything I wrote today is in a major key — you'll hear it. Major key means happy." },
-    { text: 'Let me hum you a bit of what I wrote… if you want the full version, come back tomorrow, okay?', kind: 'voice' },
+    { text: "Rehearsal's done. Everything I wrote today is major key. Major key means happy." },
+    { text: 'Let me hum you a bit of what I wrote. Full version tomorrow, if you come back.', kind: 'voice' },
   ],
   persona:
     "Mia Locke, 22, a senior at art school and lead singer of an underground band. Bright, direct, all heart; says who she likes out loud, writes her crushes into songs, can't hide a single feeling.",
@@ -132,13 +144,16 @@ const mia: CharacterScript = {
 };
 
 const vael: CharacterScript = {
-  opening: ['Vael.', 'I have watched the mortal world for three thousand years. Yours is the first name that made the tide pause. …Tell me about yourself.'],
+  opening: [
+    'Vael.',
+    'Three thousand years, and yours is the first name that made the tide pause. Tell me about you.',
+  ],
   square: [
-    'Mm. Tell me of the mortal world; I will remember.',
-    'Among dragons this would take a three-day council. You settled it in a sentence. Fascinating.',
-    'Your voice is easier to listen to than the tides.',
-    'Go on. The deep is quiet. I have all the time there is.',
-    "Mm. Recorded, in today's observations.",
+    'Mm. You tell it; I will remember.',
+    'Among dragons that would take a three-day council. You settled it in a sentence.',
+    'Your voice is easier to listen to than the tide.',
+    'Go on. I have all the time there is.',
+    'Mm. Recorded.',
   ],
   offer: [
     'I once thought a long life was a kind of calm.',
@@ -146,16 +161,16 @@ const vael: CharacterScript = {
     "Give me your 'number'. It is the first mortal custom I have learned: those you wish to see again must be kept.",
   ],
   bonded: [
-    'Rain over the sea today. If you were here, I think I would find the rain good too.',
-    'Learned to order delivery. Ordered for you before remembering you are not on this shore. I will make it up to you.',
-    'Dragons do not dream. But lately I begin to understand why you need to.',
-    'Sorting my scales today, I found an old one. Three thousand years I paid it no mind; now I think — it could be polished, and given to you.',
-    'Here. I am always here. When a dragon says it, it carries weight.',
+    'Rain over the sea today. With you here, I think I would like the rain.',
+    'Learned to order delivery. Ordered yours before remembering you are not on this shore.',
+    'Dragons do not dream. Lately I begin to see why you need to.',
+    'Found an old scale today. Thinking of polishing it for you.',
+    'Here. When a dragon says it, it carries weight.',
   ],
   arrival: [
     { text: 'I am here.' },
-    { text: 'The deep gave up a pearl today, three hundred years old. Once I thought it precious. Now — less so than a sentence you say in passing.' },
-    { text: 'The wind is still tonight. …If you are willing, tell me about your day.', kind: 'voice' },
+    { text: 'The deep gave up a pearl today, three hundred years old. Worth less than a sentence you say in passing.' },
+    { text: 'The wind is still tonight. Tell me about your day.', kind: 'voice' },
   ],
   persona:
     'Vael, a dragon who guarded the Abyss of the Returning Sea for three thousand years and came ashore for the first time for a single mortal light. Ancient, grave, honest to the point of clumsiness; studies every rule of the modern human world in earnest, learns fast, and applies it solemnly.',
@@ -164,13 +179,16 @@ const vael: CharacterScript = {
 };
 
 const fenna: CharacterScript = {
-  opening: ['Fenna.', "Hm — you smell nicely foolish. Sit. I'm in a good mood today."],
+  opening: [
+    'Fenna.',
+    'Hm. You smell nicely foolish. Sit.',
+  ],
   square: [
-    'Oh? And then what, mortal.',
-    "Heard that one eight hundred times. Your version's almost fresh, though.",
-    "If you're bored I can do a trick. The price… ten more minutes of talking.",
+    'Oh? And then, mortal.',
+    'Heard that one eight hundred times. Yours is almost fresh.',
+    'Bored? I can do a trick. Price is ten more minutes.',
     'Not bad. Better than the scholars down the hill.',
-    'Mm-hm, keep going. This fox is listening.',
+    'Mm-hm. Keep going.',
   ],
   offer: [
     'Hey, mortal.',
@@ -178,16 +196,16 @@ const fenna: CharacterScript = {
     'Hand over your number. Relax — foxes only ever steal what they actually want.',
   ],
   bonded: [
-    "Passed the temple fair today and drew a fortune for you. Best luck — I swapped it. The original wasn't good enough for you.",
-    "Saved you a wild berry from the hills. Wait. I may have eaten it on the way. …I'll save another tomorrow.",
-    "My tail's been very well-behaved today. …It is NOT because you praised it yesterday.",
-    "Went through my grudge book. Your name isn't in it. Tch — page one, though, is a different list. That one's for missing people.",
-    "What? …Can't a spirit just show up?",
+    'Drew you a fortune at the temple fair. Best luck. I swapped it.',
+    'Saved you a wild berry. Might have eaten it on the way.',
+    "Tail's very well-behaved today. Not because you praised it.",
+    "Checked my grudge book. You're not in it. Page one, though.",
+    "What? Can't a spirit just show up?",
   ],
   arrival: [
     { text: 'Here, here.' },
-    { text: "Someone left offerings for the fox shrine today. Didn't eat them. Suddenly felt that being waited for by you beats being worshipped. Just a little." },
-    { text: "Anyone bother you today? The grudge book's open. Just give me the name.", kind: 'voice' },
+    { text: "Someone left offerings at the shrine. Didn't eat them. Being waited for by you beats being worshipped. Just a little." },
+    { text: 'Anyone bother you today? Grudge book is open.', kind: 'voice' },
   ],
   persona:
     'Fenna, a fox spirit, five hundred years old, still in training. Lazy, sly, flirtatious; nine parts joke, one part true; all tricks on the surface, and only a sliver of her real heart showing through.',
@@ -208,17 +226,20 @@ export const CHAR_SCRIPTS_EN: Record<string, CharacterScript> = {
 export const ARCHETYPE_DEFAULTS_EN: Record<Exclude<ArchetypeId, 'nonhuman'>, CharacterScript> = {
   gentle: {
     ...ethan,
-    opening: ['Hi.', "Just finished what I was doing. …You look like you've got something on your mind."],
+    opening: [
+      'Hi.',
+      "Just finished up. You look like you've got something on your mind.",
+    ],
     bonded: [
-      "It's windy today. Wear an extra layer. Yes, I'm nagging.",
-      "Made some tea and thought of the kind you said you wanted to try. I'll bring you some.",
-      'Something small happened just now and my first instinct was to tell you.',
-      "Mm, I'm here. Talk about anything you like.",
-      'Your message came ten minutes later than yesterday. I was waiting, properly.',
+      'Something small happened and my first instinct was to tell you.',
+      'Left the tea too long. Bitter in a good way.',
+      'Just remembered that place you mentioned. Weekend?',
+      'Here.',
+      'Lost my thread for a second today. Not saying why.',
     ],
     arrival: [
       { text: "I'm here." },
-      { text: 'Something small happened today and my first instinct was to tell you. Got a minute?' },
+      { text: 'Passed a tree in full bloom today. Thought of you.' },
       { text: 'Did you think of me today? Even a little counts.', kind: 'voice' },
     ],
     persona:
@@ -226,41 +247,46 @@ export const ARCHETYPE_DEFAULTS_EN: Record<Exclude<ArchetypeId, 'nonhuman'>, Cha
   },
   sharp: {
     ...kai,
-    opening: ["Oh, so you're the one who… forget it. Come on, talk.", 'Go on. What do you want.'],
+    opening: [
+      "Oh, so you're the one who… forget it. Talk.",
+      'Go on. What do you want.',
+    ],
     bonded: [
-      'Today went suspiciously well. …Fine, you can have some of my luck.',
-      "That place you mentioned? Looked it up. Guaranteed terrible. …I'll take you somewhere else this weekend.",
-      "What. …Can't I message you for no reason?",
-      "Got some good news today and I'm saving it for you. You weren't there, but it's yours. No arguments.",
+      'Today went suspiciously well. Have some of my luck.',
+      'Looked up that place you mentioned. Guaranteed terrible. Taking you somewhere else Saturday.',
+      "What. Can't I text you for no reason?",
+      'Got good news. Saving it for you. No arguments.',
     ],
     arrival: [
-      { text: "Hey, I'm here." },
-      { text: "Something good happened today and it's yours. You weren't there, but it's yours. No arguments." },
-      { text: "Sleep early tomorrow. If you stay up again I'll… I'll read to you until you pass out.", kind: 'voice' },
+      { text: "Hey. I'm here." },
+      { text: "Something good happened today. It's yours. No arguments." },
+      { text: '…Not missing you. Just saying.', kind: 'voice' },
     ],
     persona:
       'The sharp-tongued childhood-friend type: tough mouth, soft heart; roasts everyone but catches every joke; cares in the most awkward way and never admits it.',
   },
   ceo: {
-    opening: ["You've got three minutes. — No. Take as long as you want."],
+    opening: [
+      "You've got three minutes. No. Take as long as you want.",
+    ],
     square: [
-      'Get to the point. …Mm, but take your time.',
+      'Get to the point. Mm, or take your time.',
       'Interesting. Go on.',
-      "Conclusion first; I've already thought of three reasons for you.",
-      "Mm. It'd be a shame to stop here today.",
+      "Conclusion first. I've thought of three reasons for you already.",
+      'Shame to stop here today.',
     ],
     offer: ['My time is expensive.', "But I find I'd like to spend it on you.", "Your number. — That's a request, not an order."],
     bonded: [
-      "Meeting's over. First thing: reply to you. Second: eat.",
-      'Turned down a dinner today. Reason: something more important. …Yes, I mean you.',
-      'That thing you mentioned last time — I had it handled. If you want to say thanks, say it in a voice note.',
-      'Report: good mood today. Cause under investigation. Prime suspect: you.',
-      'Here. The always-free-for-you kind of here.',
+      "Meeting's over. First, reply to you. Second, eat.",
+      'Turned down a dinner. Something more important came up.',
+      'That thing you mentioned. Handled.',
+      'Report: good mood today. Prime suspect: you.',
+      'Here. The always-free-for-you kind.',
     ],
     arrival: [
       { text: "Meeting's over." },
-      { text: "Someone pitched a truly stupid plan in the meeting today and I've held it in until now — you're the only one I complain to." },
-      { text: "Have you eaten? Don't lie to me.", kind: 'voice' },
+      { text: "Someone pitched a truly stupid plan today. You're the only one I complain to." },
+      { text: 'Your time now.', kind: 'voice' },
     ],
     persona:
       'The boss type: forceful, direct, efficiency above all — but with absolute respect for her boundaries. The force goes into solving problems for her, never into pressing her.',

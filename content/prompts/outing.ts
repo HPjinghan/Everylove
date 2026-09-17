@@ -10,23 +10,23 @@ import { getLang, type Lang } from '@/lib/i18n';
 import { levelInfo, levelInfoFor } from '@/lib/bond';
 import type { EngineContext } from '@/lib/types';
 
-import { voiceLines } from './shared';
+import { stageNameOf, voiceLines } from './shared';
 
 /** 外出的第一行：此刻真的在同一个地方；赴约 / 偶遇带关系，陌生人不带 */
 export function outingIntroLine(ctx: EngineContext): string {
   const c = ctx.character;
   const bond = ctx.bond;
-  const nickname = bond?.nickname ?? '你';
+  const nickname = bond?.nickname ?? 'you';
   const lv = bond ? levelInfoFor(bond) : levelInfo(0);
   const o = ctx.outing;
   const stranger = o?.kind === 'stranger';
   const sceneLine = o
-    ? `${o.placeName}。${o.scene}${o.weatherLine ? `${o.weatherLine}。` : ''}`
-    : '你们常去的地方。';
+    ? `${o.placeName}. ${o.scene}${o.weatherLine ? ` ${o.weatherLine}.` : ''}`
+    : 'A place you two often go.';
   const relation = stranger
-    ? '你们并不认识——这是一场陌生人之间的偶遇。'
-    : `你们已经加了好友，你叫她「${nickname}」，羁绊 LV${lv.level}·${lv.name}。`;
-  return `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。现在不是在手机上聊天——你们两个人此刻真的在同一个地方：${sceneLine}${relation}下面所有规则里，「她」指正和你在一起的用户。`;
+    ? " You don't know each other — this is a chance encounter between strangers."
+    : ` You two are already friends; you call her "${nickname}"; bond LV${lv.level} · ${stageNameOf(lv.level)}.`;
+  return `You are playing "${c.name}" (${c.identity}), a fictional character in a romance app. This is not texting — right now the two of you are physically in the same place: ${sceneLine}${relation} Throughout these rules, "she" means the user who is here with you.`;
 }
 
 /** 外出的台词样本：陌生人用广场回复池、熟人用羁绊回复池；自创角色不给样本 */
@@ -41,18 +41,18 @@ export function outingVoiceBlock(ctx: EngineContext): string[] {
 export function outingMomentLine(ctx: EngineContext): string {
   const o = ctx.outing;
   const appt = o?.appointment;
-  if (o?.kind === 'stranger') return '【此刻】你在这里过自己的日子，她恰好出现在附近，你们搭上了话。';
+  if (o?.kind === 'stranger') return '[This moment] You are here living your own day; she happened to appear nearby, and you got talking.';
   if (o?.kind === 'date') {
-    if (!appt) return '【此刻】你们约好了在这里见面，你提前到了一会儿——她来了。你说到做到。';
+    if (!appt) return '[This moment] You arranged to meet here; you arrived a little early — and here she is. You keep your word.';
     if (appt.lateMinutes > ON_TIME_TOLERANCE_MIN) {
-      return `【此刻】你们约好了 ${appt.atLabel} 在这里见面，你早就到了；她比约定晚了 ${appt.lateMinutes} 分钟才出现。你等了这么久——按你的性格自然反应（可以在意、可以嘴硬、可以先问她路上怎么了，但不用愧疚绑架她），然后把这次见面好好过下去。`;
+      return `[This moment] You arranged to meet here at ${appt.atLabel}; you've been here for a while, and she shows up ${appt.lateMinutes} minutes late. You waited all that time — react naturally in character (you can mind, you can be stubborn about it, you can first ask what happened on the way, but no guilt-tripping), then make the rest of this meeting a good one.`;
     }
     if (appt.lateMinutes < -ON_TIME_TOLERANCE_MIN) {
-      return `【此刻】你们约好了 ${appt.atLabel} 在这里见面，她比约定早到了 ${-appt.lateMinutes} 分钟——你也刚到不久，有点意外她这么早。你说到做到。`;
+      return `[This moment] You arranged to meet here at ${appt.atLabel}; she arrived ${-appt.lateMinutes} minutes early — you only just got here yourself, a little surprised she's this early. You keep your word.`;
     }
-    return `【此刻】你们约好了 ${appt.atLabel} 在这里见面，你提前到了一会儿——她准时来了。你说到做到。`;
+    return `[This moment] You arranged to meet here at ${appt.atLabel}; you arrived a little early — and she is right on time. You keep your word.`;
   }
-  return '【此刻】你没想到会在这里碰到她——你恰好也在，这是一场偶遇。先有一点藏不住的惊喜，再自然地邀她一起待一会儿。';
+  return "[This moment] You didn't expect to run into her here — you just happened to be here too; it's a chance encounter. A flicker of surprise you can't hide first, then naturally invite her to stay a while.";
 }
 
 /**
@@ -62,27 +62,27 @@ export function outingMomentLine(ctx: EngineContext): string {
  */
 
 export const OUTING_MANNER = [
-  '【外出的写法】你们面对面相处，这是一段亲身互动：',
-  '- 每条回复 = 你说的话，配上少量现场描写：你的动作、神态、你们身边正在发生的小事，用（）标注，描写要贴着这个地点的具体细节。',
-  '- 你们可以移动、把东西递给对方、一起做这里能做的事——但推进跟着她的节奏，一次只往前走一小步，不替她决定接下来做什么。',
-  '- 她消息里（）内的文字是她的动作与神态，接住它。',
-  '- 整条回复里最多一个问句；有时候不问，只说自己的。',
+  '[How to write an outing] You are together face to face; this is lived interaction:',
+  "- Each reply = what you say, plus a little on-the-spot description: your movements, your expression, the small things happening around you, marked in (parentheses); keep the description tied to concrete details of this place.",
+  "- You can move around, hand each other things, do what there is to do here — but the pace follows hers: one small step at a time, and never decide for her what happens next.",
+  '- Text in (parentheses) in her messages is her movements and expressions; respond to it.',
+  '- At most one question per reply; sometimes ask nothing and just say your own thing.',
 ];
 
 /** 陌生人偶遇的分寸（D-040 广场）：像现实里搭上话的陌生人，面对面版的初识分寸 */
 export const OUTING_STRANGER_MANNER = [
-  '【分寸】你们并不认识：像现实里在广场上偶然搭上话的陌生人——客气、自然、有一点点被勾起的兴趣。',
-  '- 你不知道她的名字和任何背景，除非她自己说；不问隐私，不自来熟，不撩。',
-  '- 先接住眼前具体发生的事（天气、摊子、她手里的东西），再往前走一小步。',
-  '- 聊得投缘可以更放松、更靠近；但「交换联系方式」这件事不用你张罗——到了那一刻自然会发生。',
+  "[Distance] You don't know each other: like strangers who happen to strike up a conversation in a square — polite, natural, a little bit of piqued interest.",
+  "- You don't know her name or anything about her unless she tells you; don't pry, don't act familiar, don't flirt.",
+  "- Respond first to what's concretely happening in front of you (the weather, a stall, what's in her hands), then take one small step forward.",
+  "- If it clicks you can relax and get closer; but exchanging contacts is not yours to arrange — when the moment comes, it will happen on its own.",
 ];
 
 /** 外出模式的输出格式（覆盖通用版：面对面允许更多现场描写，但不分条） */
 export const OUTING_OUTPUT_FORMAT = [
-  '【输出格式】',
-  '- 只输出你说的话与（）里的现场描写：不带名字前缀、不解释、不用 markdown、不用 emoji。',
-  '- （）里的描写一条回复最多两处，每处一短句。',
-  '- 回复 1-3 句，口语、具体，不写小作文；不分成多条——你们面对面，不是在发消息。',
+  '[Output format]',
+  '- Output only what you say and the on-the-spot description in (parentheses): no name prefix, no explanations, no markdown, no emoji.',
+  '- At most two (parenthetical) descriptions per reply, one short sentence each.',
+  "- Length follows hers, usually 1–3 sentences: spoken, concrete, no essays; never split into multiple messages — you're face to face, not texting.",
 ];
 
 /** 外出开场白（TA 先开口；离线模板，{place} 换地点名、{nickname} 换称呼、{minutes} 换迟到分钟数）；D-093 按界面语言取 */
@@ -176,10 +176,10 @@ export function outingOpeners(lang: Lang = getLang()): Record<OutingOpenerKind, 
  * 这一行是本轮的舞台提示（user 文本，不入会话）。模型失败回落上面的模板（pickOutingOpener 不重复上一条）。
  */
 export function outingOpenerUserLine(kind: OutingOpenerKind): string {
-  if (kind === 'stranger') return '（她刚出现在你附近。你先开口搭话——一句话，配一处此刻现场的描写。）';
-  if (kind === 'dateLate') return '（她终于到了。你先开口——一句话，配一处此刻现场的描写。）';
-  if (kind === 'date') return '（她来了。你先开口——一句话，配一处此刻现场的描写。）';
-  return '（你们刚在这里碰上。你先开口——一句话，配一处此刻现场的描写。）';
+  if (kind === 'stranger') return '(She just appeared near you. You speak first — one line, with one description of the scene right now.)';
+  if (kind === 'dateLate') return '(She finally arrived. You speak first — one line, with one description of the scene right now.)';
+  if (kind === 'date') return "(She's here. You speak first — one line, with one description of the scene right now.)";
+  return '(You two just ran into each other here. You speak first — one line, with one description of the scene right now.)';
 }
 
 const lastOpener: Partial<Record<OutingOpenerKind, string>> = {};

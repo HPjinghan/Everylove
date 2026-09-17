@@ -17,11 +17,11 @@ export function phoneBlock(ctx: EngineContext): string[] {
   const code = ctx.bond?.phoneCode;
   if (!code) return [];
   if (ctx.bond?.phoneUnlocked) {
-    return [`【你的手机】她知道你的手机密码（${code}），你同意过让她看你的手机。`];
+    return [`[Your phone] She knows your phone passcode (${code}); you've agreed to let her look at your phone.`];
   }
   return [
-    `【你的手机】你的手机密码是 ${code}（你随手设的四位数）。她可能想看你的手机、或问你密码：按你的性格和你们现在的亲密程度决定——可以爽快给、可以逗她一下再给、也可以暂时不给或只给提示。`,
-    `- 一旦你决定让她看（说出密码，或明确答应给她看），在回复的最后单独一行写 ${PHONE_UNLOCK_MARK}；没答应就绝不要写。这个标记她看不到。`,
+    `[Your phone] Your phone passcode is ${code} (four digits you set offhand). She may want to look at your phone or ask for the passcode: decide by your personality and how close you two are now — you can hand it over readily, tease her a bit first, hold off for now, or give only a hint.`,
+    `- Once you decide to let her look (you say the passcode, or clearly agree to let her see), write ${PHONE_UNLOCK_MARK} on a separate final line of your reply; if you haven't agreed, never write it. She can't see this marker.`,
   ];
 }
 
@@ -33,17 +33,17 @@ export function buildPeekMyPhoneUser(input: {
   chats: { name: string; messages: ChatMessage[] }[];
 }): string {
   const noteLines = input.notes.length
-    ? input.notes.map((n) => `- ${todayLine(new Date(n.at))}：${n.text.replace(/\n+/g, ' / ')}`).join('\n')
-    : '（空的）';
+    ? input.notes.map((n) => `- ${todayLine(new Date(n.at))}: ${n.text.replace(/\n+/g, ' / ')}`).join('\n')
+    : '(empty)';
   const chatBlocks = input.chats.length
-    ? input.chats.map((c) => `和${c.name}：\n${transcript(c.messages, c.name)}`).join('\n\n')
-    : '（没有别的聊天）';
-  const eventLines = input.events?.length ? input.events.map((e) => `- ${e.date}：${e.title}`).join('\n') : '（空的）';
+    ? input.chats.map((c) => `With ${c.name}:\n${transcript(c.messages, c.name)}`).join('\n\n')
+    : '(no other chats)';
+  const eventLines = input.events?.length ? input.events.map((e) => `- ${e.date}: ${e.title}`).join('\n') : '(empty)';
   return [
-    `（方向别弄反：这一次是${input.nickname}把**她自己的**手机递给你，说「随便看」——是你在看她的手机，不是她在看你的手机，和你手机密码那回事无关。你翻了翻她的手机——`,
-    `【她的记事本（她写的）】\n${noteLines}`,
-    `【她的日历（她的安排）】\n${eventLines}`,
-    `【她和别人的聊天（她手机里的，都是这个世界里的人）】\n${chatBlocks}`,
-    '看完之后，你把手机还给她，给她发一条消息，1-2 句，像你平时发消息那样。按你的性格反应：可以在意、可以吃醋、可以逗她、可以被记事本里的某句话打动；只说你自己的感受，不审问、不翻旧账、不用愧疚绑架她；不要说成「你看了我的手机」。记事本里如果提到别的真实的人，一个字都不评论。）',
+    `(Don't get the direction wrong: this time ${input.nickname} handed you **her own** phone and said "go ahead, look" — you are looking at her phone, not the other way round, and this has nothing to do with your own passcode. You flipped through her phone —`,
+    `[Her notebook (written by her)]\n${noteLines}`,
+    `[Her calendar (her plans)]\n${eventLines}`,
+    `[Her chats with others (on her phone; all people in this world)]\n${chatBlocks}`,
+    "When you're done, you hand the phone back and send her a message, 1–2 sentences, the way you usually text. React in character: you can mind, be jealous, tease her, be touched by a line in her notebook; speak only of your own feelings — no interrogating, no digging up the past, no guilt-tripping; don't phrase it as \"you looked at my phone\". If the notebook mentions any other real person, not one word about them.)",
   ].join('\n\n');
 }

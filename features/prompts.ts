@@ -71,8 +71,8 @@ promptSections.register({ name: 'intro-square', modes: SQUARE, order: ORDER.intr
 promptSections.register({ name: 'intro-bonded', modes: BONDED_CHAT, order: ORDER.intro, lines: (ctx, env) => [bondedIntroLine(ctx, env.now)] });
 promptSections.register({ name: 'intro-note', modes: NOTE, order: ORDER.intro, lines: (ctx, env) => [noteIntroLine(ctx, env.now)] });
 promptSections.register({ name: 'intro-outing', modes: OUTING, order: ORDER.intro, lines: (ctx) => [outingIntroLine(ctx)] });
-promptSections.register({ name: 'persona', modes: 'all', order: ORDER.persona, lines: (ctx) => [`【你是谁】${scriptFor(ctx.character).persona}`] });
-promptSections.register({ name: 'pursuit', modes: TALK, order: ORDER.pursuit, lines: (ctx) => [`【你的追法】${pursuitLine(ctx.character)}`] });
+promptSections.register({ name: 'persona', modes: 'all', order: ORDER.persona, lines: (ctx) => [`[Who you are] ${scriptFor(ctx.character).persona}`] });
+promptSections.register({ name: 'pursuit', modes: TALK, order: ORDER.pursuit, lines: (ctx) => [`[How you pursue] ${pursuitLine(ctx.character)}`] });
 promptSections.register({ name: 'profile', modes: 'all', order: ORDER.profile, lines: (ctx) => characterProfileBlock(ctx.character) });
 // 世界书（D-110）：TA 所在的世界，现实世界不出段；身边的人只在羁绊层（陌生人偶遇没有）
 promptSections.register({ name: 'world', modes: 'all', order: ORDER.world, lines: (ctx) => worldBlock(ctx.character) });

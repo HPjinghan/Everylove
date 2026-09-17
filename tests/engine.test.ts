@@ -27,7 +27,7 @@ describe('buildTurns', () => {
       ['me', '刚回来'],
     ]);
     expect(buildTurns(h, '刚回来')).toEqual([
-      { role: 'user', content: '（她点开了和你的对话）' },
+      { role: 'user', content: '(She opened the chat with you.)' },
       { role: 'assistant', content: '你好\n在吗' },
       { role: 'user', content: '在\n刚回来' },
     ]);

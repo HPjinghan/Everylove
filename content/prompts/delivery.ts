@@ -4,10 +4,10 @@
  */
 
 export function deliveryArrivedUserLine(input: { title: string; note?: string; minutesAgo: number }): string {
-  const when = input.minutesAgo < 3 ? '刚刚' : `${Math.round(input.minutesAgo)} 分钟前`;
+  const when = input.minutesAgo < 3 ? 'just now' : `${Math.round(input.minutesAgo)} minutes ago`;
   return [
-    `（她给你点的外卖${when}送到你手上了：${input.title}${input.note ? `，留言「${input.note}」` : ''}。`,
-    '说一句收到时的感觉——按你的性格，喜欢的东西就是喜欢，不客套；1-2 句，像随手发的。',
-    `顺手拍一张给她看：在回复最后单独一行写 [发图 东西|一句话描述你拍到的它]（只拍东西，画面里没有人；她看不到这行，她会收到照片）。）`,
+    `(The food she ordered for you was delivered to you ${when}: ${input.title}${input.note ? `, with her note "${input.note}"` : ''}.`,
+    "Say how it feels to receive it — in character; if you like it, you like it, no pleasantries; 1–2 sentences, like something dashed off.",
+    `Snap a picture for her while you're at it: on a separate final line of your reply write [发图 东西|one sentence describing what you photographed] (only the thing, no people in the frame; she can't see this line, she receives a photo).)`,
   ].join('\n');
 }

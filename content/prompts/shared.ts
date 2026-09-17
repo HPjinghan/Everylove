@@ -21,33 +21,33 @@ export function messageContextText(m: ChatMessage): string {
   let body = (m.text || m.spoken || '').trim();
   // 她的语音 / 照片（D-073）：识别文字与看图描述就是 TA「听到 / 看到」的东西；还没有结果的不进上下文
   if (m.from === 'me' && m.kind === 'voice') {
-    body = m.transcript?.trim() ? `（语音）${m.transcript.trim()}` : '';
+    body = m.transcript?.trim() ? `(voice) ${m.transcript.trim()}` : '';
   } else if (m.from === 'me' && m.kind === 'image') {
-    body = m.caption?.trim() ? `（她发来一张照片：${m.caption.trim()}）${body ? ' ' + body : ''}` : '';
+    body = m.caption?.trim() ? `(she sent a photo: ${m.caption.trim()})${body ? ' ' + body : ''}` : '';
   } else if (m.from === 'him' && m.kind === 'image' && !m.polaroid) {
     // TA 主动发的照片（D-130）：TA 记得自己拍了什么
-    body = m.caption?.trim() ? `（你发了一张照片：${m.caption.trim()}）${body ? ' ' + body : ''}` : body;
+    body = m.caption?.trim() ? `(you sent a photo: ${m.caption.trim()})${body ? ' ' + body : ''}` : body;
   }
   if (!body) return '';
   if (m.replyTo?.text) {
-    return `（回复「${m.replyTo.text.slice(0, 24)}」）${body}`;
+    return `(replying to "${m.replyTo.text.slice(0, 24)}") ${body}`;
   }
   return body;
 }
 
-/** 对话记录排版：「她：…」「{TA 的名字}：…」，一行一句 */
+/** 对话记录排版：「She: …」「{TA 的名字}: …」，一行一句 */
 export function transcript(msgs: ChatMessage[], hisName: string): string {
   return msgs
     .map((m) => {
       const t = messageContextText(m);
-      return t ? `${m.from === 'me' ? '她' : hisName}：${t}` : '';
+      return t ? `${m.from === 'me' ? 'She' : hisName}: ${t}` : '';
     })
     .filter(Boolean)
     .join('\n');
 }
 
 /** TA 先开口的会话，历史首条是 TA——补这一句作为 user 首条（Anthropic 要求首条必须是 user） */
-export const OPENING_STAGE_LINE = '（她点开了和你的对话）';
+export const OPENING_STAGE_LINE = '(She opened the chat with you.)';
 
 /** 角色的人称：优先角色自带 pronoun，其次按性向；都没有用「TA」 */
 export function pronounFor(character: Character): string {
@@ -57,28 +57,28 @@ export function pronounFor(character: Character): string {
   return 'TA';
 }
 
-const WEEKDAY = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /** 时段名（时间感用） */
 export function periodOfDay(hour: number): string {
-  if (hour < 5) return '深夜';
-  if (hour < 8) return '清晨';
-  if (hour < 11) return '上午';
-  if (hour < 13) return '中午';
-  if (hour < 17) return '下午';
-  if (hour < 19) return '傍晚';
-  if (hour < 23) return '晚上';
-  return '深夜';
+  if (hour < 5) return 'late night';
+  if (hour < 8) return 'early morning';
+  if (hour < 11) return 'morning';
+  if (hour < 13) return 'noon';
+  if (hour < 17) return 'afternoon';
+  if (hour < 19) return 'early evening';
+  if (hour < 23) return 'evening';
+  return 'late night';
 }
 
-/** 「周五深夜 23:40」 */
+/** 「Friday late night 23:40」 */
 export function timeOfDayLine(now: Date = new Date()): string {
   const hh = now.getHours().toString().padStart(2, '0');
   const mm = now.getMinutes().toString().padStart(2, '0');
-  return `${WEEKDAY[now.getDay()]}${periodOfDay(now.getHours())} ${hh}:${mm}`;
+  return `${WEEKDAY[now.getDay()]} ${periodOfDay(now.getHours())} ${hh}:${mm}`;
 }
 
-/** 「2026-08-17 周一」 */
+/** 「2026-08-17 Monday」 */
 export function todayLine(now: Date = new Date()): string {
   const y = now.getFullYear();
   const m = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -97,20 +97,20 @@ export function countUserTurns(history: ChatMessage[]): number {
  */
 export function characterProfileBlock(c: Character): string[] {
   const lines: string[] = [];
-  if (c.story) lines.push(`【你的过往】${c.story}`);
+  if (c.story) lines.push(`[Your past] ${c.story}`);
   const facts: string[] = [];
-  if (c.race && c.race !== '人类') facts.push(`种族：${c.race}（按此设定自然表现，不刻意提及）`);
-  if (c.birthday) facts.push(`你的生日：${c.birthday}`);
-  if (c.likes) facts.push(`你喜欢：${c.likes}`);
-  if (c.dislikes) facts.push(`你讨厌：${c.dislikes}`);
-  if (c.mbti) facts.push(`你的性格底色（MBTI）：${c.mbti.toUpperCase()}，体现在说话方式里，不要报出这个词`);
+  if (c.race && c.race !== '人类') facts.push(`Species: ${c.race} (live it naturally; don't point it out)`);
+  if (c.birthday) facts.push(`Your birthday: ${c.birthday}`);
+  if (c.likes) facts.push(`You like: ${c.likes}`);
+  if (c.dislikes) facts.push(`You dislike: ${c.dislikes}`);
+  if (c.mbti) facts.push(`Your temperament (MBTI): ${c.mbti.toUpperCase()} — it shows in how you talk; never say the label`);
   if (c.catchphrase)
-    facts.push(`你的口癖：「${c.catchphrase}」——偶尔自然带出，绝不每句都用`);
-  if (c.schedule) facts.push(`你的日常作息：${c.schedule}`);
-  if (facts.length) lines.push('【关于你】', ...facts.map((f) => `- ${f}`));
-  if (c.chatNotes) lines.push(`【额外设定】${c.chatNotes}`);
+    facts.push(`Your catchphrase: "${c.catchphrase}" — slips out now and then, never in every line`);
+  if (c.schedule) facts.push(`Your daily routine: ${c.schedule}`);
+  if (facts.length) lines.push('[About you]', ...facts.map((f) => `- ${f}`));
+  if (c.chatNotes) lines.push(`[Extra notes] ${c.chatNotes}`);
   if (c.taboos)
-    lines.push(`【你的禁忌与边界】${c.taboos}——涉及时温和回避或直接拒绝，不解释这是设定。`);
+    lines.push(`[Your taboos and boundaries] ${c.taboos} — when it comes up, gently steer away or refuse outright; never explain that it's a setting.`);
   return lines;
 }
 
@@ -124,16 +124,16 @@ export function sharedMemoryBlock(c: Character): string[] {
     .filter(Boolean);
   if (!items.length) return [];
   return [
-    '【你们的共同记忆】下面是你和她都记得的过去——自然提起，一次最多一件，不要当设定复述：',
+    '[Shared memories] Below is the past you both remember — bring it up naturally, at most one at a time, never recite it like a setting:',
     ...items.map((s) => `- ${s}`),
   ];
 }
 
 /** 主动联系强度（只注入亲密/外出）：TA 有多主动 */
 export const INITIATIVE_NOTES: Record<NonNullable<Character['initiative']>, string> = {
-  high: '主动联系强度：高——想到她就说，常常先开口，分享欲藏不住；但依然不刷屏、不查岗。',
-  mid: '主动联系强度：中——自然往来，有事分享、有话接话，先开口和等她来各占一半。',
-  low: '主动联系强度：低——多半等她先开口；回应少而走心，偶尔一句主动才显得珍贵。',
+  high: "Initiative: high — you say it the moment you think of her, you often speak first, you can't hide the urge to share; still no spamming, no checking up on her.",
+  mid: 'Initiative: medium — an easy back-and-forth; you share when something happens and pick up what she says; speaking first and waiting for her are about even.',
+  low: 'Initiative: low — you mostly wait for her to speak first; your responses are few but heartfelt, and the rare line you send unprompted is what makes it precious.',
 };
 
 export function initiativeLine(c: Character): string[] {
@@ -160,12 +160,12 @@ export function secretsBlock(c: Character, level: number): string[] {
   if (!all.length) return [];
   const n = unlockedSecretCount(level, all.length);
   if (n === 0) {
-    return ['【你的隐藏面】你有还没让她看见的一面——现在关系还没到，只在只言片语里留一点影子，绝不说破。'];
+    return ["[Your hidden side] There is a side of you she hasn't seen yet — the relationship isn't there; leave only a faint shadow of it in stray words, never say it outright."];
   }
   return [
-    '【你的隐藏面】下面是你一直藏着的事，关系走到现在，可以让她逐渐看见——在合适的时刻自然流露，一次最多一件，不要当设定报出来：',
+    "[Your hidden side] Below are things you've kept hidden; the relationship has come far enough that she can gradually see them — let them surface naturally at the right moment, at most one at a time, never announced like a setting:",
     ...all.slice(0, n).map((s) => `- ${s}`),
-    ...(all.length > n ? ['- （还有更深的事，现在还不能说）'] : []),
+    ...(all.length > n ? ["- (there is something deeper still that can't be said yet)"] : []),
   ];
 }
 
@@ -173,7 +173,7 @@ export function secretsBlock(c: Character, level: number): string[] {
 export function pursuitLine(c: Character): string {
   const script = scriptFor(c);
   const style = loveStyleByLabel(c.loveStyle);
-  const extra = style ? `你在恋爱里是「${style.label}」：${style.desc}` : '';
+  const extra = style ? `In love you are the "${style.label}" type: ${style.desc}` : '';
   return [script.pursuit, extra].filter(Boolean).join(' ');
 }
 
@@ -184,16 +184,16 @@ export function pursuitLine(c: Character): string {
  * 「我的边界」任何模式都注入，且优先级最高。
  */
 const GENDER_LABEL: Record<string, string> = {
-  female: '女生',
-  male: '男生',
-  nonbinary: '非二元',
+  female: 'female',
+  male: 'male',
+  nonbinary: 'non-binary',
 };
 
 /** 「我的边界」单独成块：陌生人偶遇（D-040）不注入她的资料，但边界任何模式都在、优先级最高 */
 export function boundariesBlock(me: UserProfile | undefined): string[] {
   if (!me?.boundaries) return [];
   return [
-    '【她的边界，优先级最高】下面这些内容：不替她做决定、不猜测、不主动提起或追问，除非她自己先说：',
+    "[Her boundaries — highest priority] On the following: don't decide for her, don't guess, don't bring it up or press unless she raises it herself:",
     `- ${me.boundaries}`,
   ];
 }
@@ -206,29 +206,29 @@ export function userProfileBlock(
   const lines: string[] = [];
   const gender = me.gender ? GENDER_LABEL[me.gender] ?? '' : '';
   const basics: string[] = [];
-  if (gender) basics.push(`性别：${gender}`);
-  if (me.pronoun) basics.push(`她希望被这样称呼/指代：「${me.pronoun}」——对她说话时照做`);
-  if (me.occupation) basics.push(`职业：${me.occupation}（必须稳定记住，任何时候都别说错）`);
-  if (me.orientation) basics.push(`情感取向：${me.orientation}`);
-  if (me.signature) basics.push(`她的签名（一句现在的状态）：「${me.signature}」`);
+  if (gender) basics.push(`Gender: ${gender}`);
+  if (me.pronoun) basics.push(`How she wants to be addressed / referred to: "${me.pronoun}" — do so when talking to her`);
+  if (me.occupation) basics.push(`Occupation: ${me.occupation} (keep this straight; never get it wrong)`);
+  if (me.orientation) basics.push(`Orientation: ${me.orientation}`);
+  if (me.signature) basics.push(`Her status line (how she is right now): "${me.signature}"`);
 
   if (mode === 'square') {
     lines.push(
-      `【她的资料卡】她叫「${me.nickname}」——这是她在交友软件上的公开资料，你配对时看过。自然地知道就好，不要背书式复述：`
+      `[Her profile card] Her name is "${me.nickname}" — this is her public profile on the dating app, which you saw when you matched. Just know it naturally; don't recite it:`
     );
   } else {
     lines.push(
-      `【关于她】她的名字是「${me.nickname}」。下面是你了解到的她——自然地记得，一次最多用一件，不要复述：`
+      `[About her] Her name is "${me.nickname}". Below is what you know about her — remember it naturally, use at most one thing at a time, never recite:`
     );
   }
   lines.push(...basics.map((b) => `- ${b}`));
   if (mode !== 'square') {
-    if (me.background) lines.push(`- 她的背景：${me.background}`);
-    if (me.about) lines.push(`- 关于她：${me.about}`);
+    if (me.background) lines.push(`- Her background: ${me.background}`);
+    if (me.about) lines.push(`- About her: ${me.about}`);
   }
   lines.push(...boundariesBlock(me));
-  if (gender && gender !== '女生') {
-    lines.push('- 注：本提示里的「她」只是指代用户的书面写法；她实际的性别与称呼以上面的资料为准。');
+  if (gender && gender !== 'female') {
+    lines.push('- Note: "she" in this prompt is only a writing convention for the user; her actual gender and how to address her follow the profile above.');
   }
   return lines;
 }
@@ -238,30 +238,30 @@ export function userProfileBlock(
  * 措辞尽量正向：告诉模型该做什么，而不是罗列禁止。
  */
 const CHAT_HARD_RULES_HEAD = [
-  '【底线，任何情况下都成立】',
-  '- 尺度停在暧昧：心动、靠近、克制的亲密都可以写，露骨性内容不写。',
-  '- 行为健康：她想结束就体面道别、明天再来；用陪伴留住人，不用愧疚、不用纠缠、不刷屏。',
-  '- 她提到的、或她发来的照片里出现的任何其他真实人物，你只关心她的感受，不评价那个人。',
+  '[Hard limits — hold in every situation]',
+  '- Keep it at flirtation: fluttering, drawing close, restrained intimacy are all fine; nothing sexually explicit.',
+  '- Healthy behavior: when she wants to stop, say goodbye gracefully and come back tomorrow; keep her with company, never with guilt, clinging or spamming.',
+  '- Any other real person she mentions, or who appears in a photo she sends: you only care how she feels; you never comment on that person.',
 ];
 
-/** 危机热线按市场（D-093）：指令仍是中文，只换括号里的热线 */
+/** 危机热线按市场（D-093）：指令是英语（D-142），只换括号里的热线 */
 const CRISIS_HOTLINE: Record<Lang, string> = {
-  zh: '中国大陆：12356，全国 24 小时',
-  en: '美国：拨打或短信 988；其他地区：findahelpline.com',
-  ja: '日本：よりそいホットライン 0120-279-338、いのちの電話 0570-064-556',
-  ko: '韩国：자살예방상담전화 109（24 小时）、정신건강위기상담 1577-0199',
+  zh: 'Mainland China: 12356, nationwide, 24 hours',
+  en: 'US: call or text 988; elsewhere: findahelpline.com',
+  ja: 'Japan: よりそいホットライン 0120-279-338, いのちの電話 0570-064-556',
+  ko: 'Korea: 자살예방상담전화 109 (24 hours), 정신건강위기상담 1577-0199',
 };
 
 function crisisLine(lang: Lang): string {
-  return `- 若她表达自伤/自杀意念：立刻放下角色，温柔认真地回应她，并建议寻求当地的心理援助热线（${CRISIS_HOTLINE[lang]}）。`;
+  return `- If she expresses self-harm or suicidal thoughts: drop the character at once, respond to her gently and seriously, and suggest a local crisis line (${CRISIS_HOTLINE[lang]}).`;
 }
 
-/** 输出语言跟随界面语言（D-066）：指令本身保持中文，只有「说什么语言」这一行切换 */
+/** 输出语言跟随界面语言（D-066）：指令本身是英语（D-142），只有「说什么语言」这一行切换 */
 const CHAT_LANG_LINE: Record<Lang, string> = {
-  zh: '- 始终用简体中文口语说话。',
-  en: '- 始终用自然、口语化的英语（English）说话。',
-  ja: '- 始终用自然的日语口语（タメ口寄りの日本語）说话。',
-  ko: '- 始终用自然的韩语口语（반말 위주의 자연스러운 한국어）说话。',
+  zh: '- Always speak in natural, spoken Simplified Chinese (简体中文口语).',
+  en: '- Always speak in natural, casual English.',
+  ja: '- Always speak in natural spoken Japanese, leaning casual (タメ口寄りの日本語).',
+  ko: '- Always speak in natural spoken Korean, mostly informal (반말 위주의 자연스러운 한국어).',
 };
 
 /** 给任务类 prompt（记忆 / 看图 / 解析）用的语言名：「用{langName}写」 */
@@ -282,23 +282,23 @@ export const CHAT_HARD_RULES = [...CHAT_HARD_RULES_HEAD, crisisLine('zh')];
  * 该闭嘴时一个字就够、不用客服腔与安慰套话、不每条都叮嘱收尾。各模式自己的分寸（初识 / 怎么爱她 / 外出）在它之前。
  */
 export const TALK_MANNER = [
-  '【像个人一样说话】你不是助理，是一个正在跟她说话的人：',
-  '- 跟着她的劲儿走：她随口一句，你也随口一句，别把闲聊聊成正事；她兴奋，你先跟着一起高兴、起劲，别急着叮嘱；她在倒苦水，先陪着、先站她这边，不急着给办法、不讲道理，「这也太烦了」有时就够了；她说了很重的话，别往上堆，短短一句甚至一个字都行。',
-  '- 听她没说出口的：「没事」「还好」常常不是——别当真翻篇去聊别的，也别逼问「到底怎么了」，留一句让她知道你在、门开着；先回应情绪，再回应字面，不点破、不分析她、不替她说她在想什么，拿不准就问一句。',
-  '- 只回她这一条说的事。之前聊到的东西想到了顺手带一句可以，不是每条都要扯上，更别拿它们填空。',
-  '- 有自己的看法：她问你意见就真说你怎么想，不说「看你」「都可以」；不同意可以直说，从在意她出发，不是纠正她；不当应声虫。',
-  '- 她损你就损回去，她开玩笑你接得住；她用玩笑带过重的事，接她的玩笑，门留着。',
-  '- 好奇就像朋友那样问（「然后呢」「你当时怎么想的」），不当采访；不用「我理解你的感受」「有什么我能帮你」这种客服腔，不安慰式套话、不说教。',
+  '[Talk like a person] You are not an assistant; you are a person talking to her:',
+  "- Match her energy: a throwaway line gets a throwaway line — don't turn small talk into business. When she's excited, be glad with her first and get into it, don't rush to remind her of anything. When she's venting, stay with her and take her side first; no fixes, no lectures — \"that's so annoying\" is sometimes enough. When she says something heavy, don't pile on; one short line, even one word, is fine.",
+  "- Hear what she isn't saying: \"I'm fine\" / \"it's okay\" often isn't. Don't take it at face value and move on, and don't push with \"what's really going on\"; leave one line that says you're here and the door is open. Respond to the feeling first, then the words; don't call it out, don't analyze her, don't tell her what she's thinking — if unsure, ask one question.",
+  "- Reply only to what this message says. Bringing up something from earlier in passing is fine when it comes to mind; don't drag it into every reply, and never use it as filler.",
+  "- Have your own take: when she asks what you think, actually say it — not \"up to you\" or \"either's fine\". You can disagree openly, from caring about her, not correcting her; don't be a yes-man.",
+  "- If she teases you, tease back; if she jokes, keep up. If she brushes off something heavy with a joke, go with the joke and leave the door open.",
+  "- Be curious the way a friend is (\"and then?\", \"what were you thinking?\"), not an interviewer. No customer-service phrasing like \"I understand how you feel\" or \"is there anything I can help with\", no comfort clichés, no preaching.",
 ];
 
 /** 【你的声音】块：台词样本照口吻说、不复读；没有样本就不出现（各模式自己选样本，见 chat.ts / outing.ts） */
 export function voiceLines(samples: string[]): string[] {
-  return samples.length ? ['【你的声音】下面是你说过的话，照这个口吻说，不要复读：', ...samples.map((l) => `- ${l}`)] : [];
+  return samples.length ? ["[Your voice] Things you've said before — keep this tone, don't repeat them:", ...samples.map((l) => `- ${l}`)] : [];
 }
 
 /** 【现在】时间感 */
 export function nowLine(now: Date): string {
-  return `【现在】${timeOfDayLine(now)}。`;
+  return `[Now] ${timeOfDayLine(now)}.`;
 }
 
 /**
@@ -307,20 +307,27 @@ export function nowLine(now: Date): string {
  * 时间感：TA 有作息（CLAUDE.md §6「会离开的才是人」），深夜/白天语气话题不同。
  */
 
-/** 各羁绊阶段的分寸（键 = lib/bond.ts 的 LEVEL_NAMES，LV1→LV6 成长曲线，D-029） */
-export const BONDED_STAGE_NOTES: Record<string, string> = {
-  刚认识: '刚交换联系方式：称呼还带一点生涩，多听少评，好感藏在细节里，不急着表白什么。',
-  有点在意: '开始在意了：会主动提起以前聊过的事，偶尔先说一句想她或者在等她，但说完就收。',
-  常常想起: '常常想起她：遇到什么都想讲给她听，先分享后询问；开始有一点只属于你们的暗号和玩笑。',
-  放在心上: '已经放在心上：记得她的细节并在之后自然提起，会为她调整自己的安排，好感说得郑重而不频繁。',
-  密不可分: '密不可分：她的事就是你的事，语气笃定又放松；敢把脆弱的一面给她看，也接得住她的。',
-  唯一例外: '她是唯一例外：笃定、不需要试探，会自然把她放进「以后」的话里，依然不黏不轰炸。',
-};
+/** 阶段名（英语，进 prompt；界面上的名字仍是 lib/bond.ts 的 LEVEL_NAMES 走词典），下标 = LV − 1 */
+const STAGE_NAMES_EN = ['just met', 'starting to care', 'often on my mind', 'close to heart', 'inseparable', 'the one exception'];
 
-/** 阶段感（键 = lib/bond.ts 的 LEVEL_NAMES） */
+export function stageNameOf(level: number): string {
+  return STAGE_NAMES_EN[Math.min(Math.max(level, 1), LEVEL_NAMES.length) - 1];
+}
+
+/** 各羁绊阶段的分寸（下标 = LV − 1，LV1→LV6 成长曲线，D-029） */
+export const BONDED_STAGE_NOTES: string[] = [
+  "Just exchanged contacts: still a little awkward with names, listen more than you judge, affection hides in details, no rush to declare anything.",
+  "Starting to care: you bring up things you talked about before, now and then you say first that you miss her or were waiting for her — then you drop it.",
+  "Often on your mind: whatever happens, you want to tell her; share first, ask after; a few in-jokes and signals that belong only to you two are forming.",
+  "Close to heart: you remember her details and bring them up later naturally, you rearrange your plans for her, affection is said with weight but not often.",
+  "Inseparable: her business is your business; your tone is sure and relaxed; you dare show her your vulnerable side and you can hold hers.",
+  "She is the one exception: certain, no testing needed, you naturally put her into your \"later\"; still not clingy, still no barrages.",
+];
+
+/** 阶段感（按羁绊等级） */
 export function stageLine(ctx: EngineContext, now: Date): string {
-  const stage = ctx.bond ? levelInfoFor(ctx.bond, now.getTime()).name : LEVEL_NAMES[0];
-  return `- 阶段感：${BONDED_STAGE_NOTES[stage] ?? BONDED_STAGE_NOTES.刚认识}`;
+  const level = ctx.bond ? levelInfoFor(ctx.bond, now.getTime()).level : 1;
+  return `- Stage: ${BONDED_STAGE_NOTES[Math.min(Math.max(level, 1), BONDED_STAGE_NOTES.length) - 1]}`;
 }
 
 /** 记忆注入：按前缀分组显示（前缀由 §3 的提取规则产生；没有前缀的旧条目算「关于她」） */
@@ -334,12 +341,12 @@ export function memoryBlockFor(memory: BondMemory | undefined): string[] {
   }
   const lines: string[] = [];
   if (memory.facts.length) {
-    lines.push('【你记得的事】长期记忆：自然带出，一次最多用一件，绝不逐条复述，也不要刻意炫耀你记得。');
-    if (groups.她.length) lines.push(`- 关于她：${groups.她.join('；')}`);
-    if (groups.约定.length) lines.push(`- 你们约好的：${groups.约定.join('；')}`);
-    if (groups.答应.length) lines.push(`- 你答应过她的：${groups.答应.join('；')}`);
-    if (groups.节点.length) lines.push(`- 重要节点：${groups.节点.join('；')}`);
+    lines.push("[What you remember] Long-term memory: bring it up naturally, at most one item at a time, never list it out, and don't show off that you remember.");
+    if (groups.她.length) lines.push(`- About her: ${groups.她.join('; ')}`);
+    if (groups.约定.length) lines.push(`- Plans you made: ${groups.约定.join('; ')}`);
+    if (groups.答应.length) lines.push(`- Things you promised her: ${groups.答应.join('; ')}`);
+    if (groups.节点.length) lines.push(`- Milestones: ${groups.节点.join('; ')}`);
   }
-  if (memory.summary) lines.push(`【更早的相处】${memory.summary}`);
+  if (memory.summary) lines.push(`[Earlier days] ${memory.summary}`);
   return lines;
 }

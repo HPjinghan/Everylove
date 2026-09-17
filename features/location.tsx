@@ -11,7 +11,7 @@ import { t } from '@/lib/i18n';
 
 cardKinds.register({
   type: 'location',
-  contextText: (c) => `（她发来了自己的位置：${c.title}${c.subtitle ? `，${c.subtitle}` : ''}）`,
+  contextText: (c) => `(She shared her location: ${c.title}${c.subtitle ? `, ${c.subtitle}` : ''})`,
   render: (c, dark) => (
     <CardShell
       emoji="📍"
