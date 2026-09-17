@@ -6,7 +6,7 @@
  * Claude 초고. 원어민 작가의 윤문은 아직（OPEN_QUESTIONS #23）.
  */
 
-import type { ArchetypeId, Character } from '@/lib/types';
+import type { ArchetypeId, Character, StoryChapter } from '@/lib/types';
 
 import type { CharacterScript, SeedPost, SquarePost } from './types';
 
@@ -433,3 +433,6 @@ export const BONDED_POSTS_DEFAULTS_KO: Record<Exclude<ArchetypeId, 'nonhuman'>, 
     { text: '새벽의 도시도 나쁘지 않다. 같이 볼 사람이 없을 뿐.', hoursAgo: 25, likes: 264 },
   ],
 };
+
+/** 传记（D-149）：日 / 韩种子的章节待母语写手（#23），先空 */
+export const CHAPTERS_KO: Record<string, StoryChapter[]> = {};

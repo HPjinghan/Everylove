@@ -47,7 +47,6 @@ import type {
   TrafficEntry,
   Wallet,
   UserProfile,
-  WorldBook,
 } from '@/lib/types';
 
 /** 到点前写好的主动消息（D-114） */
@@ -122,13 +121,6 @@ interface AppState {
   notes: Note[];
   /** TA 记事本调度（D-085）：characterId → 下一条心事的到点时间（频率按 MBTI，lib/his-notes.ts） */
   noteSchedule: Record<string, number>;
-  /** 世界书（D-110）：她创建的世界；现实世界内置不在这里 */
-  worldBooks: WorldBook[];
-  /** 收藏的世界 id（D-110）：只有收藏的才会出现在创造角色的世界选项里（自己的或来自其他玩家的） */
-  worldFavorites: string[];
-  /** 共享世界池缓存（D-111）：别人公开的世界（lib/pool.ts 刷新） */
-  sharedWorlds: WorldBook[];
-  sharedWorldsAt: number;
   /** 勿扰时段（D-120）：TA 主动找她的静默区间（小时，from 起到次日 to 止）；默认 23–8，设置里可改 */
   quietHours: { from: number; to: number };
   /** TA 主动找她（D-114）：bondId → 下一条的到点时间（频率按主动联系强度 × MBTI × 等级，lib/reach-out.ts） */
@@ -137,6 +129,8 @@ interface AppState {
   reachPending: Record<string, ReachPending>;
   /** 她的零钱（D-128） */
   wallet: Wallet;
+  /** 传记打赏（D-149）：读者这边按章记的累计 Coin（创作者侧的汇总走云端，未做） */
+  storyTips: Record<string, number>;
   /** 今天抽过的日签（D-128） */
   fortune?: DailyFortune;
   /** 外卖订单（D-129） */
@@ -238,18 +232,14 @@ interface AppState {
   setPlan: (p: 'free' | 'pro' | 'max') => void;
   /** 编辑已创建的角色（D-050）：原位更新；同名的羁绊备注跟着改 */
   updateCustomCharacter: (c: Character) => void;
+  /** 传记打赏（D-149）：从她的零钱扣、记一笔 tip、按章累计；余额不够返回 false */
+  tipChapter: (chapterId: string, amount: number, note: string) => boolean;
   setPortrait: (characterId: string, uri: string) => void;
   setDesktopOrder: (order: string[]) => void;
   setDesktopSlots: (slots: Record<string, number>) => void;
   setDesktopDock: (ids: string[]) => void;
   /** 换壁纸 = 换主题（D-110）：立即给纸面换色，主页与里面的每一屏一起变 */
   setWallpaper: (id: string) => void;
-  /** 世界书（D-110） */
-  addWorldBook: (w: WorldBook) => void;
-  updateWorldBook: (w: WorldBook) => void;
-  removeWorldBook: (id: string) => void;
-  toggleWorldFavorite: (id: string) => void;
-  setSharedWorlds: (worlds: WorldBook[]) => void;
   setReachDue: (bondId: string, at: number) => void;
   setQuietHours: (h: { from: number; to: number }) => void;
   /** TA 自己的作息（D-119） */
@@ -326,13 +316,10 @@ const initialData = {
   album: [] as AlbumShot[],
   notes: [] as Note[],
   noteSchedule: {} as Record<string, number>,
-  worldBooks: [] as WorldBook[],
-  worldFavorites: [] as string[],
-  sharedWorlds: [] as WorldBook[],
-  sharedWorldsAt: 0,
   reachSchedule: {} as Record<string, number>,
   reachPending: {} as Record<string, ReachPending>,
   wallet: { balance: 0, ledger: [] } as Wallet,
+  storyTips: {} as Record<string, number>,
   fortune: undefined as DailyFortune | undefined,
   orders: [] as Order[],
   traffic: EMPTY_TRAFFIC as Traffic,
@@ -490,6 +477,16 @@ export const useAppStore = create<AppState>()(
 
       setRecall: (bondId, recall) =>
         set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, recall } : b)) }),
+
+      tipChapter: (chapterId, amount, note) => {
+        const w = get().wallet;
+        if (amount <= 0 || w.balance < amount) return false;
+        set({
+          wallet: { balance: Math.round((w.balance - amount) * 100) / 100, ledger: pushLedger(w.ledger, ledgerEntry({ amount: -amount, kind: 'tip', note })) },
+          storyTips: { ...get().storyTips, [chapterId]: (get().storyTips[chapterId] ?? 0) + amount },
+        });
+        return true;
+      },
 
       creditWallet: (e) => {
         const w = get().wallet;
@@ -822,20 +819,6 @@ export const useAppStore = create<AppState>()(
         applyPaperTint(wallpaperTint(id));
         set({ wallpaper: id });
       },
-      addWorldBook: (w) => set({ worldBooks: [...get().worldBooks, w] }),
-      // 每次更新自增版本号（D-112）：角色快照按版本对照，之后的改动不影响已绑定的角色
-      updateWorldBook: (w) =>
-        set({
-          worldBooks: get().worldBooks.map((x) =>
-            x.id === w.id ? { ...w, version: (x.version ?? 1) + 1 } : x
-          ),
-        }),
-      removeWorldBook: (id) =>
-        set({
-          worldBooks: get().worldBooks.filter((w) => w.id !== id),
-          worldFavorites: get().worldFavorites.filter((f) => f !== id),
-        }),
-      setSharedWorlds: (worlds) => set({ sharedWorlds: worlds, sharedWorldsAt: Date.now() }),
       setReachDue: (bondId, at) => set({ reachSchedule: { ...get().reachSchedule, [bondId]: at } }),
       setQuietHours: (h) => set({ quietHours: h }),
       setHisEvents: (bondId, events) =>
@@ -846,12 +829,6 @@ export const useAppStore = create<AppState>()(
         else delete next[bondId];
         set({ reachPending: next });
       },
-      toggleWorldFavorite: (id) =>
-        set({
-          worldFavorites: get().worldFavorites.includes(id)
-            ? get().worldFavorites.filter((f) => f !== id)
-            : [...get().worldFavorites, id],
-        }),
       addEncounter: (characterId, e) => {
         get().ensureSquareChat(characterId);
         const chat = get().squareChats[characterId];
@@ -1071,7 +1048,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'everylove-store',
-      version: 10,
+      version: 11,
       storage: createJSONStorage(() => AsyncStorage),
       // v2：种子角色改版（陆隽行下架、人外上新），清掉指向已删除角色的数据
       // v3：新手流标记（D-058）——已有存档的老用户不重走新手流
@@ -1082,9 +1059,22 @@ export const useAppStore = create<AppState>()(
       // v8：亲密度数值体系（D-126）——新曲线下等级只升不降（legacyLevel）、温度从起点开始、当天记账清零
       // v9：零钱（D-128）——老羁绊补 TA 的钱包（2000 Coin 起，周薪从现在起算）
       // v10：桌面布局全部回默认（D-136，Harper：强制把所有人的布局刷新成默认首页）
+      // v11：世界书下线（D-149）——清掉世界书数据与角色 / 羁绊快照上的世界字段；桌面上的世界书图标随 appById 过滤自然消失
       migrate: (persisted: unknown, version) => {
         const state = persisted as (Partial<AppState> & Record<string, unknown>) | undefined;
         if (!state) return state;
+        if (version < 11) {
+          delete state.worldBooks;
+          delete state.worldFavorites;
+          delete state.sharedWorlds;
+          delete state.sharedWorldsAt;
+          const strip = <T extends Record<string, unknown>>(c: T): T => {
+            const { worldId: _w, world: _s, ...rest } = c;
+            return rest as T;
+          };
+          if (state.customCharacters) state.customCharacters = state.customCharacters.map((c) => strip(c as unknown as Record<string, unknown>) as unknown as typeof c);
+          if (state.bonds) state.bonds = state.bonds.map((b) => (b.character ? { ...b, character: strip(b.character as unknown as Record<string, unknown>) as unknown as typeof b.character } : b));
+        }
         if (version < 10) {
           state.desktopSlots = {};
           state.desktopOrder = [];

@@ -2,7 +2,7 @@
  * 角色内容的类型（D-093 拆目录）：台词脚本、动态种子、语言包。
  */
 
-import type { ArchetypeId, Character } from '@/lib/types';
+import type { ArchetypeId, Character, StoryChapter } from '@/lib/types';
 
 export interface CharacterScript {
   /** 初见：TA 先开口（即点即聊，降低开口成本） */
@@ -44,4 +44,6 @@ export interface LanguagePack {
   SQUARE_POSTS: SquarePost[];
   BONDED_POSTS: Record<string, SeedPost[]>;
   BONDED_POSTS_DEFAULTS: Record<Exclude<ArchetypeId, 'nonhuman'>, SeedPost[]>;
+  /** 传记（D-149）：种子角色的章节，按角色 id；没写的语言给空表 */
+  CHAPTERS: Record<string, StoryChapter[]>;
 }

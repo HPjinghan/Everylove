@@ -433,7 +433,7 @@ export default function MeScreen() {
             label={t('创造的角色')}
             value={`${customs.filter((c) => !c.shared).length}`}
             numeric
-            onPress={() => router.push('/apps/my-characters' as never)}
+            onPress={() => router.push('/apps/create' as never)}
           />
         </Section>
 

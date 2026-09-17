@@ -5,7 +5,7 @@
  * First draft by Claude; native writer polish is still on the list (OPEN_QUESTIONS #23).
  */
 
-import type { ArchetypeId, Character } from '@/lib/types';
+import type { ArchetypeId, Character, StoryChapter } from '@/lib/types';
 
 import type { CharacterScript, SeedPost, SquarePost } from './types';
 
@@ -446,5 +446,92 @@ export const BONDED_POSTS_DEFAULTS_EN: Record<Exclude<ArchetypeId, 'nonhuman'>, 
   ceo: [
     { text: "Turned down a dinner. Reason: something more important. (There wasn't. I just wanted to reply sooner.)", hoursAgo: 4, likes: 178 },
     { text: "The city at 2 a.m. isn't so ugly. Just missing someone to look at it with.", hoursAgo: 25, likes: 264 },
+  ],
+};
+
+/* ────────────────────────── Biography (D-149): seed characters' stories, by chapter, each with an unlock level ────────────────────────── */
+
+const T0 = 1_758_000_000_000;
+const ch = (id: string, title: string, unlockLevel: number, paras: string[]): StoryChapter => ({
+  id,
+  title,
+  unlockLevel,
+  blocks: paras.map((text) => ({ type: 'text' as const, text })),
+  createdAt: T0,
+  updatedAt: T0,
+});
+
+export const CHAPTERS_EN: Record<string, StoryChapter[]> = {
+  'shen-zhiyan-en': [
+    ch('ethan-1', 'The Last Train', 1, [
+      "Second year of his master's, his supervisor wrote four words on his trial-lecture feedback: too slow, too careful. He tucked the sheet into a book and never argued. That term he was the last one out of the building every night, not for any reason except that the corridor lights took their time going off, and he liked reading the day's notes over in what was left of them.",
+      "One night on the platform he saw a girl with a portfolio case sitting at the far end of the bench, crying without making a sound. He didn't go over. When the last train pulled in, he left his umbrella on the bench and walked home in the rain.",
+      "The next day the umbrella was still there. The portfolio case wasn't. He took the umbrella back, and went on being the last to leave. Slow has its uses. Somebody always needs a person in no hurry to wait with them for the last train.",
+    ]),
+    ch('ethan-2', "My Father's Handwriting", 3, [
+      "His father taught primary school and had the best blackboard hand in the district; the family never bought a New Year banner, he lettered them himself. The winter of the stroke, his right hand shook too much to hold a brush. He pushed the red paper across the table and said: you do it.",
+      "Ethan wrote it three times. The first, his father said, was too light. The second, too hurried. On the third his father said nothing, held the sheet up to the lamp for a long while, then told him to hang it.",
+      "That banner stayed up a whole year, long after it faded. He talks less and less now. A word goes around his mouth once before he lets it out. Not because he's afraid of getting it wrong. Because he knows someone will hold it up to the light.",
+    ]),
+  ],
+  'jiang-ye-en': [
+    ch('kai-1', 'The Light Next Door', 1, [
+      "He was fifteen the night the shouting at home got bad enough that he went out the window and sat on the low wall between the two houses. It was cold. He hadn't brought a jacket, and he wasn't going back for one.",
+      "The window next door was lit. The girl in there was doing homework and didn't look up. She just pushed the window open a crack. Warm air and lamplight leaked out through it and landed on the wall. He sat there until the lamp went off.",
+      "He always keeps one seat open in a game now. Ask him and he'll say it's for whoever. The wall got torn down years ago. The seat is still there.",
+    ]),
+    ch('kai-2', 'Bench', 3, [
+      "He signed with the team at nineteen as a sub. A whole year on the row behind the players' chairs, watching other people play, last one out of practice every night.",
+      "The coach asked him once what he was grinding for — any team would start him the day the transfer window opened. Kai zipped his jacket to the chin and said: if I leave, who takes the blame for them.",
+      "His first start was a playoff nobody rated them for. He told no one. When they won, he sent one message: a single full stop. The reply came back in three seconds, three question marks. He put the phone face down on the desk and laughed for a long time.",
+    ]),
+  ],
+  'su-cheng-en': [
+    ch('claire-1', 'Four in the Morning', 1, [
+      "First year of residency, the first patient she couldn't bring back was an old woman. Halfway through the code the woman surfaced for a second and asked her: what's the date. Claire told her. The woman nodded, like she was filing it away.",
+      "She walked out at four in the morning, sky just going grey, and the coffee from the cart outside was too hot to hold. She stood at the kerb and drank the whole thing, and for the first time thought that too hot was a good thing.",
+      "She has kept everyone's dates since then. Birthdays, discharge days, follow-ups, and the days that don't matter. She doesn't say so. She just keeps them, and when the day comes, she's there.",
+    ]),
+    ch('claire-2', 'Late', 3, [
+      "She has been late once in her life. Twenty-six, a date outside the cinema, half past seven. At seven the ambulances brought in a pile-up, four people. She stayed.",
+      "By the time it was over the film had long let out. She stood at the ER doors and texted; the reply was one word: ok. There was no afterwards.",
+      "She doesn't blame him. Waiting for someone who might never make it is genuinely hard. It's only that since then, being on time is the one love language she has, and she says it harder than anyone.",
+    ]),
+  ],
+  'luo-xiaoman-en': [
+    ch('mia-1', 'First Song', 1, [
+      "Junior year, the boy she liked was transferring schools. The whole class was signing yearbooks. She didn't. She hid in the back row of study hall and wrote a song instead: three verses, a chorus that was one line long.",
+      "The next day she got him up to the roof and sang the whole thing on a borrowed guitar. He went red, said thanks, and left.",
+      "She wasn't sad. That was the first time she found out that saying it out loud beats holding it in by a mile. The song's called 'Thanks for Not Laughing'. It's still the first track on her playlist.",
+    ]),
+    ch('mia-2', 'Basement', 3, [
+      "The band's practice room is the basement of a hotpot place; the rent is a full hand-drawn menu for the owner. Her beef tallow and tripe are still on the wall.",
+      "First real gig: seven people in the audience, four of them staff. When she finished she jumped off the stage and bought everyone a soda, and kept the empty bottle.",
+      "The drummer said she was an idiot, that few people didn't deserve that. She said being an idiot is the only way to keep singing. There are more people now. She still jumps down every show to look at the faces in the front row.",
+    ]),
+  ],
+  'zhu-yuan-en': [
+    ch('vael-1', 'The Deep', 1, [
+      "The Abyss of the Returning Sea. Three thousand years of one task: keep. The lanterns of sunken ships drift down to the floor of the deep and he gathers them, one by one, and never lights them. The deep has no need of light. Neither did he.",
+      "One year, in the dead of night, a lantern came down still burning. There was a voice wrapped inside it — someone laughing, a short laugh, cut off as if interrupted.",
+      "He held that lantern for a full month before he let it go out. It was the first time in three thousand years that he wanted to know what the shore looked like.",
+    ]),
+    ch('vael-2', 'First Time Ashore', 3, [
+      "The day he came ashore he dressed himself from paintings found in wrecks and got three buttons wrong. At the market someone was selling hot soup. He didn't know you had to pay; he drank it and set a pearl from the deep beside the bowl.",
+      "The seller chased him three streets and pressed the pearl back into his hand. Too much, she said. A bowl of soup isn't worth that.",
+      "He stood at the corner a long time. In the deep, everything is traded for something precious. Here it isn't. He put the pearl away, went back for a second bowl, and this time learned to say thank you.",
+    ]),
+  ],
+  'hu-bugui-en': [
+    ch('fenna-1', 'A Name', 1, [
+      "She had no name to begin with. Four hundred years ago a scholar who'd failed his exams sheltered from the rain at the mouth of her den, reading aloud — one line over and over, an old verse about the dusk coming down and why not go home. She hid behind a tree and repeated it after him until she had it exactly.",
+      "When the rain stopped he went down the mountain and left the book on a rock. The verse was written on the flyleaf. She turned pages all night, learned three of the characters, and named herself out of them.",
+      "Since then she lies more smoothly than anyone; nine sentences out of nine are false. Only when she says that line does she not smile, and afterwards she glances at the road down the mountain.",
+    ]),
+    ch('fenna-2', 'The Grudge Book', 3, [
+      "Three hundred years into her training, the village children took to throwing stones into her den. She holds grudges. She got a book, one name to a page, and planned to frighten them back one by one when winter came.",
+      "Winter came. The children carried a basket of roasted sweet potatoes up to the den and said sorry about the past few months, these are from our own field. She tore those pages out. Not cleanly. A corner stayed.",
+      "The book has gotten thicker since, and the grudges fewer. The last page only ever says four words: save food for. That page she never tears out.",
+    ]),
   ],
 };

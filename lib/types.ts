@@ -76,10 +76,6 @@ export interface Character {
   voiceId?: string;
   /** 聊几句后 TA 会想确定关系（默认 4，见 lib/engine ADOPTION_OFFER_AFTER_TURNS） */
   offerAfterTurns?: number;
-  /** 所在的世界（D-110）：世界书 id；缺省 / 找不到 = 现实世界（当前）。非现实世界会作为【你所在的世界】注入所有 prompt */
-  worldId?: string;
-  /** 世界快照（D-111 / D-112）：绑定世界那一刻整本抄进来（含 version），之后世界更新 / 删除都不影响这个角色；重新选一次世界才换新快照 */
-  world?: WorldBook;
   tags: string[];
   adoptedCount: number;
   /** 主色（头像底、气泡强调） */
@@ -98,7 +94,24 @@ export interface Character {
   lang?: 'zh' | 'en' | 'ja' | 'ko';
   /** TA 自己的台词（D-094）：发布时模型按人设写一次，创作者可改；没有则回落原型兜底（content/characters scriptFor） */
   lines?: CharacterLines;
+  /** 传记（D-149）：创作者按章写的 TA 的故事，每章设开放的羁绊等级；是内容不是设定——不进领养快照，读者看的是角色库里现行的那份 */
+  chapters?: StoryChapter[];
 }
+
+/** 传记的一章（D-149） */
+export interface StoryChapter {
+  id: string;
+  title: string;
+  /** 正文块：段落文本与图片穿插 */
+  blocks: StoryBlock[];
+  /** 开放阶段：读者这段羁绊 LV ≥ 此值才能翻开（1 = 一缔结就能看，最高 6） */
+  unlockLevel: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** 传记正文块：文字段落 / 图片（上传、gif 或现场生图；uri 是本机文件或 data URI） */
+export type StoryBlock = { type: 'text'; text: string } | { type: 'image'; uri: string; caption?: string };
 
 /** 自创角色的台词（D-094）：三组会上屏的话 + 进 prompt 的一句人设与追法 */
 export interface CharacterLines {
@@ -346,7 +359,7 @@ export interface Bond {
 }
 
 /** 零钱账本（D-128 / D-138）：她的钱包与 TA 的钱包共用；wheel = 幸运签的转盘（净额一笔） */
-export type LedgerKind = 'fortune' | 'wheel' | 'redpacket' | 'delivery' | 'salary' | 'refund';
+export type LedgerKind = 'fortune' | 'wheel' | 'redpacket' | 'delivery' | 'salary' | 'refund' | 'tip';
 export interface LedgerEntry {
   id: string;
   at: number;
@@ -421,26 +434,6 @@ export interface CircleLine {
   from: 'him' | 'them';
   text: string;
   at: number;
-}
-
-/** 世界书（D-110）：TA 所处的世界与 TA 对一切的认知；现实世界（当前）内置，其余由她创建、收藏后才能选给角色 */
-export interface WorldBook {
-  id: string;
-  name: string;
-  /** 一句话：这是个什么世界 */
-  summary: string;
-  /** 设定：地理 / 时代 / 科技 / 规则 / 常识……一行一条 */
-  rules?: string;
-  createdAt: number;
-  updatedAt: number;
-  /** 版本号（D-112）：每次保存自增；角色快照里带着当时的版本，线上角色不受之后的更新 / 删除影响 */
-  version?: number;
-  /** 可见性（D-111）：public 上传共享池，所有玩家的世界书里都能浏览、收藏；缺省 = private */
-  visibility?: 'private' | 'public';
-  /** 来自共享池（别人创建的，D-111）：不能编辑，只能收藏 */
-  shared?: boolean;
-  /** 创建时的界面语言（D-111）：共享池只发同语言 */
-  lang?: 'zh' | 'en' | 'ja' | 'ko';
 }
 
 export interface PostComment {

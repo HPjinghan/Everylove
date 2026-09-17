@@ -9,7 +9,7 @@
 
 import { getLang, type Lang } from '@/lib/i18n';
 import { stripTrailingPeriod } from '@/lib/text';
-import type { ArchetypeId, Character } from '@/lib/types';
+import type { ArchetypeId, Character, StoryChapter } from '@/lib/types';
 
 import * as en from './en';
 import * as ja from './ja';
@@ -65,10 +65,10 @@ export const ARCHETYPE_LABEL: Record<ArchetypeId, string> = {
 /* ────────────────────────── 按语言取用 ────────────────────────── */
 
 const PACKS: Record<Lang, LanguagePack> = {
-  zh: { CHARACTERS: zh.CHARACTERS_ZH, CHAR_SCRIPTS: zh.CHAR_SCRIPTS_ZH, ARCHETYPE_DEFAULTS: zh.ARCHETYPE_DEFAULTS_ZH, SQUARE_POSTS: zh.SQUARE_POSTS_ZH, BONDED_POSTS: zh.BONDED_POSTS_ZH, BONDED_POSTS_DEFAULTS: zh.BONDED_POSTS_DEFAULTS_ZH },
-  en: { CHARACTERS: en.CHARACTERS_EN, CHAR_SCRIPTS: en.CHAR_SCRIPTS_EN, ARCHETYPE_DEFAULTS: en.ARCHETYPE_DEFAULTS_EN, SQUARE_POSTS: en.SQUARE_POSTS_EN, BONDED_POSTS: en.BONDED_POSTS_EN, BONDED_POSTS_DEFAULTS: en.BONDED_POSTS_DEFAULTS_EN },
-  ja: { CHARACTERS: ja.CHARACTERS_JA, CHAR_SCRIPTS: ja.CHAR_SCRIPTS_JA, ARCHETYPE_DEFAULTS: ja.ARCHETYPE_DEFAULTS_JA, SQUARE_POSTS: ja.SQUARE_POSTS_JA, BONDED_POSTS: ja.BONDED_POSTS_JA, BONDED_POSTS_DEFAULTS: ja.BONDED_POSTS_DEFAULTS_JA },
-  ko: { CHARACTERS: ko.CHARACTERS_KO, CHAR_SCRIPTS: ko.CHAR_SCRIPTS_KO, ARCHETYPE_DEFAULTS: ko.ARCHETYPE_DEFAULTS_KO, SQUARE_POSTS: ko.SQUARE_POSTS_KO, BONDED_POSTS: ko.BONDED_POSTS_KO, BONDED_POSTS_DEFAULTS: ko.BONDED_POSTS_DEFAULTS_KO },
+  zh: { CHARACTERS: zh.CHARACTERS_ZH, CHAR_SCRIPTS: zh.CHAR_SCRIPTS_ZH, ARCHETYPE_DEFAULTS: zh.ARCHETYPE_DEFAULTS_ZH, SQUARE_POSTS: zh.SQUARE_POSTS_ZH, BONDED_POSTS: zh.BONDED_POSTS_ZH, BONDED_POSTS_DEFAULTS: zh.BONDED_POSTS_DEFAULTS_ZH, CHAPTERS: zh.CHAPTERS_ZH },
+  en: { CHARACTERS: en.CHARACTERS_EN, CHAR_SCRIPTS: en.CHAR_SCRIPTS_EN, ARCHETYPE_DEFAULTS: en.ARCHETYPE_DEFAULTS_EN, SQUARE_POSTS: en.SQUARE_POSTS_EN, BONDED_POSTS: en.BONDED_POSTS_EN, BONDED_POSTS_DEFAULTS: en.BONDED_POSTS_DEFAULTS_EN, CHAPTERS: en.CHAPTERS_EN },
+  ja: { CHARACTERS: ja.CHARACTERS_JA, CHAR_SCRIPTS: ja.CHAR_SCRIPTS_JA, ARCHETYPE_DEFAULTS: ja.ARCHETYPE_DEFAULTS_JA, SQUARE_POSTS: ja.SQUARE_POSTS_JA, BONDED_POSTS: ja.BONDED_POSTS_JA, BONDED_POSTS_DEFAULTS: ja.BONDED_POSTS_DEFAULTS_JA, CHAPTERS: ja.CHAPTERS_JA },
+  ko: { CHARACTERS: ko.CHARACTERS_KO, CHAR_SCRIPTS: ko.CHAR_SCRIPTS_KO, ARCHETYPE_DEFAULTS: ko.ARCHETYPE_DEFAULTS_KO, SQUARE_POSTS: ko.SQUARE_POSTS_KO, BONDED_POSTS: ko.BONDED_POSTS_KO, BONDED_POSTS_DEFAULTS: ko.BONDED_POSTS_DEFAULTS_KO, CHAPTERS: ko.CHAPTERS_KO },
 };
 
 /** 全部语言的种子角色（查找用：已缔结 / 已配对的 TA 不随界面语言消失）；中文在前，测试夹具依赖这个顺序 */
@@ -122,6 +122,12 @@ function plainEndings(s: CharacterScript): CharacterScript {
 
 /** 广场公开动态的种子（全部语言；X 只显示已缔结 TA 的时间线，多出来的不会露出） */
 export const SQUARE_POSTS: SquarePost[] = [...zh.SQUARE_POSTS_ZH, ...en.SQUARE_POSTS_EN, ...ja.SQUARE_POSTS_JA, ...ko.SQUARE_POSTS_KO];
+
+/** 传记（D-149）：自创角色用 TA 自己的章节；种子角色看该语言内容包（没写的语言为空）。是内容不是设定——调用方要传角色的现行版本，不是羁绊快照 */
+export function chaptersFor(c: Pick<Character, 'id' | 'custom' | 'chapters' | 'lang'>): StoryChapter[] {
+  if (c.custom) return c.chapters ?? [];
+  return PACKS[langOf(c)].CHAPTERS[c.id] ?? c.chapters ?? [];
+}
 
 /** 领养后物化到 X 的帖子：种子角色各自的，自创角色回落该语言的原型兜底 */
 export function bondedPostsFor(c: Character): SeedPost[] {

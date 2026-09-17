@@ -5,7 +5,7 @@
  * Claude の初稿。ネイティブライターの推敲は未了（OPEN_QUESTIONS #23）。
  */
 
-import type { ArchetypeId, Character } from '@/lib/types';
+import type { ArchetypeId, Character, StoryChapter } from '@/lib/types';
 
 import type { CharacterScript, SeedPost, SquarePost } from './types';
 
@@ -432,3 +432,6 @@ export const BONDED_POSTS_DEFAULTS_JA: Record<Exclude<ArchetypeId, 'nonhuman'>, 
     { text: '深夜の街も悪くない。ただ、一緒に見る人がいないだけ。', hoursAgo: 25, likes: 264 },
   ],
 };
+
+/** 传记（D-149）：日 / 韩种子的章节待母语写手（#23），先空 */
+export const CHAPTERS_JA: Record<string, StoryChapter[]> = {};

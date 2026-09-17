@@ -32,14 +32,14 @@ export const DESKTOP_APPS: DesktopApp[] = [
   { id: 'notes', label: '记事本', icon: 'notebook', route: '/apps/notes' },
   // 查手机（D-085）：所有缔结的 TA 各一部手机；也能让 TA 看我的手机
   { id: 'phones', label: '查手机', icon: 'phoneEye', route: '/apps/phones' },
-  // 世界书（D-110）：默认现实世界，可创建别的世界并收藏；创造角色时从收藏里选，决定 TA 所处的世界与认知
-  { id: 'worlds', label: '世界书', icon: 'planet', route: '/apps/worlds' },
   // 钱包（D-138）：她的零钱余额与 Coin 流水（红包 / 外卖 / 日签 / 转盘）
   { id: 'wallet', label: '钱包', icon: 'wallet', route: '/apps/wallet' },
   // 幸运签（D-128 / D-138）：日签每天一次水晶球抽签给零钱；转盘投零钱赌倍数
   { id: 'fortune', label: '幸运签', icon: 'sparkles', route: '/apps/fortune' },
   // 外卖（D-129）：像一个外卖平台——给自己或给 TA 点、骑手进度、订单记录
   { id: 'delivery', label: '外卖', icon: 'takeout', route: '/apps/delivery' },
+  // 传记（D-149）：已缔结 TA 的故事，创作者按章写、每章设开放的羁绊等级；只看，编辑在创造里
+  { id: 'biography', label: '传记', icon: 'book', route: '/apps/biography' },
   { id: 'settings', label: '设置', icon: 'settings', route: '/apps/settings' },
 ];
 

@@ -23,6 +23,7 @@ const KIND_LABEL: Record<LedgerKind, string> = {
   delivery: '外卖',
   salary: '工资',
   refund: '退回',
+  tip: '打赏',
 };
 
 function dayLabel(at: number): string {
