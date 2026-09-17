@@ -256,7 +256,6 @@ export function PhoneSheet({
                         <View style={styles.convHead}>
                           <Text style={styles.convName} numberOfLines={1}>
                             {c.name}
-                            {c.id === HER ? <Text style={styles.convTag}>  {t('恋人')}</Text> : null}
                           </Text>
                           {last ? <Text style={styles.time}>{timeAgo(last.at)}</Text> : null}
                         </View>
