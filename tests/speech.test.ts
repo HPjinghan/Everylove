@@ -4,23 +4,23 @@
 import { describe, expect, it } from 'vitest';
 
 import { VOICES } from '@/content/voices';
-import { asrChannelFor, defaultVoiceId, recommendVoices, voiceGenderOf, whisperWanted } from '@/lib/speech';
+import { asrChannelFor, defaultVoiceId, recommendVoices, voiceGenderOf, multiAsrWanted } from '@/lib/speech';
 
 describe('识别分流', () => {
-  const both = { whisper: true, baidu: true };
-  it('默认只有日 / 韩走 Whisper，中 / 英走百度；all = 全部走 Whisper', () => {
+  const both = { multi: true, baidu: true };
+  it('默认只有日 / 韩走多语种通道，中 / 英走百度；all = 全部走多语种', () => {
     expect(asrChannelFor('zh', both)).toBe('baidu');
     expect(asrChannelFor('en', both)).toBe('baidu');
-    expect(asrChannelFor('ja', both)).toBe('whisper');
-    expect(asrChannelFor('ko', both)).toBe('whisper');
-    expect(asrChannelFor('zh', both, 'all')).toBe('whisper');
-    expect(whisperWanted('en', 'en, ja')).toBe(true);
+    expect(asrChannelFor('ja', both)).toBe('multi');
+    expect(asrChannelFor('ko', both)).toBe('multi');
+    expect(asrChannelFor('zh', both, 'all')).toBe('multi');
+    expect(multiAsrWanted('en', 'en, ja')).toBe(true);
   });
-  it('百度不会的语言、Whisper 没接上 → none；只有 Whisper 时中文也走 Whisper', () => {
-    expect(asrChannelFor('ja', { whisper: false, baidu: true })).toBe('none');
-    expect(asrChannelFor('zh', { whisper: false, baidu: true })).toBe('baidu');
-    expect(asrChannelFor('zh', { whisper: true, baidu: false })).toBe('whisper');
-    expect(asrChannelFor('zh', { whisper: false, baidu: false })).toBe('none');
+  it('百度不会的语言、多语种通道没接上 → none；只有多语种通道时中文也走它', () => {
+    expect(asrChannelFor('ja', { multi: false, baidu: true })).toBe('none');
+    expect(asrChannelFor('zh', { multi: false, baidu: true })).toBe('baidu');
+    expect(asrChannelFor('zh', { multi: true, baidu: false })).toBe('multi');
+    expect(asrChannelFor('zh', { multi: false, baidu: false })).toBe('none');
   });
 });
 

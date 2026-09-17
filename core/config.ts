@@ -24,8 +24,10 @@ export const CONFIG = {
   baiduTtsPer: process.env.EXPO_PUBLIC_BAIDU_TTS_PER || '',
   baiduAsrDevPid: Number(process.env.EXPO_PUBLIC_BAIDU_ASR_DEV_PID) || 0,
 
-  /* ── 她的语音识别（D-139）：Whisper 协议通道（Groq / OpenAI …），按界面语言分流——默认只有日 / 韩走它，中 / 英仍走百度 ── */
+  /* ── 她的语音识别（D-139）：多语种通道按界面语言分流——默认只有日 / 韩走它，中 / 英仍走百度。
+   *    通道供应商：fish（Fish transcribe-1，与合成同一把 key，默认）或 whisper（Whisper 协议：Groq / OpenAI …，下面三项） ── */
   asr: {
+    provider: (process.env.EXPO_PUBLIC_ASR_PROVIDER === 'whisper' ? 'whisper' : 'fish') as 'fish' | 'whisper',
     baseUrl: (process.env.EXPO_PUBLIC_ASR_BASE_URL || '').replace(/\/+$/, ''),
     apiKey: process.env.EXPO_PUBLIC_ASR_API_KEY || '',
     model: process.env.EXPO_PUBLIC_ASR_MODEL || 'whisper-large-v3-turbo',

@@ -4,12 +4,17 @@
  * 只取 licensed（Fish 官方授权）且公开的 tts 声线，按语言各拉 N 把（按使用量排序），
  * 性别 / 气质从 tags 与标题里猜（男 / 女 / male / female / 少年 / 御姐 / cool / soft…），猜不到的记 nonbinary——
  * **生成的是草稿，人工筛过再提交**：听一遍、删掉不合适的、改标签、给六位种子角色各定一把（SEED_VOICES）。
- * 不读 .env.local（那是客户端的），key 从环境变量拿；也可 EXPO_PUBLIC_FISH_API_KEY。
+ * key 从环境变量 FISH_API_KEY 拿，没有就读 .env.local 里的 EXPO_PUBLIC_FISH_API_KEY（npm run fish-voices 直接可用）。
  */
 
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
-const KEY = process.env.FISH_API_KEY || process.env.EXPO_PUBLIC_FISH_API_KEY;
+function envLocal(name) {
+  if (!existsSync('.env.local')) return '';
+  const m = readFileSync('.env.local', 'utf8').match(new RegExp('^' + name + '=(.*)$', 'm'));
+  return m ? m[1].trim().replace(/^["']|["']$/g, '') : '';
+}
+const KEY = process.env.FISH_API_KEY || process.env.EXPO_PUBLIC_FISH_API_KEY || envLocal('EXPO_PUBLIC_FISH_API_KEY');
 if (!KEY) {
   console.error('缺 FISH_API_KEY');
   process.exit(1);

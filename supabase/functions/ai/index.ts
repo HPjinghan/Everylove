@@ -8,6 +8,7 @@
  *   baidu.tts（百度短文本语音合成 tsn.baidu.com/text2audio，body 为表单字段对象；D-073，替代已下线的 qianfan.tts）
  *   asr.transcribe（Whisper 协议识别，日 / 韩用；D-139。Secrets：ASR_BASE_URL / ASR_API_KEY / ASR_MODEL；没配返回 503「asr not configured」，客户端回落百度）
  *   fish.tts（Fish Audio 合成 api.fish.audio/v1/tts，body 原样透传；D-139。Secrets：FISH_API_KEY / FISH_MODEL；没配返回 503「fish not configured」，客户端回落百度）
+ *   fish.asr（Fish transcribe-1 识别 api.fish.audio/v1/asr，multipart 字段 audio；同一把 FISH_API_KEY；D-139）
  * 返回：上游 JSON 原样透传；上游返回二进制音频则包成 { audio_base64 }。
  * 部署：supabase functions deploy ai（verify_jwt 开启——平台先验 JWT，函数内再取 user 限流）。
  */
@@ -99,6 +100,21 @@ Deno.serve(async (req) => {
         headers: { authorization: `Bearer ${key}` },
         body: form,
       });
+      return new Response(await r.text(), { status: r.status, headers: JSON_HEADERS });
+    }
+
+    // Fish transcribe-1 识别（D-139）：multipart 字段叫 audio
+    if (service === 'fish.asr') {
+      const key = Deno.env.get('FISH_API_KEY') ?? '';
+      if (!key) return json({ error: 'fish not configured' }, 503);
+      const b = body as Record<string, string>;
+      const bin = atob(b.audio_base64 ?? '');
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const form = new FormData();
+      form.append('audio', new Blob([bytes], { type: b.mime || 'audio/wav' }), b.filename || 'voice.wav');
+      if (b.language) form.append('language', b.language);
+      const r = await fetch('https://api.fish.audio/v1/asr', { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: form });
       return new Response(await r.text(), { status: r.status, headers: JSON_HEADERS });
     }
 

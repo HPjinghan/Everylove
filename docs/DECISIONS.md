@@ -112,7 +112,7 @@
 | D-126 | 09-15 | 亲密度数值体系：心动改模型判 0–15（[心动 n] 暗号、按性子保底）；XP 来源表 15 种 + 当天递减 + 日上限 150；等级 = XP 门槛 100/200/300/500/900 × 天数下限 0/3/7/21/60，只升不降；温度 0–100 每天 −8，疏远降频、到 0 停主动进推送召回（7 / 14 / 30 天各一条后停） | D1 / D2 / D7 / D8 |
 | D-141 | 09-17 | 像个人一样说话：四种对话共用 `TALK_MANNER` 段（借 talk-skill 骨架）——跟着她的劲儿（长度 / 情绪 / 幽默对齐）、听潜台词不分析她、只回这一条、有看法不当应声虫、该短就短、无客服腔与安慰套话、不每条叮嘱收尾；长度改「跟着她」（1-2 句硬上限退役）；emoji 只在她先用才偶尔跟一个 | C1 |
 | D-140 | 09-17 | 角色更新通道：TA 的主页信息卡「设定」行——作者（自己 / 别的玩家）改了角色就显示「作者更新了 · 换成最新」，她点了才换快照（聊天 / 记忆 / 等级不动、不可退回）；共享池角色以云端那份为准 | E3 |
-| D-139 | 09-17 | 语音供应商：识别按语言分流（中 / 英百度、日 / 韩 Whisper 通道 = Groq）；合成换 Fish Audio，每个角色自己的音色（创造 ⑧ 推荐三把可换一批、试听），音色池只收授权声线；识别 / 合成配置拆开 | B3 |
+| D-139 | 09-17 | 语音供应商：识别按语言分流（中 / 英百度、日 / 韩 Fish transcribe-1，Whisper 通道 Groq / OpenAI 作备选）；合成换 Fish Audio，每个角色自己的音色（创造 ⑧ 推荐三把可换一批、试听），音色池只收授权声线；识别 / 合成配置拆开 | B3 |
 | D-138 | 09-17 | 零钱拆成两个 App：钱包（余额 + Coin 流水，只看）；日签改名幸运签、两页——日签（水晶球）+ 转盘（投 50 / 100 / 200 / 500，十格等概率 ×0.5 / ×1.2 / ×2 / ×5，期望 1.53 故意大方，Coin 与经济不挂钩） | F10 |
 | D-137 | 09-16 | 气泡分段在客户端做：模型空行优先，没分好就按句末标点拆成最多两条、长度均衡，一句不拆（不依赖模型输出格式，换模型也分段） | C1 |
 | D-136 | 09-15 | 桌面：未读横幅绝对定位叠在时钟上、不再挤压网格（行数不随它变 2 / 3 行）；存档 v10 把所有人的桌面布局（格位 / 顺序 / Dock）刷回默认 | F1 |
@@ -179,7 +179,7 @@
 
 ### B3 · 语音：识别 / 合成 / 角色音色
 - **现行**（**D-139**，`lib/media.ts` 识别、`lib/tts.ts` 合成、`lib/speech.ts` 纯逻辑、`content/voices.ts` 音色池、`components/voice-picker.tsx`；Harper：「识别我其实可以继续用百度，合成换成小鱼，有了新的声线之后创建和编辑角色的时候就可以允许用户选择音色，推荐三个，不满意可以刷新」）：
-  - **她的语音 → 文字，按界面语言分流**（`asrChannelFor`）：中 / 英走 **百度 ASR**（`vop.baidu.com`，极速版 80001 普通话 / 1737 英语，同一把千帆 key、免费且快；录音 16k 单声道 wav、最长 59 s 自动停）；日 / 韩走 **Whisper 协议通道**（`EXPO_PUBLIC_ASR_BASE_URL / _API_KEY / _MODEL`，默认 Groq `whisper-large-v3-turbo`，$0.04 / 小时、按 10 s 起计；OpenAI / 硅基流动 / 百炼同一套接口，换家只改 env）；哪些语言走 Whisper 由 `EXPO_PUBLIC_ASR_LANGS`（默认 `ja,ko`，`all` = 全部）定；只有 Whisper 时中文也走它。百度不会的语言、Whisper 又没接上 → 直接露出「这门语言的语音识别还没接上」，不假装听到。走代理时先乐观试 `asr.transcribe`，服务端 503「asr not configured」再回落百度。
+  - **她的语音 → 文字，按界面语言分流**（`asrChannelFor`）：中 / 英走 **百度 ASR**（`vop.baidu.com`，极速版 80001 普通话 / 1737 英语，同一把千帆 key、免费且快；录音 16k 单声道 wav、最长 59 s 自动停）；日 / 韩走**多语种通道**——默认 **Fish transcribe-1**（`api.fish.audio/v1/asr`，multipart 字段 `audio`，与合成同一把 key，$0.36 / 小时按秒计，80 多种语言自动识别、中英混说不用切；Harper：「fish 也可以语音转文字，为什么不考虑也用 fish」——一把 key 一张账单，识别成本本来就可忽略）；`EXPO_PUBLIC_ASR_PROVIDER=whisper` 切到备选的 **Whisper 协议通道**（`EXPO_PUBLIC_ASR_BASE_URL / _API_KEY / _MODEL`，Groq `whisper-large-v3-turbo` $0.04 / 小时、OpenAI / 硅基流动 / 百炼同一套接口）。哪些语言走多语种通道由 `EXPO_PUBLIC_ASR_LANGS`（默认 `ja,ko`，`all` = 全部）定；只有多语种通道时中文也走它。百度不会的语言、通道又没接上 → 直接露出「这门语言的语音识别还没接上」，不假装听到。走代理时先乐观试 `fish.asr` / `asr.transcribe`，服务端 503「not configured」再回落百度。
   - **TA 的语音合成 → Fish Audio**（`POST api.fish.audio/v1/tts`，`EXPO_PUBLIC_FISH_API_KEY`，模型 header 默认 `s2.1-pro`、免费期可填 `s2.1-pro-free`；中 / 英 / 日 / 韩全语种，`latency: balanced`、mp3）→ 未配置回落 **百度 `tsn.baidu.com/text2audio`**（只会中 / 英；音色按人称 他 4193 / 她 4194 / TA 4115，`EXPO_PUBLIC_BAIDU_TTS_PER` 可换）；代理同序（`fish.tts` 503「fish not configured」再百度）。按（通道 + 模型 + 音色 + 文本）缓存本机；失败气泡显示「语音暂时没接通」可看文字。OpenAI 兼容 `/audio/speech` 通道（D-074）下线。
   - **每个角色自己的音色** `Character.voiceId`（Fish reference_id；缔结即随角色快照进羁绊，语音气泡与电话共用同一把嗓子）。取值顺序 `defaultVoiceId`：角色选的 > 种子预定（`SEED_VOICES`，`id@lang` 优先）> 音色池同语言同性别第一把 > `EXPO_PUBLIC_FISH_VOICE_HE|SHE|TA` > Fish 默认声。
   - **音色池** `content/voices.ts`：**不用 Fish 两百万个公共声线**（大量模仿真人 / 未授权，红线 1）——只收 Fish 官方授权（licensed）与明确可商用的，按语言 × 性别 × 气质（温柔 / 低沉 / 清冷 / 少年感 / 御姐 / 活泼 / 沙哑 / 甜 / 成熟 / 人外）打标；`npm run fish-voices`（`scripts/fish-voices.mjs`，需 `FISH_API_KEY`）从声库按语言各拉 30 把生成草稿，**人工听过筛过再提交**。池子为空的语言不显示音色入口（无供给不摆）。

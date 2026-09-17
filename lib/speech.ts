@@ -1,6 +1,7 @@
 /**
  * 语音供给的纯逻辑（D-139）：识别按语言分流 + 音色池推荐。不碰网络、不碰 RN，可直接测。
- * - 识别：中 / 英走百度（同一把千帆 key、快且免费），日 / 韩走 Whisper 协议通道（Groq / OpenAI …）；哪些语言走 Whisper 由 CONFIG.asr.langs 定。
+ * - 识别：中 / 英走百度（同一把千帆 key、快且免费），日 / 韩走多语种通道（Fish transcribe-1，或 Whisper 协议的 Groq / OpenAI …，CONFIG.asr.provider）；
+ *   哪些语言走多语种通道由 CONFIG.asr.langs 定。
  * - 音色：角色自己选的 > 种子角色预定的 > 音色池里同语言同性别的第一把 > env 兜底 > Fish 默认声。
  */
 
@@ -12,13 +13,13 @@ import type { Character } from '@/lib/types';
 
 /* ═══ 识别分流 ═══ */
 
-export type AsrChannel = 'whisper' | 'baidu' | 'none';
+export type AsrChannel = 'multi' | 'baidu' | 'none';
 
 /** 百度识别会的语言 */
 export const BAIDU_ASR_LANGS: Lang[] = ['zh', 'en'];
 
-/** 这门语言按配置想不想走 Whisper 通道 */
-export function whisperWanted(lang: Lang, langs = CONFIG.asr.langs): boolean {
+/** 这门语言按配置想不想走多语种通道 */
+export function multiAsrWanted(lang: Lang, langs = CONFIG.asr.langs): boolean {
   const list = langs
     .split(',')
     .map((s) => s.trim())
@@ -27,14 +28,14 @@ export function whisperWanted(lang: Lang, langs = CONFIG.asr.langs): boolean {
 }
 
 /**
- * 选识别通道：想走 Whisper 且有 → whisper；百度会这门语言且有 → baidu；百度不会但有 Whisper → whisper；都不行 → none。
+ * 选识别通道：想走多语种通道且有 → multi；百度会这门语言且有 → baidu；百度不会但有多语种通道 → multi；都不行 → none。
  * avail 由调用方按取路给（本地 key / 代理乐观放行）。
  */
-export function asrChannelFor(lang: Lang, avail: { whisper: boolean; baidu: boolean }, langs = CONFIG.asr.langs): AsrChannel {
+export function asrChannelFor(lang: Lang, avail: { multi: boolean; baidu: boolean }, langs = CONFIG.asr.langs): AsrChannel {
   const baiduCan = avail.baidu && BAIDU_ASR_LANGS.includes(lang);
-  if (avail.whisper && whisperWanted(lang, langs)) return 'whisper';
+  if (avail.multi && multiAsrWanted(lang, langs)) return 'multi';
   if (baiduCan) return 'baidu';
-  if (avail.whisper) return 'whisper';
+  if (avail.multi) return 'multi';
   return 'none';
 }
 
