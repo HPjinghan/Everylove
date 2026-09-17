@@ -9,7 +9,7 @@ import { chatProviders } from '@/core/providers';
 import { sendText } from '@/core/turn';
 import { orderStatus, orderTitle, placeOrder } from '@/lib/delivery';
 import { money } from '@/lib/format';
-import { drawFortune, FORTUNES, giftAllowed, giftsAfter, HIS_WALLET_START, parseGiftPayload, parseSalaryJSON, weeklySalaryFallback } from '@/lib/wallet';
+import { drawFortune, FORTUNES, giftAllowed, giftsAfter, HIS_WALLET_START, parseGiftPayload, parseSalaryJSON, spinWheel, weeklySalaryFallback, WHEEL_SLICES } from '@/lib/wallet';
 import { useAppStore } from '@/store/app-store';
 
 vi.mock('@/lib/proxy', () => ({
@@ -91,6 +91,29 @@ describe('日签', () => {
       expect(r.amount).toBeGreaterThanOrEqual(50);
       expect(r.amount).toBeLessThanOrEqual(500);
     }
+  });
+});
+
+describe('转盘（D-138）', () => {
+  it('十格等概率：×0.5 三格 / ×1.2 四格 / ×2 两格 / ×5 一格，期望 > 1（故意大方）', () => {
+    const count = (m: number) => WHEEL_SLICES.filter((x) => x === m).length;
+    expect(WHEEL_SLICES).toHaveLength(10);
+    expect([count(0.5), count(1.2), count(2), count(5)]).toEqual([3, 4, 2, 1]);
+    const ev = WHEEL_SLICES.reduce((s, m) => s + m, 0) / WHEEL_SLICES.length;
+    expect(ev).toBeGreaterThan(1);
+  });
+
+  it('r 定格；净额 = 投注 × 倍数 − 投注，一笔记进账本；零钱不够记不了负的', () => {
+    expect(spinWheel(100, 0)).toEqual({ slice: 0, mult: 1.2, payout: 120, net: 20 });
+    expect(spinWheel(100, 0.55)).toEqual({ slice: 5, mult: 5, payout: 500, net: 400 });
+    expect(spinWheel(50, 0.15)).toEqual({ slice: 1, mult: 0.5, payout: 25, net: -25 });
+    expect(spinWheel(50, 1).slice).toBe(WHEEL_SLICES.length - 1);
+    const s = () => useAppStore.getState();
+    s().creditWallet({ amount: 100, kind: 'fortune', note: '日签' });
+    const r = spinWheel(100, 0.15);
+    expect(s().creditWallet({ amount: r.net, kind: 'wheel', note: '转盘 · ×0.5' })).toBe(-50);
+    expect(s().wallet.balance).toBe(50);
+    expect(s().wallet.ledger.at(-1)!.kind).toBe('wheel');
   });
 });
 

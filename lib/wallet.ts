@@ -2,7 +2,8 @@
  * 零钱体系（D-128，提案 docs/ECONOMY_PROPOSAL.md §3；Harper：「每天发的钱做成一个日签 app，模拟一次水晶球抽签，给钱 50–500 不等根据运势来；
  * 对方的钱默认 2000，根据人设生成一个工资每周加一次钱；角色在聊天中要主动能够发起发红包或者给我点外卖」）。
  * - 游戏币 Coin（D-129，不用 ¥）；永不售卖、不可提现、不随订阅变化、不涨亲密度（钱买不到爱）。
- * - 她的钱包：日签 App 每天抽一次水晶球，按运势给 50–500 Coin；红包 / 外卖进出都记账（store.wallet）。
+ * - 她的钱包：幸运签 App（D-138）——日签每天抽一次水晶球按运势给 50–500 Coin、转盘投零钱赌倍数（×0.5 / ×1.2 / ×2 / ×5，期望 > 1，故意大方：
+ *   Coin 只是给 TA 发红包 / 点外卖的零钱，与经济不挂钩）；红包 / 外卖进出都记账（store.wallet），流水在钱包 App 看。
  * - TA 的钱包（Bond.wallet）：缔结 2000 Coin 起；周薪按人设由模型估一次（写不成按关键词兜底），每周到账；TA 发红包 / 点外卖从这里扣。
  * - TA 主动花钱：亲密 / 通话 prompt 里的【你的钱包】+ 回复暗号 [发红包 …] / [点外卖 …]（features/wallet.tsx），每天各最多一次。
  * 数值是试装默认，调数只改这里的常量。
@@ -63,6 +64,24 @@ export function drawFortune(r1 = Math.random(), r2 = Math.random(), r3 = Math.ra
   const { min, max } = FORTUNES[luck];
   const amount = Math.min(max, Math.max(min, Math.round(min + r2 * (max - min))));
   return { luck, amount, textIndex: Math.min(texts - 1, Math.floor(r3 * texts)) };
+}
+
+/* ═══ 转盘（D-138）：投一笔零钱，转到几倍拿几倍 ═══ */
+
+/** 能投的档 */
+export const WHEEL_BETS = [50, 100, 200, 500];
+/**
+ * 十格转盘，每格等概率（36°）；倍数按格排布 = 概率就是格数：×0.5 三格 30% / ×1.2 四格 40% / ×2 两格 20% / ×5 一格 10%，
+ * 期望 1.53——故意大方（Harper：「跟经济不挂钩所以可以大方一点」）。顺时针从正上方数起。
+ */
+export const WHEEL_SLICES: number[] = [1.2, 0.5, 2, 1.2, 0.5, 5, 1.2, 0.5, 2, 1.2];
+
+/** 转一次：r 定落在哪一格；payout = 投注 × 倍数取整，net = 记进账本的净额（一笔） */
+export function spinWheel(bet: number, r = Math.random()): { slice: number; mult: number; payout: number; net: number } {
+  const slice = Math.min(WHEEL_SLICES.length - 1, Math.max(0, Math.floor(r * WHEEL_SLICES.length)));
+  const mult = WHEEL_SLICES[slice];
+  const payout = Math.round(bet * mult);
+  return { slice, mult, payout, net: payout - bet };
 }
 
 /* ═══ 账本 ═══ */

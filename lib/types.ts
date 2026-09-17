@@ -343,8 +343,8 @@ export interface Bond {
   extraFired?: { count: number; at: number };
 }
 
-/** 零钱账本（D-128）：她的钱包与 TA 的钱包共用 */
-export type LedgerKind = 'fortune' | 'redpacket' | 'delivery' | 'salary' | 'refund';
+/** 零钱账本（D-128 / D-138）：她的钱包与 TA 的钱包共用；wheel = 幸运签的转盘（净额一笔） */
+export type LedgerKind = 'fortune' | 'wheel' | 'redpacket' | 'delivery' | 'salary' | 'refund';
 export interface LedgerEntry {
   id: string;
   at: number;
@@ -375,7 +375,7 @@ export interface HisWallet {
   gifts?: { day: string; redpacket: number; delivery: number };
 }
 
-/** 日签（store.fortune）：今天抽过的那一签 */
+/** 日签（store.fortune，幸运签 App 的第一页）：今天抽过的那一签 */
 export interface DailyFortune {
   day: string;
   luck: 'great' | 'good' | 'fair' | 'small' | 'last';
