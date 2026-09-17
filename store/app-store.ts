@@ -177,6 +177,8 @@ interface AppState {
   markReachDelivered: (bondId: string, at: number) => void;
   /** 推送召回状态（lib/recall.ts） */
   setRecall: (bondId: string, recall: RecallState | undefined) => void;
+  /** 换成角色的现行版本（D-140）：只换快照，聊天 / 记忆 / 等级不动 */
+  syncBondCharacter: (bondId: string, character: Character) => void;
   /** 零钱进出（D-128）：正入负出，出账不超过余额；返回实际记的数 */
   creditWallet: (e: { amount: number; kind: LedgerKind; note: string; bondId?: string }) => number;
   setFortune: (f: DailyFortune) => void;
@@ -482,6 +484,9 @@ export const useAppStore = create<AppState>()(
 
       markReachDelivered: (bondId, at) =>
         set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, lastReachAt: at } : b)) }),
+
+      syncBondCharacter: (bondId, character) =>
+        set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, character: { ...character } } : b)) }),
 
       setRecall: (bondId, recall) =>
         set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, recall } : b)) }),

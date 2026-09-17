@@ -9,7 +9,7 @@
  */
 
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -33,9 +33,12 @@ import { askPasscode } from '@/features/phone-peek';
 import { sendRedPacket } from '@/features/red-packet';
 import { levelInfoFor, levelOf } from '@/lib/bond';
 import { callReady } from '@/lib/call';
+import { characterUpdateFor } from '@/lib/character-update';
 import { bondScope, sendImage, sendText, sendVoice } from '@/lib/chat';
 import { daysTogether } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { refreshSharedPool } from '@/lib/pool';
+import { showToast } from '@/components/toast';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
 /** Fredoka 只给数字与拉丁（D-100）：生日这类可能带中文的值回落系统字体 */
@@ -89,6 +92,14 @@ export default function BondScreen() {
     store.markBondHintSeen(bond.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bondId]);
+
+  // 角色更新通道（D-140）：现行版本（角色库 / 共享池）和快照不一样 → 信息卡「设定」行可换；进来先刷一次共享池（5 分钟节流）
+  const customs = useAppStore((s) => s.customCharacters);
+  const pool = useAppStore((s) => s.sharedPool);
+  const update = useMemo(() => (bond ? characterUpdateFor(bond, { customCharacters: customs, sharedPool: pool }) : undefined), [bond, customs, pool]);
+  useEffect(() => {
+    void refreshSharedPool();
+  }, []);
 
   // 零钱余额（D-128）：红包面板看它；hooks 要在提前 return 之前
   const walletBalance = useAppStore((s) => s.wallet.balance);
@@ -166,6 +177,29 @@ export default function BondScreen() {
       </InfoRow>
     );
   }
+  infoRows.push(
+    <InfoRow key="version" label={t('设定')}>
+      {update ? (
+        <Pressable
+          onPress={() =>
+            Alert.alert(t('换成作者的最新设定？'), t('聊天记录、记忆、等级都留着，只换设定、台词、世界与声音。换了不能退回。'), [
+              { text: t('取消'), style: 'cancel' },
+              {
+                text: t('换'),
+                onPress: () => {
+                  useAppStore.getState().syncBondCharacter(bond.id, update);
+                  showToast(t('已换成最新设定'));
+                },
+              },
+            ])
+          }>
+          <Text style={styles.infoLink}>{t('作者更新了 · 换成最新 ›')}</Text>
+        </Pressable>
+      ) : (
+        <Text style={styles.infoValueDim}>{t('已是最新')}</Text>
+      )}
+    </InfoRow>
+  );
   infoRows.push(
     <InfoRow key="story" label={t('TA 的故事')}>
       <Text style={styles.infoValueDim}>{t('主线连载 · 敬请期待')}</Text>
@@ -375,6 +409,7 @@ const styles = themed(() =>
     infoValueRow: { flexDirection: 'row', alignItems: 'baseline', flexShrink: 1 },
     infoValue: { fontSize: 13, fontWeight: '500', color: Romance.ink },
     infoValueDim: { fontSize: 13, fontWeight: '500', color: Romance.faint },
+    infoLink: { fontSize: 13, fontWeight: '600', color: Romance.accent },
     infoNum: { fontFamily: Fonts.label, fontSize: 13, color: Romance.ink },
     infoNumDim: { fontFamily: Fonts.label, fontSize: 13, color: Romance.faint },
   })
