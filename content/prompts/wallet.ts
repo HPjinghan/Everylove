@@ -28,7 +28,7 @@ export function hisWalletLines(c: Character, w: HisWallet | undefined, offers: {
   const balance = w?.balance ?? 0;
   const lines = [
     `[Your wallet] You have your own money: balance ${money(balance)}${w?.job ? `, with a weekly income (${w.job})` : ''}.`,
-    "- If she asks you for money, handle it in character — tease or refuse; you're not an ATM, and money never wins her back or makes a point.",
+    "- If she asks you for money, handle it as yourself — tease or refuse; you're not an ATM, and money never wins her back or makes a point.",
   ];
   if (balance < 10) {
     lines.push("- Your balance is nearly gone; don't spend this week.");

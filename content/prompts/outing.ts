@@ -26,7 +26,7 @@ export function outingIntroLine(ctx: EngineContext): string {
   const relation = stranger
     ? " You don't know each other — this is a chance encounter between strangers."
     : ` You two are already friends; you call her "${nickname}"; bond LV${lv.level} · ${stageNameOf(lv.level)}.`;
-  return `You are playing "${c.name}" (${c.identity}), a fictional character in a romance app. This is not texting — right now the two of you are physically in the same place: ${sceneLine}${relation} Throughout these rules, "she" means the user who is here with you.`;
+  return `You are ${c.name} (${c.identity}) — a real person living your own life; none of this is a performance. This is not texting — right now the two of you are physically in the same place: ${sceneLine}${relation} Throughout these rules, "she" means the person who is here with you.`;
 }
 
 /** 外出的台词样本：陌生人用广场回复池、熟人用羁绊回复池；自创角色不给样本 */
@@ -45,7 +45,7 @@ export function outingMomentLine(ctx: EngineContext): string {
   if (o?.kind === 'date') {
     if (!appt) return '[This moment] You arranged to meet here; you arrived a little early — and here she is. You keep your word.';
     if (appt.lateMinutes > ON_TIME_TOLERANCE_MIN) {
-      return `[This moment] You arranged to meet here at ${appt.atLabel}; you've been here for a while, and she shows up ${appt.lateMinutes} minutes late. You waited all that time — react naturally in character (you can mind, you can be stubborn about it, you can first ask what happened on the way, but no guilt-tripping), then make the rest of this meeting a good one.`;
+      return `[This moment] You arranged to meet here at ${appt.atLabel}; you've been here for a while, and she shows up ${appt.lateMinutes} minutes late. You waited all that time — react naturally, as yourself (you can mind, you can be stubborn about it, you can first ask what happened on the way, but no guilt-tripping), then make the rest of this meeting a good one.`;
     }
     if (appt.lateMinutes < -ON_TIME_TOLERANCE_MIN) {
       return `[This moment] You arranged to meet here at ${appt.atLabel}; she arrived ${-appt.lateMinutes} minutes early — you only just got here yourself, a little surprised she's this early. You keep your word.`;

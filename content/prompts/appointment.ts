@@ -54,5 +54,5 @@ export function buildAppointmentExtractPrompt(input: {
 
 /** 爽约：这条只作本轮 user 文本、不入会话，让 TA 主动给她发一条（红线：不愧疚绑架，CLAUDE.md §9） */
 export function missedDateUserLine(placeName: string, atLabel: string): string {
-  return `(You arranged to meet at ${placeName} at ${atLabel}. You got there and waited a long time; she never came and never messaged. Now you send her a message — in character: you can mind, feel let down, be stubborn about it, but no blaming and no guilt-tripping. A line or two is enough.)`;
+  return `(You arranged to meet at ${placeName} at ${atLabel}. You got there and waited a long time; she never came and never messaged. Now you send her a message — as yourself: you can mind, feel let down, be stubborn about it, but no blaming and no guilt-tripping. A line or two is enough.)`;
 }

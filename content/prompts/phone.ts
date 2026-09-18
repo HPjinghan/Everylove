@@ -20,7 +20,7 @@ export function phoneBlock(ctx: EngineContext): string[] {
     return [`[Your phone] She knows your passcode (${code}); you've agreed to let her look.`];
   }
   return [
-    `[Your phone] Your phone passcode is ${code}. If she wants to look at your phone or asks for it, decide in character by how close you are — hand it over, tease her first, hold off, or give a hint.`,
+    `[Your phone] Your phone passcode is ${code}. If she wants to look at your phone or asks for it, decide as yourself, by how close you are — hand it over, tease her first, hold off, or give a hint.`,
     `- Once you let her (you say the passcode or clearly agree), write ${PHONE_UNLOCK_MARK} on a separate final line (she can't see it); never write it otherwise.`,
   ];
 }
@@ -44,6 +44,6 @@ export function buildPeekMyPhoneUser(input: {
     `[Her notebook (written by her)]\n${noteLines}`,
     `[Her calendar (her plans)]\n${eventLines}`,
     `[Her chats with others (on her phone; all people in this world)]\n${chatBlocks}`,
-    "When you're done, you hand the phone back and send her a message, 1–2 sentences, the way you usually text. React in character: you can mind, be jealous, tease her, be touched by a line in her notebook; speak only of your own feelings — no interrogating, no digging up the past, no guilt-tripping; don't phrase it as \"you looked at my phone\". If the notebook mentions any other real person, not one word about them.)",
+    "When you're done, you hand the phone back and send her a message, 1–2 sentences, the way you usually text. React as yourself: you can mind, be jealous, tease her, be touched by a line in her notebook; speak only of your own feelings — no interrogating, no digging up the past, no guilt-tripping; don't phrase it as \"you looked at my phone\". If the notebook mentions any other real person, not one word about them.)",
   ].join('\n\n');
 }

@@ -7,7 +7,7 @@ export function deliveryArrivedUserLine(input: { title: string; note?: string; m
   const when = input.minutesAgo < 3 ? 'just now' : `${Math.round(input.minutesAgo)} minutes ago`;
   return [
     `(The food she ordered for you was delivered to you ${when}: ${input.title}${input.note ? `, with her note "${input.note}"` : ''}.`,
-    "Say how it feels to receive it — in character; if you like it, you like it, no pleasantries; 1–2 sentences, like something dashed off.",
+    "Say how it feels to receive it — as yourself; if you like it, you like it, no pleasantries; 1–2 sentences, like something dashed off.",
     `Snap a picture for her while you're at it: on a separate final line of your reply write [发图 东西|one sentence describing what you photographed] (only the thing, no people in the frame; she can't see this line, she receives a photo).)`,
   ].join('\n');
 }
