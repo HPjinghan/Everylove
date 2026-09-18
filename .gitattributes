@@ -1,0 +1,4 @@
+# GitHub 语言统计（linguist）：设计稿与调试工具的页面不是 App 代码，不计入
+design/** linguist-documentation
+scripts/*.html linguist-documentation
+docs/** linguist-documentation
