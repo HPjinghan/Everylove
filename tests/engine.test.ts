@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import '@/features';
 
-import { applyReplyMarkers, buildTurns, HISTORY_ROUNDS, splitBubbles, stripStageDirections } from '@/lib/engine';
+import { applyReplyMarkers, bubbleStyleOf, buildTurns, HISTORY_ROUNDS, splitBubbles, splitByClauses, stripStageDirections } from '@/lib/engine';
 import { stripTrailingPeriod } from '@/lib/text';
 import { history, NOW } from './fixtures';
 
@@ -80,5 +80,30 @@ describe('applyReplyMarkers', () => {
 describe('fixtures', () => {
   it('NOW 固定在 2026-09-04 周五 21:30', () => {
     expect(NOW.getDay()).toBe(5);
+  });
+});
+
+describe('说话节奏：连发（D-155）', () => {
+  it('每个标点都断一条，条末逗号 / 句号去掉、问号感叹号留着；一个字的碎片并回前一条', () => {
+    expect(splitByClauses('哈哈哈，我知道了，下次。')).toEqual(['哈哈哈', '我知道了', '下次']);
+    expect(splitByClauses('到家了？我也刚到，猫在门口等我。')).toEqual(['到家了？', '我也刚到', '猫在门口等我']);
+    expect(splitByClauses('哈哈哈，嗯')).toEqual(['哈哈哈嗯']);
+    expect(splitByClauses('haha, got it, next time.')).toEqual(['haha', 'got it', 'next time']);
+    expect(splitByClauses('花了 5.20 块，还行')).toEqual(['花了 5.20 块', '还行']);
+  });
+  it('超过上限并进最后一条；一句话不拆', () => {
+    expect(splitByClauses('好啊，行吧，可以，没问题，走吧，明天', 4)).toEqual(['好啊', '行吧', '可以', '没问题 走吧 明天']);
+    expect(splitByClauses('今天有点累')).toEqual(['今天有点累']);
+  });
+  it('splitBubbles 按节奏走：连发时模型分好的段再拆、总数封顶四条；整句照旧最多两条', () => {
+    expect(splitBubbles('哈哈哈，我知道了，下次。\n\n你呢，还在画？别熬太晚。', 4, undefined, 'burst')).toEqual(['哈哈哈', '我知道了', '下次', '你呢 还在画？ 别熬太晚']);
+    expect(splitBubbles('哈哈哈，我知道了，下次。', 2)).toEqual(['哈哈哈，我知道了，下次。']);
+  });
+  it('节奏判定：角色自己设的 > 恋爱类型 > 原型（毒舌家族连发）', () => {
+    expect(bubbleStyleOf({ archetype: 'gentle' })).toBe('flow');
+    expect(bubbleStyleOf({ archetype: 'sharp' })).toBe('burst');
+    expect(bubbleStyleOf({ archetype: 'gentle', loveStyle: '小狗系年下' })).toBe('burst');
+    expect(bubbleStyleOf({ archetype: 'sharp', loveStyle: '高冷禁欲' })).toBe('flow');
+    expect(bubbleStyleOf({ archetype: 'sharp', loveStyle: '小狗系年下', bubbleStyle: 'flow' })).toBe('flow');
   });
 });

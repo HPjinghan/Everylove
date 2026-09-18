@@ -135,6 +135,13 @@ const INITIATIVES = [
   { key: 'low', label: '低', hint: '多半等你先开口' },
 ] as const;
 
+/** 说话节奏（D-155）：不选 = 按恋爱类型 / 原型；整句 = 一条说完；连发 = 每个标点断一条 */
+const BUBBLE_STYLES = [
+  { key: undefined, label: '跟着人设', hint: '按恋爱类型来' },
+  { key: 'flow', label: '整句', hint: '哈哈哈，我知道了，下次' },
+  { key: 'burst', label: '连发', hint: '哈哈哈 · 我知道了 · 下次' },
+] as const;
+
 /** 生日下拉用：某月的天数（2 月给到 29） */
 const daysInMonth = (m: number) => (m === 2 ? 29 : [4, 6, 9, 11].includes(m) ? 30 : 31);
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -178,6 +185,7 @@ type FormInit = {
   loveStyle: string | undefined;
   mbti: string | undefined;
   initiative: 'high' | 'mid' | 'low';
+  bubbleStyle: 'flow' | 'burst' | undefined;
   presetMemories: string;
   taboos: string;
   secrets: string;
@@ -210,6 +218,7 @@ const BLANK_FORM: FormInit = {
   loveStyle: undefined,
   mbti: undefined,
   initiative: 'mid',
+  bubbleStyle: undefined,
   presetMemories: '',
   taboos: '',
   secrets: '',
@@ -251,6 +260,7 @@ function formFor(c: Character): FormInit {
     loveStyle: c.loveStyle,
     mbti: c.mbti,
     initiative: c.initiative ?? 'mid',
+    bubbleStyle: c.bubbleStyle,
     presetMemories: c.presetMemories ?? '',
     taboos: c.taboos ?? '',
     secrets: c.secrets ?? '',
@@ -368,6 +378,7 @@ function CreateForm({ edit }: { edit?: string }) {
   const [mbti, setMbti] = useState<string | undefined>(init.mbti);
   // 创造扩展（D-045）
   const [initiative, setInitiative] = useState<'high' | 'mid' | 'low'>(init.initiative);
+  const [bubbleStyle, setBubbleStyle] = useState<'flow' | 'burst' | undefined>(init.bubbleStyle);
   const [presetMemories, setPresetMemories] = useState(init.presetMemories);
   const [taboos, setTaboos] = useState(init.taboos);
   const [secrets, setSecrets] = useState(init.secrets);
@@ -486,6 +497,7 @@ function CreateForm({ edit }: { edit?: string }) {
       adultConfirmed: ageStatus === 'adult' ? true : undefined,
       visibility,
       initiative,
+      bubbleStyle,
       presetMemories: presetMemories.trim() || undefined,
       taboos: taboos.trim() || undefined,
       secrets: secrets.trim() || undefined,
@@ -949,6 +961,20 @@ function CreateForm({ edit }: { edit?: string }) {
                       hint={it.hint}
                       active={initiative === it.key}
                       onPress={() => setInitiative(it.key)}
+                    />
+                  ))}
+                </View>
+              </Field>
+
+              <Field label={t('说话节奏')}>
+                <View style={styles.chipRow}>
+                  {BUBBLE_STYLES.map((it) => (
+                    <PaceCard
+                      key={it.label}
+                      label={t(it.label)}
+                      hint={t(it.hint)}
+                      active={bubbleStyle === it.key}
+                      onPress={() => setBubbleStyle(it.key)}
                     />
                   ))}
                 </View>

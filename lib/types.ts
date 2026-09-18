@@ -74,6 +74,8 @@ export interface Character {
   artStyle?: PortraitStyleId;
   /** TA 的声音（D-139）：Fish Audio 音色 id，创造 ⑧ 从推荐里选；缺省按语言 × 人称从音色池取默认。语音气泡与电话共用 */
   voiceId?: string;
+  /** 说话节奏（D-155）：flow = 整句一条（句末标点断、最多两条）；burst = 连发（每个标点都断、最多四条）。缺省按恋爱类型 / 原型推（lib/engine bubbleStyleOf） */
+  bubbleStyle?: 'flow' | 'burst';
   /** 聊几句后 TA 会想确定关系（默认 4，见 lib/engine ADOPTION_OFFER_AFTER_TURNS） */
   offerAfterTurns?: number;
   tags: string[];

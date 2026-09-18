@@ -10,7 +10,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { DARK_SIDE_PATTERN, darkSideReply } from '@/content/characters';
+import { DARK_SIDE_PATTERN, darkSideReply, loveStyleByLabel } from '@/content/characters';
 import { buildChatSystemPrompt, messageContextText, OPENING_STAGE_LINE } from '@/content/prompts';
 import { stripReplyMarkers } from '@/core/markers';
 import { modes } from '@/core/modes';
@@ -27,7 +27,7 @@ import {
   type ChatTurn,
 } from '@/core/providers';
 import { stripTrailingPeriods } from '@/lib/text';
-import type { ChatMessage, EngineContext, EngineReply } from '@/lib/types';
+import type { Character, ChatMessage, EngineContext, EngineReply } from '@/lib/types';
 
 // 全部 prompt 文本都在 content/prompts/（D-017/D-087）；这里只负责调用与组装历史。
 export { messageContextText } from '@/content/prompts';
@@ -150,7 +150,7 @@ export function buildTurns(history: ChatMessage[], userText: string): ChatTurn[]
  * 1. 先按空行拆（模型自己分好的照用）；2. 还没拆到 max 条就按句子拆——两句以上的回复在句末标点处断开，长度尽量均衡；
  * 初识 / 外出 / 通话 max = 1 不拆。顺手去掉模型偶尔加的名字前缀（「沈之言：」）与包裹引号。
  */
-export function splitBubbles(text: string, max: number, name?: string): string[] {
+export function splitBubbles(text: string, max: number, name?: string, style: 'flow' | 'burst' = 'flow'): string[] {
   const cap = Math.max(1, max);
   const parts = text
     .split(/\n\s*\n/)
@@ -159,8 +159,47 @@ export function splitBubbles(text: string, max: number, name?: string): string[]
     .map((t) => t.replace(/^[「"“]([\s\S]*)[」"”]$/, '$1').trim())
     .filter(Boolean)
     .slice(0, cap);
+  // 连发（D-155）：模型分好的每段再按标点拆，总数封顶
+  if (style === 'burst' && cap > 1) {
+    const all = parts.flatMap((p) => splitByClauses(p, cap));
+    return all.length <= cap ? all : [...all.slice(0, cap - 1), all.slice(cap - 1).join(' ')];
+  }
   if (parts.length >= cap || parts.length !== 1) return parts;
   return splitBySentences(parts[0], cap);
+}
+
+/** 连发最多几条（D-155） */
+export const BURST_MAX_BUBBLES = 4;
+
+/** 说话节奏（D-155）：角色自己设的 > 恋爱类型的 > 原型（毒舌家族连发，其余整句） */
+export function bubbleStyleOf(c: Pick<Character, 'bubbleStyle' | 'loveStyle' | 'archetype'>): 'flow' | 'burst' {
+  if (c.bubbleStyle) return c.bubbleStyle;
+  const style = loveStyleByLabel(c.loveStyle);
+  if (style) return style.bubble;
+  return c.archetype === 'sharp' ? 'burst' : 'flow';
+}
+
+/** 连发的断点：句末标点 + 逗号 / 顿号 / 分号（中英日韩）+ 换行；小数点与千分位逗号不算 */
+const CLAUSE_RE = /[^。！？!?…，,、；;\n]+?(?:[。！？!?…]+|[，、；;]|,(?!\d)|\.(?=\s|$)|\n|$)[」』"”'’）)]*\s*/g;
+
+/**
+ * 连发（D-155）：每个标点都断开成一条，去掉条末的逗号 / 顿号 / 分号 / 句号（问号感叹号省略号留着）；
+ * 超过 max 条时后面的并进最后一条；一个字的碎片并回前一条（「哈哈哈，嗯」不拆出单独的「嗯」）。
+ */
+export function splitByClauses(text: string, max = BURST_MAX_BUBBLES): string[] {
+  const t = text.trim();
+  if (max <= 1 || !t) return [t];
+  const raw = (t.match(CLAUSE_RE) ?? []).map((s) => s.trim()).filter(Boolean);
+  if (raw.length < 2) return [t];
+  const pieces: string[] = [];
+  for (const r of raw) {
+    const clean = r.replace(/[，,、；;。.]+(?=[」』"”'’）)]*$)/, '').trim();
+    if (!clean) continue;
+    if (clean.length <= 1 && pieces.length) pieces[pieces.length - 1] += clean;
+    else pieces.push(clean);
+  }
+  if (pieces.length <= max) return pieces;
+  return [...pieces.slice(0, max - 1), pieces.slice(max - 1).join(' ')];
 }
 
 /** 句子：到句末标点（中英日韩）为止，带上后面的引号 / 括号；单换行也算一句的边界 */
@@ -255,11 +294,14 @@ export async function generateReply(ctx: EngineContext, providerId?: string): Pr
   if (!text) throw new Error('empty reply');
 
   const policy = modes.get(ctx.mode);
-  const maxBubbles = policy?.maxBubbles ?? (ctx.mode === 'bonded' ? 2 : 1);
   const stripStage = policy?.stripStage ?? ctx.mode !== 'outing';
+  // 说话节奏（D-155）：连发的人在亲密模式里最多四条，其余按模式的上限
+  const style = bubbleStyleOf(ctx.character);
+  const modeMax = policy?.maxBubbles ?? (ctx.mode === 'bonded' ? 2 : 1);
+  const maxBubbles = style === 'burst' && modeMax > 1 ? Math.max(modeMax, BURST_MAX_BUBBLES) : modeMax;
   // 先剥暗号再拆气泡（D-126）：初识只留第一条气泡，写在末尾另起一段的暗号不能跟着丢
   const marked = stripReplyMarkers({ texts: [text] });
-  const bubbles = splitBubbles(marked.texts.join('\n\n'), maxBubbles, ctx.character.name);
+  const bubbles = splitBubbles(marked.texts.join('\n\n'), maxBubbles, ctx.character.name, style);
   const texts = stripStage ? stripStageDirections(bubbles) : bubbles;
   // D-145：末尾句号在前端去掉（真人不这样）；通话的字要送去合成，留着
   return { ...marked, texts: ctx.mode === 'call' ? texts : stripTrailingPeriods(texts) };
