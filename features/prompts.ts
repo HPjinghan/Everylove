@@ -26,6 +26,7 @@ import {
   hisScheduleBlock,
   HIS_NOTE_MANNER,
   initiativeLine,
+  loveStyleTalkLines,
   memoryBlockFor,
   noteIntroLine,
   nowLine,
@@ -72,6 +73,8 @@ promptSections.register({ name: 'intro-note', modes: NOTE, order: ORDER.intro, l
 promptSections.register({ name: 'intro-outing', modes: OUTING, order: ORDER.intro, lines: (ctx) => [outingIntroLine(ctx)] });
 promptSections.register({ name: 'persona', modes: 'all', order: ORDER.persona, lines: (ctx) => [`[Who you are] ${scriptFor(ctx.character).persona}`] });
 promptSections.register({ name: 'pursuit', modes: TALK, order: ORDER.pursuit, lines: (ctx) => [`[How you pursue] ${pursuitLine(ctx.character)}`] });
+// 恋爱类型的话术包（D-151）：紧跟追法；没选类型不出现
+promptSections.register({ name: 'love-style-talk', modes: TALK, order: ORDER.pursuit, lines: (ctx) => loveStyleTalkLines(ctx.character) });
 promptSections.register({ name: 'profile', modes: 'all', order: ORDER.profile, lines: (ctx) => characterProfileBlock(ctx.character) });
 // 身边的人（D-110）只在羁绊层（陌生人偶遇没有）
 promptSections.register({ name: 'circle', modes: BONDED_FAMILY, order: ORDER.circle, lines: (ctx) => circleBlock(ctx.bond?.circle) });
