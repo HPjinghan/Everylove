@@ -242,6 +242,8 @@ export interface ChatMessage {
   mediaStatus?: 'pending' | 'failed';
   /** 通话里说的话（D-077）：电话转写进会话，TA 记得电话里说过什么；气泡带小听筒标记 */
   viaCall?: boolean;
+  /** TA 主动找她的那条（D-153）：主动消息生成时避开最近几条的话题与开头 */
+  reach?: boolean;
   /** kind === 'card' 时的卡片内容（D-081） */
   card?: ChatCard;
   /** 系统消息的语气（D-100）：hint = 白底 accent 字的轻提示（如 LV1 的「+」面板预告），默认是墨色系统条 */

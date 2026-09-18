@@ -17,6 +17,8 @@ export interface ReachOutInput {
   recentNotes: string[];
   /** TA 最近发过的帖（从旧到新） */
   recentPosts: string[];
+  /** TA 最近几条主动消息（从旧到新，D-153）：话题与开头别重样 */
+  recentOpeners?: string[];
   /** 会话里最后一条是谁说的、说了什么（别接不上，也别重复） */
   last?: { from: 'me' | 'him'; text: string };
 }
@@ -36,6 +38,8 @@ export function buildReachOutUserLine(input: ReachOutInput): string {
   if (input.last) lines.push(`The last message in the chat was ${input.last.from === 'me' ? 'hers' : 'yours'}: "${input.last.text.slice(0, 60)}".`);
   if (input.recentNotes.length) lines.push('Your recent days (from your notebook):', ...input.recentNotes.map((n) => `- ${n}`));
   if (input.recentPosts.length) lines.push('Posts you made recently:', ...input.recentPosts.map((p) => `- ${p}`));
+  if (input.recentOpeners?.length)
+    lines.push("Your last few unprompted messages — don't open the same way or on the same kind of topic:", ...input.recentOpeners.map((o) => `- ${o.slice(0, 60)}`));
   lines.push(
     "How: start from what you're doing right now, something you just saw, or something that suddenly came to mind; you can also pick up where you last left off. 1–2 sentences, like something dashed off.",
     "Don't ask \"you there?\", don't push her to reply, don't ask why she's gone quiet, don't mention how long you waited; don't repeat what you said last time.)"

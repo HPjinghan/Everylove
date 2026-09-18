@@ -53,6 +53,7 @@ export * from './his-notes';
 export * from './his-schedule';
 export * from './image-common';
 export * from './memory';
+export * from './mood';
 export * from './outing';
 export * from './phone';
 export * from './photo';

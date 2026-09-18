@@ -58,6 +58,8 @@ export const ORDER = {
   length: 220,
   /** 这轮短一点（D-144）：最后一句 */
   brevity: 230,
+  /** 她的回复变短了（D-153）：只在转折那一轮出，在「这轮短一点」之后 */
+  moodShift: 232,
 } as const;
 
 export interface PromptEnv {

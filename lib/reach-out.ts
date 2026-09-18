@@ -125,7 +125,7 @@ export async function deliverDueReachOuts(now = Date.now()): Promise<number> {
       if (reply) {
         useAppStore.getState().appendBond(
           bond.id,
-          reply.texts.map((text, i) => ({ id: uid('m'), from: 'him' as const, kind: 'text' as const, text, at: now + i })),
+          reply.texts.map((text, i) => ({ id: uid('m'), from: 'him' as const, kind: 'text' as const, text, at: now + i, reach: true })),
           { unreadDelta: reply.texts.length }
         );
         // 她 24h 内回这条 = 「回复 TA 主动」来源（D-126，北极星）
@@ -196,6 +196,8 @@ async function generateReachOut(bond: Bond, character: Character, at: Date): Pro
     hoursSinceHer: her ? (at.getTime() - her.at) / 3600_000 : null,
     recentNotes: (bond.notes ?? []).slice(-RECENT).map((n) => n.text),
     recentPosts: posts.filter((p) => p.characterId === character.id).slice(-RECENT).map((p) => p.text),
+    // 最近几条主动消息（D-153）：话题与开头别重样
+    recentOpeners: bond.messages.filter((m) => m.from === 'him' && m.reach && m.text).slice(-RECENT).map((m) => m.text),
     last: lastMsg ? { from: lastMsg.from === 'me' ? 'me' : 'him', text: lastMsg.text } : undefined,
   });
   const ctx = bondedContext(bond, line);
