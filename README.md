@@ -56,6 +56,6 @@
 | `lib/arrivals.ts` `lib/notifications.ts` | 八点开门：投递 + 本地定时通知 |
 | `store/app-store.ts` | zustand + AsyncStorage：搭话记录（3 天过期）、羁绊、动态 |
 
-SDK 锁定 Expo 54，只做 iOS。新增设计决策必须当次写入 `docs/DECISIONS.md`（见 CLAUDE.md 工作规则）。
+SDK 锁定 Expo 57，只做 iOS。新增设计决策必须当次写入 `docs/DECISIONS.md`（见 CLAUDE.md 工作规则）。
 
 图标：[MingCute](https://github.com/mingcute-design/mingcute-icons)（Apache-2.0，`components/mingcute.tsx` 内嵌所用 path）。
