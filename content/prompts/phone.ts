@@ -17,11 +17,11 @@ export function phoneBlock(ctx: EngineContext): string[] {
   const code = ctx.bond?.phoneCode;
   if (!code) return [];
   if (ctx.bond?.phoneUnlocked) {
-    return [`[Your phone] She knows your phone passcode (${code}); you've agreed to let her look at your phone.`];
+    return [`[Your phone] She knows your passcode (${code}); you've agreed to let her look.`];
   }
   return [
-    `[Your phone] Your phone passcode is ${code} (four digits you set offhand). She may want to look at your phone or ask for the passcode: decide by your personality and how close you two are now — you can hand it over readily, tease her a bit first, hold off for now, or give only a hint.`,
-    `- Once you decide to let her look (you say the passcode, or clearly agree to let her see), write ${PHONE_UNLOCK_MARK} on a separate final line of your reply; if you haven't agreed, never write it. She can't see this marker.`,
+    `[Your phone] Your phone passcode is ${code}. If she wants to look at your phone or asks for it, decide in character by how close you are — hand it over, tease her first, hold off, or give a hint.`,
+    `- Once you let her (you say the passcode or clearly agree), write ${PHONE_UNLOCK_MARK} on a separate final line (she can't see it); never write it otherwise.`,
   ];
 }
 

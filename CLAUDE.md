@@ -4,7 +4,7 @@
 > 族谱：c.ai 的皮 · 乙游的心脏 · 短剧的钱包 · 独有器官 = 主动性。
 > 一句话：c.ai 证明了胃口，乙游证明了付费，没人把两者接起来过。
 
-* 状态（2026-09-10）：试装 v0.2——手机壳桌面 + 13 个模块可跑，全部界面已按纸面设计系统重做，TestFlight 构建号 7（SDK 57，含分享扩展）在测，热更到 D-150；最近一条决策 D-151。**本文件只写现行口径**：每条决策的理由与编号索引在 `docs/DECISIONS.md`（按主题合并的总账，只写现行、不留废弃），早期逐条原文冻结在 `docs/archive/`。
+* 状态（2026-09-10）：试装 v0.2——手机壳桌面 + 13 个模块可跑，全部界面已按纸面设计系统重做，TestFlight 构建号 7（SDK 57，含分享扩展）在测，热更到 D-150；最近一条决策 D-152。**本文件只写现行口径**：每条决策的理由与编号索引在 `docs/DECISIONS.md`（按主题合并的总账，只写现行、不留废弃），早期逐条原文冻结在 `docs/archive/`。
 * 本文档是产品的单一事实来源。**执行任何任务时产生的新设计决策，必须当次写进文档**（见「工作规则」）。
 * 本项目与团队其他产品无关，不引入其他项目的术语与范式。
 
@@ -108,7 +108,7 @@ onboarding（语言 → 先让 TA 们认识你；**默认语言 English**、语�
 2. **产品级开放问题不得自行拍板**：涉及定位、定价、尺度、红线、首发范围的问题写入 `docs/OPEN_QUESTIONS.md` 等 Harper 决定；纯技术实现决策可自行决定，但同样按第 1 条入档。
 3. **红线章节（第 9 节）只有 Harper 明示才能修改。**
 4. **界面 token 纪律**：新界面与改动只引 `constants/design.ts`（Shape / Type / Space / Pattern）与 `constants/theme.ts` 的 `Romance` / `Fonts` token（半透明遮罩用 `withAlpha`），不手写 hex、圆角、阴影、字号、描边，无阴影无渐变；内容卡片一律 `components/card.tsx` 的 `Card`，按钮 `Button`、选项 `Chip` / `Segmented`、表单 `Field` / `Input`、背景暗纹 `paper-bg`；**Fredoka（`Fonts.label` / `labelBold`）只用于数字与拉丁标签，所有中文走系统字体**；`Button` / `HeaderAction` 自带 600 ms 连点冷却（D-121），异步动作按钮另加 ref 同步锁，不靠 `disabled` 防连点。
-5. **底座纪律**：`core/` 不认识任何具体玩法（出现「if 红包」「if 千帆」就是放错地方）；**新玩法 = `features/` 里一个文件**，往插槽注册并在 `features/index.ts` 登记；界面只调 `lib/chat.ts` 与 `features/*` 的 send 函数，不直接 import 引擎、记忆、约定识别；新行为挂扩展点、不改 `core/turn.ts` 的管线；工程配置只在 `core/config.ts` 读。**改到模型看到的字，`npm test` 的快照必红**——确认 diff 是想要的再更新。prompt 文本只进 `content/prompts/` 对应用途的文件，一段只属于一个用途。菜谱见 `docs/ARCHITECTURE.md` §5。
+5. **底座纪律**：`core/` 不认识任何具体玩法（出现「if 红包」「if 千帆」就是放错地方）；**新玩法 = `features/` 里一个文件**，往插槽注册并在 `features/index.ts` 登记；界面只调 `lib/chat.ts` 与 `features/*` 的 send 函数，不直接 import 引擎、记忆、约定识别；新行为挂扩展点、不改 `core/turn.ts` 的管线；工程配置只在 `core/config.ts` 读。**改到模型看到的字，`npm test` 的快照必红**——确认 diff 是想要的再更新。prompt 文本只进 `content/prompts/` 对应用途的文件，一段只属于一个用途；**一条规则只说一次**（D-152：通用说话方式只在 `TALK_MANNER`，各模式段只留独有的；加规则先想能不能并进已有的一条），`tests/prompts.test.ts` 有长度守卫，超线就得砍别的。菜谱见 `docs/ARCHITECTURE.md` §5。
 6. **文案纪律**：界面提示只描述内容或情绪、不解释机制、不指路、不预告交互方式（保留红线 / 政策告知、隐私与数据说明、商业信息）；用户可见文案不出现「领养」；新文案先过这条，再写 `t('中文')` 并在 `lib/i18n.ts` 尾部哨兵前补 en / ja / ko 词典——`npm test` 的词典覆盖测试会扫源码，缺词即红。
 
 ## 12\. 待拍板清单

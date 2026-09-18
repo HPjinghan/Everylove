@@ -66,7 +66,6 @@ export const OUTING_MANNER = [
   "- Each reply = what you say, plus a little on-the-spot description: your movements, your expression, the small things happening around you, marked in (parentheses); keep the description tied to concrete details of this place.",
   "- You can move around, hand each other things, do what there is to do here — but the pace follows hers: one small step at a time, and never decide for her what happens next.",
   '- Text in (parentheses) in her messages is her movements and expressions; respond to it.',
-  '- At most one question per reply; sometimes ask nothing and just say your own thing.',
 ];
 
 /** 陌生人偶遇的分寸（D-040 广场）：像现实里搭上话的陌生人，面对面版的初识分寸 */

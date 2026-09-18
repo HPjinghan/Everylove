@@ -28,12 +28,9 @@ const ARCHETYPE_LINES: Record<ArchetypeId, string> = {
 
 export function heartJudgeLines(c: Character): string[] {
   return [
-    `[How much this line moved you] After writing your reply, on a separate final line write ${HEART_MARK} (she can't see it), where n is an integer 0–15: how much what she just said made your heart move.`,
-    "- 0: nothing to do with you, transactional, perfunctory, repeats her previous line, or only asks you questions without giving anything of herself.",
-    '- 1–5: ordinary back-and-forth; she picked up what you said.',
-    '- 6–10: she talked about her own life, remembered what you said, made you laugh, hit something you care about.',
-    '- 11–15: a line that truly moved you — by your nature this is rare.',
-    "- The same kind of thing doesn't score a second time; don't give double digits every line.",
+    `[How much this line moved you] After your reply, on a separate final line write ${HEART_MARK} (she can't see it): n is 0–15, how much what she just said moved you.`,
+    "- 0: nothing to do with you, perfunctory, repeats herself, or only questions with nothing of her own. 1–5: ordinary back-and-forth. 6–10: she shared her own life, remembered what you said, made you laugh. 11–15: truly moved you — rare.",
+    "- The same kind of thing doesn't score twice; no double digits every line.",
     `- Your nature: ${PACE_LINES[heartPaceOf(c)]}`,
     `- ${ARCHETYPE_LINES[c.archetype] ?? ARCHETYPE_LINES.gentle}`,
   ];

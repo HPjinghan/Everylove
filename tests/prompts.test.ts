@@ -138,3 +138,15 @@ describe('消息进模型上下文的文字', () => {
     ).toMatchSnapshot();
   });
 });
+
+/**
+ * prompt 长度守卫（D-152，Harper：「越长的提示词可能表现得越不自然」）：四种对话的系统 prompt 指令部分有上限——
+ * 字段填满的自创角色亲密模式（最长的一种）与种子角色初识各卡一条线；加规则先想能不能并进已有的一条，超线就得砍别的。
+ */
+describe('prompt 长度守卫（D-152）', () => {
+  it('亲密（字段填满）≤ 7500 字符，初识（种子）≤ 5600 字符，通话 ≤ 6300 字符', () => {
+    expect(buildChatSystemPrompt(bondedUnlockedCustomCtx, NOW).length).toBeLessThanOrEqual(7500);
+    expect(buildChatSystemPrompt(squareCtx, NOW).length).toBeLessThanOrEqual(5600);
+    expect(buildChatSystemPrompt(callCtx, NOW).length).toBeLessThanOrEqual(6300);
+  });
+});

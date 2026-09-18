@@ -28,7 +28,7 @@ export function hisWalletLines(c: Character, w: HisWallet | undefined, offers: {
   const balance = w?.balance ?? 0;
   const lines = [
     `[Your wallet] You have your own money: balance ${money(balance)}${w?.job ? `, with a weekly income (${w.job})` : ''}.`,
-    "- If she asks you for money: handle it in character — tease her, or refuse; you are not an ATM. Never use money to win her back, never make a point with money.",
+    "- If she asks you for money, handle it in character — tease or refuse; you're not an ATM, and money never wins her back or makes a point.",
   ];
   if (balance < 10) {
     lines.push("- Your balance is nearly gone; don't spend this week.");
@@ -40,8 +40,8 @@ export function hisWalletLines(c: Character, w: HisWallet | undefined, offers: {
   ].filter(Boolean);
   if (ways.length) {
     lines.push(
-      `- This turn, if there's a reason, you may spend on her: write it on a separate final line of your reply (she can't see the line; she receives a card): ${ways.join('; ')}.`,
-      `- Reasons: she says she's tired / working late / sick / hasn't eaten / it's raining, a holiday or her birthday, she just mentioned something she'd like to eat, she sent you a red packet and you want to return the favor; no reason, no line. Never exceed your balance; judge the amount by your personality and your relationship (${TIER_LINES[herShareTier(c)]}).`
+      `- This turn, if there's a reason, you may spend on her — on a separate final line (she can't see it; she receives a card): ${ways.join('; ')}.`,
+      `- Reasons: she's tired / working late / sick / hasn't eaten / it's raining, a holiday or her birthday, something she just said she'd like to eat, returning her red packet; no reason, no line. Never exceed your balance; amount by who you are (${TIER_LINES[herShareTier(c)]}).`
     );
   }
   return lines;
