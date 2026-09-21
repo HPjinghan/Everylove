@@ -1,4 +1,4 @@
-# 全自动恋爱（代号 everylove）· 试装
+# ringring: pocket lover（中文代号 全自动恋爱 · 工程代号 everylove）· 试装
 
 > 自己捏人的乙女游戏：进来捏一个人，他全自动和你恋爱，不用你主动。
 > 产品文档见 `CLAUDE.md`，决策日志见 `docs/DECISIONS.md`，待拍板见 `docs/OPEN_QUESTIONS.md`。

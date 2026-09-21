@@ -27,7 +27,7 @@
 
 - **Apple Team = 公司的第二个组织账号**（同事的 App 所在的那个；第一个组织账号里 Admin 也看不到它，因为不是同一个 Team）。第一次 build 误用了第一个 Team，App ID 已从那边删除、在第二个 Team 重新登记；EAS 里第一个 Team 的旧证书未删（无害）。
 - EAS 已存：第二个 Team 的 Distribution Certificate + Provisioning Profile、**App Store Connect API Key**（以后 submit 不再登录 Apple）。推送密钥**没有生成**（本机通知用不着，做远程推送时 `eas credentials` 补，不用重新 build）。
-- App Store Connect 的 App 记录是**手动建的**（名称「全自动恋爱」、SKU `everylove`），**用户访问权限 = 限制访问**——只有名单里的人和 管理/财务/报告 职能能看到。
+- App Store Connect 的 App 记录是**手动建的**（名称待改为 `ringring: pocket lover`（D-156，现为「全自动恋爱」）、SKU `everylove`），**用户访问权限 = 限制访问**——只有名单里的人和 管理/财务/报告 职能能看到。
 - EAS production 环境变量：`EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY`；Supabase Apple provider 的 Client IDs 已加 `com.kotoko.everylove`。
 - Supabase Auth 已开 **Anonymous sign-ins**（D-088）：分发包没本地 key，游客靠匿名会话走服务端代理；关掉它 = 没登录的人聊不了。
 - 出口合规已在 app.json 预答（`ITSAppUsesNonExemptEncryption=false`），TestFlight 里不会再弹「缺少合规证明」。
@@ -59,7 +59,7 @@ npx eas-cli build -p ios --profile production
 npx eas-cli submit -p ios --latest --profile production
 ```
 
-首次会问 Apple 登录并**代建 App Store Connect 的 App 记录**（名字可先用「全自动恋爱」，正式名定了再改；bundle id 必须是 `com.kotoko.everylove`）。想一步到位可在 build 时加 `--auto-submit`。
+首次会问 Apple 登录并**代建 App Store Connect 的 App 记录**（名字用 `ringring: pocket lover`（D-156）；bundle id 必须是 `com.kotoko.everylove`）。想一步到位可在 build 时加 `--auto-submit`。
 
 上传后 App Store Connect → **TestFlight** 等处理（10~30 分钟）：
 - **内部测试**：App Store Connect 团队成员（最多 100 人）加进内部群组即可装，不用审核；
