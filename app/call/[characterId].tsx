@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -21,6 +21,7 @@ import {
   useAudioRecorderState,
 } from 'expo-audio';
 
+import { showAlert } from '@/components/action-sheet';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
 import { Shape } from '@/constants/design';
@@ -187,7 +188,7 @@ export default function CallScreen() {
     (async () => {
       const perm = await AudioModule.requestRecordingPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert(t('需要麦克风权限'), t('在系统设置里允许录音后再试。'));
+        showAlert(t('需要麦克风权限'), t('在系统设置里允许录音后再试。'));
         router.back();
         return;
       }
@@ -202,7 +203,7 @@ export default function CallScreen() {
         await speak(line);
       } catch (e) {
         if (cancelled) return;
-        Alert.alert(t('没打通'), describeAiError(e));
+        showAlert(t('没打通'), describeAiError(e));
         router.back();
       }
     })();

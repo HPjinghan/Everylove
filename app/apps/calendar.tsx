@@ -10,8 +10,9 @@
 
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { showAlert } from '@/components/action-sheet';
 import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -114,7 +115,7 @@ export default function CalendarScreen() {
     const title = draft.trim();
     if (!title) return;
     if (parseDateKey(selected).getTime() < new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) {
-      Alert.alert(t('这天已经过去了'), t('选今天或以后的日子吧。'));
+      showAlert(t('这天已经过去了'), t('选今天或以后的日子吧。'));
       return;
     }
     useAppStore.getState().addUserEvent({ id: uid('ev'), date: selected, title });
@@ -124,7 +125,7 @@ export default function CalendarScreen() {
   };
 
   const removeEvent = (id: string, title: string) => {
-    Alert.alert(t('删除日程'), t('「{title}」会从日历里消失。', { title }), [
+    showAlert(t('删除日程'), t('「{title}」会从日历里消失。', { title }), [
       { text: t('取消'), style: 'cancel' },
       { text: t('删除'), style: 'destructive', onPress: () => useAppStore.getState().removeUserEvent(id) },
     ]);

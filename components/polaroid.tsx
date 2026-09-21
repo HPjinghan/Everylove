@@ -7,8 +7,9 @@
 
 import { Image } from 'expo-image';
 import * as Sharing from 'expo-sharing';
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { showAlert } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { POLAROID_TILTS, Shape } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
@@ -64,7 +65,7 @@ export function PhotoViewer({ shot, onClose }: { shot: ViewerShot | null; onClos
   const share = async () => {
     if (!shot) return;
     if (!(await Sharing.isAvailableAsync())) {
-      Alert.alert(t('这台设备不支持分享'), t('换真机试试。'));
+      showAlert(t('这台设备不支持分享'), t('换真机试试。'));
       return;
     }
     await Sharing.shareAsync(shot.uri).catch(() => {});

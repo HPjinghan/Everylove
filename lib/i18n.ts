@@ -871,6 +871,7 @@ const en: Record<string, string> = {
   '连发': 'Bursts',
   '哈哈哈，我知道了，下次': 'haha, got it, next time',
   '哈哈哈 · 我知道了 · 下次': 'haha · got it · next time',
+  '好': 'OK',
   // __EN_END__
 };
 
@@ -1714,6 +1715,7 @@ const ja: Record<string, string> = {
   '连发': '連投',
   '哈哈哈，我知道了，下次': 'はは、わかった、今度ね',
   '哈哈哈 · 我知道了 · 下次': 'はは · わかった · 今度ね',
+  '好': 'OK',
   // __JA_END__
 };
 
@@ -2560,6 +2562,7 @@ const ko: Record<string, string> = {
   '连发': '연타',
   '哈哈哈，我知道了，下次': 'ㅋㅋㅋ 알았어, 다음에',
   '哈哈哈 · 我知道了 · 下次': 'ㅋㅋㅋ · 알았어 · 다음에',
+  '好': '확인',
   // __KO_END__
 };
 

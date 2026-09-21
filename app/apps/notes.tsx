@@ -7,7 +7,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -19,6 +18,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { showAlert } from '@/components/action-sheet';
 import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -84,7 +84,7 @@ export default function NotesScreen() {
   };
 
   const remove = (n: Note, after?: () => void) => {
-    Alert.alert(t('删掉这条？'), splitNote(n.text).title.slice(0, 40), [
+    showAlert(t('删掉这条？'), splitNote(n.text).title.slice(0, 40), [
       { text: t('取消'), style: 'cancel' },
       {
         text: t('删除'),

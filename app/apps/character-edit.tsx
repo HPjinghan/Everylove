@@ -18,7 +18,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useRef } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -29,6 +28,7 @@ import {
   View,
 } from 'react-native';
 
+import { showAlert } from '@/components/action-sheet';
 import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -442,7 +442,7 @@ function CreateForm({ edit }: { edit?: string }) {
     const text = desc.trim();
     if (!text || parsing) return;
     if (BLOCKED_NAME_PATTERN.test(text)) {
-      Alert.alert(t('这个 TA 不能被创造出来'), t('描述里包含真人明星或已有 IP 的角色。\n用文字描述「神似」是可以的。'));
+      showAlert(t('这个 TA 不能被创造出来'), t('描述里包含真人明星或已有 IP 的角色。\n用文字描述「神似」是可以的。'));
       return;
     }
     setParsing(true);
@@ -460,7 +460,7 @@ function CreateForm({ edit }: { edit?: string }) {
     const n = applyParsed(parsed ?? heuristicParse(text));
     setParsing(false);
     const body = n ? t('填好了 {n} 项。往下检查一下，每一项都还能改。', { n }) : t('已把描述放进背景故事，其他项可以手动补。');
-    Alert.alert(
+    showAlert(
       aiError ? t('模型解析失败，已用规则解析') : n ? t('解析好了') : t('没读出结构化的字段'),
       aiError ? `${body}\n\n${t('原因：{reason}', { reason: aiError })}` : body
     );
@@ -517,7 +517,7 @@ function CreateForm({ edit }: { edit?: string }) {
 
   const guard = (): boolean => {
     if (BLOCKED_NAME_PATTERN.test(allText)) {
-      Alert.alert(t('这个 TA 不能被创造出来'), t('不能创造真人明星或已有 IP 的角色。\n用文字描述「神似」是可以的。'));
+      showAlert(t('这个 TA 不能被创造出来'), t('不能创造真人明星或已有 IP 的角色。\n用文字描述「神似」是可以的。'));
       return false;
     }
     return true;
@@ -540,7 +540,7 @@ function CreateForm({ edit }: { edit?: string }) {
     const draft = draftCharacter();
     if (!draft) return;
     if (!imageKeyReady()) {
-      Alert.alert(t('AI 不可用'), t('立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。'));
+      showAlert(t('AI 不可用'), t('立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。'));
       return;
     }
     if (!guard()) return;
@@ -549,7 +549,7 @@ function CreateForm({ edit }: { edit?: string }) {
       setPortraitUri(await generatePortraitFor(draft));
     } catch (e) {
       console.warn('[create] 立绘生成失败：', e);
-      Alert.alert(
+      showAlert(
         t('立绘没画出来'),
         `${t('网络或生图服务出了点问题，可以再试一次，或先跳过（醒来后会在后台补画）。')}\n\n${t('原因：{reason}', { reason: describeAiError(e) })}`
       );
@@ -563,7 +563,7 @@ function CreateForm({ edit }: { edit?: string }) {
     if (character.visibility !== 'public') return character;
     const ok = await publishCharacter(character);
     if (!ok) {
-      Alert.alert(t('先按私密保存了'), t('公开需要登录，登录后可以再改。'));
+      showAlert(t('先按私密保存了'), t('公开需要登录，登录后可以再改。'));
       return { ...character, visibility: 'private' };
     }
     return character;
@@ -626,7 +626,7 @@ function CreateForm({ edit }: { edit?: string }) {
       router.replace({ pathname: '/auth', params: { force: '1' } });
       return;
     }
-    Alert.alert(t('TA 醒过来了'), t('TA 在等你说第一句话。'), [
+    showAlert(t('TA 醒过来了'), t('TA 在等你说第一句话。'), [
       {
         text: t('去和 TA 说话'),
         onPress: () => router.push({ pathname: '/chat/[characterId]', params: { characterId: id } }),

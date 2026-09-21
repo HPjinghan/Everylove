@@ -7,8 +7,9 @@
 
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { showAlert } from '@/components/action-sheet';
 import { AppScreen, HeaderAction } from '@/components/app-screen';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
@@ -78,7 +79,7 @@ export default function OutingScreen() {
 
   /** 取消约定（D-100）：长按约定条，确认后删掉这条约定 */
   const confirmCancel = (plan: OutingPlan, place: Place, bond: Bond) => {
-    Alert.alert(t('取消约定'), t('和{name}约在{place}的这次约定会取消。', { name: bond.name, place: t(place.name) }), [
+    showAlert(t('取消约定'), t('和{name}约在{place}的这次约定会取消。', { name: bond.name, place: t(place.name) }), [
       { text: t('再想想'), style: 'cancel' },
       { text: t('取消约定'), style: 'destructive', onPress: () => useAppStore.getState().removeOutingPlan(plan.id) },
     ]);

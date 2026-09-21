@@ -8,8 +8,9 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { showAlert } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { Chip } from '@/components/chip';
@@ -58,7 +59,7 @@ export function StoryEditor({
   };
 
   const remove = (c: StoryChapter) => {
-    Alert.alert(t('删除这一章？'), c.title, [
+    showAlert(t('删除这一章？'), c.title, [
       { text: t('取消'), style: 'cancel' },
       {
         text: t('删除'),

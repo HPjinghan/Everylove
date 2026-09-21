@@ -6,9 +6,10 @@
  */
 
 import { useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { showAlert } from '@/components/action-sheet';
 import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -45,7 +46,7 @@ export default function PhonesScreen() {
   const invitePeek = (bondId: string) => {
     setConfirmId(null);
     if (aiRouteSync() === 'none') {
-      Alert.alert(t('AI 不可用'), t('通话需要语音与聊天模型：在 .env.local 配置千帆 key，或登录后走服务端代理。'));
+      showAlert(t('AI 不可用'), t('通话需要语音与聊天模型：在 .env.local 配置千帆 key，或登录后走服务端代理。'));
       return;
     }
     setPeeking(bondId);

@@ -13,9 +13,10 @@
 
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { showAlert } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { CharacterSheet } from '@/components/character-sheet';
@@ -146,7 +147,7 @@ export default function OutingSceneScreen() {
   const shoot = async (kind: 'solo' | 'together') => {
     if (shooting) return;
     if (!imageKeyReady()) {
-      Alert.alert(t('AI 不可用'), t('拍照与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。'));
+      showAlert(t('AI 不可用'), t('拍照与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。'));
       return;
     }
     setShooting(kind);
@@ -154,7 +155,7 @@ export default function OutingSceneScreen() {
       await shootPhoto(active, character, place, kind, name);
     } catch (e) {
       console.warn('[outing] 拍照失败：', e);
-      if (mounted.current) Alert.alert(t('没拍成'), `${t('生图服务出了点问题，可以再试一次。')}\n\n${t('原因：{reason}', { reason: describeAiError(e) })}`);
+      if (mounted.current) showAlert(t('没拍成'), `${t('生图服务出了点问题，可以再试一次。')}\n\n${t('原因：{reason}', { reason: describeAiError(e) })}`);
     } finally {
       if (mounted.current) setShooting(null);
     }

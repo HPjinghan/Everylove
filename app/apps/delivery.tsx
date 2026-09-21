@@ -6,8 +6,9 @@
 
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { showAlert } from '@/components/action-sheet';
 import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -84,7 +85,7 @@ export default function DeliveryScreen() {
       for (const [sid, items] of byStore) {
         const r = await placeOrder({ storeId: sid, items, note, to });
         if (!r.ok) {
-          Alert.alert(r.reason === 'balance' ? t('零钱不够了') : t('这单没下成'));
+          showAlert(r.reason === 'balance' ? t('零钱不够了') : t('这单没下成'));
           return;
         }
       }

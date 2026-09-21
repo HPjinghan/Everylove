@@ -10,9 +10,10 @@
 
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { showAlert } from '@/components/action-sheet';
 import { Card, Divider } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { InviteSheet, RedPacketSheet, type ExtraSheet } from '@/components/chat-extras';
@@ -122,7 +123,7 @@ export default function BondScreen() {
   /** 打电话（D-077）：管线式通话，全屏 */
   const startCall = () => {
     if (!callReady()) {
-      Alert.alert(t('AI 不可用'), t('通话需要语音与聊天模型：在 .env.local 配置千帆 key，或登录后走服务端代理。'));
+      showAlert(t('AI 不可用'), t('通话需要语音与聊天模型：在 .env.local 配置千帆 key，或登录后走服务端代理。'));
       return;
     }
     router.push({ pathname: '/call/[characterId]', params: { characterId: character.id } });
@@ -161,7 +162,7 @@ export default function BondScreen() {
       {update ? (
         <Pressable
           onPress={() =>
-            Alert.alert(t('换成作者的最新设定？'), t('聊天记录、记忆、等级都留着，只换设定、台词与声音。换了不能退回。'), [
+            showAlert(t('换成作者的最新设定？'), t('聊天记录、记忆、等级都留着，只换设定、台词与声音。换了不能退回。'), [
               { text: t('取消'), style: 'cancel' },
               {
                 text: t('换'),

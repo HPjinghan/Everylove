@@ -8,8 +8,9 @@
 
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { showAlert } from '@/components/action-sheet';
 import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { Card, Divider } from '@/components/card';
@@ -62,7 +63,7 @@ export default function WeatherScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(t('没拿到定位权限'), t('没关系——在下面直接搜索你的地区也一样。'));
+        showAlert(t('没拿到定位权限'), t('没关系——在下面直接搜索你的地区也一样。'));
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
@@ -75,7 +76,7 @@ export default function WeatherScreen() {
       applyPlace(name || t('当前位置'), pos.coords.latitude, pos.coords.longitude);
     } catch (e) {
       console.warn('[weather] 定位失败：', e);
-      Alert.alert(t('定位失败'), t('在下面手动搜索你的地区吧。'));
+      showAlert(t('定位失败'), t('在下面手动搜索你的地区吧。'));
     } finally {
       setBusy(false);
     }
@@ -87,10 +88,10 @@ export default function WeatherScreen() {
     setBusy(true);
     try {
       const results = await searchPlaces(q);
-      if (!results.length) Alert.alert(t('没找到这个地方'), t('换个写法试试？'));
+      if (!results.length) showAlert(t('没找到这个地方'), t('换个写法试试？'));
       setHits(results);
     } catch {
-      Alert.alert(t('搜索失败'), t('检查一下网络。'));
+      showAlert(t('搜索失败'), t('检查一下网络。'));
     } finally {
       setBusy(false);
     }

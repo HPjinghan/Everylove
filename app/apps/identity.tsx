@@ -11,7 +11,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -23,6 +22,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { showAlert } from '@/components/action-sheet';
 import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -104,7 +104,7 @@ export default function IdentityScreen() {
 
   const save = () => {
     if (!draft.nickname.trim()) {
-      Alert.alert(t('昵称不能为空'), t('这是角色看到的名字。'));
+      showAlert(t('昵称不能为空'), t('这是角色看到的名字。'));
       return;
     }
     const clean: UserProfile = { ...draft, nickname: draft.nickname.trim() };
@@ -113,13 +113,13 @@ export default function IdentityScreen() {
     } else {
       useAppStore.getState().setMe(clean);
     }
-    Alert.alert(t('已保存'), characterId ? t('{name}眼中的你已更新。', { name: forCharacter?.name ?? 'TA' }) : t('TA 们眼中的你已更新。'));
+    showAlert(t('已保存'), characterId ? t('{name}眼中的你已更新。', { name: forCharacter?.name ?? 'TA' }) : t('TA 们眼中的你已更新。'));
     router.back();
   };
 
   const restoreDefault = () => {
     if (!characterId) return;
-    Alert.alert(t('恢复默认身份'), t('{name}将改用你的默认身份。', { name: forCharacter?.name ?? t('这个角色') }), [
+    showAlert(t('恢复默认身份'), t('{name}将改用你的默认身份。', { name: forCharacter?.name ?? t('这个角色') }), [
       { text: t('取消'), style: 'cancel' },
       {
         text: t('恢复'),

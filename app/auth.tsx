@@ -13,7 +13,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -24,6 +23,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { showAlert } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { Input } from '@/components/input';
 import { MingCute } from '@/components/mingcute';
@@ -80,7 +80,7 @@ export default function AuthScreen() {
       arrive();
       return;
     }
-    Alert.alert(
+    showAlert(
       t('这个账号里已经有存档'),
       t('把云端的 TA 们接回这部手机，还是用这部手机上的覆盖云端？'),
       [
@@ -103,7 +103,7 @@ export default function AuthScreen() {
     } catch (e) {
       const err = e as { code?: string; message?: string };
       if (err.code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert(t('Apple 登录失败'), err.message ?? t('稍后再试。'));
+        showAlert(t('Apple 登录失败'), err.message ?? t('稍后再试。'));
       }
     } finally {
       setBusy(false);
@@ -120,13 +120,13 @@ export default function AuthScreen() {
       } else if (!otpSent) {
         await sendEmailOtp(email.trim(), useAppStore.getState().language);
         setOtpSent(true);
-        Alert.alert(t('验证码已发出'), t('去邮箱看看（也翻翻垃圾箱）。'));
+        showAlert(t('验证码已发出'), t('去邮箱看看（也翻翻垃圾箱）。'));
       } else {
         await verifyEmailOtp(email.trim(), otp.trim());
         await afterSignIn();
       }
     } catch (e) {
-      Alert.alert(otpSent || passwordMode ? t('验证失败') : t('发送失败'), (e as Error).message ?? t('稍后再试。'));
+      showAlert(otpSent || passwordMode ? t('验证失败') : t('发送失败'), (e as Error).message ?? t('稍后再试。'));
     } finally {
       setBusy(false);
     }

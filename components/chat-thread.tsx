@@ -21,7 +21,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -33,7 +32,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ActionSheet, ConfirmSheet, type SheetAction } from '@/components/action-sheet';
+import { ActionSheet, ConfirmSheet, showAlert, type SheetAction } from '@/components/action-sheet';
 import { CardShell } from '@/components/card-bubble';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
@@ -450,7 +449,7 @@ export function ChatThread({
     if (!recording) {
       const perm = await AudioModule.requestRecordingPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert(t('需要麦克风权限'), t('在系统设置里允许录音后再试。'));
+        showAlert(t('需要麦克风权限'), t('在系统设置里允许录音后再试。'));
         return;
       }
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });

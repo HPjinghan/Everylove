@@ -9,9 +9,10 @@ import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Children, Fragment, isValidElement, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
+import { showAlert } from '@/components/action-sheet';
 import { AppScreen } from '@/components/app-screen';
 import { Card, Divider } from '@/components/card';
 import { DiamondBackground } from '@/components/paper-bg';
@@ -136,7 +137,7 @@ export default function MeScreen() {
   const pickEngine = () => {
     const routeText = (r: ReturnType<typeof aiRouteSync>) =>
       r === 'direct' ? t('直连') : r === 'proxy' ? t('代理') : t('不可用');
-    Alert.alert(t('AI 引擎'), t('两把 key 都在 .env.local 时可以手动指定；「跟随配置」= 有 Claude key 用 Claude，否则千帆。'), [
+    showAlert(t('AI 引擎'), t('两把 key 都在 .env.local 时可以手动指定；「跟随配置」= 有 Claude key 用 Claude，否则千帆。'), [
       ...engineOptions().map((o) => ({
         text: `${o.label} · ${routeText(o.route)}${o.id === enginePref ? ' ✓' : ''}`,
         onPress: () => {
@@ -158,15 +159,15 @@ export default function MeScreen() {
   /** 立绘（D-019/D-092）：种子角色已内置立绘，这里只补没有的（新加的种子）或重画首个羁绊角色（存本机、盖过内置） */
   const genSeedPortraits = () => {
     if (!imageKeyReady()) {
-      Alert.alert('AI 不可用', '立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。');
+      showAlert('AI 不可用', '立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。');
       return;
     }
     const missing = CHARACTERS.filter((c) => !portraitFor(c.id));
     if (!missing.length) {
-      Alert.alert('都有了', '种子角色都已有立绘（内置）。要重画请用下面「重画」。');
+      showAlert('都有了', '种子角色都已有立绘（内置）。要重画请用下面「重画」。');
       return;
     }
-    Alert.alert('后台生成中', `${missing.length} 位角色，逐个约 1 分钟。生成完交友卡面和会话头像会换成立绘。`);
+    showAlert('后台生成中', `${missing.length} 位角色，逐个约 1 分钟。生成完交友卡面和会话头像会换成立绘。`);
     void (async () => {
       for (const c of missing) await ensurePortrait(c.id);
     })();
@@ -175,21 +176,21 @@ export default function MeScreen() {
   const redrawBondPortrait = () => {
     const bond = bonds[0];
     if (!bond) {
-      Alert.alert('还没有羁绊', '先去交友里加一个好友。');
+      showAlert('还没有羁绊', '先去交友里加一个好友。');
       return;
     }
     if (!imageKeyReady()) {
-      Alert.alert('AI 不可用', '立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。');
+      showAlert('AI 不可用', '立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。');
       return;
     }
-    Alert.alert('重画中', `约 1 分钟，${bond.name}之后的画面都会以新立绘为参考。`);
+    showAlert('重画中', `约 1 分钟，${bond.name}之后的画面都会以新立绘为参考。`);
     void ensurePortrait(bond.characterId, true);
   };
 
   const showMemory = () => {
     const bond = useAppStore.getState().bonds[0];
     if (!bond) {
-      Alert.alert('还没有羁绊', '先去交友里加一个好友，聊几轮再来看 TA 记住了什么。');
+      showAlert('还没有羁绊', '先去交友里加一个好友，聊几轮再来看 TA 记住了什么。');
       return;
     }
     const m = bond.memory;
@@ -197,13 +198,13 @@ export default function MeScreen() {
       ? m.facts.map((f) => `· ${f}`).join('\n')
       : '（还没有提取到长期记忆）';
     const summary = m?.summary ? `\n\n更早的相处摘要：\n${m.summary}` : '';
-    Alert.alert(`${bond.name}记得的事`, `${facts}${summary}`, [
+    showAlert(`${bond.name}记得的事`, `${facts}${summary}`, [
       { text: '关闭', style: 'cancel' },
       {
         text: '现在提取一次',
         onPress: async () => {
           const ok = await updateBondMemory(bond.id, true);
-          Alert.alert(
+          showAlert(
             ok ? '已更新' : '没有可提取的新内容或提取失败',
             ok ? '再点一次「查看」看结果。' : '看 Metro 终端的 [memory] 日志（AI 不可用时也会记在那里）。'
           );
@@ -213,7 +214,7 @@ export default function MeScreen() {
   };
 
   const reset = () => {
-    Alert.alert(t('重置全部数据'), t('所有羁绊、聊天记录和创作都会消失。他们会忘记你。'), [
+    showAlert(t('重置全部数据'), t('所有羁绊、聊天记录和创作都会消失。他们会忘记你。'), [
       { text: t('取消'), style: 'cancel' },
       {
         text: t('重置'),
@@ -242,7 +243,7 @@ export default function MeScreen() {
   const subscribe = (p: 'free' | 'pro' | 'max') => {
     if (p === plan) return;
     const label = p === 'max' ? t('Max：羁绊不限量') : p === 'pro' ? t('Pro：5 个羁绊槽') : t('Free：1 个羁绊槽');
-    Alert.alert(p === 'free' ? t('取消订阅') : t('订阅（试装模拟，不扣费）'), label, [
+    showAlert(p === 'free' ? t('取消订阅') : t('订阅（试装模拟，不扣费）'), label, [
       { text: t('取消'), style: 'cancel' },
       { text: p === 'free' ? t('确认取消') : t('订阅'), onPress: () => useAppStore.getState().setPlan(p) },
     ]);
@@ -259,32 +260,32 @@ export default function MeScreen() {
 
   const doBackupNow = async () => {
     const r = await uploadSnapshot();
-    Alert.alert(r === 'ok' ? t('已备份') : t('备份失败'), r === 'ok' ? t('云端已是最新。') : t('稍后再试。'));
+    showAlert(r === 'ok' ? t('已备份') : t('备份失败'), r === 'ok' ? t('云端已是最新。') : t('稍后再试。'));
   };
 
   const doRestore = () => {
-    Alert.alert(t('从云端恢复'), t('会用云端备份覆盖这台手机上的全部数据。'), [
+    showAlert(t('从云端恢复'), t('会用云端备份覆盖这台手机上的全部数据。'), [
       { text: t('取消'), style: 'cancel' },
       {
         text: t('恢复'),
         style: 'destructive',
         onPress: async () => {
           const ok = await restoreSnapshot();
-          Alert.alert(ok ? t('已恢复') : t('恢复失败'), ok ? t('TA 们回来了。') : t('云端可能还没有备份。'));
+          showAlert(ok ? t('已恢复') : t('恢复失败'), ok ? t('TA 们回来了。') : t('云端可能还没有备份。'));
         },
       },
     ]);
   };
 
   const doSignOut = () => {
-    Alert.alert(t('退出登录'), t('数据留在这台手机上，云端备份保留；再次登录可恢复。'), [
+    showAlert(t('退出登录'), t('数据留在这台手机上，云端备份保留；再次登录可恢复。'), [
       { text: t('取消'), style: 'cancel' },
       { text: t('退出'), onPress: () => void signOut() },
     ]);
   };
 
   const doDeleteCloud = () => {
-    Alert.alert(t('删除云端数据'), t('云端备份将被永久删除并退出登录；本机数据保留。'), [
+    showAlert(t('删除云端数据'), t('云端备份将被永久删除并退出登录；本机数据保留。'), [
       { text: t('取消'), style: 'cancel' },
       {
         text: t('删除并退出'),
@@ -292,7 +293,7 @@ export default function MeScreen() {
         onPress: async () => {
           await deleteCloudData();
           await signOut();
-          Alert.alert(t('已删除'), t('云端已清空。账号本体删除将在正式版提供。'));
+          showAlert(t('已删除'), t('云端已清空。账号本体删除将在正式版提供。'));
         },
       },
     ]);
@@ -412,7 +413,7 @@ export default function MeScreen() {
               value={t('买（模拟）')}
               onPress={() => {
                 useAppStore.getState().addTraffic(p.mb);
-                Alert.alert(t('已到账'), mb(p.mb));
+                showAlert(t('已到账'), mb(p.mb));
               }}
             />
           ))}

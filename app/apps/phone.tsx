@@ -5,8 +5,9 @@
  */
 
 import { useRouter } from 'expo-router';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { showAlert } from '@/components/action-sheet';
 import { AppScreen } from '@/components/app-screen';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
@@ -24,7 +25,7 @@ export default function PhoneScreen() {
 
   const call = (characterId: string) => {
     if (!callReady()) {
-      Alert.alert(t('AI 不可用'), t('通话需要语音与聊天模型：在 .env.local 配置千帆 key，或登录后走服务端代理。'));
+      showAlert(t('AI 不可用'), t('通话需要语音与聊天模型：在 .env.local 配置千帆 key，或登录后走服务端代理。'));
       return;
     }
     router.push({ pathname: '/call/[characterId]', params: { characterId } });

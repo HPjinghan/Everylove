@@ -14,6 +14,7 @@ import 'react-native-reanimated';
 // 底座启动（D-086）：把所有玩法装进 core/ 的插槽——必须在任何回合 / 任务之前
 import '@/features';
 
+import { SheetHost } from '@/components/action-sheet';
 import { ToastHost } from '@/components/toast';
 import { wallpaperTint } from '@/constants/apps';
 import { applyPaperTint, Romance } from '@/constants/theme';
@@ -115,6 +116,7 @@ export default function RootLayout() {
         />
       </Stack>
       <ToastHost />
+      <SheetHost />
       <StatusBar style="dark" />
     </ThemeProvider>
     </ShareIntentProvider>
