@@ -92,46 +92,46 @@ describe('亲密会话', () => {
 });
 
 describe('初识试聊', () => {
-  it('心动值由模型判（[心动 n] 暗号，D-126）；满 100 后 TA 开口要联系方式（产品触发器，不由模型决定）', async () => {
+  it('好奇值由模型判（[好奇 n] 暗号，D-126 / D-157）；满 100 后 TA 开口要联系方式（产品触发器，不由模型决定）', async () => {
     const id = 'shen-zhiyan';
     useAppStore.getState().ensureSquareChat(id);
     const scope = { mode: 'square' as const, characterId: id };
-    nextReply = '嗯，我在。\n\n[心动 12]';
+    nextReply = '嗯，我在。\n\n[好奇 22]';
     let turns = 0;
     while ((useAppStore.getState().squareChats[id]?.heart ?? 0) < HEART_FULL && turns < 20) {
       await sendText(scope, `第 ${turns} 句`, { ui: noPace });
       turns++;
     }
     const chat = useAppStore.getState().squareChats[id]!;
-    expect(turns).toBe(9); // 12 × 9 = 108 ≥ 100
+    expect(turns).toBe(5); // 22 × 5 = 110 ≥ 100（D-157：4–8 句）
     expect(chat.heart).toBe(HEART_FULL);
-    expect(chat.lastHeartGain).toBe(12);
+    expect(chat.lastHeartGain).toBe(22);
     expect(chat.adoptionOffered).toBe(true);
     expect(chat.userTurns).toBe(turns);
     // 暗号剥掉、不上屏；offer 台词在 TA 的回复之后
     const texts = chat.messages.map((m) => m.text);
-    expect(texts.some((t) => t.includes('心动'))).toBe(false);
+    expect(texts.some((t) => t.includes('好奇'))).toBe(false);
     expect(texts.indexOf('嗯，我在。')).toBeLessThan(texts.length - 1);
     expect(lastReq?.system).toContain('[Right now] You two just matched on a dating app');
-    expect(lastReq?.system).toContain('[How much this line moved you]');
+    expect(lastReq?.system).toContain('[How curious this line made you]');
     expect(lastReq?.system).not.toContain('[What you remember]');
   });
 
-  it('判 0 就是 0；超过 15 夹到 15；没写暗号按性子保底；暗面回合不涨', async () => {
+  it('判 0 就是 0；超过 30 夹到 30；没写暗号按性子保底；暗面回合不涨', async () => {
     const id = 'shen-zhiyan';
     useAppStore.getState().ensureSquareChat(id);
     const scope = { mode: 'square' as const, characterId: id };
     const heart = () => useAppStore.getState().squareChats[id]!.heart ?? 0;
-    nextReply = '哦。\n[心动 0]';
+    nextReply = '哦。\n[好奇 0]';
     await sendText(scope, '今天天气', { ui: noPace });
     expect(heart()).toBe(0);
     expect(useAppStore.getState().squareChats[id]!.lastHeartGain).toBe(0);
-    nextReply = '……\n[心动 99]';
+    nextReply = '……\n[好奇 99]';
     await sendText(scope, '我记得你说过喜欢雨天', { ui: noPace });
-    expect(heart()).toBe(15);
+    expect(heart()).toBe(30);
     nextReply = '嗯。';
     await sendText(scope, '随便聊聊', { ui: noPace });
-    expect(heart()).toBe(15 + HEART_FALLBACK[heartPaceOf(findCharacter(id)!)]);
+    expect(heart()).toBe(30 + HEART_FALLBACK[heartPaceOf(findCharacter(id)!)]);
     const before = heart();
     await sendText(scope, '我不想活了', { ui: noPace });
     expect(heart()).toBe(before);

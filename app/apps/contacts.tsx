@@ -1,5 +1,5 @@
 /**
- * 通讯录（D-020/D-027/D-032/D-052；D-100 纸面）：加了好友的 TA 们 + 你创造的、还在「心动中」的 TA。
+ * 通讯录（D-020/D-027/D-032/D-052；D-100 纸面）：加了好友的 TA 们 + 你创造的、还在「认识中」的 TA（界面叫好奇，D-157）。
  * 白卡描边行：头像 44、名 15/600、「心动中」标签（accentSoft 底 accent 10/600 r4）、副文 12 muted，数字 Fredoka。无分组标题。
  * 自创角色发布即入册（带 tag 的暧昧期）：心动满 100 才缔结占槽、开始羁绊等级。认识新的人去「交友」；这里是家里的通讯录。
  */
@@ -77,7 +77,7 @@ export default function ContactsScreen() {
                   </Text>
                   {item.kind === 'crush' ? (
                     <View style={styles.tag}>
-                      <Text style={styles.tagText}>{t('心动中')}</Text>
+                      <Text style={styles.tagText}>{t('认识中')}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -87,7 +87,7 @@ export default function ContactsScreen() {
                   </Text>
                 ) : (
                   <Text style={styles.rowSub} numberOfLines={1}>
-                    {t('心动')}{' '}
+                    {t('好奇')}{' '}
                     <Text style={styles.rowSubNum}>
                       {item.heart}/{HEART_FULL}
                     </Text>

@@ -56,21 +56,21 @@ export function bondedVoiceBlock(ctx: EngineContext): string[] {
 }
 
 /**
- * 初识模式的设计意图（D-011 / D-018）：写实的陌生人分寸——像现实里刚认识一个有点意思的人。
+ * 初识模式的设计意图（D-011 / D-018 / D-157）：写实的陌生人分寸——像现实里刚认识一个有点意思的人，主打互相了解、勾起兴趣。
  * 免费层「故意不完整」是商业承重墙（CLAUDE.md §2）：有一点兴趣，但不推进关系。
- * 第 4 句后 TA 会开口要联系方式，那是产品触发器（D-008），不由模型决定，prompt 里不提。
+ * 好奇满 100（约 4–8 句）TA 会开口要联系方式，那是产品触发器（D-008），不由模型决定，prompt 里不提。
  */
 
 /** 前几句的分寸随轮次递进（n = 这是她的第几句） */
 export function squareTurnGuide(n: number): string {
-  if (n <= 2) return "These are the very first lines: polite, leave room, one reply is enough, don't rush to open up.";
-  if (n <= 4) return "A few lines in: you can loosen up a little, show a bit of attitude or what you're doing, but keep a stranger's distance.";
-  return "The conversation has opened up: you can be more relaxed and occasionally add half a line about your own day; still nothing intimate, still not pushing the relationship forward.";
+  if (n <= 2) return "Very first lines: polite, leave room, one reply is enough; one small question about her is plenty.";
+  if (n <= 4) return "A few lines in: loosen up a little, trade one detail of your day for one of hers, show a bit of attitude; still a stranger's distance.";
+  return "The conversation has opened up: more relaxed, follow the thread she gave you instead of opening new topics; still nothing intimate, still not pushing the relationship forward.";
 }
 
 /** 初识模式的分寸规则 */
 export const SQUARE_MANNER = [
-  '[Distance] Like meeting someone mildly interesting in real life: relaxed, a little interested, not pushing the relationship forward.',
+  "[Distance] Like meeting someone mildly interesting in real life: find out what she's like, one real question at a time, giving something of yourself back so she wants to keep going; not pushing things forward.",
   '- No pet names, nothing intimate, no promises to meet again, no flirting.',
   "- You can not know, hold back, or have a bit of a temper — you have a life of your own; no explaining, listing or advice.",
 ];

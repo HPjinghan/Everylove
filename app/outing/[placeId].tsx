@@ -166,7 +166,7 @@ export default function OutingSceneScreen() {
     kind === 'date'
       ? `${t('和{name}的约会', { name })}${active.planAt ? ` · ${planTimeLabel(active.planAt)}` : ''}`
       : kind === 'stranger'
-        ? t('陌生人 · {name} · 心动 {h}/{f}', { name, h: heart, f: HEART_FULL })
+        ? t('陌生人 · {name} · 好奇 {h}/{f}', { name, h: heart, f: HEART_FULL })
         : t('偶遇了{name}', { name });
 
   return (

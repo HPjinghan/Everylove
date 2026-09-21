@@ -148,9 +148,9 @@ export default function SquareChatScreen() {
         </View>
       </View>
 
-      {/* 心动条吸顶（D-100）：白底通栏 + 1.5px 下沿，不随消息滚动 */}
+      {/* 好奇条吸顶（D-100 / D-157）：白底通栏 + 1.5px 下沿，不随消息滚动 */}
       <View style={styles.heartBar}>
-        <Text style={styles.heartLabel}>{t('心动')}</Text>
+        <Text style={styles.heartLabel}>{t('好奇')}</Text>
         <View style={styles.heartTrack}>
           <View style={[styles.heartFill, { width: `${heart}%` }]} />
         </View>
@@ -179,7 +179,7 @@ export default function SquareChatScreen() {
                   {character.custom ? t('TA 想和你确定关系') : t('TA 想要你的联系方式')}
                 </Text>
                 <Text style={styles.ctaSub}>
-                  {character.custom ? t('这一次，是 TA 自己想留在你身边') : t('心动满了，TA 先开了口')}
+                  {character.custom ? t('这一次，是 TA 自己想留在你身边') : t('TA 想继续认识你，先开了口')}
                 </Text>
               </View>
               <Button

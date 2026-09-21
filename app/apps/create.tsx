@@ -49,7 +49,7 @@ export default function CreateScreen() {
                       {c.identity}
                     </Text>
                     <View style={styles.tags}>
-                      <Text style={[styles.tag, bonded && styles.tagBonded]}>{bonded ? t('已缔结') : t('心动中')}</Text>
+                      <Text style={[styles.tag, bonded && styles.tagBonded]}>{bonded ? t('已缔结') : t('认识中')}</Text>
                       <Text style={styles.tag}>{c.visibility === 'public' ? t('公开') : t('私密')}</Text>
                       {c.chapters?.length ? <Text style={styles.tag}>{t('传记 {n} 章', { n: c.chapters.length })}</Text> : null}
                     </View>

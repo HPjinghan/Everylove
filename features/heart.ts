@@ -1,7 +1,7 @@
 /**
- * 心动判分（D-126）：换联系方式前，她每开口一句涨多少心动由模型判 0–15——回复末尾的暗号 [心动 n]。
+ * 好奇判分（D-126 / D-157）：换联系方式前，她每开口一句让 TA 多好奇几分由模型判 0–30——回复末尾的暗号 [好奇 n]；满 100 约 4–8 句。
  * 一个玩法一个文件：prompt 分段（初识 / 广场陌生人）+ 带数值的回复暗号 + 缺暗号时的保底（按性子的区间下限，不让进度卡死）。
- * 心动满 100 的 offer 仍是产品触发器（features/adoption.ts，在这之后注册、在这之后跑）。
+ * 好奇满 100 的 offer 仍是产品触发器（features/adoption.ts，在这之后注册、在这之后跑）。
  */
 
 import { HEART_MARK, HEART_PATTERN, heartJudgeLines } from '@/content/prompts';

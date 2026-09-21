@@ -70,7 +70,8 @@ const en: Record<string, string> = {
   '正在慢慢变厚': 'Slowly growing',
   '这里还空着。': 'Still empty here.',
 
-  '心动中': 'Crushing',
+  '认识中': 'Getting to know',
+  '好奇': 'Curiosity',
 
   '和{name}确定关系': 'Make it official with {name}',
   '和{name}交换联系方式': 'Exchange numbers with {name}',
@@ -292,7 +293,7 @@ const en: Record<string, string> = {
   '生图服务出了点问题，可以再试一次。': 'The image service hiccuped — try again.',
   '和{name}的合影 · {place}': 'With {name} · {place}',
   '和{name}的约会': 'Date with {name}',
-  '陌生人 · {name} · 心动 {h}/{f}': 'Stranger · {name} · Heart {h}/{f}',
+  '陌生人 · {name} · 好奇 {h}/{f}': 'Stranger · {name} · Curiosity {h}/{f}',
   '偶遇了{name}': 'Ran into {name}',
   '说点什么，或用（）写下你的动作…': 'Say something, or write actions in ( )…',
 
@@ -581,7 +582,7 @@ const en: Record<string, string> = {
   '已略过一位': 'Passed on one',
   '撤销': 'Undo',
   '还剩 {n} 天': '{n}d left',
-  '心动满了，TA 先开了口': 'Hearts full. They spoke first.',
+  'TA 想继续认识你，先开了口': 'They want to keep getting to know you. They spoke first.',
   // 纸面全屏重做 · 会话 / TA 的主页（D-100）
   '试试「+」里的外出邀请，把相处从屏幕里拿出来': 'Try the outing invite under "+" and take this off the screen',
   'TA 的主页': 'Their page',
@@ -912,7 +913,8 @@ const ja: Record<string, string> = {
   '正在慢慢变厚': 'すこしずつ増えていく',
   '这里还空着。': 'まだ誰もいない。',
 
-  '心动中': 'ときめき中',
+  '认识中': '知り合い中',
+  '好奇': '好奇心',
 
   '和{name}确定关系': '{name}と正式に付き合う',
   '和{name}交换联系方式': '{name}と連絡先を交換',
@@ -1134,7 +1136,7 @@ const ja: Record<string, string> = {
   '生图服务出了点问题，可以再试一次。': '画像サービスの調子が悪いみたい。もう一度どうぞ。',
   '和{name}的合影 · {place}': '{name}とのツーショット · {place}',
   '和{name}的约会': '{name}とのデート',
-  '陌生人 · {name} · 心动 {h}/{f}': 'はじめまして · {name} · ときめき {h}/{f}',
+  '陌生人 · {name} · 好奇 {h}/{f}': 'はじめまして · {name} · 好奇心 {h}/{f}',
   '偶遇了{name}': '{name}に偶然会った',
   '说点什么，或用（）写下你的动作…': '何か話すか、（）で動きを書いて…',
 
@@ -1423,7 +1425,7 @@ const ja: Record<string, string> = {
   '已略过一位': '1人スキップ',
   '撤销': '取り消す',
   '还剩 {n} 天': 'あと {n} 日',
-  '心动满了，TA 先开了口': 'ときめきが満ちて、向こうから切り出した',
+  'TA 想继续认识你，先开了口': 'もっと知りたくて、向こうから切り出した',
   // 纸面全屏重做 · 会话 / TA 的主页（D-100）
   '试试「+」里的外出邀请，把相处从屏幕里拿出来': '「+」のおでかけ招待で、ふたりの時間を画面の外へ',
   'TA 的主页': 'プロフィール',
@@ -1773,7 +1775,8 @@ const ko: Record<string, string> = {
   '主线连载 · 敬请期待': '메인 스토리 연재 · 곧 공개',
   '正在慢慢变厚': '조금씩 두꺼워지는 중',
   '这里还空着。': '아직 비어 있어요.',
-  '心动中': '설레는 중',
+  '认识中': '알아가는 중',
+  '好奇': '호기심',
   '和{name}确定关系': '{name}, 이제 연인으로',
   '和{name}交换联系方式': '{name}, 연락처 교환하기',
   '首个羁绊 · 免费': '첫 인연 · 무료',
@@ -2016,7 +2019,7 @@ const ko: Record<string, string> = {
   '生图服务出了点问题，可以再试一次。': '이미지 서비스에 문제가 생겼어요. 다시 한번 시도해 보세요.',
   '和{name}的合影 · {place}': '{name}하고 찍은 투샷 · {place}',
   '和{name}的约会': '{name}하고 데이트',
-  '陌生人 · {name} · 心动 {h}/{f}': '처음 보는 사람 · {name} · 설렘 {h}/{f}',
+  '陌生人 · {name} · 好奇 {h}/{f}': '처음 보는 사람 · {name} · 호기심 {h}/{f}',
   '偶遇了{name}': '우연히 만난 {name}',
   '说点什么，或用（）写下你的动作…': '말을 걸거나, （） 안에 행동을 적어 보세요…',
   '就在这里、就是现在——面对面的那种': '바로 여기, 바로 지금—얼굴을 마주 보고',
@@ -2269,7 +2272,7 @@ const ko: Record<string, string> = {
   '已略过一位': '한 명 넘겼어요',
   '撤销': '되돌리기',
   '还剩 {n} 天': '{n}일 남음',
-  '心动满了，TA 先开了口': '설렘이 가득 차서, 먼저 말을 꺼냈어요',
+  'TA 想继续认识你，先开了口': '더 알고 싶어서, 먼저 말을 꺼냈어요',
   '试试「+」里的外出邀请，把相处从屏幕里拿出来': '‘+’에 있는 외출 초대로, 두 사람의 시간을 화면 밖으로',
   'TA 的主页': '프로필',
   // 桌面「交友」与天气天况 / 小文案

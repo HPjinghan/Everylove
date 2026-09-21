@@ -123,11 +123,11 @@ describe('召回', () => {
   });
 });
 
-describe('心动判分 / 纪念日', () => {
-  it('夹在 0–15；节奏三档；一百天 / 生日算纪念日', () => {
+describe('好奇判分 / 纪念日', () => {
+  it('夹在 0–30；节奏三档；一百天 / 生日算纪念日', () => {
     expect(clampHeartGain(-3)).toBe(0);
     expect(clampHeartGain(7.6)).toBe(8);
-    expect(clampHeartGain(99)).toBe(15);
+    expect(clampHeartGain(99)).toBe(30);
     expect(clampHeartGain(NaN)).toBe(0);
     expect(heartPaceOf({ offerAfterTurns: 2 })).toBe('fast');
     expect(heartPaceOf({})).toBe('normal');
