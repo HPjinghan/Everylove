@@ -1,8 +1,8 @@
 /**
  * 亲密度数值体系（D-126，提案 docs/ECONOMY_PROPOSAL.md §1）——三个数各管一件事：
  * 1. 好奇值（免费层：交友试聊 / 广场陌生人 / 自创暧昧期，0→100；界面叫「好奇」，字段仍叫 heart）：她每开口一句，
- *    **模型判 0–30**（回复暗号 [好奇 n]，features/heart.ts），聊得不相关可以是 0；满 100 = TA 开口交换联系方式，
- *    预期 4–8 句（D-157）。角色的「确定关系节奏」只是给模型的性子说明。
+ *    **模型判 15–30**（回复暗号 [好奇 n]，features/heart.ts；没有「无关 = 0」这档，一句「嗯」也由 TA 自己品，下限 15）；
+ *    满 100 = TA 开口交换联系方式，预期 4–8 句（D-157）。角色的「确定关系节奏」只是给模型的性子说明。
  * 2. 羁绊值 XP（羁绊层）：来源表 XP_EVENTS——每种来源有基础分与当天全额次数，之后递减；合计日上限；永不跌。
  *    等级 = XP 门槛 × 缔结满天数，两条都到才升（重度用户被天数拦、轻度被 XP 拦）。
  * 3. 温度（0–100）：任何互动回温、分开久了线性掉；只改语气与主动频率，到 0 停主动、进推送召回（lib/recall.ts）。
@@ -300,9 +300,10 @@ export function slotLimitLabel(plan: 'free' | 'pro' | 'max'): string {
   return plan === 'max' ? '∞' : String(slotLimit(plan));
 }
 
-/* ═══ 好奇值（免费层试聊）：模型判 0–30，满 100 约 4–8 句（D-157） ═══ */
+/* ═══ 好奇值（免费层试聊）：模型判 15–30，满 100 约 4–8 句（D-157） ═══ */
 
 export const HEART_FULL = 100;
+export const HEART_MIN_GAIN = 15;
 export const HEART_MAX_GAIN = 30;
 
 export type HeartPace = 'fast' | 'normal' | 'slow';
@@ -318,9 +319,10 @@ export function heartPaceOf(c: { offerAfterTurns?: number }): HeartPace {
 /** 模型没写暗号时按性子的「大多数时候」区间下限给分，不让缺暗号把进度卡死（每句尽量 ≥15，D-157） */
 export const HEART_FALLBACK: Record<HeartPace, number> = { fast: 25, normal: 18, slow: 15 };
 
+/** 夹到 15–30：Harper 不要「无关 = 0」这档——一句「嗯 / 哦」对面也可能觉得挺有趣，每句至少 15 */
 export function clampHeartGain(n: number): number {
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(HEART_MAX_GAIN, Math.round(n)));
+  if (!Number.isFinite(n)) return HEART_MIN_GAIN;
+  return Math.max(HEART_MIN_GAIN, Math.min(HEART_MAX_GAIN, Math.round(n)));
 }
 
 /* ═══ 一个角色只有一段羁绊（D-122） ═══ */

@@ -117,21 +117,21 @@ describe('初识试聊', () => {
     expect(lastReq?.system).not.toContain('[What you remember]');
   });
 
-  it('判 0 就是 0；超过 30 夹到 30；没写暗号按性子保底；暗面回合不涨', async () => {
+  it('低于 15 夹到 15；超过 30 夹到 30；没写暗号按性子保底；暗面回合不涨', async () => {
     const id = 'shen-zhiyan';
     useAppStore.getState().ensureSquareChat(id);
     const scope = { mode: 'square' as const, characterId: id };
     const heart = () => useAppStore.getState().squareChats[id]!.heart ?? 0;
     nextReply = '哦。\n[好奇 0]';
     await sendText(scope, '今天天气', { ui: noPace });
-    expect(heart()).toBe(0);
-    expect(useAppStore.getState().squareChats[id]!.lastHeartGain).toBe(0);
+    expect(heart()).toBe(15);
+    expect(useAppStore.getState().squareChats[id]!.lastHeartGain).toBe(15);
     nextReply = '……\n[好奇 99]';
     await sendText(scope, '我记得你说过喜欢雨天', { ui: noPace });
-    expect(heart()).toBe(30);
+    expect(heart()).toBe(45);
     nextReply = '嗯。';
     await sendText(scope, '随便聊聊', { ui: noPace });
-    expect(heart()).toBe(30 + HEART_FALLBACK[heartPaceOf(findCharacter(id)!)]);
+    expect(heart()).toBe(45 + HEART_FALLBACK[heartPaceOf(findCharacter(id)!)]);
     const before = heart();
     await sendText(scope, '我不想活了', { ui: noPace });
     expect(heart()).toBe(before);

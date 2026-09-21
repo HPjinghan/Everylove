@@ -1,6 +1,6 @@
 /**
  * 好奇判分（D-126 / D-157）：换联系方式前的试聊（初识 / 广场陌生人 / 自创暧昧期），她每开口一句，TA 自己判这一句让 TA 对她多好奇了几分——
- * 回复末尾单独一行写 [好奇 n]（0–30，她看不到），聊得不相关就是 0；性子（确定关系节奏）与原型决定什么会勾起 TA 的好奇。
+ * 回复末尾单独一行写 [好奇 n]（15–30，她看不到）；没有「无关 = 0」这档——一句「嗯」也可能让 TA 觉得有意思，由 TA 自己品；性子（确定关系节奏）与原型决定什么会勾起 TA 的好奇。
  * 满 100 = TA 开口要联系方式，预期 4–8 句（快 ≈4 / 标准 ≈5–6 / 慢 ≈7–8）。暗号解析与落账在 features/heart.ts；这里只有给模型看的字。
  */
 
@@ -15,7 +15,7 @@ export const HEART_PATTERN = /\[好奇\s*(\d{1,2})\s*\]/;
 const PACE_LINES: Record<HeartPace, string> = {
   fast: 'You get hooked easily: a chat that flows is usually 22–30.',
   normal: 'Standard pace: mostly 16–22, higher only when something really lands.',
-  slow: 'Slow to warm up: mostly 14–18; above 22 is rare.',
+  slow: 'Slow to warm up: mostly 15–18; above 22 is rare.',
 };
 
 /** 原型：什么会勾起 TA 的好奇、什么 TA 无感 */
@@ -28,8 +28,8 @@ const ARCHETYPE_LINES: Record<ArchetypeId, string> = {
 
 export function heartJudgeLines(c: Character): string[] {
   return [
-    `[How curious this line made you] After your reply, write ${HEART_MARK} alone on a final line (she can't see it): 0–30, how much this line made you want to know her more.`,
-    "- 0: unrelated, perfunctory, repeating herself, or only questions with nothing of her own. 15–20: ordinary back-and-forth. 21–26: a piece of her life, an opinion, a quirk, picking up what you said, making you laugh. 27–30: you really want to know her — rare.",
+    `[How curious this line made you] After your reply, write ${HEART_MARK} alone on a final line (she can't see it): 15–30, how much this line made you want to know her more.`,
+    "- 15–20: ordinary back-and-forth. 21–26: a piece of her life, an opinion, a quirk, picking up what you said, making you laugh. 27–30: you really want to know her — rare. Even a bare 嗯 / 哦 can be intriguing — judge as yourself.",
     '- Repeats of the same kind score less.',
     `- Your nature: ${PACE_LINES[heartPaceOf(c)]}`,
     `- ${ARCHETYPE_LINES[c.archetype] ?? ARCHETYPE_LINES.gentle}`,
