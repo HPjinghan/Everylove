@@ -574,6 +574,7 @@ export interface EngineContext {
     | 'phoneUnlocked'
     | 'circle'
     | 'hisEvents'
+    | 'notes'
     | 'legacyLevel'
     | 'warmth'
     | 'warmthAt'
@@ -581,6 +582,8 @@ export interface EngineContext {
     | 'wallet'
     | 'extraFired'
   >;
+  /** TA 自己最近发过的帖（D-158）：与 bond.notes 一起进【你最近的日子】（羁绊层对话 / 外出熟人） */
+  hisPosts?: Pick<Post, 'text' | 'at'>[];
   /** 广场偶遇的记录（D-110）：初识 / 广场模式注入——TA 记得见过她 */
   encounters?: Encounter[];
   /** 「我」的身份（D-035）：注入系统 prompt，TA 借此认识她 */

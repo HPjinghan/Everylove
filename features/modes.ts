@@ -5,6 +5,7 @@
  */
 
 import { placeById } from '@/content/places';
+import { HIS_POSTS_POOL } from '@/content/prompts';
 import { modes, type ConversationMode, type TurnScope } from '@/core/modes';
 import { appointmentAtLabel } from '@/lib/appointments';
 import { anniversaryToday, type UtteranceKind } from '@/lib/bond';
@@ -24,6 +25,7 @@ function bondPick(bond: Bond, opts: { phone?: boolean } = {}): NonNullable<Engin
     memory: bond.memory,
     circle: bond.circle,
     hisEvents: bond.hisEvents,
+    notes: bond.notes,
     legacyLevel: bond.legacyLevel,
     warmth: bond.warmth,
     warmthAt: bond.warmthAt,
@@ -35,6 +37,15 @@ function bondPick(bond: Bond, opts: { phone?: boolean } = {}): NonNullable<Engin
   // 查手机（D-082）：TA 的手机密码第一次需要时才生成，记在这段羁绊上
   const phoneCode = useAppStore.getState().ensurePhoneCode(bond.id);
   return { ...base, phoneCode, phoneUnlocked: bond.phoneUnlocked };
+}
+
+/** TA 自己最近的帖子（D-158）：候选池，进【你最近的日子】（底 + 按她的话检索） */
+function hisPostsOf(characterId: string): EngineContext['hisPosts'] {
+  return useAppStore
+    .getState()
+    .posts.filter((p) => p.characterId === characterId)
+    .slice(-HIS_POSTS_POOL)
+    .map((p) => ({ text: p.text, at: p.at }));
 }
 
 function bondOf(scope: TurnScope): Bond | undefined {
@@ -107,6 +118,7 @@ const bonded: ConversationMode = {
       character,
       mode: 'bonded',
       bond: bondPick(bond, { phone: true }),
+      hisPosts: hisPostsOf(character.id),
       me: meForCharacter(character.id),
       history: bond.messages,
       userText,
@@ -158,6 +170,7 @@ const outing: ConversationMode = {
       character,
       mode: 'outing',
       bond: bond ? bondPick(bond) : undefined,
+      hisPosts: bond ? hisPostsOf(character.id) : undefined,
       me: meForCharacter(character.id),
       // 陌生人也记得上次在广场见过她（D-110）
       encounters: kind === 'stranger' ? s.squareChats[character.id]?.encounters : undefined,

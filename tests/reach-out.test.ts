@@ -89,17 +89,15 @@ describe('温度（D-126）', () => {
 });
 
 describe('舞台提示', () => {
-  it('带此刻、她多久没说话、TA 的日子，且要求不问在吗', () => {
+  it('带此刻、她多久没说话、上一条是谁说的，且要求不问在吗；TA 的日子走系统 prompt（D-158）', () => {
     const line = buildReachOutUserLine({
       now: new Date(2026, 8, 10, 21, 30),
       weather: '今天多云',
       hoursSinceHer: 5,
-      recentNotes: ['加班到九点'],
-      recentPosts: [],
       last: { from: 'me', text: '晚安' },
     });
     expect(line).toContain('5 hours ago');
-    expect(line).toContain('- 加班到九点');
+    expect(line).not.toContain('notebook');
     expect(line).toContain('was hers: "晚安"');
     expect(line).toContain("Don't ask \"you there?\"");
   });

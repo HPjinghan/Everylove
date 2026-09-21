@@ -23,6 +23,7 @@
  *   circle.ts        TA 身边的人：生成 + 注入（D-110）
  *   reach-out.ts     TA 主动找她的舞台提示（D-114）
  *   his-schedule.ts  TA 自己的作息：生成 + 注入（D-119）
+ *   his-days.ts      TA 自己最近的日子：记事本 + 帖子注入对话（D-158）
  *
  * 不在这里的：
  *   - 角色人设 persona / 追法 pursuit / 外貌 look / 人称 pronoun / 台词库 → content/characters/（zh / en / ja 各一份，D-093）
@@ -50,6 +51,7 @@ export * from './heart';
 export * from './heartbeat';
 export * from './his-photo';
 export * from './his-notes';
+export * from './his-days';
 export * from './his-schedule';
 export * from './image-common';
 export * from './memory';

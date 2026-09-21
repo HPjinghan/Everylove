@@ -187,15 +187,12 @@ async function clearPending(bondId: string): Promise<void> {
 
 /** 亲密模式整套 prompt + 舞台提示 → TA 主动的一两句（连暗号）；不可用 / 失败返回 null */
 async function generateReachOut(bond: Bond, character: Character, at: Date): Promise<EngineReply | null> {
-  const posts = useAppStore.getState().posts;
   const her = lastFrom(bond.messages, 'me');
   const lastMsg = [...bond.messages].reverse().find((m) => m.from !== 'system' && m.text);
   const line = buildReachOutUserLine({
     now: at,
     weather: weatherLine(at),
     hoursSinceHer: her ? (at.getTime() - her.at) / 3600_000 : null,
-    recentNotes: (bond.notes ?? []).slice(-RECENT).map((n) => n.text),
-    recentPosts: posts.filter((p) => p.characterId === character.id).slice(-RECENT).map((p) => p.text),
     // 最近几条主动消息（D-153）：话题与开头别重样
     recentOpeners: bond.messages.filter((m) => m.from === 'him' && m.reach && m.text).slice(-RECENT).map((m) => m.text),
     last: lastMsg ? { from: lastMsg.from === 'me' ? 'me' : 'him', text: lastMsg.text } : undefined,

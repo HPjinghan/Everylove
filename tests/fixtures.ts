@@ -67,7 +67,7 @@ export function history(lines: [ChatMessage['from'], string][]): ChatMessage[] {
   }));
 }
 
-export const bondBase: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'birthday' | 'createdAt' | 'memory' | 'wallet'> = {
+export const bondBase: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'birthday' | 'createdAt' | 'memory' | 'wallet' | 'notes'> = {
   name: '沈之言',
   // 零钱（D-128）：TA 的钱包
   wallet: { balance: 2380, ledger: [], weekly: 3500, job: '讲师的薪水', lastSalaryAt: NOW.getTime() - 3 * 86_400_000 },
@@ -88,7 +88,15 @@ export const bondBase: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'birthday' 
     factsUpTo: 12,
     updatedAt: NOW.getTime(),
   },
+  // TA 自己的记事本（D-158）：进【你最近的日子】
+  notes: [
+    { id: 'n1', text: '老周借的那本《陶庵梦忆》还没还我，明天上课前去问他。', at: NOW.getTime() - 2 * 86_400_000 },
+    { id: 'n2', text: '楼下的桂花开了，晚上备课时窗户一直开着。', at: NOW.getTime() - 86_400_000 },
+  ],
 };
+
+/** TA 最近发的帖（D-158，bondedCtx 用） */
+export const hisPosts = [{ text: '系里的樱花开了半树，拍给你们看。', at: NOW.getTime() - 3 * 86_400_000 }, { text: '今天的茶泡过头了。', at: NOW.getTime() - 3 * 3600_000 }];
 
 export const squareCtx: EngineContext = {
   character: seed,
@@ -114,6 +122,7 @@ export const bondedCtx: EngineContext = {
   character: seed,
   mode: 'bonded',
   bond: { ...bondBase, phoneCode: '4821', phoneUnlocked: false },
+  hisPosts,
   me,
   history: history([
     ['system', '你们交换了联系方式 · 他开始叫你「小满」'],

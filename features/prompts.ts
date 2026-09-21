@@ -22,6 +22,7 @@ import {
   characterProfileBlock,
   circleBlock,
   encountersBlock,
+  hisDaysBlock,
   hisNoteLifeLines,
   hisScheduleBlock,
   HIS_NOTE_MANNER,
@@ -82,6 +83,9 @@ promptSections.register({ name: 'circle-outing', modes: OUTING, order: ORDER.cir
 // TA 自己的作息（D-119）：羁绊层都知道自己接下来要干嘛
 promptSections.register({ name: 'his-schedule', modes: BONDED_FAMILY, order: ORDER.circle, lines: (ctx, env) => hisScheduleBlock(ctx.bond?.hisEvents, dateKey(env.now)) });
 promptSections.register({ name: 'his-schedule-outing', modes: OUTING, order: ORDER.circle, lines: (ctx, env) => (isStranger(ctx) ? [] : hisScheduleBlock(ctx.bond?.hisEvents, dateKey(env.now))) });
+// TA 自己最近的日子（D-158）：记事本 + 帖子，紧跟日程；聊天 / 通话 / 外出熟人——记事本模式不带（写本子时另走用户消息）
+promptSections.register({ name: 'his-days', modes: BONDED_CHAT, order: ORDER.circle, lines: (ctx, env) => hisDaysBlock(ctx, env.now) });
+promptSections.register({ name: 'his-days-outing', modes: OUTING, order: ORDER.circle, lines: (ctx, env) => (isStranger(ctx) ? [] : hisDaysBlock(ctx, env.now)) });
 promptSections.register({ name: 'voice-square', modes: SQUARE, order: ORDER.voice, lines: (ctx) => squareVoiceBlock(ctx) });
 promptSections.register({ name: 'voice-bonded', modes: BONDED_FAMILY, order: ORDER.voice, lines: (ctx) => bondedVoiceBlock(ctx) });
 promptSections.register({ name: 'voice-outing', modes: OUTING, order: ORDER.voice, lines: (ctx) => outingVoiceBlock(ctx) });
