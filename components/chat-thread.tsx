@@ -33,6 +33,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ActionSheet, ConfirmSheet, type SheetAction } from '@/components/action-sheet';
 import { CardShell } from '@/components/card-bubble';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
@@ -356,6 +357,9 @@ export function ChatThread({
   const [replyTo, setReplyTo] = useState<ReplyRef | null>(null);
   const [viewingShot, setViewingShot] = useState<ViewerShot | null>(null);
   const [extrasOpen, setExtrasOpen] = useState(false);
+  // 长按消息的动作卡与删除确认（D-160：纸面底部卡，不用系统弹窗）
+  const [actionSheet, setActionSheet] = useState<{ title: string; actions: SheetAction[] } | null>(null);
+  const [deleteMsg, setDeleteMsg] = useState<ChatMessage | null>(null);
   const [recording, setRecording] = useState(false);
   const [recordSecs, setRecordSecs] = useState(0);
   // 录音格式按百度 ASR 要求：16k 单声道 wav（D-073）
@@ -391,40 +395,30 @@ export function ChatThread({
     onSend(text, ref);
   };
 
-  /** 长按菜单：引用 / 撤回（自己的、24h 内）/ 删除 */
-  const openActions = (msg: ChatMessage) => {
-    const excerpt =
-      msg.kind === 'image'
-        ? t('[照片]')
-        : msg.kind === 'voice'
-          ? t('[语音]')
-          : msg.kind === 'card'
-            ? (msg.card?.title ?? '')
-            : msg.text.slice(0, 24);
-    const buttons: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [];
+  /** 长按菜单：引用 / 撤回（自己的、24h 内）/ 删除——纸面底部动作卡（D-160） */
+  const actionsFor = (msg: ChatMessage): SheetAction[] => {
+    const list: SheetAction[] = [];
     if (msg.kind === 'text' && msg.text) {
-      buttons.push({
-        text: t('引用'),
-        onPress: () => setReplyTo({ from: msg.from, text: msg.text }),
-      });
+      list.push({ label: t('引用'), onPress: () => setReplyTo({ from: msg.from, text: msg.text }) });
     }
     if (onRecall && msg.from === 'me' && Date.now() - msg.at <= RECALL_WINDOW_MS) {
-      buttons.push({ text: t('撤回'), onPress: () => onRecall(msg) });
+      list.push({ label: t('撤回'), onPress: () => onRecall(msg) });
     }
-    if (onDelete) {
-      buttons.push({
-        text: t('删除'),
-        style: 'destructive',
-        onPress: () =>
-          Alert.alert(t('删除这条消息？'), t('只从你的手机上删除，不会留下痕迹。'), [
-            { text: t('取消'), style: 'cancel' },
-            { text: t('删除'), style: 'destructive', onPress: () => onDelete(msg) },
-          ]),
-      });
-    }
-    if (!buttons.length) return;
-    buttons.push({ text: t('取消'), style: 'cancel' });
-    Alert.alert(excerpt, undefined, buttons);
+    if (onDelete) list.push({ label: t('删除'), destructive: true, onPress: () => setDeleteMsg(msg) });
+    return list;
+  };
+  const excerptOf = (msg: ChatMessage) =>
+    msg.kind === 'image'
+      ? t('[照片]')
+      : msg.kind === 'voice'
+        ? t('[语音]')
+        : msg.kind === 'card'
+          ? (msg.card?.title ?? '')
+          : msg.text.slice(0, 40);
+  const openActions = (msg: ChatMessage) => {
+    // 动作在长按那一刻算好（撤回窗口要看 Date.now()），渲染期不再算
+    const actions = actionsFor(msg);
+    if (actions.length) setActionSheet({ title: excerptOf(msg), actions });
   };
 
   const pickImage = async () => {
@@ -518,6 +512,20 @@ export function ChatThread({
         />
       </View>
       <PhotoViewer shot={viewingShot} onClose={() => setViewingShot(null)} />
+      <ActionSheet
+        visible={!!actionSheet}
+        title={actionSheet?.title}
+        actions={actionSheet?.actions ?? []}
+        onClose={() => setActionSheet(null)}
+      />
+      <ConfirmSheet
+        visible={!!deleteMsg}
+        title={t('删除这条消息？')}
+        body={t('只从你的手机上删除，不会留下痕迹。')}
+        confirmLabel={t('删除')}
+        onConfirm={() => deleteMsg && onDelete?.(deleteMsg)}
+        onClose={() => setDeleteMsg(null)}
+      />
       {cta}
 
       {/* 引用预览条 */}
