@@ -13,7 +13,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 
-import { getSupabase, isSignedIn, onAuthChange, signedInSession } from '@/lib/auth';
+import { getSupabase, isSignedIn, onAuthChange, signedInSession, syncAccountLanguage } from '@/lib/auth';
 import { useAppStore } from '@/store/app-store';
 
 /** zustand persist 的存储键（store/app-store.ts 的 name） */
@@ -230,7 +230,9 @@ export function initCloudSync(): () => void {
   });
 
   const unsubAuth = onAuthChange((session) => {
-    if (isSignedIn(session)) void reconcileNow();
+    if (!isSignedIn(session)) return;
+    void syncAccountLanguage(useAppStore.getState().language); // D-160：邮件按账号语言
+    void reconcileNow();
   });
 
   const appStateSub = AppState.addEventListener('change', (s) => {

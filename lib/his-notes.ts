@@ -48,10 +48,12 @@ export async function deliverDueHisNotes(now = Date.now()): Promise<number> {
     // 先排下一次的钟：失败也不会每次回前台都重试轰炸
     useAppStore.getState().setNoteDue(character.id, now + noteIntervalMs(character));
     inflight.add(bond.id);
+    // 补写的按到点那一刻落时间（D-162）；第一条（还没排过钟）就是现在
+    const at = due && due <= now ? due : now;
     try {
-      const text = await generateNote(character, bond);
+      const text = await generateNote(character, bond, new Date(at));
       if (text) {
-        useAppStore.getState().addHisNote(bond.id, text);
+        useAppStore.getState().addHisNote(bond.id, text, at);
         written++;
       }
     } finally {
@@ -61,10 +63,9 @@ export async function deliverDueHisNotes(now = Date.now()): Promise<number> {
   return written;
 }
 
-async function generateNote(character: Character, bond: Bond): Promise<string | null> {
+async function generateNote(character: Character, bond: Bond, now: Date = new Date()): Promise<string | null> {
   const ctx = bondedContext(bond, HIS_NOTE_USER);
   if (!ctx) return null;
-  const now = new Date();
   const user = buildHisNoteUserPrompt({
     now,
     weather: weatherLine(now),

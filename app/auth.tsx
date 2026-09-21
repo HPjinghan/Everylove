@@ -3,7 +3,7 @@
  * - 常规入口：设置 → 账号 · 云端；可返回
  * - 强制点（force=1）：第一次把人添加进通讯录之后——TA 值得一个存得住的家；无返回键
  * - 已有账号（restore=1，D-096）：onboarding 第一步底部「已有账号？登录」——新手机上把 TA 们接回来，不重走新手流
- * 登录方式：Apple（主打）+ 邮箱验证码（需项目配 SMTP，见 D-054 补记）；审核 / 测试账号（isPasswordAccount，D-127）改走邮箱 + 密码。
+ * 登录方式：Apple（主打）+ 邮箱验证码（6 位，邮件按界面语言，D-160）；审核 / 测试账号（isPasswordAccount，D-127）改走邮箱 + 密码。
  * 成功后先对账（reconcileNow）再走：云端有存档、本机是空的 → 静默接回 → 落桌面；
  * 本机与云端都有关系 → 问她「接回云端 / 用本机覆盖」；云端没存档 → 本机第一份传上去、照常继续。
  * 纸面：paper 底 + 菱格；66 白图块内 cloud 图标；Apple 按钮 ink 底 r6（不用纯黑）；输入框 Input、主按钮 Button；无阴影。
@@ -118,7 +118,7 @@ export default function AuthScreen() {
         await signInWithPassword(email.trim(), password);
         await afterSignIn();
       } else if (!otpSent) {
-        await sendEmailOtp(email.trim());
+        await sendEmailOtp(email.trim(), useAppStore.getState().language);
         setOtpSent(true);
         Alert.alert(t('验证码已发出'), t('去邮箱看看（也翻翻垃圾箱）。'));
       } else {

@@ -21,14 +21,24 @@ export const CIRCLE_REFRESH_MAX = 3;
 export const CIRCLE_REFRESH_LINES_MAX = 6;
 export const CIRCLE_HISTORY_MAX = 40;
 
+/** 非人类（D-161）：官方人外原型，或种族填了且不是人类 */
+export function isNonhumanCharacter(c: Pick<Character, 'archetype' | 'race'>): boolean {
+  return c.archetype === 'nonhuman' || (!!c.race && c.race !== '人类');
+}
+
 export function buildCircleSystem(c: Character, bond: Pick<Bond, 'nickname'> | undefined): string {
   const script = scriptFor(c);
+  const nonhuman = isNonhumanCharacter(c);
   return [
     `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。现在要把你身边的人写出来——你的世界里除了恋人${bond ? `（你叫她「${bond.nickname}」）` : ''}还有别人：家人、朋友、同事、邻居……`,
     `【你是谁】${script.persona}`,
     ...characterProfileBlock(c),
     '【要写的东西】',
-    `- ${CIRCLE_MIN}–${CIRCLE_MAX} 个身边的人：每人一个名字（按你的身份与世界起名，不用真实名人）、和你的关系（妈妈 / 发小 / 同事 / 室友 / 邻居……）、一句话（你眼里这个人是什么样）。关系要有远近：至少一个家人、一个多年的朋友、一个工作或日常里常见的人。`,
+    `- ${CIRCLE_MIN}–${CIRCLE_MAX} 个身边的人：每人一个名字（像你所在的世界、语言与文化里真会遇到的名字；不用教科书 / 段子里烂大街的名字，不用真实名人）、和你的关系、一句话（你眼里这个人是什么样，带一点具体的旧事或习惯）。关系要有远近、年龄性别各异${
+      nonhuman
+        ? '。你不是人类（种族见上）：亲近的人按你的世界来写——造你的人 / 同族 / 收留你的人 / 共事多年的……不要硬安一个「妈妈」；名字也按你的世界起。'
+        : '：至少一个家人、一个多年的朋友、一个工作或日常里常见的人。'
+    }`,
     `- 其中 ${CIRCLE_CHATS} 个人和你最近的聊天：每段 ${CIRCLE_CHAT_LINES} 句左右，你和对方交替，口语、日常（约饭、催你、吐槽、分享、家里的事），像真的手机聊天记录；不写她的事，最多一句旁敲侧击。`,
     '- 不要把她写进名单，也不要写任何真实存在的人。',
     `- 全部用${langName()}写。`,

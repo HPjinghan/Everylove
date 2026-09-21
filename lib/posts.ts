@@ -1,7 +1,8 @@
 /**
  * 发帖调度器（D-055）：让 TA 的 X 时间线活着。
  * - 频率遵循 MBTI（MBTI_POSTS_PER_DAY 映射：E 比 I 话多、P 比 J 随性；无 MBTI 默认 1 条/天），间隔 ±35% 抖动
- * - 与心跳同机制：App 启动 / 回前台补投（deliverDuePosts）；错过再久也只补 1 条（时间线不炸屏）
+ * - 与心跳同机制：App 启动 / 回前台补投（deliverDuePosts）；错过再久也只补 1 条（时间线不炸屏）；
+ *   补投的帖子按**到点的那一刻**落时间（D-162：不是她打开 App 的那一刻——否则几个 TA 会同一秒一起发帖），内容也按那一刻的时段写
  * - 内容由当前引擎生成（人设 + 追法 + 时段 + 天气 + 羁绊记忆；prompt 见 content/prompts/social.ts），
  *   AI 不可用 / 失败 = 这一条不发（记 warn，下个周期再试；D-069 起没有脚本回落）
  * - 她的影子出现多少按分量（D-099）：每条发前 rollAboutHer 掷硬币；最近发过的几条 + 记事本里的日子一起给模型（不重复、同一个人的生活）
@@ -66,9 +67,9 @@ export async function deliverDuePosts(now = Date.now()): Promise<number> {
     if (now < due) continue;
     // 先排下一次的钟：生成失败也不会在每次回前台时反复重试轰炸
     useAppStore.getState().setPostDue(character.id, now + postIntervalMs(character));
-    const text = await generatePostText(character, bond.id);
+    const text = await generatePostText(character, bond.id, new Date(due));
     if (text) {
-      useAppStore.getState().addCharacterPost(character.id, bond.id, text);
+      useAppStore.getState().addCharacterPost(character.id, bond.id, text, due);
       delivered++;
     }
   }
@@ -76,7 +77,7 @@ export async function deliverDuePosts(now = Date.now()): Promise<number> {
 }
 
 /** 引擎生成一条帖子文本；不可用/失败返回 null（这次不发） */
-async function generatePostText(character: Character, bondId: string): Promise<string | null> {
+async function generatePostText(character: Character, bondId: string, at: Date = new Date()): Promise<string | null> {
   const { bonds, posts } = useAppStore.getState();
   const bond = bonds.find((b) => b.id === bondId);
   const recentPosts = posts.filter((p) => p.characterId === character.id).slice(-POST_RECENT).map((p) => p.text);
@@ -84,7 +85,7 @@ async function generatePostText(character: Character, bondId: string): Promise<s
   try {
     const raw = await completeText(
       buildCharacterPostSystem(character, bond),
-      buildCharacterPostUserPrompt(new Date(), { aboutHer: rollAboutHer(character), recentPosts, recentNotes }),
+      buildCharacterPostUserPrompt(at, { aboutHer: rollAboutHer(character), recentPosts, recentNotes }),
       200
     );
     const line = stripStageDirections(splitBubbles(raw, 1, character.name))[0];
@@ -156,6 +157,8 @@ async function reactToPost(post: Post): Promise<void> {
   }
   const comments: PostComment[] = [];
   const now = Date.now();
+  // 评论按帖子时间往后错开几分钟到二十几分钟（D-162），不超过现在
+  const commentAt = (i: number) => Math.min(now, post.at + (i + 1) * (4 + Math.floor(Math.random() * 18)) * 60_000);
   const nameToAuthor = (name: string) => {
     const other = others.find((o) => o.bond.name === name);
     if (other) return { name, characterId: other.c.id };
@@ -176,16 +179,16 @@ async function reactToPost(post: Post): Promise<void> {
     for (const [i, cm] of parsed.comments.slice(0, 3).entries()) {
       const who = nameToAuthor(cm.by);
       if (!who) continue;
-      comments.push({ id: uid('c'), from: 'other', text: cm.text, at: now + i, ...who });
+      comments.push({ id: uid('c'), from: 'other', text: cm.text, at: commentAt(i), ...who });
     }
     if (parsed.reply && comments.length) {
-      comments.push({ id: uid('c'), from: 'him', text: parsed.reply, at: now + comments.length });
+      comments.push({ id: uid('c'), from: 'him', text: parsed.reply, at: commentAt(comments.length) });
     }
   } catch (e) {
     console.warn('[posts] 互动没写成，用通用反应：', e);
     const pool = FALLBACK_REACTIONS[getLang()];
     for (const [i, p] of shuffled.slice(0, 1 + (post.text.length % 2)).entries()) {
-      comments.push({ id: uid('c'), from: 'other', name: p.name, text: pool[(post.text.length * 7 + i * 3) % pool.length], at: now + i });
+      comments.push({ id: uid('c'), from: 'other', name: p.name, text: pool[(post.text.length * 7 + i * 3) % pool.length], at: commentAt(i) });
     }
   }
   useAppStore.getState().addPostComments(post.id, comments);

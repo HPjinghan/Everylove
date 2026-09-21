@@ -17,6 +17,7 @@ import { DEFAULT_LOVE_MODEL, EMPTY_TRAFFIC, type LoveModelId, type Traffic, traf
 import { emptyHisWallet, ledgerEntry, pushLedger } from '@/lib/wallet';
 import { dedupeBonds, legacyBondLevel, levelLabelOf, levelOf, WARMTH_GAINS, WARMTH_START, warmthAfter, xpGain, type XpSource } from '@/lib/bond';
 import { setLang, type Lang } from '@/lib/i18n';
+import { syncAccountLanguage } from '@/lib/auth';
 import { DEFAULT_DOCK, DEFAULT_WALLPAPER, wallpaperTint } from '@/constants/apps';
 import { placeById } from '@/content/places';
 import { appointmentAtLabel, minutesLate, planIsOpen } from '@/lib/appointments';
@@ -224,7 +225,8 @@ interface AppState {
   addMyComment: (postId: string, text: string) => void;
   /** 发帖调度（D-055） */
   setPostDue: (characterId: string, at: number) => void;
-  addCharacterPost: (characterId: string, bondId: string, text: string) => void;
+  /** TA 发一条帖；`at` = 补投时到点的那一刻（D-162），缺省现在 */
+  addCharacterPost: (characterId: string, bondId: string, text: string, at?: number) => void;
   /** TA 的回帖（D-053）：文本由调用方生成（模型或台词库回落），可多次回复 */
   addHisReply: (postId: string, text: string) => void;
   addCustomCharacter: (c: Character) => void;
@@ -272,7 +274,8 @@ interface AppState {
   removeNote: (id: string) => void;
   setNoteDue: (characterId: string, at: number) => void;
   /** TA 往自己的记事本里写一条（lib/his-notes.ts） */
-  addHisNote: (bondId: string, text: string) => void;
+  /** TA 写一条记事本；`at` = 补写时到点的那一刻（D-162），缺省现在 */
+  addHisNote: (bondId: string, text: string, at?: number) => void;
   /**
    * 进入地点开一场外出：该地点有约定 → 赴约（消耗约定）；没有 → 偶遇一位通讯录里的 TA
    * （跳过离席中的；赴约不跳过——TA 说到做到）。没有可遇的人返回 null。
@@ -338,6 +341,7 @@ export const useAppStore = create<AppState>()(
       setLanguage: (l) => {
         setLang(l);
         set({ language: l });
+        void syncAccountLanguage(l); // D-160：登录邮件按账号语言
       },
 
       setIntroDone: () => set({ introDone: true }),
@@ -744,7 +748,7 @@ export const useAppStore = create<AppState>()(
       setPostDue: (characterId, at) =>
         set({ postSchedule: { ...get().postSchedule, [characterId]: at } }),
 
-      addCharacterPost: (characterId, bondId, text) =>
+      addCharacterPost: (characterId, bondId, text, at) =>
         set({
           posts: [
             ...get().posts,
@@ -753,7 +757,7 @@ export const useAppStore = create<AppState>()(
               characterId,
               bondId,
               text,
-              at: Date.now(),
+              at: at ?? Date.now(),
               // 小体量互动数：确定性伪随机（羁绊层帖子的量级，D-055）
               likes: 40 + ((text.length * 37 + characterId.length * 13) % 220),
               liked: false,
@@ -918,11 +922,11 @@ export const useAppStore = create<AppState>()(
         set({ notes: get().notes.map((n) => (n.id === id ? { ...n, text, updatedAt: Date.now() } : n)) }),
       removeNote: (id) => set({ notes: get().notes.filter((n) => n.id !== id) }),
       setNoteDue: (characterId, at) => set({ noteSchedule: { ...get().noteSchedule, [characterId]: at } }),
-      addHisNote: (bondId, text) =>
+      addHisNote: (bondId, text, at) =>
         set({
           bonds: get().bonds.map((b) =>
             b.id === bondId
-              ? { ...b, notes: [...(b.notes ?? []), { id: uid('hn'), text, at: Date.now() }].slice(-30) }
+              ? { ...b, notes: [...(b.notes ?? []), { id: uid('hn'), text, at: at ?? Date.now() }].slice(-30) }
               : b
           ),
         }),

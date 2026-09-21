@@ -1,5 +1,5 @@
 /**
- * 账号（D-054）：Supabase 认证——Apple 登录 + 邮箱验证码（OTP，无密码，省掉整条「忘记密码」流）。
+ * 账号（D-054）：Supabase 认证——Apple 登录 + 邮箱验证码（OTP 6 位、无密码，省掉整条「忘记密码」流；邮件模板在 Supabase 后台，按账号语言分四语，D-160）。
  * 注册不是门，是保险箱：游客 = 纯本地（默认体验完全不变），登录只为云备份/跨设备（lib/sync.ts）。
  * 游客身份（D-088）：没本地 AI key 的分发包要走服务端代理，代理按人限量——所以没登录时悄悄匿名登录一次
  * 拿个 JWT（Supabase Anonymous sign-ins）。匿名会话**不算登录**：登录墙 / 云备份 / 共享池只认 isSignedIn。
@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 
 import { CONFIG } from '@/core/config';
+import type { Lang } from '@/lib/i18n';
 
 export const SUPABASE_URL = CONFIG.supabaseUrl;
 export const SUPABASE_ANON_KEY = CONFIG.supabaseAnonKey;
@@ -117,14 +118,29 @@ export async function signInWithApple(): Promise<Session> {
   return data.session!;
 }
 
-export async function sendEmailOtp(email: string): Promise<void> {
+/**
+ * 发邮箱验证码（D-160）：邮件正文由 Supabase 模板按 user_metadata.lang 分四语（中 / 英 / 日 / 韩，缺省英文）——
+ * 新用户在这里第一次写进去；老用户的靠 syncAccountLanguage 在登录后 / 切语言时更新，所以换设备第一封可能还是上次的语言。
+ */
+export async function sendEmailOtp(email: string, lang: Lang): Promise<void> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase 未配置');
   const { error } = await sb.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true },
+    options: { shouldCreateUser: true, data: { lang } },
   });
   if (error) throw error;
+}
+
+/** 把界面语言写进账号资料（user_metadata.lang），邮件模板按它选语言；匿名会话 / 已一致 / 失败都静默 */
+export async function syncAccountLanguage(lang: Lang): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const session = await currentSession();
+  if (!isSignedIn(session)) return;
+  if (session.user.user_metadata?.lang === lang) return;
+  const { error } = await sb.auth.updateUser({ data: { lang } });
+  if (error) console.warn('[auth] 账号语言未同步：', error.message);
 }
 
 export async function verifyEmailOtp(email: string, code: string): Promise<Session> {

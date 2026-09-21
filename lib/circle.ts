@@ -18,6 +18,7 @@ import {
   CIRCLE_MAX,
   CIRCLE_REFRESH_MAX,
   CIRCLE_REFRESH_LINES_MAX,
+  isNonhumanCharacter,
   parseCircleChatsJSON,
   parseCircleJSON,
   type ParsedCircleChat,
@@ -50,8 +51,66 @@ export function circleLastAt(chats: Record<string, CircleLine[]> | undefined): n
   return last;
 }
 
+type FallbackPack = { people: { name: string; relation: string; note: string }[]; chats: Record<string, string[]> };
+
+/** 非人类的通用圈子（D-161）：没有「妈妈」，都是世界里说得通的关系 */
+const FALLBACK_NONHUMAN: Record<Lang, FallbackPack> = {
+  zh: {
+    people: [
+      { name: '老周', relation: '多年的老友', note: '认识很久了，话不多，来了就坐一会儿' },
+      { name: '阿宁', relation: '常照面的邻居', note: '总在门口晒东西，见了就聊两句' },
+      { name: '小柳', relation: '跟着我的小辈', note: '话多，什么都想学' },
+      { name: '陈叔', relation: '常来的访客', note: '每回都带点吃的' },
+    ],
+    chats: {
+      老周: ['今晚过来？', '看情况，这几天有点事', '有事就算了，下回', '嗯，下回我去找你'],
+      阿宁: ['门口那盆花你浇了没', '浇了，早上', '行，我看着挺精神', '你眼力好'],
+      小柳: ['那个我还是不会', '慢慢来，不急', '你上次说三天就会', '我说的是我'],
+    },
+  },
+  en: {
+    people: [
+      { name: 'Wen', relation: 'old friend', note: 'known each other forever; sits a while, says little' },
+      { name: 'Ada', relation: 'neighbor', note: 'always out front; we trade a few words' },
+      { name: 'Kit', relation: 'the young one who tags along', note: 'talks a lot, wants to learn everything' },
+      { name: 'Mr. Hale', relation: 'a regular visitor', note: 'never shows up empty-handed' },
+    ],
+    chats: {
+      Wen: ['Coming by tonight?', 'Depends, got some things on', 'Then next time', 'Yeah, I will come to you'],
+      Ada: ['Did you water the pot out front', 'This morning', 'Good, it looks lively', 'You have a good eye'],
+      Kit: ['I still cannot do that thing', 'Take your time', 'You said three days', 'I meant for me'],
+    },
+  },
+  ja: {
+    people: [
+      { name: '周さん', relation: '長年の友人', note: '付き合いは長い。口数は少なく、来ると少し座っていく' },
+      { name: 'ネイ', relation: '近所の人', note: 'いつも表にいて、会えば二言三言' },
+      { name: 'コウ', relation: 'ついてくる後輩', note: 'よく喋る。なんでも覚えたがる' },
+      { name: '陳さん', relation: 'よく来る客', note: '毎回なにか食べ物を持ってくる' },
+    ],
+    chats: {
+      周さん: ['今夜来る？', '状況次第。ここ数日ちょっと用がある', 'なら今度で', 'うん、今度はこっちから行く'],
+      ネイ: ['表の鉢、水やった？', 'やった、朝に', 'なら元気そうでいい', '目がいいね'],
+      コウ: ['あれ、まだできない', 'ゆっくりでいい', '三日でできるって言ったのに', '自分の話だよ'],
+    },
+  },
+  ko: {
+    people: [
+      { name: '지호', relation: '오랜 친구', note: '오래 알았고 말수가 적다. 오면 잠깐 앉아 있다 간다' },
+      { name: '아린', relation: '자주 마주치는 이웃', note: '늘 문 앞에 나와 있어서 몇 마디씩 한다' },
+      { name: '소율', relation: '따라다니는 후배', note: '말이 많고 뭐든 배우고 싶어 한다' },
+      { name: '진 아저씨', relation: '단골 손님', note: '올 때마다 먹을 걸 들고 온다' },
+    ],
+    chats: {
+      지호: ['오늘 밤 올래?', '봐서. 요 며칠 일이 좀 있어', '그럼 다음에', '응, 다음엔 내가 갈게'],
+      아린: ['문 앞 화분 물 줬어?', '줬어, 아침에', '그래서 생생하구나', '눈썰미 좋네'],
+      소율: ['그거 아직도 못 하겠어', '천천히 해', '사흘이면 된다며', '내 얘기였지'],
+    },
+  },
+};
+
 /** 通用圈子（写不成时的回落）：名字按语言，关系与聊天模板各一套 */
-const FALLBACK: Record<Lang, { people: { name: string; relation: string; note: string }[]; chats: Record<string, string[]> }> = {
+const FALLBACK: Record<Lang, FallbackPack> = {
   zh: {
     people: [
       { name: '妈', relation: '妈妈', note: '隔三差五打电话问吃了没' },
@@ -106,8 +165,8 @@ const FALLBACK: Record<Lang, { people: { name: string; relation: string; note: s
   },
 };
 
-function fallbackCircle(lang: Lang): { circle: CirclePerson[]; chats: Record<string, CircleLine[]> } {
-  const pack = FALLBACK[lang];
+export function fallbackCircle(lang: Lang, nonhuman = false): { circle: CirclePerson[]; chats: Record<string, CircleLine[]> } {
+  const pack = (nonhuman ? FALLBACK_NONHUMAN : FALLBACK)[lang];
   const now = Date.now();
   const circle: CirclePerson[] = pack.people.map((p) => ({ id: uid('cp'), ...p }));
   const chats: Record<string, CircleLine[]> = {};
@@ -140,7 +199,8 @@ export async function ensureCircle(bondId: string): Promise<CirclePerson[]> {
       return built.circle;
     }
     if (bond.circle?.length) return bond.circle;
-    const fb = fallbackCircle(getLang());
+    const character = findCharacter(bond.characterId);
+    const fb = fallbackCircle(getLang(), character ? isNonhumanCharacter(character) : false);
     useAppStore.getState().setCircle(bondId, fb.circle, fb.chats, true);
     return fb.circle;
   } finally {
@@ -246,7 +306,7 @@ async function generateCircle(bond: Bond): Promise<{ circle: CirclePerson[]; cha
         recentNotes: (bond.notes ?? []).slice(-4).map((n) => n.text),
         recentPosts: posts.filter((p) => p.characterId === character.id).slice(-3).map((p) => p.text),
       }),
-      1800
+      2400
     );
     const parsed = parseCircleJSON(raw);
     if (!parsed) return null;

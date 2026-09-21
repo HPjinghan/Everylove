@@ -16,13 +16,15 @@ import {
   parseCircleJSON,
   parseCircleChatsJSON,
   buildCircleRefreshUser,
+  buildCircleSystem,
   hisScheduleBlock,
+  isNonhumanCharacter,
   parseHisScheduleJSON,
   parseReactionsJSON,
   pickOutingOpener,
 } from '@/content/prompts';
 import { dedupeBonds } from '@/lib/bond';
-import { circleLastAt, circleRefreshIntervalMs, mergeCircleChats } from '@/lib/circle';
+import { circleLastAt, circleRefreshIntervalMs, fallbackCircle, mergeCircleChats } from '@/lib/circle';
 import { outsideQuiet } from '@/lib/reach-out';
 import { setLang } from '@/lib/i18n';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -35,6 +37,31 @@ beforeEach(() => {
 });
 
 describe('身边的人', () => {
+  it('非人类的名单不硬安「妈妈」（D-161）：prompt 分人类 / 非人类两句；通用回落也有非人类版', () => {
+    const human = buildCircleSystem({ ...custom, archetype: 'gentle', race: undefined }, undefined);
+    expect(human).toContain('至少一个家人');
+    expect(human).not.toContain('不要硬安一个「妈妈」');
+    const dragon = buildCircleSystem({ ...custom, archetype: 'nonhuman', race: '龙族' }, undefined);
+    expect(dragon).toContain('不要硬安一个「妈妈」');
+    expect(dragon).not.toContain('至少一个家人');
+    expect(isNonhumanCharacter({ archetype: 'gentle', race: '人类' })).toBe(false);
+    expect(isNonhumanCharacter({ archetype: 'gentle', race: '机器人' })).toBe(true);
+    for (const lang of ['zh', 'en', 'ja', 'ko'] as const) {
+      const fb = fallbackCircle(lang, true);
+      expect(fb.circle).toHaveLength(4);
+      expect(fb.circle.some((p) => /妈|mother|母|엄마/i.test(p.relation))).toBe(false);
+      expect(Object.keys(fb.chats)).toHaveLength(3);
+      expect(fallbackCircle(lang).circle.some((p) => /妈|mother|母|엄마/i.test(p.relation))).toBe(true);
+    }
+  });
+  it('补投的帖子 / 记事本按到点那一刻落时间（D-162）', () => {
+    const s = useAppStore.getState();
+    const at = NOW.getTime() - 5 * 3600_000;
+    s.addCharacterPost('shen-zhiyan', 'b1', '补投的一条', at);
+    expect(useAppStore.getState().posts.at(-1)?.at).toBe(at);
+    s.addCharacterPost('shen-zhiyan', 'b1', '现在的一条');
+    expect(useAppStore.getState().posts.at(-1)!.at).toBeGreaterThan(at);
+  });
   it('解析模型 JSON：名单 + 聊天；坏结构返回 null', () => {
     const parsed = parseCircleJSON(
       '好的：{"people":[{"name":"阿哲","relation":"发小","note":"损友"},{"name":"妈","relation":"妈妈"}],"chats":[{"name":"阿哲","lines":[{"from":"them","text":"晚上打球？"},{"from":"me","text":"不去"}]}]}'
