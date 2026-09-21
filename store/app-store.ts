@@ -341,7 +341,7 @@ export const useAppStore = create<AppState>()(
       setLanguage: (l) => {
         setLang(l);
         set({ language: l });
-        void syncAccountLanguage(l); // D-160：登录邮件按账号语言
+        void syncAccountLanguage(l); // D-163：登录邮件按账号语言
       },
 
       setIntroDone: () => set({ introDone: true }),

@@ -231,7 +231,7 @@ export function initCloudSync(): () => void {
 
   const unsubAuth = onAuthChange((session) => {
     if (!isSignedIn(session)) return;
-    void syncAccountLanguage(useAppStore.getState().language); // D-160：邮件按账号语言
+    void syncAccountLanguage(useAppStore.getState().language); // D-163：邮件按账号语言
     void reconcileNow();
   });
 
