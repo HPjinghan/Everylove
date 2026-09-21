@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import '@/features';
 
-import { applyReplyMarkers, bubbleStyleOf, buildTurns, HISTORY_ROUNDS, splitBubbles, splitByClauses, stripStageDirections } from '@/lib/engine';
+import { applyReplyMarkers, bubbleStyleOf, buildTurns, HISTORY_ROUNDS, splitBubbles, splitByClauses, splitBySpaces, stripStageDirections } from '@/lib/engine';
 import { stripTrailingPeriod } from '@/lib/text';
 import { history, NOW } from './fixtures';
 
@@ -98,6 +98,18 @@ describe('说话节奏：连发（D-155）', () => {
   it('splitBubbles 按节奏走：连发时模型分好的段再拆、总数封顶四条；整句照旧最多两条', () => {
     expect(splitBubbles('哈哈哈，我知道了，下次。\n\n你呢，还在画？别熬太晚。', 4, undefined, 'burst')).toEqual(['哈哈哈', '我知道了', '下次', '你呢 还在画？ 别熬太晚']);
     expect(splitBubbles('哈哈哈，我知道了，下次。', 2)).toEqual(['哈哈哈，我知道了，下次。']);
+  });
+  it('空格断句（D-159）：中文之间的空格每个一条、上限四条并进最后一条；英文词间与数字旁的空格不动；一条气泡的模式不拆', () => {
+    expect(splitBySpaces('哈哈哈 我知道了 下次')).toEqual(['哈哈哈', '我知道了', '下次']);
+    expect(splitBySpaces('到家了？ 嗯　我也刚到')).toEqual(['到家了？', '嗯', '我也刚到']);
+    expect(splitBySpaces('花了 5.20 块 还行')).toEqual(['花了 5.20 块', '还行']);
+    expect(splitBySpaces('Just got home, the cat was waiting')).toEqual(['Just got home, the cat was waiting']);
+    expect(splitBySpaces('我在看 Dune 第二部')).toEqual(['我在看 Dune 第二部']);
+    expect(splitBubbles('哈哈哈 我知道了 下次', 2)).toEqual(['哈哈哈', '我知道了', '下次']);
+    expect(splitBubbles('好啊 行吧 可以 没问题 走吧 明天', 2)).toEqual(['好啊', '行吧', '可以', '没问题 走吧 明天']);
+    expect(splitBubbles('哈哈哈 我知道了，下次', 4, undefined, 'burst')).toEqual(['哈哈哈', '我知道了', '下次']);
+    expect(splitBubbles('哈哈哈 我知道了 下次', 1)).toEqual(['哈哈哈 我知道了 下次']);
+    expect(splitBubbles('嗯，我刚到家，猫在门口等我。你呢，还在画？别熬太晚。', 2)).toEqual(['嗯，我刚到家，猫在门口等我。', '你呢，还在画？别熬太晚。']);
   });
   it('节奏判定：角色自己设的 > 恋爱类型 > 原型（毒舌家族连发）', () => {
     expect(bubbleStyleOf({ archetype: 'gentle' })).toBe('flow');

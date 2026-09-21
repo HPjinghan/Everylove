@@ -147,18 +147,27 @@ export function buildTurns(history: ChatMessage[], userText: string): ChatTurn[]
 
 /**
  * 把模型回复拆成气泡（D-137：分段在客户端做，不指望模型自己用空行）：
- * 1. 先按空行拆（模型自己分好的照用）；2. 还没拆到 max 条就按句子拆——两句以上的回复在句末标点处断开，长度尽量均衡；
+ * 1. 先按空行拆（模型自己分好的照用）；1.5 中文之间的空格也当它自己分好的段（D-159「哈哈哈 我知道了 下次」→ 三条，上限放到连发的四条）；
+ * 2. 还没拆到 max 条就按句子拆——两句以上的回复在句末标点处断开，长度尽量均衡；
  * 初识 / 外出 / 通话 max = 1 不拆。顺手去掉模型偶尔加的名字前缀（「沈之言：」）与包裹引号。
  */
 export function splitBubbles(text: string, max: number, name?: string, style: 'flow' | 'burst' = 'flow'): string[] {
-  const cap = Math.max(1, max);
-  const parts = text
+  let cap = Math.max(1, max);
+  let parts = text
     .split(/\n\s*\n/)
     .map((t) => t.trim())
     .map((t) => (name && t.startsWith(name) ? t.replace(/^[^：:]*[：:]\s*/, '') : t))
     .map((t) => t.replace(/^[「"“]([\s\S]*)[」"”]$/, '$1').trim())
-    .filter(Boolean)
-    .slice(0, cap);
+    .filter(Boolean);
+  if (cap > 1) {
+    const spaced = parts.flatMap(splitBySpaces);
+    if (spaced.length > parts.length) {
+      // 模型用空格断的句：每个空格一条，多出上限的并进最后一条（不丢字）
+      cap = Math.max(cap, BURST_MAX_BUBBLES);
+      parts = spaced.length <= cap ? spaced : [...spaced.slice(0, cap - 1), spaced.slice(cap - 1).join(' ')];
+    }
+  }
+  parts = parts.slice(0, cap);
   // 连发（D-155）：模型分好的每段再按标点拆，总数封顶
   if (style === 'burst' && cap > 1) {
     const all = parts.flatMap((p) => splitByClauses(p, cap));
@@ -168,8 +177,45 @@ export function splitBubbles(text: string, max: number, name?: string, style: 'f
   return splitBySentences(parts[0], cap);
 }
 
-/** 连发最多几条（D-155） */
+/** 连发最多几条（D-155）；空格断句也封顶在这 */
 export const BURST_MAX_BUBBLES = 4;
+
+const CJK_RE = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/;
+/** 空格前允许的收尾标点、空格后允许的起头标点：「到家了？ 嗯」「好 「行」」都算中文之间的空格 */
+const CLOSE_PUNCT = /[。！？…～!?」』）)"”'’]/;
+const OPEN_PUNCT = /[「『（("“'‘]/;
+
+/**
+ * 空格断句（D-159，Harper：「他回复我的时候如果用空格，你也直接断句发送」）：
+ * 只在**中文（CJK）之间**的空格处断——「哈哈哈 我知道了 下次」→ 三条；英文词间、「花了 5.20 块」这种数字旁的空格不动。
+ */
+export function splitBySpaces(text: string): string[] {
+  const chars = [...text];
+  const out: string[] = [];
+  let cur = '';
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    if (ch !== ' ' && ch !== '\u3000') {
+      cur += ch;
+      continue;
+    }
+    let j = i;
+    while (j < chars.length && (chars[j] === ' ' || chars[j] === '\u3000')) j++;
+    const before = cur.replace(new RegExp(`${CLOSE_PUNCT.source}+$`), '').slice(-1);
+    let k = j;
+    while (k < chars.length && OPEN_PUNCT.test(chars[k])) k++;
+    const after = chars[k] ?? '';
+    if (before && after && CJK_RE.test(before) && CJK_RE.test(after)) {
+      out.push(cur.trim());
+      cur = '';
+    } else {
+      cur += ' ';
+    }
+    i = j - 1;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out.length ? out : [text.trim()].filter(Boolean);
+}
 
 /** 说话节奏（D-155）：角色自己设的 > 恋爱类型的 > 原型（毒舌家族连发，其余整句） */
 export function bubbleStyleOf(c: Pick<Character, 'bubbleStyle' | 'loveStyle' | 'archetype'>): 'flow' | 'burst' {
