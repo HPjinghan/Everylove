@@ -99,12 +99,14 @@ describe('说话节奏：连发（D-155）', () => {
     expect(splitBubbles('哈哈哈，我知道了，下次。\n\n你呢，还在画？别熬太晚。', 4, undefined, 'burst')).toEqual(['哈哈哈', '我知道了', '下次', '你呢 还在画？ 别熬太晚']);
     expect(splitBubbles('哈哈哈，我知道了，下次。', 2)).toEqual(['哈哈哈，我知道了，下次。']);
   });
-  it('空格断句（D-159）：中文之间的空格每个一条、上限四条并进最后一条；英文词间与数字旁的空格不动；一条气泡的模式不拆', () => {
+  it('空格断句（D-159）：中文 / 日文之间的空格每个一条、上限四条并进最后一条；英文与韩语词间、数字旁的空格不动；一条气泡的模式不拆', () => {
     expect(splitBySpaces('哈哈哈 我知道了 下次')).toEqual(['哈哈哈', '我知道了', '下次']);
     expect(splitBySpaces('到家了？ 嗯　我也刚到')).toEqual(['到家了？', '嗯', '我也刚到']);
     expect(splitBySpaces('花了 5.20 块 还行')).toEqual(['花了 5.20 块', '还行']);
     expect(splitBySpaces('Just got home, the cat was waiting')).toEqual(['Just got home, the cat was waiting']);
     expect(splitBySpaces('我在看 Dune 第二部')).toEqual(['我在看 Dune 第二部']);
+    expect(splitBySpaces('はは わかった 今度ね')).toEqual(['はは', 'わかった', '今度ね']);
+    expect(splitBySpaces('오늘 뭐 했어? 나는 집에 왔어')).toEqual(['오늘 뭐 했어? 나는 집에 왔어']);
     expect(splitBubbles('哈哈哈 我知道了 下次', 2)).toEqual(['哈哈哈', '我知道了', '下次']);
     expect(splitBubbles('好啊 行吧 可以 没问题 走吧 明天', 2)).toEqual(['好啊', '行吧', '可以', '没问题 走吧 明天']);
     expect(splitBubbles('哈哈哈 我知道了，下次', 4, undefined, 'burst')).toEqual(['哈哈哈', '我知道了', '下次']);

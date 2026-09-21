@@ -180,14 +180,15 @@ export function splitBubbles(text: string, max: number, name?: string, style: 'f
 /** 连发最多几条（D-155）；空格断句也封顶在这 */
 export const BURST_MAX_BUBBLES = 4;
 
-const CJK_RE = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/;
+/** 中文与日文（汉字 / 假名、半角假名）——韩文不在内：韩语本来就靠空格分词，不能按空格断 */
+const CJ_RE = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uff66-\uff9f]/;
 /** 空格前允许的收尾标点、空格后允许的起头标点：「到家了？ 嗯」「好 「行」」都算中文之间的空格 */
 const CLOSE_PUNCT = /[。！？…～!?」』）)"”'’]/;
 const OPEN_PUNCT = /[「『（("“'‘]/;
 
 /**
  * 空格断句（D-159，Harper：「他回复我的时候如果用空格，你也直接断句发送」）：
- * 只在**中文（CJK）之间**的空格处断——「哈哈哈 我知道了 下次」→ 三条；英文词间、「花了 5.20 块」这种数字旁的空格不动。
+ * 只在**中文 / 日文之间**的空格处断——「哈哈哈 我知道了 下次」「はは わかった 今度ね」→ 三条；英文词间、韩语词间、「花了 5.20 块」这种数字旁的空格不动。
  */
 export function splitBySpaces(text: string): string[] {
   const chars = [...text];
@@ -205,7 +206,7 @@ export function splitBySpaces(text: string): string[] {
     let k = j;
     while (k < chars.length && OPEN_PUNCT.test(chars[k])) k++;
     const after = chars[k] ?? '';
-    if (before && after && CJK_RE.test(before) && CJK_RE.test(after)) {
+    if (before && after && CJ_RE.test(before) && CJ_RE.test(after)) {
       out.push(cur.trim());
       cur = '';
     } else {
