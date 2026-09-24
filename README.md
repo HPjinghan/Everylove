@@ -5,17 +5,22 @@
 
 ## 跑起来（iPhone + Expo Go）
 
-1. 手机装 **Expo Go**（App Store，需支持 SDK 54 的版本）。
+1. 手机装 **Expo Go**（App Store，需支持 SDK 57 的版本）。
 2. 电脑和手机连同一个 Wi-Fi。
 3. 项目目录下：
 
    ```bash
    npm install
-   npx expo start
+   npx expo start --go
    ```
 
 4. 用 iPhone 相机扫终端里的二维码，在 Expo Go 中打开。
-   局域网不通时改用 `npx expo start --tunnel`。
+   局域网不通时改用 `npx expo start --go --tunnel`。
+   工程里装了 expo-dev-client（D-165），`npx expo start` 默认连 dev build；给 Expo Go 用要带 `--go`，或在终端里按 `s` 切换。
+
+## Dev build（开发者真机调试）
+
+Expo Go 跑不了的原生能力（分享扩展、之后的实时语音 / 远程推送）用 dev build 调：`eas.json` 的 `development` 档打一个 ad-hoc 包装到自己的 iPhone，再 `npx expo start` 连上。设备注册、首次打包与安装步骤见 `docs/RELEASE.md` §4。
 
 ## 试装怎么玩（首十分钟闭环）
 

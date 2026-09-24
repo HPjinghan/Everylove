@@ -7,6 +7,8 @@
 | Expo Go 试装 | 朋友，免安装包 | `npx eas-cli update --channel preview --message "..."` | `preview` |
 | TestFlight | 正式测试 | `eas build` → `eas submit`（下文） | `production` |
 
+开发者自己真机调试用的 dev build **不是分发通道**，见 §4（D-165）。
+
 所有命令在项目根目录跑；`eas-cli` 不用全局装，`npx eas-cli@latest ...` 即可。
 
 ## 0. 前置条件（一次性）
@@ -89,3 +91,14 @@ npx eas-cli submit -p ios --latest --profile production
 - **动了 `app.json` 插件、原生依赖（新的 expo-* 原生模块、react-native-maps 之类）、SDK**：必须重新 `build` + `submit`，**不要**只推 update（runtimeVersion 用的是 sdkVersion 策略，同 runtime 的旧包会拿到不兼容的 JS）。
 - 朋友的 Expo Go 试装照旧 `--channel preview`，两个渠道互不影响。
 - **升过 SDK 之后（D-102，54 → 57）**：runtime 从 `exposdk:54.0.0` 变成 `exposdk:57.0.0`——TestFlight 必须新 `build` + `submit`；Expo Go 那边朋友的 Expo Go 也得是 57，再 `eas update --channel preview` 一次新 runtime 的包，老 runtime 的 update 他们看不到。
+
+## 4. Dev build（开发者真机调试，D-165）
+
+Expo Go 跑不了的原生能力（分享扩展、之后的实时语音 / 远程推送）在 dev build 里调。它是**开发者自己装的包，不是分发通道**：`eas.json` 的 `development` 档 = dev client + ad-hoc internal 分发，只能装到注册过 UDID 的 iPhone；Windows 上没有 iOS 模拟器，只能真机。
+
+- **账号**：`npx eas-cli whoami` 的 Accounts 里要有 `harperzs-team`；不在组织里就先接受邀请，或在 PowerShell 里 `$env:EXPO_TOKEN = '<token>'` 再跑（eas-cli 只读环境变量，不读 `.env.local`；用 token 跑的操作以 token 主人的身份记录）。
+- **注册设备（每台新机一次）**：`npx eas-cli device:create` → 选公司第二个 Apple Team → 选「Website」出一个链接 / 二维码 → 用 iPhone 打开、装描述文件，UDID 即注册。
+- **打包**：`npx eas-cli build --profile development --platform ios`。第一次交互式跑：Apple 登录（2FA）→ 让 EAS 生成 ad-hoc 描述文件（已注册的设备会写进去）→ 分享扩展的描述文件同样生成（App Groups，见 §1 的 2026-09-11 记录）。**之后每注册一台新设备都要重新打包**，描述文件里才有它。
+- **安装**：构建页的二维码 / 链接在 iPhone 上打开即装。bundle id 与正式包相同，和 TestFlight 装的那个不能共存：先删旧的再装，本机存档会丢，登录后从云端恢复。
+- **跑起来**：项目目录 `npx expo start`（默认就是 dev build 模式，Metro 读 `.env.local`）→ 相机扫码在 dev build 里打开；局域网不通加 `--tunnel`。改 JS 热重载；**动了原生依赖 / app.json 插件要重新打 dev build**。
+- **对别人的影响**：装了 expo-dev-client 后 `npx expo start` 默认连 dev build，Expo Go 试装要 `npx expo start --go`（或终端里按 `s` 切换）；production 的 release 构建不含 dev client，下一次 TestFlight 包照常打，不用为它单独 build。

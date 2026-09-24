@@ -1,7 +1,7 @@
 # DECISIONS.md — 现行决策总账（按主题合并）
 
 > **怎么用**：一个主题一条，只写**现在的口径**；被推翻、已下线的不保留（2026-09-15 Harper：「已废弃的删掉」）——要看历史，D-001～D-096 的逐条原文在 `docs/archive/DECISIONS-log-2026-08-13_09-06.md`，之后的查 git 历史。
-> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-165**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换、旧的直接删（索引里被推翻的编号也删）；整个机制下线 = 连条目一起删；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
+> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-166**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换、旧的直接删（索引里被推翻的编号也删）；整个机制下线 = 连条目一起删；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
 > 代码注释里的 D-编号一律按索引表查；索引里没有的编号 = 已废弃的决策（原文在存档或 git）；D-087 / D-088 各撞号一次，用 a / b 区分。
 
 ## 编号索引
@@ -110,6 +110,7 @@
 | D-125 | 09-15 | TestFlight 公测前：默认语言 English（没选过语言的新装机一打开就是英文，测试环境钉回中文）；onboarding 第一屏「已有账号？去登录」提到语言按钮正下方做成 outline 按钮、English 排第一 | H2 / G1 |
 | D-126 | 09-15 | 亲密度数值体系：心动改模型判（数值与措辞现为 D-157）；XP 来源表 15 种 + 当天递减 + 日上限 150；等级 = XP 门槛 100/200/300/500/900 × 天数下限 0/3/7/21/60，只升不降；温度 0–100 每天 −8，疏远降频、到 0 停主动进推送召回（7 / 14 / 30 天各一条后停） | D1 / D2 / D7 / D8 |
 | D-149 | 09-17 | 传记落地：桌面「传记」App（只看）——已缔结 TA 的传记按章读、章按羁绊 LV 锁、章末打赏 Coin（读者扣零钱、kind tip；Coin 仍不售卖，分成另算）；创造 App 改列表模式（右下角 + 进创建流程），表单拆分页签（基础 / 形象 / 设定 / 台词 / 传记），传记页签 = 章节编辑器（文字块 + 图片块：上传 / gif / 现场生图走玩家流量；每章设开放 LV）；六位种子中 / 英各两章内置，日 / 韩待写手；图片不进共享池（存储待接 #36） | E7 / E2 |
+| D-165 | 09-22 | dev build 通道：`eas.json` 加 `development` 档（dev client + ad-hoc internal 分发，channel / environment = development）、装 expo-dev-client ~57.0.19；只给开发者真机调 Expo Go 跑不了的原生能力，不是分发通道；装后 Expo Go 要 `npx expo start --go`；AGENTS.md / README 残留的 SDK 54 改 57 | A2 |
 | D-164 | 09-21 | 全项目不再用系统弹窗：`showAlert(title, body?, buttons?)` 与 `Alert.alert` 同签名，宿主 `SheetHost` 挂根布局——无按钮 = 通知卡（一颗「好」）、一个非取消按钮 = 确认卡、两个以上 = 动作卡，连弹排队；53 处 `Alert.alert` 全部换掉 | H3 |
 | D-163 | 09-21 | 邮箱登录 = 6 位验证码（Supabase 后台：Magic link / Confirm sign up 两封模板改发 `{{ .Token }}`、OTP 长度 8 → 6）；登录邮件按账号语言分四语（模板 Go 条件按 `user_metadata.lang`，App 发码时写入、登录后与切语言时 `syncAccountLanguage` 同步） | G2 |
 | D-162 | 09-21 | 补投的帖子 / 记事本按到点那一刻落时间、内容按那一刻的时段写（不是打开 App 的那一秒，几个 TA 不再同时发帖）；评论按帖子时间往后错开几分钟到二十几分钟 | F3 / F6 |
@@ -172,7 +173,8 @@
 
 ### A2 · 分发：Expo Go 试装 / TestFlight
 - **现行**：两条通道。**Expo Go 朋友试装 = EAS Update `preview` 渠道**（项目 @harperz/everylove，runtimeVersion 走 sdkVersion 策略（D-102 起 = 57，升 SDK 后 preview / production 两个渠道都要在新 runtime 下重新 build / update，老包收不到）；发布前置空 AI key，分发包只带 Supabase 公开配置，AI 走服务端代理）。**TestFlight 正式测试 = EAS Build `production` 档 → `eas submit`**（`eas.json`：channel production、构建号远程自增、`ascAppId` 已记、`--auto-submit` 可无人值守；bundle id `com.kotoko.everylove`；Apple Team = 公司第二个组织账号，App Store Connect 记录设限制访问；构建号 3 已在 TestFlight）。**纪律**：动了 app.json 插件 / 原生依赖必须重新 build + submit，不能只 `eas update --channel production`；`.env.local` 被 gitignore 天然不进构建，Supabase 公开配置放 EAS 环境变量 production；Supabase Apple provider 的 Client IDs 含 bundle id 与 `host.exp.Exponent`。操作手册 `docs/RELEASE.md`。
-- **编号**：D-059、D-087a（含补记）。
+- **dev build（D-165，2026-09-22）**：第三条通道，**只给开发者、不分发**——`eas.json` 加 `development` 档（`developmentClient: true`、`distribution: internal`、channel 与 environment 都叫 development），装 `expo-dev-client`（~57.0.19；app.json 不用加插件；连带 expo-json-utils / expo-manifests / expo-updates-interface 57.0.1 → 57.0.2）。用途 = 真机调 Expo Go 跑不了的原生能力（分享扩展 D-117、之后的实时语音 #26 / 远程推送 #10）；日常开发仍是 Expo Go。ad-hoc 只能装到注册过 UDID 的 iPhone：`npx eas-cli device:create`（公司第二个 Apple Team）注册，首次打包交互式跑让 EAS 生成 ad-hoc 描述文件（分享扩展的 App Groups 同 2026-09-11 记录），新注册设备后要重新打包；bundle id 与正式包相同，和 TestFlight 装的那个不能共存。装了 expo-dev-client 后 `npx expo start` 默认连 dev build，Expo Go 试装要 `--go`；production 的 release 构建不含 dev client，下一次 TestFlight 包照常打。Windows 上没有 iOS 模拟器，只能真机。步骤见 `docs/RELEASE.md` §4。
+- **编号**：D-059、D-087a（含补记）、D-165。
 
 ### A3 · 底座与插槽（core/ + features/）；测试安全网
 - **D-110 补**：`tests/d110.test.ts`（身边的人注入 / 偶遇记忆 / X 互动解析 / 日历任何年份 / 开场白不重复 / 缔结快照 / 私密日历心跳 / TA 作息 / 勿扰读设置）、`tests/reach-out.test.ts`；`expo-notifications` / `expo-share-intent` 在 setup 里桩掉；`turn.test` 的模型失败用例改为「不写进会话」。**模型调用失败的露出方式**（D-069 → D-110）：不再作为系统消息落进会话（删不掉、也不该留在记录里），改为顶部轻提示停 1 秒（`showToast(text, { durationMs })`，`TURN_ERROR_TOAST_MS`）——回合管线、她的语音 / 照片识别失败、X 回帖失败同一口径；`TurnUi.quiet` 可静默（外出开场白回落模板时用）。
