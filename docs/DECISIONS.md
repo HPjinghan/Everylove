@@ -1,7 +1,7 @@
 # DECISIONS.md — 现行决策总账（按主题合并）
 
 > **怎么用**：一个主题一条，只写**现在的口径**；被推翻、已下线的不保留（2026-09-15 Harper：「已废弃的删掉」）——要看历史，D-001～D-096 的逐条原文在 `docs/archive/DECISIONS-log-2026-08-13_09-06.md`，之后的查 git 历史。
-> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-166**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换、旧的直接删（索引里被推翻的编号也删）；整个机制下线 = 连条目一起删；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
+> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-167**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换、旧的直接删（索引里被推翻的编号也删）；整个机制下线 = 连条目一起删；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
 > 代码注释里的 D-编号一律按索引表查；索引里没有的编号 = 已废弃的决策（原文在存档或 git）；D-087 / D-088 各撞号一次，用 a / b 区分。
 
 ## 编号索引
@@ -110,6 +110,7 @@
 | D-125 | 09-15 | TestFlight 公测前：默认语言 English（没选过语言的新装机一打开就是英文，测试环境钉回中文）；onboarding 第一屏「已有账号？去登录」提到语言按钮正下方做成 outline 按钮、English 排第一 | H2 / G1 |
 | D-126 | 09-15 | 亲密度数值体系：心动改模型判（数值与措辞现为 D-157）；XP 来源表 15 种 + 当天递减 + 日上限 150；等级 = XP 门槛 100/200/300/500/900 × 天数下限 0/3/7/21/60，只升不降；温度 0–100 每天 −8，疏远降频、到 0 停主动进推送召回（7 / 14 / 30 天各一条后停） | D1 / D2 / D7 / D8 |
 | D-149 | 09-17 | 传记落地：桌面「传记」App（只看）——已缔结 TA 的传记按章读、章按羁绊 LV 锁、章末打赏 Coin（读者扣零钱、kind tip；Coin 仍不售卖，分成另算）；创造 App 改列表模式（右下角 + 进创建流程），表单拆分页签（基础 / 形象 / 设定 / 台词 / 传记），传记页签 = 章节编辑器（文字块 + 图片块：上传 / gif / 现场生图走玩家流量；每章设开放 LV）；六位种子中 / 英各两章内置，日 / 韩待写手；图片不进共享池（存储待接 #36） | E7 / E2 |
+| D-166 | 09-27 | 代理护栏：限流改 service role 调 `increment_ai_usage`（security definer 原子自增，客户端对 `ai_usage` 零权限），匿名游客 100 / 真账号 500 次每日；每个 service 只放行已知字段、模型走白名单（Secrets `ANTHROPIC_MODELS` / `QIANFAN_CHAT_MODELS` / `QIANFAN_IMAGE_MODELS`）、max_tokens 封顶 8192、生图 n=1 / 1024x1024、合成 ≤ 1000 字、音频 ≤ 8 MB、请求体 ≤ 4 MB；上游失败只回一句话、函数出错只回 `internal`；`ai_usage` 建表与函数入 `docs/supabase-setup.sql` | B2 |
 | D-165 | 09-22 | dev build 通道：`eas.json` 加 `development` 档（dev client + ad-hoc internal 分发，channel / environment = development）、装 expo-dev-client ~57.0.19；只给开发者真机调 Expo Go 跑不了的原生能力，不是分发通道；装后 Expo Go 要 `npx expo start --go`；AGENTS.md / README 残留的 SDK 54 改 57 | A2 |
 | D-164 | 09-21 | 全项目不再用系统弹窗：`showAlert(title, body?, buttons?)` 与 `Alert.alert` 同签名，宿主 `SheetHost` 挂根布局——无按钮 = 通知卡（一颗「好」）、一个非取消按钮 = 确认卡、两个以上 = 动作卡，连弹排队；53 处 `Alert.alert` 全部换掉 | H3 |
 | D-163 | 09-21 | 邮箱登录 = 6 位验证码（Supabase 后台：Magic link / Confirm sign up 两封模板改发 `{{ .Token }}`、OTP 长度 8 → 6）；登录邮件按账号语言分四语（模板 Go 条件按 `user_metadata.lang`，App 发码时写入、登录后与切语言时 `syncAccountLanguage` 同步） | G2 |
@@ -197,8 +198,8 @@
 - **编号**：D-004 → D-010 → D-057 → D-069 → D-086 → D-088a。
 
 ### B2 · 服务端代理与游客身份
-- **现行**：`supabase/functions/ai`（Edge Function，已部署，verify_jwt 开）是唯一自有服务端组件：services = qianfan.chat / qianfan.images / qianfan.musesteamer / anthropic.messages / baidu.asr / baidu.asr_pro / baidu.tts / speech.transcribe / speech.synthesize；上游 key 在 Supabase Secrets；按用户**每日限量 500 次**（`ai_usage` 表，`AI_DAILY_LIMIT` 可调，是防盗刷不是付费墙）；`SPEECH_*` 没配返回 503 让客户端回落百度。客户端 `lib/proxy.ts` 三层取路（见 B1）。**超时（D-109）**：RN 的 fetch 不能设超时、iOS 落到 NSURLSession 默认 60 s——qwen-image 生图约 50～60 s、经代理更久，线上「合影 / 拍 TA」因此失败；`postJsonWithTimeout` 用 XMLHttpRequest 显式设 timeout（代理默认 90 s，生图直连与代理都传 180 s），超时 / 断网抛带原因的 Error，拍照与立绘失败弹窗把 `describeAiError` 带出来。线上排查记录：Supabase 函数 secrets 没有 `ANTHROPIC_API_KEY`（切 Claude 回 503），需 `supabase secrets set`；函数日志表为空、用量远低于限额。**游客身份**：没本地 key 且没会话时 `ensureGuestSession()` 自动 Supabase 匿名登录（Anonymous sign-ins 已开），代理按匿名用户 id 限量；**匿名不算登录**——登录墙 / 账号区 / 云备份 / 共享池发布只认 `isSignedIn()` / `signedInSession()`；之后 Apple / 邮箱登录直接换成正式用户。分发包不带任何上游 key。
-- **编号**：D-057、D-073/D-074/D-076（services 增补）、D-088a。
+- **现行**：`supabase/functions/ai`（Edge Function，已部署，verify_jwt 开）是唯一自有服务端组件：services = qianfan.chat / qianfan.images / qianfan.musesteamer / anthropic.messages / baidu.asr / baidu.asr_pro / baidu.tts / speech.transcribe / speech.synthesize；上游 key 在 Supabase Secrets；按用户**每日限次**（D-166：真账号 `AI_DAILY_LIMIT` 默认 500、匿名游客 `AI_GUEST_DAILY_LIMIT` 默认 100，是防盗刷不是付费墙）——计数走 **service role 调 `increment_ai_usage`**（security definer 的原子 `insert … on conflict … where count < limit`，到线不加、返回 null 即 429），客户端对 `ai_usage` 表零权限（开 RLS 不建 policy + revoke），改不了自己的计数；退出再匿名登录是新身份、只拿游客档。**请求体白名单（D-166）**：每个 service 只放行已知字段——聊天只认 `ANTHROPIC_MODELS` / `QIANFAN_CHAT_MODELS`（Secrets 逗号分隔，默认与 `core/config.ts` 一致，换模型两边一起改）、`max_tokens` 封顶 `AI_MAX_TOKENS`（默认 8192）、消息 ≤ 80 条；生图只认 `QIANFAN_IMAGE_MODELS`、`n` 固定 1、size 只认 1024x1024、prompt ≤ 2000 字；合成文本 ≤ 1000 字；识别音频 base64 ≤ 8 MB；整个请求体 ≤ 4 MB；不合规 400 `bad request`。**错误不透传**：上游非 2xx → `{ error: 'upstream', status, message }` 只带上游那一句、状态码照传（客户端 `not configured` 回落判断不变）；函数自身出错 → 500 `{ error: 'internal' }`，细节只进函数日志。建表 / 函数 / 收权语句在 `docs/supabase-setup.sql`（幂等，老环境跑一遍即收权）；`SPEECH_*` 没配返回 503 让客户端回落百度。客户端 `lib/proxy.ts` 三层取路（见 B1）。**超时（D-109）**：RN 的 fetch 不能设超时、iOS 落到 NSURLSession 默认 60 s——qwen-image 生图约 50～60 s、经代理更久，线上「合影 / 拍 TA」因此失败；`postJsonWithTimeout` 用 XMLHttpRequest 显式设 timeout（代理默认 90 s，生图直连与代理都传 180 s），超时 / 断网抛带原因的 Error，拍照与立绘失败弹窗把 `describeAiError` 带出来。线上排查记录：Supabase 函数 secrets 没有 `ANTHROPIC_API_KEY`（切 Claude 回 503），需 `supabase secrets set`；函数日志表为空、用量远低于限额。**游客身份**：没本地 key 且没会话时 `ensureGuestSession()` 自动 Supabase 匿名登录（Anonymous sign-ins 已开），代理按匿名用户 id 限量；**匿名不算登录**——登录墙 / 账号区 / 云备份 / 共享池发布只认 `isSignedIn()` / `signedInSession()`；之后 Apple / 邮箱登录直接换成正式用户。分发包不带任何上游 key。
+- **编号**：D-057、D-073/D-074/D-076（services 增补）、D-088a、D-166。
 
 ### B3 · 语音：识别 / 合成 / 角色音色
 - **现行**（**D-139**，`lib/media.ts` 识别、`lib/tts.ts` 合成、`lib/speech.ts` 纯逻辑、`content/voices.ts` 音色池、`components/voice-picker.tsx`；Harper：「识别我其实可以继续用百度，合成换成小鱼，有了新的声线之后创建和编辑角色的时候就可以允许用户选择音色，推荐三个，不满意可以刷新」）：

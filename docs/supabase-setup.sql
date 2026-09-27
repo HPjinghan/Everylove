@@ -46,3 +46,30 @@ create policy "shared worlds read" on public.shared_worlds for select using (tru
 create policy "shared worlds insert" on public.shared_worlds for insert with check (auth.uid() = owner_id);
 create policy "shared worlds update" on public.shared_worlds for update using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
 create policy "shared worlds delete" on public.shared_worlds for delete using (auth.uid() = owner_id);
+
+-- AI 代理用量（D-057 / D-166）：Edge Function `ai` 按人按天计次。
+-- 客户端（anon / authenticated）对这张表**没有任何权限**：开 RLS 且不建 policy、再显式 revoke；
+-- 只有函数 increment_ai_usage（security definer，只给 service_role 执行）能改它——Edge Function 用 service role 调它，原子自增、到线不加。
+-- 老环境若已有同名表（早期经管理 API 建的），下面的语句都是幂等的：跑一遍即可收权 + 建函数。
+create table if not exists public.ai_usage (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  day text not null,
+  count integer not null default 0,
+  primary key (user_id, day)
+);
+alter table public.ai_usage enable row level security;
+revoke all on table public.ai_usage from anon, authenticated;
+
+create or replace function public.increment_ai_usage(p_user uuid, p_day text, p_limit integer)
+returns integer
+language sql
+security definer
+set search_path = public
+as $$
+  insert into public.ai_usage (user_id, day, count) values (p_user, p_day, 1)
+  on conflict (user_id, day) do update set count = ai_usage.count + 1
+  where ai_usage.count < p_limit
+  returning count;
+$$;
+revoke all on function public.increment_ai_usage(uuid, text, integer) from public, anon, authenticated;
+grant execute on function public.increment_ai_usage(uuid, text, integer) to service_role;

@@ -8,8 +8,8 @@
 
 | # | 状态 | 事项 | 在哪 | 做法 |
 |---|---|---|---|---|
-| A1 | ⬜ | 代理限流改成不可绕过：service role + 原子自增、匿名配额更小、`ai_usage` 建表与 RLS 入 SQL | `supabase/functions/ai/index.ts:46-66`、`docs/supabase-setup.sql` | Postgres 函数 `increment_usage`（security definer）返回 count，Edge Function 只调它 |
-| A2 | ⬜ | 代理 body 白名单：model / max_tokens / 生图 size / n 服务端定死，上游错误只回状态码 | `supabase/functions/ai/index.ts:68-160` | 每个 service 一张允许表；`String(e)` 不再透传 |
+| A1 | ✅ D-166 | 代理限流改成不可绕过：service role + 原子自增、匿名配额更小、`ai_usage` 建表与 RLS 入 SQL | `supabase/functions/ai/index.ts:46-66`、`docs/supabase-setup.sql` | Postgres 函数 `increment_usage`（security definer）返回 count，Edge Function 只调它 |
+| A2 | ✅ D-166 | 代理 body 白名单：model / max_tokens / 生图 size / n 服务端定死，上游错误只回状态码 | `supabase/functions/ai/index.ts:68-160` | 每个 service 一张允许表；`String(e)` 不再透传 |
 | A3 | ⬜ | 暗面路由看历史窗口：最近 N 轮里命中过就注入危机段；命中的轮次不进记忆提取 | `lib/engine.ts:329`、`features/memory.ts:10` | `darkSideCheck` 扫 `ctx.history` 尾部；`TurnInfo.darkSide` 为真时 after 钩子里的记忆跳过 |
 | A4 | ⬜ | 看手机的暗面检查扩到日历标题与她和别人的聊天 | `lib/chat.ts:158` | 三份文本拼一起再 `darkSideCheck` |
 | A5 | ⬜ | X 任务 prompt 去掉「你在扮演……虚构角色」，改真人自居（D-154）并带 `TALK_MANNER` | `content/prompts/social.ts:40,82,135` | 与亲密 prompt 同一行开头；快照必红，确认后更新 |
