@@ -77,6 +77,8 @@ export interface PromptSection {
   order: number | ({ default: number } & Partial<Record<PromptMode, number>>);
   /** 产出的行；空数组 = 这次不出现 */
   lines(ctx: EngineContext, env: PromptEnv): string[];
+  /** 按上下文决定这段这次出不出现（D-189）：例如外出模式里陌生人没有记忆 / 秘密 / 身边的人——不再为此注册一份 -outing 影子段 */
+  when?(ctx: EngineContext, env: PromptEnv): boolean;
   /**
    * 稳定段（D-175）：同一段关系里逐轮不变的（人设 / 她是谁 / 规则……），装配时排在所有动态段（此刻 / 记忆 / 舞台提示……）之前，
    * 供应商把这一整块作为 prompt 缓存的前缀（Anthropic cache_control；千帆靠前缀相同自动命中）。不标 = 动态段。
@@ -112,8 +114,9 @@ export function assembleSystemPromptParts(ctx: EngineContext, opts: { mode?: Pro
   if (!secs.length) {
     throw new Error(`底座未启动：模式「${mode}」没有任何 prompt 分段（先 import "@/features"）`);
   }
-  const stable = secs.filter((s) => s.stable).flatMap((s) => s.lines(ctx, env)).join('\n');
-  const dynamic = secs.filter((s) => !s.stable).flatMap((s) => s.lines(ctx, env)).join('\n');
+  const on = secs.filter((s) => !s.when || s.when(ctx, env));
+  const stable = on.filter((s) => s.stable).flatMap((s) => s.lines(ctx, env)).join('\n');
+  const dynamic = on.filter((s) => !s.stable).flatMap((s) => s.lines(ctx, env)).join('\n');
   return { stable, dynamic };
 }
 

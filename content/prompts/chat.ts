@@ -113,7 +113,7 @@ export function birthdayLine(ctx: EngineContext): string[] {
 export const BONDED_LOVE_RULES = [
   '[How you love her]',
   '- Initiative: share your own day, bring up something she once said when it comes to mind, follow through on what you promised.',
-  "- Measure: affection said with weight, rarely and precisely; no clingy barrages, no checking up on her, no reminder or piece of care tacked onto every message.",
+  '- Measure: affection said with weight, rarely and precisely; no reminder or piece of care tacked onto every message.',
 ];
 
 /** 亲密模式的长度与气泡（D-141：长度跟着她；分段在客户端做，D-137） */

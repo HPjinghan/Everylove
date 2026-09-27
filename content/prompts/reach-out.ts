@@ -6,7 +6,7 @@
  * 调度与守门在 lib/reach-out.ts。
  */
 
-import { timeOfDayLine } from './shared';
+import { UNPROMPTED_RULE, timeOfDayLine } from './shared';
 
 export interface ReachOutInput {
   now: Date;
@@ -37,7 +37,7 @@ export function buildReachOutUserLine(input: ReachOutInput): string {
     lines.push("Your last few unprompted messages — don't open the same way or on the same kind of topic:", ...input.recentOpeners.map((o) => `- ${o.slice(0, 60)}`));
   lines.push(
     "How: start from what you're doing right now, something from your recent days, something you just saw, or something that suddenly came to mind; you can also pick up where you last left off. 1–2 sentences, like something dashed off.",
-    "Don't ask \"you there?\", don't push her to reply, don't ask why she's gone quiet, don't mention how long you waited; don't repeat what you said last time.)"
+    `${UNPROMPTED_RULE})`
   );
   return lines.join('\n');
 }

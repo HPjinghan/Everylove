@@ -5,6 +5,7 @@
  * 玩法自己的规则（查手机 / 红包）由各自的 features/*.tsx 注册，不在这里。
  * 记事本（note）只共用羁绊层的人设 / 台词样本 / 记忆 / 秘密，不带她的资料卡与聊天规则（D-098）。
  * 稳定段标 `stable: true`（D-175）：装配时稳定段按序在前、动态段在后，供应商拿稳定段作缓存前缀（tests/prompts.test.ts 快照锁定）。
+ * 只在某些情况出现的段用 when（D-189：外出陌生人没有记忆 / 秘密 / 身边的人），不注册 -outing 影子段。
  */
 
 import { scriptFor } from '@/content/characters';
@@ -71,6 +72,8 @@ const OUTING: readonly PromptMode[] = ['outing'];
 const NOTE: readonly PromptMode[] = ['note'];
 
 const isStranger = (ctx: EngineContext) => ctx.outing?.kind === 'stranger';
+/** 外出里的熟人（赴约 / 偶遇）才有的段：陌生人没有 */
+const notStranger = (ctx: EngineContext) => !isStranger(ctx);
 
 /* ── 开头：你是谁（第一行与台词样本按模式各一份） ── */
 promptSections.register({ name: 'intro-square', stable: true, modes: SQUARE, order: ORDER.intro, lines: (ctx) => [squareIntroLine(ctx)] });
@@ -85,14 +88,11 @@ promptSections.register({ name: 'pursuit', stable: true, modes: TALK, order: ORD
 promptSections.register({ name: 'love-style-talk', stable: true, modes: TALK, order: ORDER.pursuit, lines: (ctx) => loveStyleTalkLines(ctx.character) });
 promptSections.register({ name: 'profile', stable: true, modes: 'all', order: ORDER.profile, lines: (ctx) => characterProfileBlock(ctx.character) });
 // 身边的人（D-110）只在羁绊层（陌生人偶遇没有）
-promptSections.register({ name: 'circle', stable: true, modes: [...BONDED_FAMILY, 'post'], order: ORDER.circle, lines: (ctx) => circleBlock(ctx.bond?.circle) });
-promptSections.register({ name: 'circle-outing', stable: true, modes: OUTING, order: ORDER.circle, lines: (ctx) => (isStranger(ctx) ? [] : circleBlock(ctx.bond?.circle)) });
+promptSections.register({ name: 'circle', stable: true, modes: [...BONDED_FAMILY, 'post', 'outing'], when: notStranger, order: ORDER.circle, lines: (ctx) => circleBlock(ctx.bond?.circle) });
 // TA 自己的作息（D-119）：羁绊层都知道自己接下来要干嘛
-promptSections.register({ name: 'his-schedule', modes: BONDED_FAMILY, order: ORDER.circle, lines: (ctx, env) => hisScheduleBlock(ctx.bond?.hisEvents, dateKey(env.now)) });
-promptSections.register({ name: 'his-schedule-outing', modes: OUTING, order: ORDER.circle, lines: (ctx, env) => (isStranger(ctx) ? [] : hisScheduleBlock(ctx.bond?.hisEvents, dateKey(env.now))) });
+promptSections.register({ name: 'his-schedule', modes: [...BONDED_FAMILY, 'outing'], when: notStranger, order: ORDER.circle, lines: (ctx, env) => hisScheduleBlock(ctx.bond?.hisEvents, dateKey(env.now)) });
 // TA 自己最近的日子（D-158）：记事本 + 帖子，紧跟日程；聊天 / 通话 / 外出熟人——记事本模式不带（写本子时另走用户消息）
-promptSections.register({ name: 'his-days', modes: BONDED_CHAT, order: ORDER.circle, lines: (ctx, env) => hisDaysBlock(ctx, env.now) });
-promptSections.register({ name: 'his-days-outing', modes: OUTING, order: ORDER.circle, lines: (ctx, env) => (isStranger(ctx) ? [] : hisDaysBlock(ctx, env.now)) });
+promptSections.register({ name: 'his-days', modes: [...BONDED_CHAT, 'outing'], when: notStranger, order: ORDER.circle, lines: (ctx, env) => hisDaysBlock(ctx, env.now) });
 promptSections.register({ name: 'voice-square', stable: true, modes: SQUARE, order: ORDER.voice, lines: (ctx) => squareVoiceBlock(ctx) });
 promptSections.register({ name: 'voice-bonded', stable: true, modes: BONDED_FAMILY, order: ORDER.voice, lines: (ctx) => bondedVoiceBlock(ctx) });
 promptSections.register({ name: 'voice-outing', stable: true, modes: OUTING, order: ORDER.voice, lines: (ctx) => outingVoiceBlock(ctx) });
@@ -116,37 +116,53 @@ promptSections.register({
 });
 promptSections.register({ name: 'shared-memory', stable: true, modes: 'all', order: ORDER.sharedMemory, lines: (ctx) => sharedMemoryBlock(ctx.character) });
 // 广场偶遇的记录（D-110）：初识与广场陌生人都记得见过她
-promptSections.register({ name: 'encounters', stable: true, modes: ['square', 'outing'], order: ORDER.encounters, lines: (ctx) => (ctx.mode === 'square' || isStranger(ctx) ? encountersBlock(ctx) : []) });
+promptSections.register({ name: 'encounters', stable: true, modes: ['square', 'outing'], when: (ctx) => ctx.mode === 'square' || isStranger(ctx), order: ORDER.encounters, lines: (ctx) => encountersBlock(ctx) });
 promptSections.register({ name: 'square-situation', modes: SQUARE, order: ORDER.situation, lines: (ctx) => squareSituationLines(ctx) });
 
 /* ── 记忆与秘密（只在羁绊层，商业承重墙；陌生人偶遇没有） ── */
-promptSections.register({ name: 'memory', modes: [...BONDED_FAMILY, 'post'], order: ORDER.memory, lines: (ctx) => memoryBlockFor(ctx.bond?.memory) });
-promptSections.register({ name: 'memory-outing', modes: OUTING, order: ORDER.memory, lines: (ctx) => (isStranger(ctx) ? [] : memoryBlockFor(ctx.bond?.memory)) });
-promptSections.register({ name: 'secrets', stable: true, modes: BONDED_FAMILY, order: ORDER.secrets, lines: (ctx, env) => secretsBlock(ctx.character, ctx.bond ? levelOf(ctx.bond, env.now.getTime()) : 1) });
+promptSections.register({ name: 'memory', modes: [...BONDED_FAMILY, 'post', 'outing'], when: notStranger, order: ORDER.memory, lines: (ctx) => memoryBlockFor(ctx.bond?.memory) });
 promptSections.register({
-  name: 'secrets-outing', stable: true,
-  modes: OUTING,
+  name: 'secrets',
+  stable: true,
+  modes: [...BONDED_FAMILY, 'outing'],
+  when: notStranger,
   order: ORDER.secrets,
-  lines: (ctx, env) => (isStranger(ctx) ? [] : secretsBlock(ctx.character, ctx.bond ? levelOf(ctx.bond, env.now.getTime()) : 1)),
+  lines: (ctx, env) => secretsBlock(ctx.character, ctx.bond ? levelOf(ctx.bond, env.now.getTime()) : 1),
 });
 
 /* ── 分寸与追法的落地 ── */
 promptSections.register({ name: 'square-manner', stable: true, modes: SQUARE, order: ORDER.manner, lines: () => SQUARE_MANNER });
 promptSections.register({ name: 'love-rules', stable: true, modes: BONDED_CHAT, order: ORDER.manner, lines: () => BONDED_LOVE_RULES });
-promptSections.register({ name: 'initiative', stable: true, modes: BONDED_CHAT, order: ORDER.initiative, lines: (ctx) => initiativeLine(ctx.character) });
-promptSections.register({ name: 'stage', modes: BONDED_CHAT, order: ORDER.stage, lines: (ctx, env) => [stageLine(ctx, env.now)] });
+// 主动性 / 阶段 / 温度：亲密与外出熟人共用（外出里阶段感在主动性之前，与亲密相反）
+promptSections.register({
+  name: 'initiative',
+  stable: true,
+  modes: [...BONDED_CHAT, 'outing'],
+  when: notStranger,
+  order: { default: ORDER.initiative, outing: ORDER.outingInitiative },
+  lines: (ctx) => initiativeLine(ctx.character),
+});
+promptSections.register({
+  name: 'stage',
+  modes: [...BONDED_CHAT, 'outing'],
+  when: notStranger,
+  order: { default: ORDER.stage, outing: ORDER.outingStage },
+  lines: (ctx, env) => [stageLine(ctx, env.now)],
+});
 // 温度（D-126）：疏远 / 久别归来时多一句口吻；热络 / 平常不加字
-promptSections.register({ name: 'warmth', modes: BONDED_CHAT, order: ORDER.warmth, lines: (ctx, env) => warmthLine(ctx, env.now) });
+promptSections.register({
+  name: 'warmth',
+  modes: [...BONDED_CHAT, 'outing'],
+  when: notStranger,
+  order: { default: ORDER.warmth, outing: ORDER.outingStage },
+  lines: (ctx, env) => warmthLine(ctx, env.now),
+});
 promptSections.register({ name: 'outing-manner', stable: true, modes: OUTING, order: ORDER.manner, lines: () => OUTING_MANNER });
 // X 回帖的写法（D-178）：与各模式的分寸同一个槽位
 promptSections.register({ name: 'post-manner', stable: true, modes: POST, order: ORDER.manner, lines: () => POST_REPLY_MANNER });
 // 记事本：TA 自己的生活（D-098；她出现多少按分量 D-099）——和聊天的「怎么爱她」占同一个槽位
 promptSections.register({ name: 'note-life', stable: true, modes: NOTE, order: ORDER.manner, lines: (ctx) => hisNoteLifeLines(ctx.character) });
-promptSections.register({ name: 'stranger-manner', stable: true, modes: OUTING, order: ORDER.strangerManner, lines: (ctx) => (isStranger(ctx) ? OUTING_STRANGER_MANNER : []) });
-// 外出里阶段感在主动性之前（与亲密相反）
-promptSections.register({ name: 'stage-outing', modes: OUTING, order: ORDER.outingStage, lines: (ctx, env) => (isStranger(ctx) ? [] : [stageLine(ctx, env.now)]) });
-promptSections.register({ name: 'warmth-outing', modes: OUTING, order: ORDER.outingStage, lines: (ctx, env) => (isStranger(ctx) ? [] : warmthLine(ctx, env.now)) });
-promptSections.register({ name: 'initiative-outing', stable: true, modes: OUTING, order: ORDER.outingInitiative, lines: (ctx) => (isStranger(ctx) ? [] : initiativeLine(ctx.character)) });
+promptSections.register({ name: 'stranger-manner', stable: true, modes: OUTING, when: isStranger, order: ORDER.strangerManner, lines: () => OUTING_STRANGER_MANNER });
 // 像个人一样说话（D-141）：四种对话共用，在各模式分寸之后、红线之前；记事本不带
 promptSections.register({ name: 'talk-manner', stable: true, modes: TALK, order: ORDER.talk, lines: () => TALK_MANNER });
 

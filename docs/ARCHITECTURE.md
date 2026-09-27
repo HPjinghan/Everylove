@@ -99,7 +99,7 @@ export async function sendRedPacket(bondId, amount, note, ui) { /* sendCard + �
 | 要加的东西 | 做法 |
 |---|---|
 | 一家新的聊天供应商（OpenAI / DeepSeek 官方 / 硅基流动） | `features/providers.ts` 加一个 `ChatProvider`（id / label / localKey / complete）并 register；代理侧在 `supabase/functions/ai` 加同名服务；`core/config.ts` 登记 key；`.env.example` 补一行 |
-| 一条要进多个模式的规则 | 文本写进 `content/prompts/` 对应用途的文件（都用的进 shared.ts）；`promptSections.register({ modes, order: ORDER.xxx, lines })`；跑 `npm test` 看快照 diff 是不是你想要的，再 `npx vitest -u` |
+| 一条要进多个模式的规则 | 文本写进 `content/prompts/` 对应用途的文件（都用的进 shared.ts）；`promptSections.register({ modes, order: ORDER.xxx, lines, when?, stable? })`——只在某些情况出现用 `when(ctx)`（D-189），逐轮不变的标 `stable`（D-175）；跑 `npm test` 看快照 diff 是不是你想要的，再 `npx vitest -u` |
 | 一种新的会话模式（群聊、故事章节） | `EngineContext.mode` 加一个字面量；`features/modes.ts` 实现 `ConversationMode`；`features/prompts.ts` 里各分段的 `modes` 加上它（或它自己的分段）；界面用 `sendText({ mode, … })` |
 | 一种新的卡片（分享一首歌、送礼物） | 新建 `features/xxx.tsx`：`cardKinds.register`（contextText + render）+ `sendXxx()`；在 `features/index.ts` import；会话页的「+」面板加一项调用 `sendXxx` |
 | 模型能发出的一个新暗号（[送礼物]） | 暗号常量进 `content/prompts/<玩法>.ts`；`replyMarkers.register({ key, mark, apply })`；提示模型怎么用它 = 一段 promptSection |
