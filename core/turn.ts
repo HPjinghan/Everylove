@@ -3,6 +3,8 @@
  *   组上下文（模式）→ 暗面路由（系统层，不可拆）→ 供应商 → 拆气泡 / 剥标记 → 打字节奏 → 落气泡（bubble 钩子可改写）
  *   → 回复标记落状态（markers）→ 回合后钩子（after：记忆 / 约定识别 / 心动满的 offer……）
  * 会话页、外出页、通话、查手机、爽约提醒都走这里，只传不同的 scope 与 ui。
+ * TA 先开口的后台路（D-177）：draftReply 写好一条不落屏（TA 主动 / 召回 / 心跳到点前写好），landReply 到点把它落进会话——
+ * 同一条管线的后半段（bubble 钩子 / 暗号落状态 / after 钩子），只是不等打字节奏。
  * 借 dsh 的纪律：「新行为挂扩展点，不改 loop」——要加东西，注册钩子 / 标记 / 模式，不要在这里加分支。
  */
 
@@ -111,13 +113,14 @@ export interface TurnMeta {
   exclude?: boolean;
 }
 
-/** 排队的一轮（D-169）：TA 在回的时候她又说的 */
+/** 排队的一轮（D-169）：TA 在回的时候她又说的；land = 到点要落进会话的后台消息（D-177），等这轮落完再落 */
 interface TurnJob {
   userText: string;
   ui: TurnUi;
   her: boolean;
   msgIds: string[];
   resolve(r: TurnResult): void;
+  land?: () => Promise<void>;
 }
 /** 每段会话一条队列：正在回的那轮 + 期间攒下的 */
 const running = new Map<string, TurnJob[]>();
@@ -140,17 +143,28 @@ export async function runTurn(scope: TurnScope, userText: string, ui: TurnUi = {
   running.set(key, pending);
   try {
     const first = await runOne(scope, userText, ui, !!meta.her, msgIds, meta.exclude ? msgIds : []);
-    while (pending.length) {
-      const batch = [pending.shift()!];
-      if (batch[0].her) while (pending.length && pending[0].her) batch.push(pending.shift()!);
-      const ids = batch.flatMap((j) => j.msgIds);
-      const r = await runOne(scope, batch.map((j) => j.userText).join('\n'), batch[batch.length - 1].ui, batch[0].her, ids, ids);
-      for (const j of batch) j.resolve(r);
-    }
+    await drainPending(scope, pending);
     return first;
   } finally {
     running.delete(key);
     for (const j of pending) j.resolve({ reply: null });
+  }
+}
+
+/** 把这轮期间攒下的排队项跑完：她连发的合成一轮、后台落消息的单独落、舞台提示单独一轮 */
+async function drainPending(scope: TurnScope, pending: TurnJob[]): Promise<void> {
+  while (pending.length) {
+    const head = pending.shift()!;
+    if (head.land) {
+      await head.land();
+      head.resolve({ reply: null });
+      continue;
+    }
+    const batch = [head];
+    if (head.her) while (pending.length && pending[0].her && !pending[0].land) batch.push(pending.shift()!);
+    const ids = batch.flatMap((j) => j.msgIds);
+    const r = await runOne(scope, batch.map((j) => j.userText).join('\n'), batch[batch.length - 1].ui, head.her, ids, ids);
+    for (const j of batch) j.resolve(r);
   }
 }
 
@@ -177,22 +191,69 @@ async function runOne(scope: TurnScope, userText: string, ui: TurnUi, her: boole
   }
 
   const info: TurnInfo = { scope, ctx, mode, reply, darkSide: !!reply.darkSide, ui, her };
+  await settle(info, { pace });
+  return { reply };
+}
+
+/** 管线的后半段：落气泡（bubble 钩子可改写）→ 暗号落状态 → after 钩子；她开口的回合与后台落消息共用（D-177） */
+async function settle(info: TurnInfo, opts: { pace: 'natural' | 'none'; at?: number; extra?: Partial<ChatMessage> }): Promise<void> {
+  const { scope, mode, reply, ui, ctx } = info;
   const total = reply.texts.length;
   // 每条气泡：「正在输入」按这条的长度停一会儿再上屏（D-146）；模型已经花掉的时间不再另算
   for (const [i, text] of reply.texts.entries()) {
-    if (pace === 'natural') {
+    if (opts.pace === 'natural') {
       ui.typing?.(true);
       await wait(typingDelay(text, i));
     }
     ui.typing?.(false);
-    const msg = await turnHooks.bubble.run(himMsg(text), { ...info, index: i, total });
+    const base: ChatMessage = { ...himMsg(text), ...(opts.at !== undefined ? { at: opts.at + i } : {}), ...opts.extra };
+    const msg = await turnHooks.bubble.run(base, { ...info, index: i, total });
     mode.append(scope, [msg], { unreadDelta: ui.unread ? 1 : 0 });
   }
-
   await applyMarkers(scope, reply, { ctx, unread: ui.unread });
-
   await turnHooks.after.emit(info);
-  return { reply };
+}
+
+/**
+ * 后台写一条（D-177）：TA 主动 / 召回 / 心跳到点前写好、不落屏——走引擎（暗面路由 / 分段表 / 剥暗号，便宜供应商），
+ * 不排队（写好的东西之后再落）。没写成返回 null（调用方自己决定回落模板还是跳过）。
+ */
+export async function draftReply(scope: TurnScope, userText: string): Promise<EngineReply | null> {
+  const mode = modeOf(scope);
+  const ctx = mode.context(scope, userText);
+  if (!ctx) return null;
+  const reply = await generateReply(ctx, undefined, { background: true });
+  const texts = reply.texts.filter(Boolean);
+  return texts.length ? { ...reply, texts } : null;
+}
+
+/**
+ * 把写好的一条落进会话（D-177）：与她开口的回合同一条后半段——bubble 钩子（可能变语音）、暗号落状态、after 钩子（记忆 / 约定识别）；
+ * 不等打字节奏。TA 正在回她的那轮还没落完时排在它后面，不插队。
+ */
+export async function landReply(scope: TurnScope, reply: EngineReply, opts: { at?: number; unread?: boolean; extra?: Partial<ChatMessage> } = {}): Promise<void> {
+  const land = async () => {
+    const mode = modeOf(scope);
+    const ctx = mode.context(scope, '');
+    if (!ctx) return;
+    const ui: TurnUi = { pace: 'none', unread: opts.unread, quiet: true };
+    const info: TurnInfo = { scope, ctx, mode, reply, darkSide: !!reply.darkSide, ui, her: false };
+    await settle(info, { pace: 'none', at: opts.at, extra: opts.extra });
+  };
+  const key = scopeKey(scope);
+  const queue = running.get(key);
+  if (queue) {
+    return new Promise<void>((resolve) => queue.push({ userText: '', ui: {}, her: false, msgIds: [], resolve: () => resolve(), land }));
+  }
+  const pending: TurnJob[] = [];
+  running.set(key, pending);
+  try {
+    await land();
+    await drainPending(scope, pending);
+  } finally {
+    running.delete(key);
+    for (const j of pending) j.resolve({ reply: null });
+  }
 }
 
 /** 按 flags 逐个落暗号；回合外（主动找她）也能用——ctx 不传就按 scope 现组 */

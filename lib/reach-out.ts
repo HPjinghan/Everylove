@@ -10,11 +10,9 @@
  */
 
 import { buildReachOutUserLine } from '@/content/prompts';
-import { applyMarkers } from '@/core/turn';
-import { bondedContext, bondScope } from '@/lib/chat';
+import { draftReply, landReply } from '@/core/turn';
+import { bondScope } from '@/lib/chat';
 import { bondLevel, DISTANT_MIN_INTERVAL_MS, WARMTH_REACH_MULT, warmthBand, warmthNow, type WarmthBand } from '@/lib/bond';
-import { generateReply, stripStageDirections } from '@/lib/engine';
-import { uid } from '@/lib/format';
 import { cancelScheduled, hasNotificationPermission, scheduleArrivalNotification } from '@/lib/notifications';
 import type { Bond, Character, ChatMessage, EngineReply } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
@@ -123,15 +121,10 @@ export async function deliverDueReachOuts(now = Date.now()): Promise<number> {
       useAppStore.getState().setReachDue(bond.id, nextReachAt(now, character, fresh));
       await clearPending(bond.id);
       if (reply) {
-        useAppStore.getState().appendBond(
-          bond.id,
-          reply.texts.map((text, i) => ({ id: uid('m'), from: 'him' as const, kind: 'text' as const, text, at: now + i, reach: true })),
-          { unreadDelta: reply.texts.length }
-        );
+        // 走管线的后半段（D-177）：bubble 钩子（可能变语音）、暗号落状态（外卖 / 红包，D-128）、after 钩子；reach 标记给 D-153 用
+        await landReply(bondScope(bond.id), reply, { at: now, unread: true, extra: { reach: true } });
         // 她 24h 内回这条 = 「回复 TA 主动」来源（D-126，北极星）
         useAppStore.getState().markReachDelivered(bond.id, now);
-        // TA 主动那条也可能带一份外卖 / 一个红包（D-128）：按暗号落状态、计未读
-        if (reply.flags) await applyMarkers(bondScope(bond.id), reply, { unread: true });
         delivered++;
       }
     } finally {
@@ -197,12 +190,8 @@ async function generateReachOut(bond: Bond, character: Character, at: Date): Pro
     recentOpeners: bond.messages.filter((m) => m.from === 'him' && m.reach && m.text).slice(-RECENT).map((m) => m.text),
     last: lastMsg ? { from: lastMsg.from === 'me' ? 'me' : 'him', text: lastMsg.text } : undefined,
   });
-  const ctx = bondedContext(bond, line);
-  if (!ctx) return null;
   try {
-    const reply = await generateReply(ctx, undefined, { background: true });
-    const texts = stripStageDirections(reply.texts).filter(Boolean);
-    return texts.length ? { ...reply, texts } : null;
+    return await draftReply(bondScope(bond.id), line);
   } catch (e) {
     console.warn('[reach-out] 主动消息没写成，本周期跳过：', e);
     return null;

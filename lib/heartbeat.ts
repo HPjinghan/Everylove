@@ -10,10 +10,9 @@
 
 import { dateKey, parseDateKey } from '@/content/calendar';
 import { buildHeartbeatUserLine, heartbeatLine } from '@/content/prompts';
-import { bondedContext } from '@/lib/chat';
-import { generateReply, stripStageDirections } from '@/lib/engine';
+import { draftReply, landReply } from '@/core/turn';
+import { bondScope } from '@/lib/chat';
 import { outsideQuiet } from '@/lib/reach-out';
-import { uid } from '@/lib/format';
 import type { Bond } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
@@ -71,11 +70,8 @@ export async function deliverDueHeartbeats(now = Date.now()): Promise<number> {
         useAppStore.getState().markEventStage(event.id, stage);
         for (const bond of knowers) {
           const texts = await heartbeatTexts(bond, stage, event.title, event.date);
-          useAppStore.getState().appendBond(
-            bond.id,
-            texts.map((text, i) => ({ id: uid('m'), from: 'him' as const, kind: 'text' as const, text, at: now + i })),
-            { unreadDelta: texts.length }
-          );
+          // 走管线的后半段（D-177）
+          await landReply(bondScope(bond.id), { texts }, { at: now, unread: true });
           delivered++;
         }
       }
@@ -91,11 +87,9 @@ async function heartbeatTexts(bond: Bond, stage: Stage, title: string, date: str
   const fallback = [
     heartbeatLine(STAGE_KEY[stage], title, bond.nickname, bond.id.length + title.length + stage.length),
   ];
-  const ctx = bondedContext(bond, buildHeartbeatUserLine(STAGE_KEY[stage], title, date));
-  if (!ctx) return fallback;
   try {
-    const texts = stripStageDirections((await generateReply(ctx, undefined, { background: true })).texts).filter(Boolean);
-    return texts.length ? texts : fallback;
+    const reply = await draftReply(bondScope(bond.id), buildHeartbeatUserLine(STAGE_KEY[stage], title, date));
+    return reply ? reply.texts : fallback;
   } catch (e) {
     console.warn('[heartbeat] 没写成，用模板：', e);
     return fallback;

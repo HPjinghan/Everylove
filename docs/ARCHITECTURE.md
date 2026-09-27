@@ -76,6 +76,7 @@ sendText / sendCard / sendVoice / sendImage / respond
 ```
 
 会话页、外出页、通话、查手机、爽约提醒、TA 写记事本都走这一条，只传不同的 `scope` 与 `ui`。
+TA 先开口的后台路（D-177）：`draftReply` = 前半段到 `generateReply` 为止（不落屏、便宜供应商），`landReply` = 后半段（bubble 钩子 → 落气泡 → 暗号 → after），TA 主动 / 召回 / 心跳到点前写好、到点落进会话；她正在等 TA 回时排在那轮之后。
 失败不吞：模型调用失败在会话里落一条系统消息露出原因（D-069），并作为 `error` 返回。
 
 ## 4. 一个玩法长什么样

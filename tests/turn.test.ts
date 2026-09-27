@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '@/features';
 
 import { chatProviders, type ChatRequest } from '@/core/providers';
-import { resendTurn, sendText } from '@/core/turn';
+import { landReply, resendTurn, sendText, turnHooks } from '@/core/turn';
 import { HEART_FALLBACK, HEART_FULL, heartPaceOf } from '@/lib/bond';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
@@ -136,6 +136,33 @@ describe('亲密会话', () => {
     expect(lastReq).toBeNull();
     expect(r.reply?.darkSide).toBe(true);
     expect(useAppStore.getState().bonds.find((b) => b.id === bondId)!.messages.at(-1)!.text).toContain('12356');
+  });
+});
+
+describe('后台落消息走同一条管线（D-177）', () => {
+  it('landReply：bubble 钩子照跑、extra 标记落在消息上、计未读；TA 正在回她时排在那轮之后', async () => {
+    const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
+    const scope = { mode: 'bonded' as const, bondId };
+    const bond = () => useAppStore.getState().bonds.find((b) => b.id === bondId)!;
+    const off = turnHooks.bubble.on(async (m) => ({ ...m, text: `${m.text}!` }));
+    try {
+      const unreadBefore = bond().unread ?? 0;
+      await landReply(scope, { texts: ['早'] }, { at: 123, unread: true, extra: { reach: true } });
+      const last = bond().messages.at(-1)!;
+      expect(last.text).toBe('早!');
+      expect(last.reach).toBe(true);
+      expect(last.at).toBe(123);
+      expect(bond().unread ?? 0).toBe(unreadBefore + 1);
+      // 她正在等 TA 回：后台落的排在 TA 那轮之后
+      delayMs = 20;
+      nextReply = '在的';
+      const p = sendText(scope, '在吗', { ui: noPace });
+      await landReply(scope, { texts: ['顺便说一句'] }, { at: 456 });
+      await p;
+      expect(bond().messages.slice(-3).map((m) => m.text)).toEqual(['在吗', '在的!', '顺便说一句!']);
+    } finally {
+      off();
+    }
   });
 });
 

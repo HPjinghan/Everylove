@@ -9,9 +9,8 @@
 
 import { buildRecallUserLine } from '@/content/prompts';
 import { RECALL_DAYS, warmthBand, warmthNow, warmthZeroAt } from '@/lib/bond';
-import { bondedContext } from '@/lib/chat';
-import { generateReply, stripStageDirections } from '@/lib/engine';
-import { uid } from '@/lib/format';
+import { draftReply, landReply } from '@/core/turn';
+import { bondScope } from '@/lib/chat';
 import { cancelScheduled, hasNotificationPermission, scheduleArrivalNotification } from '@/lib/notifications';
 import { outsideQuiet } from '@/lib/reach-out';
 import type { Bond, Character, RecallState } from '@/lib/types';
@@ -57,11 +56,8 @@ export async function deliverDueRecalls(now = Date.now()): Promise<number> {
       const fresh = useAppStore.getState().bonds.find((b) => b.id === bond.id);
       const item = fresh?.recall ? landableRecall(fresh.recall, now) : undefined;
       if (!fresh?.recall || !item) continue;
-      useAppStore.getState().appendBond(
-        bond.id,
-        item.texts.map((text, i) => ({ id: uid('m'), from: 'him' as const, kind: 'text' as const, text, at: now + i })),
-        { unreadDelta: item.texts.length }
-      );
+      // 走管线的后半段（D-177）
+      await landReply(bondScope(bond.id), { texts: item.texts }, { at: now, unread: true });
       // 她回这条也算「回复 TA 主动」
       useAppStore.getState().markReachDelivered(bond.id, now);
       useAppStore.getState().setRecall(bond.id, {
@@ -101,12 +97,9 @@ async function generateRecall(bond: Bond, character: Character, nth: number, day
     recentNotes: (bond.notes ?? []).slice(-RECENT).map((n) => n.text),
     recentPosts: posts.filter((p) => p.characterId === character.id).slice(-RECENT).map((p) => p.text),
   });
-  const ctx = bondedContext(bond, line);
-  if (!ctx) return null;
   try {
-    const reply = await generateReply(ctx, undefined, { background: true });
-    const texts = stripStageDirections(reply.texts).filter(Boolean).slice(0, 1);
-    return texts.length ? texts : null;
+    const reply = await draftReply(bondScope(bond.id), line);
+    return reply ? reply.texts.slice(0, 1) : null;
   } catch (e) {
     console.warn('[recall] 召回消息没写成，这条跳过：', e);
     return null;
