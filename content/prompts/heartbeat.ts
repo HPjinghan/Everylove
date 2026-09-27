@@ -79,11 +79,6 @@ const HEARTBEAT: Record<Lang, Record<Stage, string[]>> = {
   },
 };
 
-/** 兼容旧引用：中文模板 */
-export const HEARTBEAT_BEFORE = HEARTBEAT.zh.before;
-export const HEARTBEAT_DAY = HEARTBEAT.zh.day;
-export const HEARTBEAT_AFTER = HEARTBEAT.zh.after;
-
 /** 取一条心跳台词并填充占位符（按界面语言） */
 export function heartbeatLine(stage: Stage, title: string, nickname: string, salt = 0, lang: Lang = getLang()): string {
   const pool = HEARTBEAT[lang][stage];

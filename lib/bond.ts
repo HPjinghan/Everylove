@@ -112,12 +112,6 @@ export function stageName(xp: number): string {
   return LEVEL_NAMES[bondLevel(xp) - 1];
 }
 
-/** 「LV3 · 常常想起」 */
-export function levelLabel(xp: number): string {
-  const info = levelInfo(xp);
-  return `LV${info.level} · ${info.name}`;
-}
-
 export function levelLabelOf(level: number): string {
   return `LV${level} · ${LEVEL_NAMES[Math.min(MAX_LEVEL, Math.max(1, level)) - 1]}`;
 }

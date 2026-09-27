@@ -98,8 +98,6 @@ export function typingDelay(text: string, index = 0): number {
   return (index > 0 ? 400 : 0) + 600 + Math.min(2600, text.length * 60);
 }
 
-/** 兼容旧名 */
-export const naturalDelay = typingDelay;
 
 export function sysMsg(text: string): ChatMessage {
   return { id: uid('m'), from: 'system', kind: 'system', text, at: Date.now() };

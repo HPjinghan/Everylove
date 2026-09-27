@@ -9,7 +9,7 @@ import { menuItem, menuStore } from '@/content/menu';
 import { deliveryArrivedUserLine } from '@/content/prompts';
 import { respond, sendCard } from '@/core/turn';
 import { bondScope } from '@/lib/chat';
-import { money, uid } from '@/lib/format';
+import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { hasNotificationPermission, scheduleArrivalNotification } from '@/lib/notifications';
 import type { Order, OrderItem } from '@/lib/types';
@@ -134,7 +134,3 @@ export async function deliverDueArrivals(now = Date.now()): Promise<number> {
   return n;
 }
 
-/** 给 Coin 显示的一份小计 */
-export function lineTotal(price: number, qty: number): string {
-  return money(price * qty);
-}

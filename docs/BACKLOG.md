@@ -87,6 +87,12 @@
 | F16 | ✅ D-196 | 同一时间只放一条语音，点第二条时上一条停 | `lib/audio-session.ts`、`components/chat-thread.tsx` | Harper 2026-09-27 提出 |
 | F14 | ✅ D-197 | 桌面与创造的渲染期开销：时钟 15 s 整页 setState、渲染期 `Dimensions.get`、渲染期写 store | `app/index.tsx:73`、`outing.tsx:97`、`album.tsx:78`、`bond:245`、`phones:143` | |
 
+## 收尾
+
+| 编号 | 状态 | 事项 |
+|---|---|---|
+| Z1 | ✅ D-204 | 退役代码清理：开门残留、兼容旧名别名、无人调用的导出、Expo 模板脚本 |
+
 ## 建议顺序
 
 A1 → A2 → A3 → A4 → A5 → B1 → B2 → B3 → B4 → B5 → B6 → B7 → C1 → C2 → D1 → D2 → D3 → F1 → F5 → F2 → 其余按表内顺序。

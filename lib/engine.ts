@@ -374,8 +374,6 @@ export async function generateReply(ctx: EngineContext, providerId?: string, opt
   return { ...marked, texts: policy?.keepTrailingPeriod ? texts : stripTrailingPeriods(texts) };
 }
 
-/** 兼容旧名：剥回复暗号（现由 core/markers 的注册表驱动） */
-export const applyReplyMarkers = stripReplyMarkers;
 
 /** 领养节奏的缺省值：心动满 100 约需几句（角色可用 offerAfterTurns 覆盖，D-029） */
 export const ADOPTION_OFFER_AFTER_TURNS = 4;

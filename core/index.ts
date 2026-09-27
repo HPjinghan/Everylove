@@ -38,7 +38,6 @@ export { createRegistry, type Disposer, type Registry } from '@/core/registry';
 export {
   himMsg,
   meMsg,
-  naturalDelay,
   respond,
   runTurn,
   sendCard,

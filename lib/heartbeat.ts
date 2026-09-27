@@ -95,9 +95,4 @@ async function heartbeatTexts(bond: Bond, stage: Stage, title: string, date: str
   }
 }
 
-/** 今天是否有用户日程（桌面角标等用得上） */
-export function eventsOn(key: string): number {
-  return useAppStore.getState().userEvents.filter((e) => e.date === key).length;
-}
-
 export { dateKey };

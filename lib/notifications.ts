@@ -27,26 +27,6 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return req.granted || req.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
 }
 
-/** 下一个晚八点（若今天 20:00 未过则今天，否则明天） */
-export function nextEightPM(from: Date = new Date()): Date {
-  const d = new Date(from);
-  d.setHours(20, 0, 0, 0);
-  if (d.getTime() <= from.getTime()) {
-    d.setDate(d.getDate() + 1);
-  }
-  return d;
-}
-
-/** 开门是今晚还是明晚（他先走的台词用） */
-export function arrivalTimeLabel(arrivalAt: number, from: Date = new Date()): string {
-  const arrival = new Date(arrivalAt);
-  const sameDay =
-    arrival.getFullYear() === from.getFullYear() &&
-    arrival.getMonth() === from.getMonth() &&
-    arrival.getDate() === from.getDate();
-  return sameDay ? '今晚八点' : '明晚八点';
-}
-
 /** 通知点开去哪（D-170）：有羁绊 → 会话页；没有羁绊的（她自己的外卖）→ screen */
 export interface NotificationTarget {
   bondId?: string;

@@ -4,8 +4,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import '@/features';
+import { stripReplyMarkers } from '@/core/markers';
 
-import { applyReplyMarkers, bubbleStyleOf, buildTurns, HISTORY_ROUNDS, HISTORY_SLACK, splitBubbles, splitByClauses, splitBySpaces, stripStageDirections } from '@/lib/engine';
+import { bubbleStyleOf, buildTurns, HISTORY_ROUNDS, HISTORY_SLACK, splitBubbles, splitByClauses, splitBySpaces, stripStageDirections } from '@/lib/engine';
 import { stripTrailingPeriod } from '@/lib/text';
 import { history, NOW } from './fixtures';
 
@@ -73,22 +74,22 @@ describe('客户端分段（D-137）', () => {
   });
 });
 
-describe('applyReplyMarkers', () => {
+describe('stripReplyMarkers', () => {
   it('剥掉标记并置位；全剥空留省略号', () => {
-    expect(applyReplyMarkers({ texts: ['密码是 4821', '[解锁手机]'] })).toEqual({
+    expect(stripReplyMarkers({ texts: ['密码是 4821', '[解锁手机]'] })).toEqual({
       texts: ['密码是 4821'],
       flags: { unlockPhone: true },
     });
-    expect(applyReplyMarkers({ texts: ['[拆红包]'] })).toEqual({ texts: ['……'], flags: { openRedPacket: true } });
-    expect(applyReplyMarkers({ texts: ['没有标记'] })).toEqual({ texts: ['没有标记'] });
+    expect(stripReplyMarkers({ texts: ['[拆红包]'] })).toEqual({ texts: ['……'], flags: { openRedPacket: true } });
+    expect(stripReplyMarkers({ texts: ['没有标记'] })).toEqual({ texts: ['没有标记'] });
   });
   it('全角括号也认、同一暗号多处全剥、两枚暗号同一行、三位数好奇值（D-192）', () => {
-    expect(applyReplyMarkers({ texts: ['好【拆红包】', '[拆红包]'] })).toEqual({ texts: ['好'], flags: { openRedPacket: true } });
-    expect(applyReplyMarkers({ texts: ['密码 4821 [解锁手机] [拆红包]'] })).toEqual({
+    expect(stripReplyMarkers({ texts: ['好【拆红包】', '[拆红包]'] })).toEqual({ texts: ['好'], flags: { openRedPacket: true } });
+    expect(stripReplyMarkers({ texts: ['密码 4821 [解锁手机] [拆红包]'] })).toEqual({
       texts: ['密码 4821'],
       flags: { unlockPhone: true, openRedPacket: true },
     });
-    expect(applyReplyMarkers({ texts: ['嗯 ［好奇 100］'] })).toEqual({ texts: ['嗯'], flags: { heart: true }, values: { heart: '100' } });
+    expect(stripReplyMarkers({ texts: ['嗯 ［好奇 100］'] })).toEqual({ texts: ['嗯'], flags: { heart: true }, values: { heart: '100' } });
   });
 });
 
