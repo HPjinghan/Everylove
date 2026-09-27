@@ -16,7 +16,7 @@ import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { CharacterSheet } from '@/components/character-sheet';
 import { MingCute } from '@/components/mingcute';
-import { deliverDueReactions } from '@/lib/posts';
+import { runJobs } from '@/core/jobs';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
@@ -170,7 +170,7 @@ export default function FeedScreen() {
   const [sheetId, setSheetId] = useState<string | null>(null);
   // 进页补一次别人的互动（D-110）：缔结时铺的帖也会有人来评论
   useEffect(() => {
-    void deliverDueReactions();
+    void runJobs('screen:x');
   }, []);
   // 只看缔结契约的 TA（D-027）：领养后帖 + 这些角色的公开帖
   const bondedCharIds = new Set(bonds.map((b) => b.characterId));

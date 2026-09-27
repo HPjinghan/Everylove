@@ -24,11 +24,10 @@ import { NOTE_PAPER, Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { planTimeLabel } from '@/lib/appointments';
 import { levelOf } from '@/lib/bond';
-import { ensureCircle, refreshCircleChats } from '@/lib/circle';
-import { ensureHisSchedule, upcomingHisEvents } from '@/lib/his-schedule';
+import { runJobs } from '@/core/jobs';
+import { upcomingHisEvents } from '@/lib/his-schedule';
 import { clockTime, money, timeAgo } from '@/lib/format';
 import { portraitFor } from '@/lib/imagegen';
-import { deliverDueHisNotes } from '@/lib/his-notes';
 import { getLang, localeOf, t } from '@/lib/i18n';
 import type { Bond, Character, CircleLine } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
@@ -97,7 +96,8 @@ export function PhoneSheet({
   const plans = useAppStore((s) => s.outingPlans);
   const [app, setApp] = useState<PhoneApp | null>(null);
   const [thread, setThread] = useState<string | null>(null);
-  const [circleReady, setCircleReady] = useState(!!bond.circle?.length);
+  // 圈子生成好了（写不成也会先落通用圈子）：直接看 store 里有没有
+  const circleReady = !!bond.circle?.length;
   const viewed = useRef(false);
   useEffect(() => {
     if (!visible) {
@@ -107,15 +107,8 @@ export function PhoneSheet({
     if (!viewed.current) {
       viewed.current = true;
       onViewed?.();
-      // 记事本补写：到点的 / 还一条没有的，这会儿写上
-      void deliverDueHisNotes();
-      // 身边的人（D-110）：第一次打开时生成一次；之后每次打开，隔够久就把和他们的聊天续上（D-124）
-      void ensureCircle(bond.id).then(() => {
-        setCircleReady(true);
-        void refreshCircleChats(bond.id);
-      });
-      // TA 自己的作息（D-119）：日程不够就补一周
-      void ensureHisSchedule(bond.id);
+      // 打开 TA 的手机时的补投（D-187）：记事本 / 身边的人与他们的聊天 / TA 自己的作息，都登记在 features/schedulers.ts
+      void runJobs('screen:phone', Date.now(), { bondId: bond.id });
     }
   }, [visible, onViewed, bond.id]);
 

@@ -27,10 +27,9 @@ import { MingCute } from '@/components/mingcute';
 import { Shape } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { VAD, callPickupLine, callReply, formatCallDuration, logCall } from '@/lib/call';
-import { describeAiError } from '@/lib/engine';
+import { describeAiError } from '@/lib/chat';
 import { t } from '@/lib/i18n';
 import { ASR_RECORDING, transcribeVoice } from '@/lib/media';
-import { updateBondMemory } from '@/lib/memory';
 import { synthesizeVoice } from '@/lib/tts';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
@@ -236,7 +235,6 @@ export default function CallScreen() {
     setPhaseSafe('ended');
     if (connectedAt.current) {
       logCall(bond.id, Date.now() - connectedAt.current);
-      void updateBondMemory(bond.id);
     }
     router.back();
   };

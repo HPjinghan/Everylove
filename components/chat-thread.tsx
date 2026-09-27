@@ -41,9 +41,9 @@ import { PhotoViewer, Polaroid, type ViewerShot } from '@/components/polaroid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
 import { Shape, Space } from '@/constants/design';
-import { cardKinds } from '@/core/cards';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { clockTime, voiceDuration } from '@/lib/format';
+import { cardKindOf } from '@/lib/chat';
 import { t } from '@/lib/i18n';
 import { ASR_MAX_SECONDS, ASR_RECORDING } from '@/lib/media';
 import { synthesizeVoice, ttsReady } from '@/lib/tts';
@@ -65,7 +65,7 @@ export const RECALL_WINDOW_MS = 24 * 60 * 60 * 1000;
 /** 卡片气泡（D-081）：怎么画由卡片种类注册表决定（core/cards，各玩法注册；D-086）；没注册的画一张只有标题的通用卡 */
 function CardBody({ msg, dark }: { msg: ChatMessage; dark: boolean }) {
   const card = msg.card!;
-  const kind = cardKinds.get(card.type);
+  const kind = cardKindOf(card.type);
   return <>{kind?.render?.(card, dark) ?? <CardShell kicker="" title={card.title} subtitle={card.subtitle} dark={dark} />}</>;
 }
 
@@ -242,7 +242,7 @@ function Bubble({
   );
   const textDark = !mine;
   const tint = textDark ? Romance.ink : '#FFFFFF';
-  const bubbleTint = msg.kind === 'card' && msg.card ? cardKinds.get(msg.card.type)?.bubbleColor : undefined;
+  const bubbleTint = msg.kind === 'card' && msg.card ? cardKindOf(msg.card.type)?.bubbleColor : undefined;
   return (
     <View>
     <View style={[styles.msgRow, mine ? styles.msgRowMe : styles.msgRowHim]}>

@@ -6,7 +6,8 @@
 import { jobs } from '@/core/jobs';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { deliverDueHisNotes } from '@/lib/his-notes';
-import { deliverDueHisSchedules } from '@/lib/his-schedule';
+import { ensureCircle, refreshCircleChats } from '@/lib/circle';
+import { deliverDueHisSchedules, ensureHisSchedule } from '@/lib/his-schedule';
 import { gcMedia } from '@/lib/media-gc';
 import { deliverDueArrivals } from '@/lib/delivery';
 import { checkMissedPlans } from '@/lib/outing';
@@ -28,13 +29,13 @@ jobs.register({
 });
 
 /** 心跳三段式（D-020/D-021）：日历用户层日程的事前 / 当天 / 事后 */
-jobs.register({ id: 'heartbeat', on: ['launch', 'foreground'], run: (now) => deliverDueHeartbeats(now) });
+jobs.register({ id: 'heartbeat', on: ['launch', 'foreground', 'screen:calendar'], run: (now) => deliverDueHeartbeats(now) });
 
 /** 发帖调度（D-055）：TA 的 X 时间线按 MBTI 频率活着 */
 jobs.register({ id: 'posts', on: ['launch', 'foreground'], run: (now) => deliverDuePosts(now) });
 
 /** 别人的互动（D-110）：TA 的帖子下面有身边的人和其他 TA 来评论 */
-jobs.register({ id: 'post-reactions', on: ['launch', 'foreground'], run: () => deliverDueReactions() });
+jobs.register({ id: 'post-reactions', on: ['launch', 'foreground', 'screen:x'], run: () => deliverDueReactions() });
 
 /** TA 主动找她（D-114）：到点的落进会话，并把下一条写好、排本地通知 */
 jobs.register({ id: 'reach-out', on: ['launch', 'foreground'], run: (now) => deliverDueReachOuts(now) });
@@ -52,10 +53,21 @@ jobs.register({ id: 'recall', on: ['launch', 'foreground'], run: (now) => delive
 jobs.register({ id: 'missed-plans', on: ['launch', 'foreground'], run: (now) => checkMissedPlans(now) });
 
 /** TA 自己的作息（D-119）：日程不够就补一周 */
-jobs.register({ id: 'his-schedule', on: ['launch', 'foreground'], run: (now) => deliverDueHisSchedules(now) });
+jobs.register({
+  id: 'his-schedule',
+  on: ['launch', 'foreground', 'screen:phone'],
+  run: (now, _trigger, ctx) => (ctx.bondId ? ensureHisSchedule(ctx.bondId, now) : deliverDueHisSchedules(now)),
+});
 
 /** TA 的记事本（D-085）：按 MBTI 频率写心事 */
-jobs.register({ id: 'his-notes', on: ['launch', 'foreground'], run: (now) => deliverDueHisNotes(now) });
+jobs.register({ id: 'his-notes', on: ['launch', 'foreground', 'screen:phone'], run: (now) => deliverDueHisNotes(now) });
+
+/** 身边的人（D-110 / D-124）：打开 TA 的手机时——第一次生成一次，之后隔够久把和他们的聊天续上 */
+jobs.register({
+  id: 'circle',
+  on: ['screen:phone'],
+  run: (now, _trigger, ctx) => (ctx.bondId ? ensureCircle(ctx.bondId).then(() => refreshCircleChats(ctx.bondId!, now)) : undefined),
+});
 
 /** 媒体目录清理（D-186）：语音缓存过期的、没人引用的照片 / 立绘，启动时清 */
 jobs.register({ id: 'media-gc', on: ['launch'], run: (now) => gcMedia(now) });

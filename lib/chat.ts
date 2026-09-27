@@ -10,8 +10,9 @@ import { showToast } from '@/components/toast';
 import { parseDateKey } from '@/content/calendar';
 import { buildPeekMyPhoneUser, todayLine } from '@/content/prompts';
 import { modeOf, type TurnScope } from '@/core/modes';
-import { gateBlocked, himMsg, resendTurn, respond, runTurn, sendCard, sendText, sysMsg, TURN_ERROR_TOAST_MS, type TurnResult, type TurnUi } from '@/core/turn';
-import { darkSideCheck, describeAiError, messageContextText } from '@/lib/engine';
+import { cardKinds } from '@/core/cards';
+import { gateBlocked, himMsg, resendTurn, respond, runTurn, sendCard, sendText, sysMsg, TURN_ERROR_TOAST_MS, wait, type TurnResult, type TurnUi } from '@/core/turn';
+import { aiRouteSync, darkSideCheck, describeAiError, messageContextText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { describeImage, transcribeVoice } from '@/lib/media';
@@ -21,6 +22,12 @@ import { useAppStore } from '@/store/app-store';
 
 export { resendTurn, respond, runTurn, sendCard, sendText };
 export type { TurnResult, TurnScope, TurnUi };
+// 界面会用到的几个小件（D-187）：消息构造、节奏等待、错误一句话、卡片渲染注册、AI 有没有路——都从这里拿，不直接 import 引擎 / 底座
+export { describeAiError, himMsg, sysMsg, wait };
+/** 卡片种类（气泡颜色 / 渲染）：各玩法注册在 core/cards */
+export const cardKindOf = (type: string) => cardKinds.get(type);
+/** AI 现在有没有路（同步近似，界面按钮可用性用） */
+export const aiReadySync = () => aiRouteSync() !== 'none';
 
 /* ── 定位一段会话 ── */
 export const bondScope = (bondId: string): TurnScope => ({ mode: 'bonded', bondId });

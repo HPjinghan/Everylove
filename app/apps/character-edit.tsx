@@ -42,10 +42,11 @@ import { showToast } from '@/components/toast';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { BLOCKED_NAME_PATTERN, LOVE_STYLES, loveStyleByLabel, RACES } from '@/content/characters';
-import { characterParseSystem, DEFAULT_PORTRAIT_STYLE, PORTRAIT_STYLES } from '@/content/prompts';
+import { DEFAULT_PORTRAIT_STYLE, PORTRAIT_STYLES } from '@/content/prompts';
 import { authConfigured, signedInSession } from '@/lib/auth';
 import { getLang, t } from '@/lib/i18n';
-import { completeText, describeAiError } from '@/lib/engine';
+import { describeAiError } from '@/lib/chat';
+import { parseCharacterDescription } from '@/lib/character-parse';
 import { uid } from '@/lib/format';
 import { generateCharacterLines } from '@/lib/character-lines';
 import { generatePortraitFor, imageKeyReady } from '@/lib/imagegen';
@@ -450,9 +451,7 @@ function CreateForm({ edit }: { edit?: string }) {
     let parsed: Record<string, unknown> | null = null;
     let aiError: string | null = null;
     try {
-      const raw = await completeText(characterParseSystem(), text);
-      const jsonStr = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
-      parsed = JSON.parse(jsonStr) as Record<string, unknown>;
+      parsed = await parseCharacterDescription(text);
     } catch (e) {
       console.warn('[create] 引擎解析失败，回落规则解析：', e);
       parsed = null;

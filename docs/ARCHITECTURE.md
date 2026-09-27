@@ -104,14 +104,14 @@ export async function sendRedPacket(bondId, amount, note, ui) { /* sendCard + �
 | 一种新的卡片（分享一首歌、送礼物） | 新建 `features/xxx.tsx`：`cardKinds.register`（contextText + render）+ `sendXxx()`；在 `features/index.ts` import；会话页的「+」面板加一项调用 `sendXxx` |
 | 模型能发出的一个新暗号（[送礼物]） | 暗号常量进 `content/prompts/<玩法>.ts`；`replyMarkers.register({ key, mark, apply })`；提示模型怎么用它 = 一段 promptSection |
 | 一个回合后要做的事（成就、剧情触发） | `turnHooks.after.on(({ scope, ctx, reply, mode, ui }) => …)`；要改气泡本身用 `turnHooks.bubble.on` |
-| 一个后台调度器（TA 主动来找你、morning call） | `features/schedulers.ts` 里 `jobs.register({ id, on: ['launch','foreground'], run })` |
+| 一个后台调度器（TA 主动来找你、morning call） | `features/schedulers.ts` 里 `jobs.register({ id, on: ['launch','foreground'], run })`；界面打开某个 App 要补投的用 `on: ['screen:phone' / 'screen:x' / 'screen:calendar']`，界面只调 `runJobs(trigger, now, { bondId })`（D-187） |
 | 一项工程配置 | `core/config.ts` 加字段（必须是字面量的 `process.env.EXPO_PUBLIC_XXX`），`.env.example` 补说明 |
 | 桌面上的一个 App | 仍是 `constants/apps.ts` 的注册表（供给纪律：无内容供给不上架） |
 
 ## 6. 纪律
 
 1. **`core/` 不认识任何具体玩法、也不认识界面**：出现「if 红包」「if 千帆」「import components」就是放错地方了——供应商只认 `tier`、玩法段只用 `ORDER.gameplay + n`、提示只喊 `notify`（D-179）。
-2. **界面只调 `lib/chat.ts` 与 `features/*` 的 send 函数**，不 import 引擎、记忆、约定识别。
+2. **界面只调 `lib/chat.ts` 与 `features/*` 的 send 函数**，不 import 引擎、记忆、约定识别、`core/*`（消息构造 / 等待 / 错误一句话 / 卡片渲染 / AI 有没有路都从 `lib/chat` 拿；补投只调 `runJobs`，D-187）。
 3. **新行为挂扩展点，不改管线**：`core/turn.ts` 加分支要在本文 §3 更新流程图并入档。
 4. **模型看得见的字**：全在 `content/prompts/` 目录，一用途一文件，一段只属于一个用途（一般对话与外出各自一份、立绘与拍照各自一份，不在段里按模式切换）；玩法自己的一句话提示语（卡片进上下文的那句、发出时的舞台提示）随玩法文件。
 5. **改到模型看到的字，快照必红**：`npm test` 是改 prompt 的第一道验收；只在确认 diff 是你想要的之后更新快照。

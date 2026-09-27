@@ -7,14 +7,20 @@
 
 import { createRegistry } from '@/core/registry';
 
-export type JobTrigger = 'launch' | 'foreground';
+/** 启动 / 回前台，以及界面打开某个 App 时的补投（D-187：他的手机 / X / 日历），界面只调 runJobs 不直接调各 lib */
+export type JobTrigger = 'launch' | 'foreground' | 'screen:phone' | 'screen:x' | 'screen:calendar';
+
+/** 屏幕触发时的上下文：打开的是哪段羁绊的手机 */
+export interface JobContext {
+  bondId?: string;
+}
 
 export interface Job {
   id: string;
   /** 在哪些时机跑 */
   on: readonly JobTrigger[];
   /** 返回值不用（可以是条数、Promise……），异步的会被 await */
-  run(now: number, trigger: JobTrigger): unknown;
+  run(now: number, trigger: JobTrigger, ctx: JobContext): unknown;
 }
 
 export const jobs = createRegistry<Job>('jobs', (j) => j.id);
@@ -31,16 +37,16 @@ export function resetJobsThrottle(): void {
   lastRunAt = 0;
 }
 
-export async function runJobs(trigger: JobTrigger, now = Date.now()): Promise<void> {
+export async function runJobs(trigger: JobTrigger, now = Date.now(), ctx: JobContext = {}): Promise<void> {
   if (trigger === 'foreground' && now - lastRunAt < FOREGROUND_MIN_GAP_MS) return;
-  lastRunAt = now;
+  if (trigger === 'launch' || trigger === 'foreground') lastRunAt = now;
   const due = jobs.list().filter((j) => j.on.includes(trigger));
   let next = 0;
   const worker = async () => {
     while (next < due.length) {
       const j = due[next++];
       try {
-        await j.run(now, trigger);
+        await j.run(now, trigger, ctx);
       } catch (e) {
         console.warn(`[job:${j.id}] 出错（已跳过）：`, e);
       }

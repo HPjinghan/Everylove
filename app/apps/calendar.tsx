@@ -23,7 +23,7 @@ import { dateKey, holidayFor, parseDateKey } from '@/content/calendar';
 import { placeById } from '@/content/places';
 import { clockTime, uid } from '@/lib/format';
 import { localeOf, t } from '@/lib/i18n';
-import { deliverDueHeartbeats } from '@/lib/heartbeat';
+import { runJobs } from '@/core/jobs';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
@@ -120,8 +120,8 @@ export default function CalendarScreen() {
     }
     useAppStore.getState().addUserEvent({ id: uid('ev'), date: selected, title });
     setDraft('');
-    // 有可能立即落入投递窗口（比如今天的日程），马上跑一次心跳
-    void deliverDueHeartbeats();
+    // 有可能立即落入投递窗口（比如今天的日程），马上跑一次心跳（D-187：经 runJobs）
+    void runJobs('screen:calendar');
   };
 
   const removeEvent = (id: string, title: string) => {

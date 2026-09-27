@@ -20,8 +20,7 @@ import { PhoneLock } from '@/components/phone-lock';
 import { Shape, Space } from '@/constants/design';
 import { Romance, themed, withAlpha } from '@/constants/theme';
 import { askPasscode as askHisPasscode } from '@/features/phone-peek';
-import { peekMyPhone, peekPayload } from '@/lib/chat';
-import { aiRouteSync } from '@/lib/engine';
+import { aiReadySync, peekMyPhone, peekPayload } from '@/lib/chat';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -45,7 +44,7 @@ export default function PhonesScreen() {
 
   const invitePeek = (bondId: string) => {
     setConfirmId(null);
-    if (aiRouteSync() === 'none') {
+    if (!aiReadySync()) {
       alertAiUnavailable();
       return;
     }

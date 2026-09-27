@@ -14,6 +14,7 @@ import { CALL_PICKUP_USER } from '@/content/prompts';
 import { callScope, respond, sendText } from '@/lib/chat';
 import { aiRouteSync } from '@/lib/engine';
 import { uid } from '@/lib/format';
+import { updateBondMemory } from '@/lib/memory';
 import { detectAppointment } from '@/lib/outing';
 import { ttsReady } from '@/lib/tts';
 import { useAppStore } from '@/store/app-store';
@@ -58,4 +59,6 @@ export function logCall(bondId: string, ms: number): void {
   // 电话每整分钟也记一笔（D-126）：通话是最贵的陪伴
   for (let i = 0; i < Math.floor(ms / 60_000); i++) useAppStore.getState().creditBond(bondId, 'callMinute');
   void detectAppointment(bondId);
+  // 电话里说过的话也进记忆（挂断时统一提取，D-187 从界面挪进来）
+  void updateBondMemory(bondId);
 }

@@ -19,7 +19,7 @@ import { showToast } from '@/components/toast';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { LEVEL_NAMES } from '@/lib/bond';
-import { describeAiError } from '@/lib/engine';
+import { describeAiError } from '@/lib/chat';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { generateScenePhoto, imageKeyReady } from '@/lib/imagegen';

@@ -24,11 +24,10 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { scriptFor } from '@/content/characters';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
-import { himMsg, wait } from '@/core/turn';
 import { HEART_FULL } from '@/lib/bond';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
-import { resendTurn, sendImage, sendText, sendVoice, squareScope } from '@/lib/chat';
+import { himMsg, resendTurn, sendImage, sendText, sendVoice, squareScope, wait } from '@/lib/chat';
 import type { ChatMessage } from '@/lib/types';
 import { findCharacter, SQUARE_CHAT_TTL_MS, useAppStore } from '@/store/app-store';
 
