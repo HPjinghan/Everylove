@@ -2,21 +2,17 @@
  * 会话层 API（D-085 抽出、D-086 落到底座）：界面只 import 这里（和各玩法的 send 函数），不直接碰引擎 / 记忆 / 约定识别。
  * 回合本身在 core/turn（全 App 唯一的一条管线）；这里补上：
  * - 带媒体的两条路：她的语音 / 照片——先上屏，识别 / 看图后回填，再让 TA 回（D-073）；
- * - 让 TA 看我的手机（D-085 / D-113）：TA 翻她的记事本、日历里的安排、她和别人的聊天，然后发 1–2 句消息，记事本并进记忆；
- *   看到的日程从此 TA 知道（event.knownBy）——心跳三段式只投给知道的 TA，日程也记成事实。
+ * - 让 TA 看我的手机在 features/phone-peek.tsx（D-194：玩法归位）。
  */
 
 import { showToast } from '@/components/toast';
-import { parseDateKey } from '@/content/calendar';
-import { buildPeekMyPhoneUser, todayLine } from '@/content/prompts';
 import { modeOf, type TurnScope } from '@/core/modes';
 import { cardKinds } from '@/core/cards';
 import { gateBlocked, himMsg, resendTurn, respond, runTurn, sendCard, sendText, sysMsg, TURN_ERROR_TOAST_MS, wait, type TurnResult, type TurnUi } from '@/core/turn';
-import { aiRouteSync, darkSideCheck, describeAiError, messageContextText } from '@/lib/engine';
+import { aiRouteSync, describeAiError, messageContextText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { describeImage, transcribeVoice } from '@/lib/media';
-import { absorbNotesMemory, addMemoryFact } from '@/lib/memory';
 import type { Bond, ChatMessage, EngineContext } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
@@ -96,96 +92,4 @@ export async function sendImage(scope: TurnScope, uri: string, ui?: TurnUi): Pro
   const text = messageContextText({ ...msg, caption, mediaStatus: undefined });
   mode.creditUserTurn(scope, text, 'image');
   return runTurn(scope, text, ui, { her: true, msgId: msg.id });
-}
-
-/** 记事本最多给 TA 看几条 / 每条多长；她和别人的聊天：几个人、各几句；日历：过去几天 + 接下来几天、最多几条 */
-const PEEK_EVENT_PAST_DAYS = 3;
-const PEEK_EVENT_AHEAD_DAYS = 45;
-const PEEK_EVENTS = 8;
-const PEEK_NOTES = 8;
-const PEEK_NOTE_CHARS = 240;
-const PEEK_OTHERS = 3;
-const PEEK_LINES = 6;
-
-/**
- * 让 TA 看我的手机（D-085）：TA 翻她的记事本、她和其他 TA 的近期聊天，然后给她发一条消息（进会话、计未读）。
- * 红线：记事本里出现痛苦 / 危机内容走暗面路由（温柔模式、不入戏）；记事本里的其他真人一个字不评论（他只看她）。
- */
-/** TA 看她手机时拿到的那份东西（D-118 回放共用同一份）：记事本 / 日历 / 她和别人的聊天 */
-export function peekPayload(bondId: string): {
-  notes: { at: number; text: string }[];
-  events: { id: string; date: string; title: string }[];
-  chats: { name: string; characterId: string; messages: ChatMessage[] }[];
-} {
-  const state = useAppStore.getState();
-  const notes = [...state.notes]
-    .sort((a, b) => b.updatedAt - a.updatedAt)
-    .slice(0, PEEK_NOTES)
-    .map((n) => ({ at: n.updatedAt, text: n.text.trim().slice(0, PEEK_NOTE_CHARS) }))
-    .filter((n) => n.text);
-  const chats = state.bonds
-    .filter((b) => b.id !== bondId)
-    .map((b) => ({
-      name: b.name,
-      characterId: b.characterId,
-      messages: b.messages.filter((m) => m.from !== 'system' && !m.recalled).slice(-PEEK_LINES),
-    }))
-    .filter((c) => c.messages.length)
-    .sort((a, b) => (b.messages[b.messages.length - 1]?.at ?? 0) - (a.messages[a.messages.length - 1]?.at ?? 0))
-    .slice(0, PEEK_OTHERS);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const from = today.getTime() - PEEK_EVENT_PAST_DAYS * 86400_000;
-  const to = today.getTime() + PEEK_EVENT_AHEAD_DAYS * 86400_000;
-  const events = state.userEvents
-    .filter((e) => {
-      const at = parseDateKey(e.date).getTime();
-      return at >= from && at <= to;
-    })
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, PEEK_EVENTS)
-    .map((e) => ({ id: e.id, date: e.date, title: e.title }));
-  return { notes, events, chats };
-}
-
-export async function peekMyPhone(bondId: string): Promise<boolean> {
-  const state = useAppStore.getState();
-  const bond = state.bonds.find((b) => b.id === bondId);
-  if (!bond) return false;
-  const scope = bondScope(bondId);
-  const mode = modeOf(scope);
-  const { notes, events, chats } = peekPayload(bondId);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  mode.append(scope, [sysMsg(t('TA 看了你的手机'))]);
-  showToast(t('TA 拿起了你的手机'));
-
-  // 暗面路由前置（红线 3 / D-167）：记事本、日历标题、她和别人聊天里她说的话，任一处有危机内容 → 温柔模式，不入戏
-  const herWords = [
-    ...notes.map((n) => n.text),
-    ...events.map((e) => e.title),
-    ...chats.flatMap((c) => c.messages.filter((m) => m.from === 'me').map((m) => [m.text, m.transcript, m.caption].filter(Boolean).join(' '))),
-  ];
-  const dark = darkSideCheck(herWords.join('\n'));
-  if (dark) {
-    mode.append(scope, dark.texts.map(himMsg), { unreadDelta: dark.texts.length });
-    return true;
-  }
-
-  const { reply } = await respond(
-    scope,
-    buildPeekMyPhoneUser({ nickname: bond.nickname, notes, events: events.map((e) => ({ date: e.date, title: e.title })), chats }),
-    { pace: 'none', unread: true }
-  );
-  addMemoryFact(bondId, `[节点] ${todayLine()} 她把手机递给 ${bond.name} 看了——记事本、日历和她与别人的聊天`);
-  // 给他看得越多他越懂你（§7）：让 TA 看手机也是亲密度来源（D-126）
-  useAppStore.getState().creditBond(bondId, 'peekMine');
-  // 看到的日程从此 TA 知道（D-113）：心跳会来、聊天也记得
-  if (events.length) {
-    useAppStore.getState().markEventsKnown(events.map((e) => e.id), bondId);
-    for (const e of events) if (parseDateKey(e.date).getTime() >= today.getTime()) addMemoryFact(bondId, `[日程] 她 ${e.date} 有「${e.title}」（在她手机的日历里看到的）`);
-  }
-  if (notes.length) void absorbNotesMemory(bondId, notes);
-  return !!reply;
 }

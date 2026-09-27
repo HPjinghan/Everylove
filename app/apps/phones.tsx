@@ -1,7 +1,7 @@
 /**
  * 查手机（D-085；D-100 纸面；D-110 一部真的手机）：桌面入口——所有缔结的 TA 各一部手机可选（锁屏 → 角色色桌面 → 点 App 进去看，components/his-phone.tsx），
  * 还能反过来「让 TA 看我的手机」：先弹底部确认卡（说明 TA 会读到什么、看完会发消息、不可撤回），确认后
- * TA 翻记事本与她和别人的聊天，然后给她发消息（lib/chat.ts peekMyPhone）。
+ * TA 翻记事本与她和别人的聊天，然后给她发消息（features/phone-peek.tsx peekMyPhone）。
  * 锁屏上「问 TA 要密码」不再跳回会话：卡片照发，TA 的回复在锁屏上原地显示（components/phone-lock.tsx）。
  */
 
@@ -19,8 +19,8 @@ import { PeekReplay, type PeekPayload } from '@/components/peek-replay';
 import { PhoneLock } from '@/components/phone-lock';
 import { Shape, Space } from '@/constants/design';
 import { Romance, themed, withAlpha } from '@/constants/theme';
-import { askPasscode as askHisPasscode } from '@/features/phone-peek';
-import { aiReadySync, peekMyPhone, peekPayload } from '@/lib/chat';
+import { askPasscode as askHisPasscode, peekMyPhone, peekPayload } from '@/features/phone-peek';
+import { aiReadySync } from '@/lib/chat';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { findCharacter, useAppStore } from '@/store/app-store';

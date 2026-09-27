@@ -164,8 +164,8 @@ export type MessageKind = 'text' | 'voice' | 'system' | 'image' | 'card';
 
 /** 「+」面板发出的卡片消息（D-081/D-084）：外出邀请 / 红包 / 位置 / 想看手机 */
 export interface ChatCard {
-  /** 卡片种类（core/cards 注册表；D-086 起可扩展——新种类在 features/ 里注册） */
-  type: 'invite' | 'redpacket' | 'location' | 'phoneRequest' | (string & {});
+  /** 卡片种类（core/cards 注册表；新种类在 features/ 里注册时把名字加进这个联合，D-193 封闭） */
+  type: 'invite' | 'redpacket' | 'location' | 'phoneRequest' | 'delivery' | 'share';
   title: string;
   subtitle?: string;
   /** 红包金额（试装游戏币） */
@@ -264,8 +264,8 @@ export interface SquareChat {
   adoptionOffered: boolean;
   /** 用户在本条记录里发过的消息数 */
   userTurns: number;
-  /** 心动值 0-100（D-029）：满了 = 羁绊 LV1，TA 主动交换联系方式 */
-  heart?: number;
+  /** 好奇值 0-100（D-029 / D-157，界面只写「好奇」）：满了 = 缔结，TA 主动交换联系方式 */
+  heart: number;
   /** 广场偶遇的记录（D-110）：TA 记得在哪见过她、聊了什么；进初识 / 广场 prompt，也在 TA 的资料页里显示 */
   encounters?: Encounter[];
   /** 上一句让 TA 心动了多少（D-126，模型判 0–15；心动条上露出 +n） */
@@ -310,42 +310,34 @@ export interface Bond {
   /** 羁绊值（XP，D-029）：等级与阶段名由 lib/bond.ts 的成长曲线推导 */
   affinity: number;
   messages: ChatMessage[];
-  /** 已退役（D-046 开门下线）：字段保留兼容旧存档，代码不再读写 */
-  arrivalAt?: number;
-  /** 已退役（D-046）：同上 */
-  notifId?: string;
   /** 未读计数（心跳/自创打招呼累积，进入会话清零） */
   unread: number;
-  /** 已退役（D-046 离席态随开门一起下线）：字段保留兼容旧存档 */
-  away?: boolean;
-  /** 已退役（D-046） */
-  awayNotified?: boolean;
-  /** 记忆库：他记得关于她的事 + 更早相处的摘要（D-016） */
-  memory?: BondMemory;
+  /** 记忆库：他记得关于她的事 + 更早相处的摘要（D-016）；缔结即建空库（D-193，旧存档 v12 补） */
+  memory: BondMemory;
   /** TA 的手机密码（D-082）：随机四位，第一次需要时生成并记在这里（store.ensurePhoneCode） */
   phoneCode?: string;
   /** 查手机（D-082）：她已经拿到密码（聊天里 TA 答应了，或她猜对了）；之后随时能看 */
   phoneUnlocked?: boolean;
   /** TA 的记事本（D-085）：lib/his-notes.ts 按 MBTI 频率写，最多 HIS_NOTES_MAX 条 */
-  notes?: HisNote[];
+  notes: HisNote[];
   /** LV1 首次进会话时的「+」面板预告已插过（D-100，只出现一次） */
   hintPlusSeen?: boolean;
   /** 缔结那一刻的角色快照（D-116）：设定、台词、世界都定格在这里；之后角色库里怎么改（自己改 / 创作者改）都不动这段关系。旧存档没有的按 id 取现行 */
   character?: Character;
   /** TA 自己的作息（D-119）：TA 日历里自己的安排（上班 / 和朋友的约 / 家里的事……），按周补写；进【你的日程】 */
-  hisEvents?: HisEvent[];
-  /** TA 身边的人（D-110）：第一次查手机时生成一次，之后前后一致；进记事本 / 发帖 / 亲密 prompt，X 里会来互动 */
-  circle?: CirclePerson[];
+  hisEvents: HisEvent[];
+  /** TA 身边的人（D-110）：第一次查手机时生成一次，之后前后一致；进记事本 / 发帖 / 亲密 prompt，X 里会来互动。空 = 还没生成 */
+  circle: CirclePerson[];
   /** TA 和身边的人的近期聊天（D-110，查手机里的 Message）：personId → 对话；D-124 起隔段时间续写、每人最多留 40 句 */
-  circleChats?: Record<string, CircleLine[]>;
+  circleChats: Record<string, CircleLine[]>;
   /** 圈子是通用回落（D-124）：模型当时没写成；下次查手机再试一次，写成就换掉 */
   circleFallback?: boolean;
   /* ── 亲密度数值体系（D-126，lib/bond.ts） ── */
   /** 当天的 XP 记账：日期 / 合计 / 各来源次数（4:00 起算，日期变了就清） */
   xpToday?: XpToday;
   /** 温度上次结算值与时刻（此刻的值按天线性掉，warmthNow） */
-  warmth?: number;
-  warmthAt?: number;
+  warmth: number;
+  warmthAt: number;
   /** TA 上一条主动消息落进会话的时刻；她 24h 内回话 = 「回复 TA 主动」来源 */
   lastReachAt?: number;
   /** 她已经回过 lastReachAt 那条了 */

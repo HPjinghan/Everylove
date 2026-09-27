@@ -102,8 +102,6 @@ interface AppState {
   desktopDock: string[];
   /** 壁纸 = 主题（D-110）：纸面 + 换色，全局生效 */
   wallpaper: string;
-  /** 已退役（D-110 主题只剩纸面）：字段保留兼容旧存档与云端快照，代码不再读 */
-  themeId: string;
   /** 日历用户层日程（D-020） */
   userEvents: CalendarEvent[];
   /** 发帖调度（D-055）：characterId → 下一条帖子的到点时间（频率按 MBTI，lib/posts.ts） */
@@ -309,7 +307,6 @@ const initialData = {
   desktopSlots: {} as Record<string, number>,
   desktopDock: DEFAULT_DOCK,
   wallpaper: DEFAULT_WALLPAPER,
-  themeId: 'paper',
   userEvents: [] as CalendarEvent[],
   postSchedule: {} as Record<string, number>,
   datingPasses: {} as Record<string, number>,
@@ -590,6 +587,12 @@ export const useAppStore = create<AppState>()(
           // 温度从起点开始（D-126）
           warmth: WARMTH_START,
           warmthAt: now,
+          // 记忆 / 记事本 / 作息 / 身边的人：缔结即建空的（D-193），读的地方不再各自兜底
+          memory: { facts: [], summary: '', summarizedUpTo: 0, factsUpTo: 0, updatedAt: 0 },
+          notes: [],
+          hisEvents: [],
+          circle: [],
+          circleChats: {},
           // TA 的钱包（D-128）：2000 Coin 起，周薪之后估
           wallet: emptyHisWallet(now),
           messages: [...squareMsgs, ceremony, ...greeting],
@@ -1064,7 +1067,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'everylove-store',
-      version: 11,
+      version: 12,
       storage: createJSONStorage(() => AsyncStorage),
       // v2：种子角色改版（陆隽行下架、人外上新），清掉指向已删除角色的数据
       // v3：新手流标记（D-058）——已有存档的老用户不重走新手流
@@ -1076,9 +1079,30 @@ export const useAppStore = create<AppState>()(
       // v9：零钱（D-128）——老羁绊补 TA 的钱包（2000 Coin 起，周薪从现在起算）
       // v10：桌面布局全部回默认（D-136，Harper：强制把所有人的布局刷新成默认首页）
       // v11：世界书下线（D-149）——清掉世界书数据与角色 / 羁绊快照上的世界字段；桌面上的世界书图标随 appById 过滤自然消失
+      // v12：类型收紧（D-193）——羁绊与试聊的可选字段补默认值改必填；themeId 删掉
       migrate: (persisted: unknown, version) => {
         const state = persisted as (Partial<AppState> & Record<string, unknown>) | undefined;
         if (!state) return state;
+        // v12：类型收紧（D-193）——羁绊的记忆 / 记事本 / 作息 / 身边的人 / 温度、试聊的好奇值改必填，老存档补默认值；themeId 退役字段删掉
+        if (version < 12) {
+          const now = Date.now();
+          delete state.themeId;
+          if (state.bonds) {
+            state.bonds = state.bonds.map((b) => ({
+              ...b,
+              memory: b.memory ?? { facts: [], summary: '', summarizedUpTo: 0, factsUpTo: 0, updatedAt: 0 },
+              notes: b.notes ?? [],
+              hisEvents: b.hisEvents ?? [],
+              circle: b.circle ?? [],
+              circleChats: b.circleChats ?? {},
+              warmth: b.warmth ?? WARMTH_START,
+              warmthAt: b.warmthAt ?? now,
+            }));
+          }
+          if (state.squareChats) {
+            state.squareChats = Object.fromEntries(Object.entries(state.squareChats).map(([id, c]) => [id, { ...c, heart: c.heart ?? 0 }]));
+          }
+        }
         if (version < 11) {
           delete state.worldBooks;
           delete state.worldFavorites;
@@ -1120,7 +1144,6 @@ export const useAppStore = create<AppState>()(
             }
           }
         }
-        if (version < 6) state.themeId = 'paper';
         if (version < 5) {
           delete state.engine;
           delete state.anthropicKey;

@@ -67,8 +67,14 @@ export function history(lines: [ChatMessage['from'], string][]): ChatMessage[] {
   }));
 }
 
-export const bondBase: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'birthday' | 'createdAt' | 'memory' | 'wallet' | 'notes'> = {
+export const bondBase: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'birthday' | 'createdAt' | 'memory' | 'wallet' | 'notes' | 'hisEvents' | 'circle' | 'circleChats' | 'warmth' | 'warmthAt'> = {
   name: '沈之言',
+  // D-193 必填：作息 / 身边的人还没生成；温度在起点（与没有这些字段时的装配结果一致）
+  hisEvents: [],
+  circle: [],
+  circleChats: {},
+  warmth: 60,
+  warmthAt: NOW.getTime(),
   // 零钱（D-128）：TA 的钱包
   wallet: { balance: 2380, ledger: [], weekly: 3500, job: '讲师的薪水', lastSalaryAt: NOW.getTime() - 3 * 86_400_000 },
   nickname: '小满',
