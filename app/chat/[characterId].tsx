@@ -28,7 +28,8 @@ import { himMsg, wait } from '@/core/turn';
 import { HEART_FULL } from '@/lib/bond';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
-import { sendImage, sendText, sendVoice, squareScope } from '@/lib/chat';
+import { resendTurn, sendImage, sendText, sendVoice, squareScope } from '@/lib/chat';
+import type { ChatMessage } from '@/lib/types';
 import { findCharacter, SQUARE_CHAT_TTL_MS, useAppStore } from '@/store/app-store';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -108,6 +109,7 @@ export default function SquareChatScreen() {
   const onSend = (text: string, replyTo?: ReplyRef) => void sendText(scope, text, { replyTo, ui });
   const onSendVoice = (uri: string, durationMs: number) => void sendVoice(scope, uri, durationMs, ui);
   const onSendImage = (uri: string) => void sendImage(scope, uri, ui);
+  const onResend = (m: ChatMessage) => void resendTurn(scope, m.id, ui);
 
   const offered = chat?.adoptionOffered;
   // 满 100 之后吸顶条保持满格
@@ -169,6 +171,7 @@ export default function SquareChatScreen() {
         onSend={onSend}
         onSendImage={onSendImage}
         onSendVoice={onSendVoice}
+        onResend={onResend}
         onRecall={(m) => useAppStore.getState().recallMessage({ characterId: character.id }, m.id)}
         onDelete={(m) => useAppStore.getState().deleteMessage({ characterId: character.id }, m.id)}
         cta={

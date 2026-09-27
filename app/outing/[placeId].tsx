@@ -33,7 +33,7 @@ import { describeAiError } from '@/lib/engine';
 import { imageKeyReady } from '@/lib/imagegen';
 import { t } from '@/lib/i18n';
 import { ON_TIME_TOLERANCE_MIN, planTimeLabel } from '@/lib/appointments';
-import { outingScope, respond, sendText } from '@/lib/chat';
+import { outingScope, resendTurn, respond, sendText } from '@/lib/chat';
 import { enterPlace, finishOuting, setSceneVisible, shootPhoto } from '@/lib/outing';
 import { tempNow, todayWeather } from '@/lib/weather';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -140,6 +140,7 @@ export default function OutingSceneScreen() {
 
   // 回合走底座管线（D-086）：XP / 陌生人心动记账、现场描写不剥、心动满的 offer 都在模式与钩子里
   const onSend = (text: string) => void sendText(outingScope(character.id), text, { ui: { typing: setTyping } });
+  const onResend = (m: { id: string }) => void resendTurn(outingScope(character.id), m.id, { typing: setTyping });
 
   const name = bond?.name ?? character.name;
 
@@ -190,6 +191,7 @@ export default function OutingSceneScreen() {
         typing={typing}
         typingLabel="……"
         onSend={onSend}
+        onResend={onResend}
         placeholder={t('说点什么，或用（）写下你的动作…')}
         cta={
           <View>

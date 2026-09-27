@@ -242,6 +242,8 @@ export interface ChatMessage {
   caption?: string;
   /** 多模态处理状态（D-073）：pending 识别/看图中；failed 失败（原因在随后的系统消息里）；空 = 完成或不适用 */
   mediaStatus?: 'pending' | 'failed';
+  /** 她这条 TA 没回上（D-169）：值 = 原因（开发者看），气泡下露「没送到 · 重发」；重发或回上后清掉 */
+  failed?: string;
   /** 通话里说的话（D-077）：电话转写进会话，TA 记得电话里说过什么；气泡带小听筒标记 */
   viaCall?: boolean;
   /** TA 主动找她的那条（D-153）：主动消息生成时避开最近几条的话题与开头 */

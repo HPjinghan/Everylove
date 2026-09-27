@@ -1,13 +1,13 @@
 /**
  * 回合管线（D-086）：用一个假供应商 + 真 store 走一遍「她说一句、TA 回一句」，
- * 验证：模式记账（心动 / XP）、暗号落状态、钩子（心动满的 offer）、失败露出原因。
+ * 验证：模式记账（心动 / XP）、暗号落状态、钩子（心动满的 offer）、失败标在她那条上可重发、同一段会话串行（D-169）。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import '@/features';
 
 import { chatProviders, type ChatRequest } from '@/core/providers';
-import { sendText } from '@/core/turn';
+import { resendTurn, sendText } from '@/core/turn';
 import { HEART_FALLBACK, HEART_FULL, heartPaceOf } from '@/lib/bond';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
@@ -23,6 +23,9 @@ vi.mock('@/lib/proxy', () => ({
 let lastReq: ChatRequest | null = null;
 let nextReply = '嗯，我在。';
 let fail = false;
+/** 假供应商的延时与按请求回话（串行用例用） */
+let delayMs = 0;
+let onReply: ((req: ChatRequest) => string) | null = null;
 
 chatProviders.register({
   id: 'fake',
@@ -31,7 +34,8 @@ chatProviders.register({
   async complete(req) {
     lastReq = req;
     if (fail) throw new Error('boom 503');
-    return nextReply;
+    if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+    return onReply ? onReply(req) : nextReply;
   },
 });
 
@@ -40,6 +44,8 @@ beforeEach(() => {
   lastReq = null;
   fail = false;
   nextReply = '嗯，我在。';
+  delayMs = 0;
+  onReply = null;
 });
 
 const noPace = { pace: 'none' as const };
@@ -69,17 +75,59 @@ describe('亲密会话', () => {
     expect(lastReq?.kind).toBe('reply');
   });
 
-  it('模型失败：原因走轻提示，不写进会话（D-110）', async () => {
+  it('模型失败：不写进会话，她那条标「没送到」；重发不再记账、回上后清掉（D-110 / D-169）', async () => {
     const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
+    const bond = () => useAppStore.getState().bonds.find((b) => b.id === bondId)!;
     fail = true;
-    const before = useAppStore.getState().bonds.find((b) => b.id === bondId)!.messages.length;
+    const before = bond().messages.length;
+    const xp = bond().affinity;
     const r = await sendText({ mode: 'bonded', bondId }, '在吗', { ui: noPace });
     expect(r.reply).toBeNull();
     expect(String(r.error)).toContain('boom 503');
-    const msgs = useAppStore.getState().bonds.find((b) => b.id === bondId)!.messages;
-    // 只多了她那一句；没有系统条
-    expect(msgs.length).toBe(before + 1);
-    expect(msgs.at(-1)!.from).toBe('me');
+    // 只多了她那一句；没有系统条；失败原因记在她那条上
+    expect(bond().messages.length).toBe(before + 1);
+    const hers = bond().messages.at(-1)!;
+    expect(hers.from).toBe('me');
+    expect(hers.failed).toContain('boom 503');
+    expect(bond().affinity).toBe(xp + 5);
+    // 重发：TA 回上，failed 清掉，XP 不再加，模型看到的最后一轮仍是她这句、不重复
+    fail = false;
+    nextReply = '在的';
+    const r2 = await resendTurn({ mode: 'bonded', bondId }, hers.id, noPace);
+    expect(r2.reply?.texts).toEqual(['在的']);
+    expect(bond().messages.find((m) => m.id === hers.id)!.failed).toBeUndefined();
+    expect(bond().messages.at(-1)!.text).toBe('在的');
+    expect(bond().affinity).toBe(xp + 5);
+    const users = lastReq!.turns.filter((x) => x.role === 'user');
+    expect(users.at(-1)!.content).toBe('在吗');
+    expect(users.filter((x) => x.content.includes('在吗')).length).toBe(1);
+  });
+
+  it('同一段会话串行（D-169）：TA 在回的时候她连发两条 → 等这轮落完合成一轮一起回，历史不重复', async () => {
+    const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
+    const scope = { mode: 'bonded' as const, bondId };
+    // 只数 TA 回话的请求（记忆提取这类后台任务也走假供应商，不算）
+    const reqs: ChatRequest[] = [];
+    delayMs = 20;
+    onReply = (req) => {
+      if (req.kind !== 'reply') return '{}';
+      reqs.push(req);
+      return `回 ${reqs.length}`;
+    };
+    const p1 = sendText(scope, '第一句', { ui: noPace });
+    const p2 = sendText(scope, '第二句', { ui: noPace });
+    const p3 = sendText(scope, '第三句', { ui: noPace });
+    const [r1, r2, r3] = await Promise.all([p1, p2, p3]);
+    expect(r1.reply?.texts).toEqual(['回 1']);
+    expect(r2.reply?.texts).toEqual(['回 2']);
+    expect(r3.reply?.texts).toEqual(['回 2']);
+    // 只调了两次模型：第一轮她的第一句；第二轮她后两句合成一条
+    expect(reqs.length).toBe(2);
+    expect(reqs[1].turns.at(-1)).toEqual({ role: 'user', content: '第二句\n第三句' });
+    expect(reqs[1].turns.filter((x) => x.role === 'user' && x.content.includes('第二句')).length).toBe(1);
+    // 屏上顺序：她三句都先在，TA 的两条在后
+    const tail = useAppStore.getState().bonds.find((b) => b.id === bondId)!.messages.slice(-5).map((m) => m.text);
+    expect(tail).toEqual(['第一句', '第二句', '第三句', '回 1', '回 2']);
   });
 
   it('暗面路由绕过模型：不调供应商，回温柔模式', async () => {

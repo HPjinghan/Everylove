@@ -10,7 +10,7 @@ import { showToast } from '@/components/toast';
 import { parseDateKey } from '@/content/calendar';
 import { buildPeekMyPhoneUser, todayLine } from '@/content/prompts';
 import { modeOf, type TurnScope } from '@/core/modes';
-import { gateBlocked, himMsg, respond, runTurn, sendCard, sendText, sysMsg, TURN_ERROR_TOAST_MS, type TurnResult, type TurnUi } from '@/core/turn';
+import { gateBlocked, himMsg, resendTurn, respond, runTurn, sendCard, sendText, sysMsg, TURN_ERROR_TOAST_MS, type TurnResult, type TurnUi } from '@/core/turn';
 import { darkSideCheck, describeAiError, messageContextText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -19,7 +19,7 @@ import { absorbNotesMemory, addMemoryFact } from '@/lib/memory';
 import type { Bond, ChatMessage, EngineContext } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
-export { respond, runTurn, sendCard, sendText };
+export { resendTurn, respond, runTurn, sendCard, sendText };
 export type { TurnResult, TurnScope, TurnUi };
 
 /* ── 定位一段会话 ── */
@@ -60,7 +60,7 @@ export async function sendVoice(scope: TurnScope, uri: string, durationMs: numbe
   mode.patch(scope, msg.id, { transcript, mediaStatus: undefined });
   const text = messageContextText({ ...msg, transcript, mediaStatus: undefined });
   mode.creditUserTurn(scope, text, 'voice');
-  return runTurn(scope, text, ui, { her: true });
+  return runTurn(scope, text, ui, { her: true, msgId: msg.id });
 }
 
 /** 她的照片（D-073）：先上屏，视觉模型描述后回填、记账，再让 TA 回应 */
@@ -88,7 +88,7 @@ export async function sendImage(scope: TurnScope, uri: string, ui?: TurnUi): Pro
   mode.patch(scope, msg.id, { caption, mediaStatus: undefined });
   const text = messageContextText({ ...msg, caption, mediaStatus: undefined });
   mode.creditUserTurn(scope, text, 'image');
-  return runTurn(scope, text, ui, { her: true });
+  return runTurn(scope, text, ui, { her: true, msgId: msg.id });
 }
 
 /** 记事本最多给 TA 看几条 / 每条多长；她和别人的聊天：几个人、各几句；日历：过去几天 + 接下来几天、最多几条 */

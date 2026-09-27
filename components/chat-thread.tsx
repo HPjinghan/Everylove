@@ -186,6 +186,7 @@ function Bubble({
   onLongPress,
   onOpenPhoto,
   onAvatarPress,
+  onResend,
 }: {
   msg: ChatMessage;
   color: string;
@@ -198,6 +199,8 @@ function Bubble({
   onLongPress?: (msg: ChatMessage) => void;
   /** 拍立得点开看大图（D-056） */
   onOpenPhoto?: (shot: ViewerShot) => void;
+  /** 她这条 TA 没回上（D-169）：点「重发」 */
+  onResend?: (msg: ChatMessage) => void;
 }) {
   // 拍立得（D-056）：生成的照片居中呈现——照片不是谁「说」的话，是你们的东西
   if (msg.kind === 'image' && msg.imageUri && msg.polaroid) {
@@ -241,6 +244,7 @@ function Bubble({
   const tint = textDark ? Romance.ink : '#FFFFFF';
   const bubbleTint = msg.kind === 'card' && msg.card ? cardKinds.get(msg.card.type)?.bubbleColor : undefined;
   return (
+    <View>
     <View style={[styles.msgRow, mine ? styles.msgRowMe : styles.msgRowHim]}>
       {!mine && (
         <Pressable onPress={onAvatarPress} disabled={!onAvatarPress} hitSlop={6}>
@@ -302,6 +306,12 @@ function Bubble({
       </Pressable>
       {!mine ? meta : null}
     </View>
+    {mine && msg.failed ? (
+      <Pressable onPress={onResend ? () => onResend(msg) : undefined} hitSlop={8} style={styles.failedRow}>
+        <Text style={styles.failedText}>{t('没送到 · 重发')}</Text>
+      </Pressable>
+    ) : null}
+    </View>
   );
 }
 
@@ -314,6 +324,7 @@ export function ChatThread({
   onSend,
   onSendImage,
   onSendVoice,
+  onResend,
   onRecall,
   onDelete,
   banner,
@@ -334,6 +345,8 @@ export function ChatThread({
   onSendImage?: (uri: string) => void;
   /** 录音发送（不传则隐藏麦克风按钮） */
   onSendVoice?: (uri: string, durationMs: number) => void;
+  /** 她那条 TA 没回上时点「重发」（D-169） */
+  onResend?: (msg: ChatMessage) => void;
   /** 撤回（不传则长按菜单不出现撤回项） */
   onRecall?: (msg: ChatMessage) => void;
   /** 删除（本地移除） */
@@ -492,6 +505,7 @@ export function ChatThread({
               onLongPress={openActions}
               onOpenPhoto={setViewingShot}
               onAvatarPress={onAvatarPress}
+              onResend={onResend}
             />
           )}
           style={styles.list}
@@ -692,6 +706,8 @@ const styles = themed(() =>
     voiceDuration: { fontFamily: Fonts.label, fontSize: 13, marginLeft: 6 },
     voiceHint: { fontSize: 11, color: Romance.sub, marginTop: 4 },
     voiceTranscript: { fontSize: 14, color: Romance.sub, marginTop: 6, lineHeight: 20 },
+    failedRow: { alignSelf: 'flex-end', marginTop: -2, marginBottom: 6, paddingHorizontal: 4 },
+    failedText: { fontSize: 11, color: Romance.accentStrong },
     mediaHint: { fontSize: 11, color: Romance.sub, marginTop: 4 },
     mediaHintLight: { color: 'rgba(255,255,255,0.82)' },
     mediaTranscript: { fontSize: 13, color: Romance.sub, marginTop: 5, lineHeight: 18 },

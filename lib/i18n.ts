@@ -872,6 +872,7 @@ const en: Record<string, string> = {
   '哈哈哈，我知道了，下次': 'haha, got it, next time',
   '哈哈哈 · 我知道了 · 下次': 'haha · got it · next time',
   '好': 'OK',
+  '没送到 · 重发': "Didn't get through · Resend",
   // __EN_END__
 };
 
@@ -1716,6 +1717,7 @@ const ja: Record<string, string> = {
   '哈哈哈，我知道了，下次': 'はは、わかった、今度ね',
   '哈哈哈 · 我知道了 · 下次': 'はは · わかった · 今度ね',
   '好': 'OK',
+  '没送到 · 重发': '届かなかった · 再送',
   // __JA_END__
 };
 
@@ -2563,6 +2565,7 @@ const ko: Record<string, string> = {
   '哈哈哈，我知道了，下次': 'ㅋㅋㅋ 알았어, 다음에',
   '哈哈哈 · 我知道了 · 下次': 'ㅋㅋㅋ · 알았어 · 다음에',
   '好': '확인',
+  '没送到 · 重发': '전달되지 않음 · 다시 보내기',
   // __KO_END__
 };
 

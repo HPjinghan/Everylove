@@ -12,7 +12,7 @@ import { createEmitHook, createWaterfallHook } from '@/core/hooks';
 import { replyMarkers } from '@/core/markers';
 import { modeOf, type ConversationMode, type TurnScope } from '@/core/modes';
 import { createRegistry } from '@/core/registry';
-import { describeAiError, generateReply } from '@/lib/engine';
+import { describeAiError, generateReply, messageContextText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import type { ChatCard, ChatMessage, EngineContext, EngineReply } from '@/lib/types';
@@ -28,8 +28,8 @@ export interface TurnUi {
   quiet?: boolean;
 }
 
-/** 模型失败的轻提示停留时长（D-110：不进会话，1 秒即走） */
-export const TURN_ERROR_TOAST_MS = 1000;
+/** 模型失败的轻提示停留时长（D-169：只说「没回上」，原因记在她那条消息上；识别 / 看图失败的提示同样时长） */
+export const TURN_ERROR_TOAST_MS = 2600;
 
 export interface TurnInfo {
   scope: TurnScope;
@@ -102,14 +102,64 @@ export function meMsg(text: string, extra: Partial<ChatMessage> = {}): ChatMessa
   return { id: uid('m'), from: 'me', kind: 'text', text, at: Date.now(), ...extra };
 }
 
+export interface TurnMeta {
+  /** 她发起的回合（流量只扣她发起的，D-132） */
+  her?: boolean;
+  /** 她这轮的那条消息（失败时标在它上面、可重发，D-169） */
+  msgId?: string;
+  /** 她这条已在会话里、又作为本轮的话送进去（重发 / 合成的一轮）：历史里去掉它免得重复 */
+  exclude?: boolean;
+}
+
+/** 排队的一轮（D-169）：TA 在回的时候她又说的 */
+interface TurnJob {
+  userText: string;
+  ui: TurnUi;
+  her: boolean;
+  msgIds: string[];
+  resolve(r: TurnResult): void;
+}
+/** 每段会话一条队列：正在回的那轮 + 期间攒下的 */
+const running = new Map<string, TurnJob[]>();
+const scopeKey = (s: TurnScope) => `${s.mode}:${s.bondId ?? s.characterId ?? ''}`;
+
 /**
  * TA 回一轮。userText 是模型视角的文字（语音 / 照片 / 卡片已经包装过；舞台提示也从这里进），
  * 调用前她的消息应已落会话并记账（sendText / sendCard 会做；respond 则只让 TA 说话）。
+ * 同一段会话不并行（D-169）：TA 在回的时候她又说了，等这轮落完再回——她连发的几条合成一轮一起回（像人一样），
+ * 不是她说的（舞台提示）单独一轮；排队的调用在它那轮落完后才 resolve。
  */
-export async function runTurn(scope: TurnScope, userText: string, ui: TurnUi = {}, meta: { her?: boolean } = {}): Promise<TurnResult> {
+export async function runTurn(scope: TurnScope, userText: string, ui: TurnUi = {}, meta: TurnMeta = {}): Promise<TurnResult> {
+  const key = scopeKey(scope);
+  const msgIds = meta.msgId ? [meta.msgId] : [];
+  const queue = running.get(key);
+  if (queue) {
+    return new Promise<TurnResult>((resolve) => queue.push({ userText, ui, her: !!meta.her, msgIds, resolve }));
+  }
+  const pending: TurnJob[] = [];
+  running.set(key, pending);
+  try {
+    const first = await runOne(scope, userText, ui, !!meta.her, msgIds, meta.exclude ? msgIds : []);
+    while (pending.length) {
+      const batch = [pending.shift()!];
+      if (batch[0].her) while (pending.length && pending[0].her) batch.push(pending.shift()!);
+      const ids = batch.flatMap((j) => j.msgIds);
+      const r = await runOne(scope, batch.map((j) => j.userText).join('\n'), batch[batch.length - 1].ui, batch[0].her, ids, ids);
+      for (const j of batch) j.resolve(r);
+    }
+    return first;
+  } finally {
+    running.delete(key);
+    for (const j of pending) j.resolve({ reply: null });
+  }
+}
+
+/** 只让 TA 回上一轮（不排队；由 runTurn 调） */
+async function runOne(scope: TurnScope, userText: string, ui: TurnUi, her: boolean, msgIds: string[], excludeIds: string[]): Promise<TurnResult> {
   const mode = modeOf(scope);
   const ctx = mode.context(scope, userText);
   if (!ctx) return { reply: null };
+  if (excludeIds.length) ctx.history = ctx.history.filter((m) => !excludeIds.includes(m.id));
   const pace = ui.pace ?? 'natural';
 
   ui.typing?.(true);
@@ -117,15 +167,16 @@ export async function runTurn(scope: TurnScope, userText: string, ui: TurnUi = {
   try {
     reply = await generateReply(ctx);
   } catch (e) {
-    // 模型调用失败：轻提示露出原因、停 1 秒（D-069 错误要看得见；D-110 不再写进会话——会话里删不掉）
+    // 模型调用失败（D-169）：她那条标「没送到」可重发，轻提示只说没回上；原因记在消息上、开发者看 console（不写进会话，D-110）
     ui.typing?.(false);
-    if (!ui.quiet) {
-      showToast(t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) }), { durationMs: TURN_ERROR_TOAST_MS });
-    }
+    const reason = describeAiError(e);
+    console.warn('[turn] TA 没回上：', reason);
+    for (const id of msgIds) mode.patch(scope, id, { failed: reason });
+    if (!ui.quiet) showToast(t('TA 这条没回上'), { durationMs: TURN_ERROR_TOAST_MS });
     return { reply: null, error: e };
   }
 
-  const info: TurnInfo = { scope, ctx, mode, reply, darkSide: !!reply.darkSide, ui, her: !!meta.her };
+  const info: TurnInfo = { scope, ctx, mode, reply, darkSide: !!reply.darkSide, ui, her };
   const total = reply.texts.length;
   // 每条气泡：「正在输入」按这条的长度停一会儿再上屏（D-146）；模型已经花掉的时间不再另算
   for (const [i, text] of reply.texts.entries()) {
@@ -167,9 +218,20 @@ export async function sendText(
 ): Promise<TurnResult> {
   if (gateBlocked(scope)) return { reply: null };
   const mode = modeOf(scope);
-  mode.append(scope, [meMsg(text, { replyTo: opts.replyTo })]);
+  const msg = meMsg(text, { replyTo: opts.replyTo });
+  mode.append(scope, [msg]);
   mode.creditUserTurn(scope, text, 'text');
-  return runTurn(scope, text, opts.ui, { her: true });
+  return runTurn(scope, text, opts.ui, { her: true, msgId: msg.id });
+}
+
+/** 重发（D-169）：TA 没回上的那条，她点一下再让 TA 回——不再落会话、不再记账 */
+export async function resendTurn(scope: TurnScope, msgId: string, ui?: TurnUi): Promise<TurnResult> {
+  if (gateBlocked(scope)) return { reply: null };
+  const mode = modeOf(scope);
+  const msg = mode.context(scope, '')?.history.find((m) => m.id === msgId);
+  if (!msg || msg.from !== 'me') return { reply: null };
+  mode.patch(scope, msgId, { failed: undefined });
+  return runTurn(scope, messageContextText(msg), ui, { her: true, msgId, exclude: true });
 }
 
 /**
@@ -187,7 +249,7 @@ export async function sendCard(
   const msg: ChatMessage = { id: uid('m'), from: 'me', kind: 'card', text: card.title, card, at: Date.now() };
   mode.append(scope, [msg]);
   mode.creditUserTurn(scope, cardContextText(card), 'card');
-  const r = await runTurn(scope, prompt, ui, { her: true });
+  const r = await runTurn(scope, prompt, ui, { her: true, msgId: msg.id });
   return { id: msg.id, ...r };
 }
 

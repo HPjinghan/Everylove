@@ -35,7 +35,8 @@ import { sendRedPacket } from '@/features/red-packet';
 import { levelInfoFor, levelOf } from '@/lib/bond';
 import { callReady } from '@/lib/call';
 import { characterUpdateFor } from '@/lib/character-update';
-import { bondScope, sendImage, sendText, sendVoice } from '@/lib/chat';
+import { bondScope, resendTurn, sendImage, sendText, sendVoice } from '@/lib/chat';
+import type { ChatMessage } from '@/lib/types';
 import { daysTogether } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { refreshSharedPool } from '@/lib/pool';
@@ -103,6 +104,7 @@ export default function BondScreen() {
   const onSend = (text: string, replyTo?: ReplyRef) => void sendText(scope, text, { replyTo, ui });
   const onSendVoice = (uri: string, durationMs: number) => void sendVoice(scope, uri, durationMs, ui);
   const onSendImage = (uri: string) => void sendImage(scope, uri, ui);
+  const onResend = (m: ChatMessage) => void resendTurn(scope, m.id, ui);
 
   /** 「+」面板的玩法（D-081/D-084）：各自的 send 函数里带卡片、提示语与后续动作 */
   const onInvite = (place: Parameters<typeof sendInvite>[1], at: number) => {
@@ -224,6 +226,7 @@ export default function BondScreen() {
         onSend={onSend}
         onSendImage={onSendImage}
         onSendVoice={onSendVoice}
+        onResend={onResend}
         onRecall={(m) => useAppStore.getState().recallMessage({ bondId: bond.id }, m.id)}
         onDelete={(m) => useAppStore.getState().deleteMessage({ bondId: bond.id }, m.id)}
         placeholder={t('和{name}说点什么…', { name: bond.name })}
