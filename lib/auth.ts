@@ -8,11 +8,11 @@
  */
 
 import 'react-native-url-polyfill/auto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 
 import { CONFIG } from '@/core/config';
 import type { Lang } from '@/lib/i18n';
+import { secureStorage } from '@/lib/secure-storage';
 
 export const SUPABASE_URL = CONFIG.supabaseUrl;
 export const SUPABASE_ANON_KEY = CONFIG.supabaseAnonKey;
@@ -31,7 +31,8 @@ export function getSupabase(): SupabaseClient | null {
   if (!client) {
     client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
-        storage: AsyncStorage,
+        // 会话进 Keychain（D-184）
+        storage: secureStorage,
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,

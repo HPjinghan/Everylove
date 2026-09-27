@@ -70,7 +70,8 @@
           },
           "iosAppGroupIdentifier": "group.com.kotoko.everylove"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

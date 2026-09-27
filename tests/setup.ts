@@ -61,6 +61,15 @@ vi.mock('expo-share-intent', () =>
   })
 );
 // 本地通知（D-114 主动消息排通知）：node 里没有 __DEV__，整个模块桩掉；权限一律拒绝、排通知返回假 id
+// 会话 token 的 Keychain（D-184）：node 里用内存 Map 代替
+vi.mock('expo-secure-store', () => {
+  const mem = new Map<string, string>();
+  return {
+    getItemAsync: async (k: string) => mem.get(k) ?? null,
+    setItemAsync: async (k: string, v: string) => void mem.set(k, v),
+    deleteItemAsync: async (k: string) => void mem.delete(k),
+  };
+});
 vi.mock('expo-notifications', () =>
   stubModule({
     setNotificationHandler: () => {},

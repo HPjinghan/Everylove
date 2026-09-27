@@ -72,17 +72,14 @@ npx eas-cli submit -p ios --latest --profile production
 
 ## 3. 之后改动怎么发
 
-- **只改了 JS / 文案 / 资源**：热更，TestFlight 包下次冷启动拿到（第一次打开后台下载、第二次打开生效）。**打包时不能带 AI key**（`expo export` 默认会读 `.env.local`），所以用 `EXPO_NO_DOTENV=1` 跳过 env 文件、只把 Supabase 公开配置手工传入，导出后 grep 校验再发布。PowerShell（项目根目录）：
+- **只改了 JS / 文案 / 资源**：热更，TestFlight 包下次冷启动拿到（第一次打开后台下载、第二次打开生效）。**打包时不能带 AI key**——用脚本（D-183），它会：要求工作区干净 → `EXPO_NO_DOTENV=1` 只带 Supabase 公开配置导出 → 扫 `dist` 里有没有 `.env.local` 任何一个 key 的值或 `sk-ant-` / `bce-v3` 前缀（有就中止不发）→ `eas update --skip-bundler` 发这份 dist：
 
   ```powershell
-  $lines = Get-Content .env.local
-  $env:EXPO_NO_DOTENV = '1'
-  $env:EXPO_PUBLIC_SUPABASE_URL = (($lines | ? { $_ -match '^EXPO_PUBLIC_SUPABASE_URL=' }) -replace '^[^=]+=','').Trim('"')
-  $env:EXPO_PUBLIC_SUPABASE_ANON_KEY = (($lines | ? { $_ -match '^EXPO_PUBLIC_SUPABASE_ANON_KEY=' }) -replace '^[^=]+=','').Trim('"')
-  npx expo export --platform ios --max-workers 4
-  Select-String -Path dist_expostaticjsios* -Pattern 'bce-v3|sk-ant-' -List   # 有输出 = 泄漏，别发
-  npx eas-cli@latest update --channel production --environment production --platform ios --skip-bundler --non-interactive --message "..."   # 新版 eas-cli 非交互必须带 --environment
+  npm run update:production -- "一句话说明"     # TestFlight
+  npm run update:preview -- "一句话说明"        # 朋友的 Expo Go
   ```
+
+  就算漏了，production 构建里上游 key 也不生效（`core/config.ts` 的 `devOnly`：非 `__DEV__` 一律空串、永远走代理）。
 
   **导出前先 `git status`**：`expo export` 打的是磁盘上的工作区，不是 HEAD。2026-09-15 另一个 Claude 会话正在同一目录里改 `lib/bond.ts`（未提交的 D-126 数值），被一起打进 production，只好 `eas update:republish --group <上一组> --destination-channel production --message …` 回滚。工作区不干净时到临时目录 `git worktree add --detach <dir> <commit>`、`cmd /c rmdir` 能删的 junction 把 `node_modules` 接过去（`New-Item -ItemType Junction`）、在那里导出 + 发布，完事 `git worktree remove --force`。
 
