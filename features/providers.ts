@@ -39,6 +39,7 @@ function cachedTurns(req: ChatRequest): (ChatTurn | { role: ChatTurn['role']; co
 
 const anthropic: ChatProvider = {
   id: 'anthropic',
+  tier: 'premium',
   label: `Claude · ${CONFIG.anthropicModel}`,
   localKey: () => CONFIG.anthropicKey,
   async complete(req, route) {
@@ -76,6 +77,8 @@ const anthropic: ChatProvider = {
 
 const qianfan: ChatProvider = {
   id: 'qianfan',
+  // 便宜那家（D-179）：后台任务、没配 key 时走代理的默认
+  tier: 'cheap',
   label: `千帆 · ${CONFIG.qianfanModel}`,
   localKey: () => CONFIG.qianfanKey,
   async complete(req, route) {

@@ -24,7 +24,8 @@ export function photoRequested(ctx: Pick<EngineContext, 'userText'>): boolean {
 promptSections.register({
   name: 'his-photo',
   modes: BONDED_CHAT,
-  order: ORDER.hisPhoto,
+  // 紧跟钱包
+  order: ORDER.gameplay + 14,
   lines: (ctx, env) => {
     if (!ctx.bond || !imageKeyReady()) return [];
     return hisPhotoLines(extraOffered(ctx.bond, ctx.character, 'photo', ctx.history, env.now.getTime()));

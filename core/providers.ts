@@ -38,6 +38,8 @@ export interface ChatResult {
 export interface ChatProvider {
   /** 供应商 id，也是 EXPO_PUBLIC_AI_ENGINE 的取值 */
   id: string;
+  /** 档位（D-179）：cheap = 后台任务与没配 key 时的默认那家；不标 = 高档。底座不认识任何一家，只认档位 */
+  tier?: 'cheap' | 'premium';
   /** 界面显示（设置 → 开发者） */
   label: string;
   /** 本地直连用的 key；空 = 没配 */
@@ -48,8 +50,11 @@ export interface ChatProvider {
 
 export const chatProviders = createRegistry<ChatProvider>('chatProviders', (p) => p.id);
 
-/** 没指定、也没人有本地 key 时用它走代理（服务端两家都通，默认千帆） */
-export const DEFAULT_CHAT_PROVIDER = 'qianfan';
+/** 便宜那家（D-179）：第一个标 tier: 'cheap' 的；没有就第一个注册的。后台任务 / 没配 key 时走代理都用它 */
+export function cheapChatProvider(): ChatProvider | undefined {
+  const all = chatProviders.list();
+  return all.find((p) => p.tier === 'cheap') ?? all[0];
+}
 
 /** 运行期偏好（D-106）：设置 → 开发者点选的供应商 id；空 = 跟随工程配置。只存本机，不是用户数据（lib/engine 负责落盘） */
 let preferred = '';
@@ -68,9 +73,6 @@ export function setUserProviderChoice(id: string): void {
 export function userProviderChoice(): string {
   return userChoice;
 }
-/** 后台任务（记忆提取 / 解析 / 周薪……）默认走的便宜供应商（D-132）：有路才用，否则跟随当前 */
-export const TASK_CHAT_PROVIDER = 'qianfan';
-
 function hasRoute(p: ChatProvider | undefined): p is ChatProvider {
   return !!p && chatRouteSync(p) !== 'none';
 }
@@ -84,7 +86,7 @@ export function currentChatProvider(id?: string): ChatProvider {
   const chosen = !id && !preferred && userChoice ? chatProviders.get(userChoice) : undefined;
   if (hasRoute(chosen)) return chosen;
   const all = chatProviders.list();
-  const p = all.find((x) => x.localKey()) ?? chatProviders.get(DEFAULT_CHAT_PROVIDER) ?? all[0];
+  const p = all.find((x) => x.localKey()) ?? cheapChatProvider();
   if (!p) throw new Error('底座未启动：没有注册任何聊天供应商（先 import "@/features"）');
   return p;
 }
@@ -112,7 +114,7 @@ export class AiUnavailableError extends Error {
 /** 唯一的对外调用点：选供应商 → 定取路 → 发请求。失败原样抛出，由调用方决定露出还是静默。 */
 export async function completeChat(req: ChatRequest, providerId?: string): Promise<string> {
   // 后台任务不花她的流量，也别用贵的那家（D-132）：没指定、没有开发者偏好时走便宜供应商
-  const taskCheap = !providerId && !preferred && (req.kind === 'task' || req.background) ? chatProviders.get(TASK_CHAT_PROVIDER) : undefined;
+  const taskCheap = !providerId && !preferred && (req.kind === 'task' || req.background) ? cheapChatProvider() : undefined;
   const p = hasRoute(taskCheap) ? taskCheap : currentChatProvider(providerId);
   const route = await chatRoute(p);
   if (route === 'none') throw new AiUnavailableError();

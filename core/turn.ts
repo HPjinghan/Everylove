@@ -8,7 +8,6 @@
  * 借 dsh 的纪律：「新行为挂扩展点，不改 loop」——要加东西，注册钩子 / 标记 / 模式，不要在这里加分支。
  */
 
-import { showToast } from '@/components/toast';
 import { cardContextText } from '@/core/cards';
 import { createEmitHook, createWaterfallHook } from '@/core/hooks';
 import { replyMarkers } from '@/core/markers';
@@ -33,6 +32,16 @@ export interface TurnUi {
 /** 模型失败的轻提示停留时长（D-169：只说「没回上」，原因记在她那条消息上；识别 / 看图失败的提示同样时长） */
 export const TURN_ERROR_TOAST_MS = 2600;
 
+/** 轻提示的出口（D-179）：底座不认识界面组件，谁来显示由外面注入（features/notify.ts 接 showToast）；没注入就只记 warn */
+export type TurnNotifier = (text: string, durationMs: number) => void;
+let notifier: TurnNotifier = (text) => console.warn('[turn] ' + text);
+export function setTurnNotifier(fn: TurnNotifier): void {
+  notifier = fn;
+}
+export function notify(text: string, durationMs = TURN_ERROR_TOAST_MS): void {
+  notifier(text, durationMs);
+}
+
 export interface TurnInfo {
   scope: TurnScope;
   ctx: EngineContext;
@@ -56,7 +65,7 @@ export function gateBlocked(scope: TurnScope): string | null {
   for (const g of turnGates.list()) {
     const reason = g.check(scope);
     if (reason) {
-      showToast(reason, { durationMs: TURN_ERROR_TOAST_MS });
+      notify(reason);
       return reason;
     }
   }
@@ -186,7 +195,7 @@ async function runOne(scope: TurnScope, userText: string, ui: TurnUi, her: boole
     const reason = describeAiError(e);
     console.warn('[turn] TA 没回上：', reason);
     for (const id of msgIds) mode.patch(scope, id, { failed: reason });
-    if (!ui.quiet) showToast(t('TA 这条没回上'), { durationMs: TURN_ERROR_TOAST_MS });
+    if (!ui.quiet) notify(t('TA 这条没回上'));
     return { reply: null, error: e };
   }
 

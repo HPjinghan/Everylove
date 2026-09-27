@@ -36,12 +36,8 @@ export const ORDER = {
   situation: 85,
   memory: 90,
   secrets: 100,
-  phone: 110,
-  redPacket: 120,
-  /** TA 的钱包（D-128）：紧跟红包规则 */
-  wallet: 122,
-  /** TA 主动发图（D-130）：紧跟钱包 */
-  hisPhoto: 124,
+  /** 玩法自己的规则段（D-179）：110～129 归各玩法，用 `ORDER.gameplay + n` 排先后（查手机 +0 / 红包 +10 / 钱包 +12 / 发图 +14……） */
+  gameplay: 110,
   manner: 130,
   strangerManner: 135,
   initiative: 140,
@@ -56,8 +52,8 @@ export const ORDER = {
   hardRules: 200,
   /** 她最近几句里有危机内容（D-167）：紧跟硬规则 */
   crisis: 202,
-  /** 心动判分（D-126）：初识 / 广场陌生人的暗号规则，在输出格式之前 */
-  heart: 205,
+  /** 暗号类判分规则（D-179）：在红线之后、输出格式之前（好奇判分用它） */
+  markers: 205,
   output: 210,
   length: 220,
   /** 这轮短一点（D-144）：最后一句 */

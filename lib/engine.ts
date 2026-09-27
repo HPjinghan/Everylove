@@ -350,18 +350,19 @@ export async function generateReply(ctx: EngineContext, providerId?: string, opt
   );
   if (!text) throw new Error('empty reply');
 
+  // 拆几条 / 剥不剥（）/ 留不留句号都由模式声明（D-179）；没注册的模式按最保守的来
   const policy = modes.get(ctx.mode);
-  const stripStage = policy?.stripStage ?? ctx.mode !== 'outing';
+  const stripStage = policy?.stripStage ?? true;
   // 说话节奏（D-155）：连发的人在亲密模式里最多四条，其余按模式的上限
   const style = bubbleStyleOf(ctx.character);
-  const modeMax = policy?.maxBubbles ?? (ctx.mode === 'bonded' ? 2 : 1);
+  const modeMax = policy?.maxBubbles ?? 1;
   const maxBubbles = style === 'burst' && modeMax > 1 ? Math.max(modeMax, BURST_MAX_BUBBLES) : modeMax;
   // 先剥暗号再拆气泡（D-126）：初识只留第一条气泡，写在末尾另起一段的暗号不能跟着丢
   const marked = stripReplyMarkers({ texts: [text] });
   const bubbles = splitBubbles(marked.texts.join('\n\n'), maxBubbles, ctx.character.name, style);
   const texts = stripStage ? stripStageDirections(bubbles) : bubbles;
-  // D-145：末尾句号在前端去掉（真人不这样）；通话的字要送去合成，留着
-  return { ...marked, texts: ctx.mode === 'call' ? texts : stripTrailingPeriods(texts) };
+  // D-145：末尾句号在前端去掉（真人不这样）；要送去合成的模式（通话）留着
+  return { ...marked, texts: policy?.keepTrailingPeriod ? texts : stripTrailingPeriods(texts) };
 }
 
 /** 兼容旧名：剥回复暗号（现由 core/markers 的注册表驱动） */

@@ -25,17 +25,18 @@ core/          底座：不含任何具体玩法，只有插槽与管线（改�
   registry.ts    注册表：register 返回撤销函数、同 key 覆盖、按注册顺序 list
   hooks.ts       钩子：createEmitHook / createWaterfallHook
   config.ts      工程配置：所有 EXPO_PUBLIC_* 只在这里读一次
-  providers.ts   聊天供应商接缝：ChatProvider + 取路（直连 / 代理 / 不可用）
+  providers.ts   聊天供应商接缝：ChatProvider（tier 档位，D-179）+ 取路（直连 / 代理 / 不可用）
   prompt.ts      系统 prompt 分段表 + ORDER 顺序槽 + assembleSystemPrompt
   modes.ts       会话模式接口（历史在哪 / 落到哪 / 她开口算什么账 / 组上下文 / 拆几条）
   markers.ts     回复暗号（[解锁手机] / [拆红包]……）→ flags → apply
   cards.ts       卡片消息种类：进上下文的一句 + 气泡怎么画
   jobs.ts        后台任务：启动 / 回前台
-  turn.ts        回合管线：runTurn / sendText / sendCard / respond + turnHooks
+  turn.ts        回合管线：runTurn / sendText / sendCard / respond / draftReply / landReply + turnHooks；轻提示经 setTurnNotifier 注入（D-179）
   index.ts       总览与 re-export
 features/      玩法：往插槽里注册；只 import core / lib / store / content / components
   index.ts       启动清单（app/_layout.tsx 顶部 import 一次）
-  providers.ts   anthropic / qianfan
+  notify.ts      轻提示接线：core/turn 的 notify → showToast（D-179）
+  providers.ts   anthropic / qianfan（tier：premium / cheap）
   prompts.ts     基础分段（人设 / 时间 / 她是谁 / 记忆 / 分寸 / 红线 / 输出格式）
   modes.ts       初识 / 亲密 / 外出 / 通话 / X 回帖（post，D-178）
   invite.tsx     外出邀请：卡片 + sendInvite
@@ -109,7 +110,7 @@ export async function sendRedPacket(bondId, amount, note, ui) { /* sendCard + �
 
 ## 6. 纪律
 
-1. **`core/` 不认识任何具体玩法**：出现「if 红包」「if 千帆」就是放错地方了。
+1. **`core/` 不认识任何具体玩法、也不认识界面**：出现「if 红包」「if 千帆」「import components」就是放错地方了——供应商只认 `tier`、玩法段只用 `ORDER.gameplay + n`、提示只喊 `notify`（D-179）。
 2. **界面只调 `lib/chat.ts` 与 `features/*` 的 send 函数**，不 import 引擎、记忆、约定识别。
 3. **新行为挂扩展点，不改管线**：`core/turn.ts` 加分支要在本文 §3 更新流程图并入档。
 4. **模型看得见的字**：全在 `content/prompts/` 目录，一用途一文件，一段只属于一个用途（一般对话与外出各自一份、立绘与拍照各自一份，不在段里按模式切换）；玩法自己的一句话提示语（卡片进上下文的那句、发出时的舞台提示）随玩法文件。

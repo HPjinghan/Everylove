@@ -141,6 +141,8 @@ const call: ConversationMode = {
   ...bonded,
   id: 'call',
   maxBubbles: 1,
+  // 通话的字要送去合成，句号留着（D-145）
+  keepTrailingPeriod: true,
   context(scope, userText) {
     const ctx = bonded.context(scope, userText);
     return ctx ? { ...ctx, mode: 'call' } : null;

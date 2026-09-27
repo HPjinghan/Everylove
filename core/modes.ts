@@ -33,6 +33,8 @@ export interface ConversationMode {
   maxBubbles: number;
   /** 是否剥掉（）舞台提示（外出模式的现场描写是合法语法，不剥） */
   stripStage: boolean;
+  /** 末尾句号留着（D-145 前端去句号的例外：通话的字要送去合成） */
+  keepTrailingPeriod?: boolean;
 }
 
 export const modes = createRegistry<ConversationMode>('modes', (m) => m.id);

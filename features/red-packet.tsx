@@ -19,7 +19,7 @@ import { t } from '@/lib/i18n';
 import { useAppStore } from '@/store/app-store';
 
 /* ── prompt：常驻一条红包规则（之前没拆的聊到了也能拆） ── */
-promptSections.register({ name: 'red-packet', stable: true, modes: BONDED_CHAT, order: ORDER.redPacket, lines: () => [RED_PACKET_RULE] });
+promptSections.register({ name: 'red-packet', stable: true, modes: BONDED_CHAT, order: ORDER.gameplay + 10, lines: () => [RED_PACKET_RULE] });
 
 /* ── 暗号：[拆红包] → 最近一个没拆的红包标「已领取」 ── */
 replyMarkers.register({

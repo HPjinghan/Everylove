@@ -28,7 +28,8 @@ import { useAppStore } from '@/store/app-store';
 promptSections.register({
   name: 'his-wallet',
   modes: BONDED_CHAT,
-  order: ORDER.wallet,
+  // 紧跟红包规则
+  order: ORDER.gameplay + 12,
   lines: (ctx, env) => {
     if (!ctx.bond) return [];
     const now = env.now.getTime();

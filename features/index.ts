@@ -4,6 +4,7 @@
  * 要关掉一个玩法：注释掉那一行（它注册的 prompt 分段、暗号、卡片、钩子一起消失）；要加一个：新建文件、在这里 import。
  */
 
+import '@/features/notify';
 import '@/features/providers';
 import '@/features/prompts';
 import '@/features/modes';

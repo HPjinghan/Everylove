@@ -15,7 +15,7 @@ import { t } from '@/lib/i18n';
 import { useAppStore } from '@/store/app-store';
 
 /* ── prompt：TA 知道自己的密码，她要看时由 TA 决定 ── */
-promptSections.register({ name: 'phone', stable: true, modes: BONDED_CHAT, order: ORDER.phone, lines: (ctx) => phoneBlock(ctx) });
+promptSections.register({ name: 'phone', stable: true, modes: BONDED_CHAT, order: ORDER.gameplay, lines: (ctx) => phoneBlock(ctx) });
 
 /* ── 暗号：[解锁手机] → 解锁 + 系统条（聊天里、电话里都一样） ── */
 replyMarkers.register({

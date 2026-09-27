@@ -28,7 +28,7 @@ export {
   chatRouteSync,
   completeChat,
   currentChatProvider,
-  DEFAULT_CHAT_PROVIDER,
+  cheapChatProvider,
   type AiRoute,
   type ChatProvider,
   type ChatRequest,

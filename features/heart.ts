@@ -18,7 +18,7 @@ const courting = (ctx: EngineContext) => ctx.mode === 'square' || (ctx.mode === 
 promptSections.register({
   name: 'heart-judge', stable: true,
   modes: ['square', 'outing'],
-  order: ORDER.heart,
+  order: ORDER.markers,
   lines: (ctx) => (courting(ctx) ? heartJudgeLines(ctx.character) : []),
 });
 
