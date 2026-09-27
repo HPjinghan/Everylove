@@ -53,14 +53,16 @@ create policy "shared worlds delete" on public.shared_worlds for delete using (a
 -- 老环境若已有同名表（早期经管理 API 建的），下面的语句都是幂等的：跑一遍即可收权 + 建函数。
 create table if not exists public.ai_usage (
   user_id uuid not null references auth.users (id) on delete cascade,
-  day text not null,
+  day date not null,
   count integer not null default 0,
   primary key (user_id, day)
 );
+-- 早期那张表带一条 "own usage all" 的宽松 policy（客户端能改自己的计数）：删掉
+drop policy if exists "own usage all" on public.ai_usage;
 alter table public.ai_usage enable row level security;
 revoke all on table public.ai_usage from anon, authenticated;
 
-create or replace function public.increment_ai_usage(p_user uuid, p_day text, p_limit integer)
+create or replace function public.increment_ai_usage(p_user uuid, p_day date, p_limit integer)
 returns integer
 language sql
 security definer
@@ -71,5 +73,5 @@ as $$
   where ai_usage.count < p_limit
   returning count;
 $$;
-revoke all on function public.increment_ai_usage(uuid, text, integer) from public, anon, authenticated;
-grant execute on function public.increment_ai_usage(uuid, text, integer) to service_role;
+revoke all on function public.increment_ai_usage(uuid, date, integer) from public, anon, authenticated;
+grant execute on function public.increment_ai_usage(uuid, date, integer) to service_role;
