@@ -84,6 +84,7 @@
 | F12 | ⬜ | 拟真小断裂：自创角色 handle `@c_17xxx`、红包预设 6 / 13 / 52 / 520 按市场、挂断留「通话结束」、location UA 去掉 prototype | `moments.tsx:35`、`chat-extras.tsx:121`、`call:241`、`location-picker.tsx:54` | 红包预设进 OPEN_QUESTIONS |
 | F13 | ⬜ | 静默吞错补提示：定位拒绝 / 搜索失败、试听失败、立绘循环、分享不等不 catch | `location-picker.tsx:131-149`、`voice-picker.tsx:62`、`settings.tsx:171`、`his-phone.tsx:113`、`share.tsx:31` | 统一 showToast |
 | F15 | ✅ D-195 | 语音条与通话无视静音键：统一音频会话 | `lib/audio-session.ts` | Harper 2026-09-27 提出 |
+| F16 | ✅ D-196 | 同一时间只放一条语音，点第二条时上一条停 | `lib/audio-session.ts`、`components/chat-thread.tsx` | Harper 2026-09-27 提出 |
 | F14 | ⬜ | 桌面与创造的渲染期开销：时钟 15 s 整页 setState、渲染期 `Dimensions.get`、渲染期写 store | `app/index.tsx:73`、`outing.tsx:97`、`album.tsx:78`、`bond:245`、`phones:143` | |
 
 ## 建议顺序

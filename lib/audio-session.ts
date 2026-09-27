@@ -6,6 +6,7 @@
  * - record：她录语音——playAndRecord。
  * - call：打电话——playAndRecord 走听筒（像真的电话）；免提 = playback 出扬声器（D-091）；独占（doNotMix），通话时别的声音停。
  * 全部无视静音键：这是通话与语音消息，不是背景音乐。
+ * 同一时间只放一条（D-196）：每条语音各有自己的播放器，开始播放前先把上一条停掉（claimVoicePlayback）。
  */
 
 import { setAudioModeAsync } from 'expo-audio';
@@ -16,6 +17,19 @@ async function apply(mode: Parameters<typeof setAudioModeAsync>[0]): Promise<voi
   } catch (e) {
     console.warn('[audio] 切音频会话失败：', e);
   }
+}
+
+let stopCurrent: (() => void) | null = null;
+
+/** 开始播放一条语音前调：把正在放的那条停掉，再记下这条的停法 */
+export function claimVoicePlayback(stop: () => void): void {
+  if (stopCurrent && stopCurrent !== stop) stopCurrent();
+  stopCurrent = stop;
+}
+
+/** 这条放完 / 被暂停：不再是当前那条 */
+export function releaseVoicePlayback(stop: () => void): void {
+  if (stopCurrent === stop) stopCurrent = null;
 }
 
 export const audioSession = {

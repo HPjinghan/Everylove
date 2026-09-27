@@ -48,7 +48,7 @@ import { ASR_MAX_SECONDS, ASR_RECORDING } from '@/lib/media';
 import { synthesizeVoice, ttsReady } from '@/lib/tts';
 import type { ChatMessage } from '@/lib/types';
 import { findCharacter } from '@/store/app-store';
-import { audioSession } from '@/lib/audio-session';
+import { audioSession, claimVoicePlayback, releaseVoicePlayback } from '@/lib/audio-session';
 
 export type ReplyRef = { from: ChatMessage['from']; text: string };
 /** 「+」面板的一项（D-081）：调用方决定有哪些 */
@@ -88,6 +88,16 @@ function VoiceBubble({
   const player = useAudioPlayer(null);
   const character = characterId ? findCharacter(characterId) : undefined;
   const canSpeak = Boolean(character) && ttsReady();
+  // 同一时间只放一条（D-196）：这条的「停」——被别的语音抢走时也走它
+  const endTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stop = useRef(() => {
+    if (endTimer.current) clearTimeout(endTimer.current);
+    endTimer.current = null;
+    try {
+      player.pause();
+    } catch {}
+    setPlaying(false);
+  }).current;
 
   const onPress = async () => {
     if (!canSpeak || status === 'failed') {
@@ -95,8 +105,8 @@ function VoiceBubble({
       return;
     }
     if (playing) {
-      player.pause();
-      setPlaying(false);
+      stop();
+      releaseVoicePlayback(stop);
       return;
     }
     if (status !== 'ready') {
@@ -111,11 +121,15 @@ function VoiceBubble({
       setStatus('ready');
     }
     await audioSession.playback();
+    claimVoicePlayback(stop);
     player.seekTo(0);
     player.play();
     setPlaying(true);
     const secs = Math.min(59, Math.max(2, Math.round(text.length / 4)));
-    setTimeout(() => setPlaying(false), secs * 1000 + 500);
+    endTimer.current = setTimeout(() => {
+      setPlaying(false);
+      releaseVoicePlayback(stop);
+    }, secs * 1000 + 500);
   };
 
   return (
@@ -152,17 +166,30 @@ function VoiceBubble({
 function AudioVoiceBubble({ uri, durationMs, tint }: { uri: string; durationMs?: number; tint: string }) {
   const player = useAudioPlayer(uri);
   const [playing, setPlaying] = useState(false);
+  const endTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stop = useRef(() => {
+    if (endTimer.current) clearTimeout(endTimer.current);
+    endTimer.current = null;
+    try {
+      player.pause();
+    } catch {}
+    setPlaying(false);
+  }).current;
   const toggle = async () => {
     if (playing) {
-      player.pause();
-      setPlaying(false);
+      stop();
+      releaseVoicePlayback(stop);
     } else {
       await audioSession.playback();
+      claimVoicePlayback(stop);
       player.seekTo(0);
       player.play();
       setPlaying(true);
       const secs = (durationMs ?? 3000) / 1000;
-      setTimeout(() => setPlaying(false), secs * 1000 + 300);
+      endTimer.current = setTimeout(() => {
+        setPlaying(false);
+        releaseVoicePlayback(stop);
+      }, secs * 1000 + 300);
     }
   };
   const secs = Math.max(1, Math.round((durationMs ?? 0) / 1000));

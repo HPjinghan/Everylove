@@ -19,7 +19,7 @@ import type { Lang } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
 import { recommendVoices, voicesFor } from '@/lib/speech';
 import { previewVoice } from '@/lib/tts';
-import { audioSession } from '@/lib/audio-session';
+import { audioSession, claimVoicePlayback } from '@/lib/audio-session';
 
 export function VoicePicker({
   lang,
@@ -63,6 +63,10 @@ export function VoicePicker({
     setBusyId(null);
     if (!uri) return;
     await audioSession.playback();
+    claimVoicePlayback(() => {
+      player.pause();
+      setPlayingId(null);
+    });
     player.replace({ uri });
     player.seekTo(0);
     player.play();
