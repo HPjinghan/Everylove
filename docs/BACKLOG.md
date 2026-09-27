@@ -13,8 +13,8 @@
 | A3 | ✅ D-167 | 暗面路由看历史窗口：最近 N 轮里命中过就注入危机段；命中的轮次不进记忆提取 | `lib/engine.ts:329`、`features/memory.ts:10` | `darkSideCheck` 扫 `ctx.history` 尾部；`TurnInfo.darkSide` 为真时 after 钩子里的记忆跳过 |
 | A4 | ✅ D-167 | 看手机的暗面检查扩到日历标题与她和别人的聊天 | `lib/chat.ts:158` | 三份文本拼一起再 `darkSideCheck` |
 | A5 | ✅ D-168 | X 任务 prompt 去掉「你在扮演……虚构角色」，改真人自居（D-154）并带 `TALK_MANNER` | `content/prompts/social.ts:40,82,135` | 与亲密 prompt 同一行开头；快照必红，确认后更新 |
-| A6 | ⬜ | 上游 key 不再 `EXPO_PUBLIC_`；发布脚本自动 grep bundle 里的 key 前缀，命中即中止 | `core/config.ts:10-13,40`、`docs/RELEASE.md:73-82` | 只在 `__DEV__` 读本地 key；`scripts/` 加校验脚本，eas update 前跑 |
-| A7 | ⬜ | Supabase 会话 token 进 SecureStore | `lib/auth.ts:34` | `expo-secure-store` 做 storage adapter |
+| A6 | ✅ D-183 | 上游 key 不再 `EXPO_PUBLIC_`；发布脚本自动 grep bundle 里的 key 前缀，命中即中止 | `core/config.ts:10-13,40`、`docs/RELEASE.md:73-82` | 只在 `__DEV__` 读本地 key；`scripts/` 加校验脚本，eas update 前跑 |
+| A7 | ✅ D-184 | Supabase 会话 token 进 SecureStore | `lib/auth.ts:34` | `expo-secure-store` 做 storage adapter |
 
 ## B. 直接影响北极星的体验（小活，紧跟 A）
 
