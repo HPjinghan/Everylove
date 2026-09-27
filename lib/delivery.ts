@@ -101,7 +101,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<{ ok: true; or
     void sendCard(
       { mode: 'bonded', bondId: bond.id },
       { type: 'delivery', title, subtitle: order.note, amount: total, arriveAt: order.arriveAt, orderId: order.id },
-      `（她给你点了一份外卖：${title}${order.note ? `，留言「${order.note}」` : ''}，骑手大约 ${Math.round((order.arriveAt - now) / 60_000)} 分钟后送到。按你的喜好和性格反应——喜欢的东西就是喜欢，讨厌的东西可以嫌弃但要接住她的心意；不用说谢谢客套话。）`,
+      `(She ordered food delivery for you: ${title}${order.note ? `, with the note "${order.note}"` : ''}; the rider arrives in about ${Math.round((order.arriveAt - now) / 60_000)} minutes. React by your tastes and character — what you like, you like; what you dislike you can grumble about, but receive the thought behind it; no polite thank-you formulas.)`,
       { unread: true, pace: 'none' }
     );
   }

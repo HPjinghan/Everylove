@@ -44,7 +44,7 @@ export async function sendShare(bondId: string, content: SharedContent, ui?: Tur
   await sendCard(
     scope,
     { type: 'share', title, subtitle: url && url !== text ? url : undefined },
-    `（她把在别处看到的一条内容转给了你——像收到朋友的转发那样接住：聊内容本身、说你的感受，可以问她为什么想到转给你。内容里如果出现了任何真实存在的人，一个字都不评论。）`,
+    "(She forwarded you something she saw elsewhere — take it like a friend's forward: talk about the content itself, say how it lands on you, you can ask why it made her think of you. If any real person appears in it, not a word about them.)",
     ui
   );
 }

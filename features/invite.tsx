@@ -24,7 +24,7 @@ export async function sendInvite(bondId: string, place: Place, at: number, ui?: 
   const pending = sendCard(
     { mode: 'bonded', bondId },
     { type: 'invite', title: `${planTimeLabel(at)} · ${t(place.name)}`, subtitle: t(place.hook), placeId: place.id },
-    `（她发来一张外出邀请：${appointmentAtLabel(at)} 去${place.name}。你答应下来，用你的口吻回她。）`,
+    `(She sent you an outing invitation: ${appointmentAtLabel(at)}, ${place.name}. Say yes, in your own voice.)`,
     ui
   );
   useAppStore.getState().addOutingPlan(bond.characterId, place.id, { at, source: 'manual' });

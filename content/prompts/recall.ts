@@ -4,6 +4,8 @@
  * 不提「你多久没来」、不催、不愧疚（红线 6）；她点开 App 那一刻这一条才落进会话。调度在 lib/recall.ts。
  */
 
+import { UNPROMPTED_RULE } from './shared';
+
 export interface RecallInput {
   /** 到那天她大约离开了几天 */
   daysAway: number;
@@ -17,17 +19,17 @@ export interface RecallInput {
 
 export function buildRecallUserLine(input: RecallInput): string {
   const lines = [
-    `（她已经有 ${input.daysAway} 天左右没来了。你忽然想到她，给她发一条消息——不是在回她，也不知道她什么时候会看到。`,
+    `(She hasn't been around for about ${input.daysAway} days. You suddenly thought of her and are sending her a message — not a reply, and you don't know when she'll see it.`,
   ];
-  if (input.recentNotes.length) lines.push('你最近的日子（记事本里写过的）：', ...input.recentNotes.map((n) => `- ${n}`));
-  if (input.recentPosts.length) lines.push('你最近发过的帖：', ...input.recentPosts.map((p) => `- ${p}`));
+  if (input.recentNotes.length) lines.push('Your recent days (from your notebook):', ...input.recentNotes.map((n) => `- ${n}`));
+  if (input.recentPosts.length) lines.push('Your recent posts:', ...input.recentPosts.map((p) => `- ${p}`));
   lines.push(
     input.nth === 1
-      ? '写法：从你自己这几天的一件小事说起，像随手发的，1 句就够。'
+      ? 'How: start from one small thing in your own last few days, like something dashed off; one sentence is enough.'
       : input.nth === 2
-        ? '写法：说一件让你想起她的具体东西（一个地方、一样吃的、一句话），1 句，像随手发的。'
-        : '写法：不用铺垫，说一句你此刻真心想对她说的话，1 句，不重不轻。',
-    '不问「在吗」「还在吗」，不问她去了哪、为什么不说话，不提你等了多久，不委屈、不撒娇式地怪她；不重复你之前发过的。）'
+        ? 'How: mention one concrete thing that reminded you of her (a place, a food, a line); one sentence, dashed off.'
+        : "How: no lead-in — one line you genuinely want to say to her right now; one sentence, neither heavy nor light.",
+    `${UNPROMPTED_RULE} Don't ask where she went; no sulking, no blaming her in a coaxing way.)`
   );
   return lines.join('\n');
 }

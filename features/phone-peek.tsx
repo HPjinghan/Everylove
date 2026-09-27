@@ -46,7 +46,7 @@ export async function askPasscode(bondId: string, ui?: TurnUi): Promise<void> {
   await sendCard(
     { mode: 'bonded', bondId },
     { type: 'phoneRequest', title: t('想看看你的手机') },
-    `（她按了「问 TA 要密码」：${bond.nickname} 想看看你的手机。按你的性格和你们现在的亲密程度决定给不给：给就把密码 ${code} 告诉她，并在回复最后单独一行写 ${PHONE_UNLOCK_MARK}；不给就说明为什么或逗她，不写标记。）`,
+    `(She tapped "ask for the passcode": ${bond.nickname} wants to look at your phone. Decide as yourself, by your character and how close you are now: if you let her, tell her the passcode ${code} and write ${PHONE_UNLOCK_MARK} alone on the final line; if not, say why or tease her — no mark.)`,
     ui
   );
 }

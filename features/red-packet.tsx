@@ -77,7 +77,7 @@ export async function sendRedPacket(bondId: string, amount: number, note: string
   const { id } = await sendCard(
     scope,
     { type: 'redpacket', title: money(amount), subtitle: note, amount },
-    `（她给你发了一个 ${money(amount)} 的红包，留言「${note}」。按你的性格和你们的关系决定拆不拆：拆了就在回复最后单独一行写 ${RED_PACKET_MARK}；不拆就说说为什么或逗她。）`,
+    `(She sent you a red packet of ${money(amount)} with the note "${note}". Decide as yourself, by your character and how close you are, whether to open it: if you do, write ${RED_PACKET_MARK} alone on the final line; if not, say why or tease her.)`,
     ui
   );
   const after = useAppStore.getState().bonds.find((b) => b.id === bondId)?.messages.find((m) => m.id === id);

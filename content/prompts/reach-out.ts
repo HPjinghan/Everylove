@@ -23,7 +23,7 @@ export interface ReachOutInput {
 export function buildReachOutUserLine(input: ReachOutInput): string {
   const since =
     input.hoursSinceHer === null
-      ? '你们还没怎么聊过。'
+      ? "You two haven't really talked yet."
       : input.hoursSinceHer < 1
         ? 'She was here just now.'
         : input.hoursSinceHer < 24

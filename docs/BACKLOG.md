@@ -49,7 +49,7 @@
 | D5 | ✅ D-187 | 补投入口收口：界面只调 `runJobs('screen:xxx')` | `components/his-phone.tsx:111-118`、`app/apps/calendar.tsx:124`、`moments.tsx:209` | `JobTrigger` 加 `'screen:phone' / 'screen:x' / 'screen:calendar'` |
 | D6 | ✅ D-188 | 重复实现抽公共件：`scheduler({perDayOf, jitter})`、`withInflight(key, fn)`、`parseJsonObject` | `lib/posts.ts:49`、`his-notes.ts:30`、`reach-out.ts:52`；inflight 10 处；JSON 解析 5 处 | 放 `lib/schedule.ts` / `lib/inflight.ts` / `lib/json.ts` |
 | D7 | ✅ D-189 | prompt 重复规则合并：不纠缠 4 处、不提等了多久 3 处、不问在吗 3 处、无前缀无 markdown 4 处；8 段 `-outing` 影子注册改 `when(ctx)` | `content/prompts/shared.ts`、`chat.ts`、`warmth.ts`、`reach-out.ts`、`recall.ts`、`heartbeat.ts`、`features/prompts.ts:82-140` | `PromptSection` 加 `when`；快照必红 |
-| D8 | ⬜ | 任务类 prompt 与卡片舞台提示改英语指令（D-142） | `reach-out.ts:26`、`heartbeat.ts:100-106`、`recall.ts`、`red-packet.tsx:80`、`phone-peek.tsx:49`、`invite.tsx:27`、`share.tsx:47`、`lib/delivery.ts:104` | 与对话 prompt 同口径 |
+| D8 | ✅ D-190 | 任务类 prompt 与卡片舞台提示改英语指令（D-142） | `reach-out.ts:26`、`heartbeat.ts:100-106`、`recall.ts`、`red-packet.tsx:80`、`phone-peek.tsx:49`、`invite.tsx:27`、`share.tsx:47`、`lib/delivery.ts:104` | 与对话 prompt 同口径 |
 | D9 | ⬜ | 类型收紧：`ChatCard.type` 封闭联合、`LedgerKind` / `TrafficEntry.kind` / `MessageKind` 常量表、`reply.flags` 键从 markers 推导、退役字段删（`Bond.arrivalAt/notifId/away/awayNotified`、`AppState.themeId/desktopOrder`） | `lib/types.ts:168,311-320`、`store/app-store.ts:97-106` | 配一次 persist v12 迁移把可选字段补默认值改必填 |
 | D10 | ⬜ | 记忆合并策略：旧 ∪ 新去重、条数骤降拒写、按消息 id 记进度而非下标 | `lib/memory.ts:114-121,172-176,218`、`store/app-store.ts:715` | `mergeFacts(old, new)` 纯函数 + 用例 |
 | D11 | ⬜ | 暗号解析健壮：全角【】/［］也认、多暗号、半角 (…) 与 *动作* 也剥；句子切分放过 "Mr." / "e.g." | `core/markers.ts:41-60`、`lib/engine.ts:254,295` | 补多暗号 / 漂移 / 缩写 / emoji 用例 |

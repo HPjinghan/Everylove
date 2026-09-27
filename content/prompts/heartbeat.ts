@@ -4,6 +4,7 @@
  */
 
 import { getLang, type Lang } from '@/lib/i18n';
+import { UNPROMPTED_RULE } from './shared';
 
 type Stage = 'before' | 'day' | 'after';
 
@@ -97,12 +98,12 @@ export function heartbeatLine(stage: Stage, title: string, nickname: string, sal
 export function buildHeartbeatUserLine(stage: Stage, title: string, date: string): string {
   const moment =
     stage === 'before'
-      ? `明天（${date}）她有「${title}」。今晚你想到了这件事，主动给她发一条：事前的关心——按你的性格，可以叮嘱、可以打气、可以只说一句轻的。`
+      ? `Tomorrow (${date}) she has "${title}". It came to mind tonight and you're messaging her on your own: care before the day — in your own way: a reminder, a cheer, or just one light line.`
       : stage === 'day'
-        ? `今天（${date}）她有「${title}」。你一早想到了，主动给她发一条：当天的加油——不啰嗦，让她带着走。`
-        : `昨天（${date}）她有「${title}」。你惦记着结果，主动给她发一条：事后的回访——想听她说说，不论结果好坏都接得住。`;
+        ? `Today (${date}) she has "${title}". It came to mind first thing and you're messaging her on your own: a send-off for the day — no rambling, something she can carry with her.`
+        : `Yesterday (${date}) she had "${title}". You've been wondering how it went and you're messaging her on your own: a check-in after — you want to hear about it, and you can hold whatever the result was.`;
   return [
-    `（${moment}`,
-    '这条日程是你在她手机的日历里看到的，你记得。1-2 句，像随手发的；不问「在吗」，不催她回，不写成小作文。）',
+    `(${moment}`,
+    `You saw this on the calendar in her phone; you remember it. 1–2 sentences, like something dashed off; no essays. ${UNPROMPTED_RULE})`,
   ].join('\n');
 }

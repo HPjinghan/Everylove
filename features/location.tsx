@@ -29,7 +29,7 @@ export async function sendLocation(bondId: string, loc: PickedLocation, ui?: Tur
   await sendCard(
     { mode: 'bonded', bondId },
     { type: 'location', title: loc.title, subtitle: loc.subtitle, lat: loc.lat, lon: loc.lon },
-    `（她发来了自己的位置：${loc.title}${loc.subtitle ? `，${loc.subtitle}` : ''}。）`,
+    `(She sent you her location: ${loc.title}${loc.subtitle ? `, ${loc.subtitle}` : ''}.)`,
     ui
   );
 }
