@@ -11,7 +11,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { DARK_SIDE_PATTERN, darkSideReply, loveStyleByLabel } from '@/content/characters';
-import { buildChatSystemPrompt, messageContextText, OPENING_STAGE_LINE } from '@/content/prompts';
+import { buildChatSystemPromptParts, messageContextText, OPENING_STAGE_LINE } from '@/content/prompts';
+import { joinPromptParts } from '@/core/prompt';
 import { stripReplyMarkers } from '@/core/markers';
 import { modes } from '@/core/modes';
 import {
@@ -94,6 +95,8 @@ export function describeAiError(e: unknown): string {
  * 更早的相处由记忆库的 summary 承接（仅羁绊层）。
  */
 export const HISTORY_ROUNDS = 20;
+/** 窗口一档滑动（D-175）：超过 HISTORY_ROUNDS + HISTORY_SLACK 轮才裁回 HISTORY_ROUNDS——前缀几轮不变，供应商的 prompt 缓存才命中 */
+export const HISTORY_SLACK = 5;
 
 /**
  * 把会话历史整理成模型可用的轮次：
@@ -122,15 +125,18 @@ export function buildTurns(history: ChatMessage[], userText: string): ChatTurn[]
     else turns.push({ role, content });
   }
 
-  // 只留最近 N 轮：从后往前数 user 轮
+  // 只留最近 N 轮：从后往前数 user 轮；不到 N + SLACK 轮不裁（D-175：一档一档滑，前缀几轮不变）
+  const userTotal = turns.filter((x) => x.role === 'user').length;
   let userSeen = 0;
   let start = 0;
-  for (let i = turns.length - 1; i >= 0; i--) {
-    if (turns[i].role === 'user') {
-      userSeen++;
-      if (userSeen === HISTORY_ROUNDS) {
-        start = i;
-        break;
+  if (userTotal > HISTORY_ROUNDS + HISTORY_SLACK) {
+    for (let i = turns.length - 1; i >= 0; i--) {
+      if (turns[i].role === 'user') {
+        userSeen++;
+        if (userSeen === HISTORY_ROUNDS) {
+          start = i;
+          break;
+        }
       }
     }
   }
@@ -329,9 +335,11 @@ export async function generateReply(ctx: EngineContext, providerId?: string): Pr
   const dark = darkSideCheck(ctx.userText);
   if (dark) return dark;
 
+  const parts = buildChatSystemPromptParts(ctx);
   const text = await completeChat(
     {
-      system: buildChatSystemPrompt(ctx),
+      system: joinPromptParts(parts),
+      cachePrefix: parts.stable,
       turns: buildTurns(ctx.history, ctx.userText),
       maxTokens: REPLY_MAX_TOKENS,
       kind: 'reply',

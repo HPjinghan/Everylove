@@ -5,7 +5,7 @@
  */
 
 import { CONFIG } from '@/core/config';
-import { chatProviders, type ChatProvider } from '@/core/providers';
+import { chatProviders, type ChatProvider, type ChatRequest, type ChatTurn } from '@/core/providers';
 import { postJsonWithTimeout, proxyJson, TIMEOUTS } from '@/lib/proxy';
 
 type AnthropicJson = { content: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
@@ -14,6 +14,28 @@ type OpenAIJson = { choices?: { message?: { content?: string } }[]; usage?: { pr
 /** 默认就开着思考的 Claude 家族（Opus 5 / Fable）：思考 token 也算进 max_tokens，角色回话的 300 预算会被吃光 → 加余量、压低 effort（D-108） */
 const THINKING_ON_BY_DEFAULT = /^claude-(opus-5|fable|mythos)/;
 const THINKING_HEADROOM = 2048;
+
+type Block = { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } };
+const EPHEMERAL = { type: 'ephemeral' as const };
+
+/**
+ * prompt 缓存（D-175）：系统 prompt 的稳定段单独一块打断点，动态段跟在后面；最后一条消息也打断点——
+ * 下一轮请求的前缀（系统稳定段 + 到上一轮为止的历史）与这一轮相同，Anthropic 自动找最长命中的前缀，输入的大头只按缓存价计。
+ * 历史窗口 20～25 轮一档滑动（lib/engine HISTORY_SLACK），不是每轮都掉最早一轮，前缀才稳得住。
+ */
+function cachedSystem(req: ChatRequest): string | Block[] {
+  const p = req.cachePrefix;
+  if (!p || !req.system.startsWith(p)) return req.system;
+  const rest = req.system.slice(p.length);
+  const blocks: Block[] = [{ type: 'text', text: p, cache_control: EPHEMERAL }];
+  if (rest.trim()) blocks.push({ type: 'text', text: rest });
+  return blocks;
+}
+function cachedTurns(req: ChatRequest): (ChatTurn | { role: ChatTurn['role']; content: Block[] })[] {
+  if (!req.cachePrefix || !req.turns.length) return req.turns;
+  const last = req.turns[req.turns.length - 1];
+  return [...req.turns.slice(0, -1), { role: last.role, content: [{ type: 'text', text: last.content, cache_control: EPHEMERAL }] }];
+}
 
 const anthropic: ChatProvider = {
   id: 'anthropic',
@@ -24,8 +46,8 @@ const anthropic: ChatProvider = {
     const body = {
       model: CONFIG.anthropicModel,
       max_tokens: thinks ? req.maxTokens + THINKING_HEADROOM : req.maxTokens,
-      system: req.system,
-      messages: req.turns,
+      system: cachedSystem(req),
+      messages: cachedTurns(req),
       // 回话要快要短：低 effort；任务类（记忆提取 / 解析）用默认 high
       ...(thinks && req.kind === 'reply' ? { output_config: { effort: 'low' } } : {}),
     };

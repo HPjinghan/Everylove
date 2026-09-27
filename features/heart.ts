@@ -16,7 +16,7 @@ import { useAppStore } from '@/store/app-store';
 const courting = (ctx: EngineContext) => ctx.mode === 'square' || (ctx.mode === 'outing' && ctx.outing?.kind === 'stranger');
 
 promptSections.register({
-  name: 'heart-judge',
+  name: 'heart-judge', stable: true,
   modes: ['square', 'outing'],
   order: ORDER.heart,
   lines: (ctx) => (courting(ctx) ? heartJudgeLines(ctx.character) : []),

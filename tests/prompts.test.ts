@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import '@/features';
 
-import { buildChatSystemPrompt, buildHisNoteSystem, buildHisNoteUserPrompt, messageContextText } from '@/content/prompts';
+import { buildChatSystemPrompt, buildChatSystemPromptParts, buildHisNoteSystem, buildHisNoteUserPrompt, messageContextText } from '@/content/prompts';
 import { setLang } from '@/lib/i18n';
 import {
   bondedCtx,
@@ -26,6 +26,24 @@ import {
 
 beforeEach(() => setLang('zh'));
 afterEach(() => setLang('zh'));
+
+describe('稳定段 / 动态段（D-175）', () => {
+  it('时间与记忆变了，稳定段一字不变、动态段在变；系统 prompt = 稳定段 + 动态段', () => {
+    const a = buildChatSystemPromptParts(bondedUnlockedCustomCtx, NOW);
+    const later = new Date(NOW.getTime() + 3 * 86400_000 + 5 * 3600_000);
+    const b = buildChatSystemPromptParts(
+      { ...bondedUnlockedCustomCtx, bond: { ...bondedUnlockedCustomCtx.bond!, memory: { ...bondedUnlockedCustomCtx.bond!.memory!, facts: ['[她] 她换了新工作'] } } },
+      later
+    );
+    expect(b.stable).toBe(a.stable);
+    expect(b.dynamic).not.toBe(a.dynamic);
+    expect(buildChatSystemPrompt(bondedUnlockedCustomCtx, NOW)).toBe(`${a.stable}\n${a.dynamic}`);
+    // 稳定段里没有逐日变化的东西
+    expect(a.stable).not.toMatch(/day \d+ together/);
+    expect(a.stable).not.toContain('[Now]');
+    expect(a.dynamic).toMatch(/day \d+ together, bond LV/);
+  });
+});
 
 describe('系统 prompt 装配', () => {
   it('初识（种子角色）', () => {

@@ -23,6 +23,8 @@ export const ORDER = {
   /** 身边的人（D-110）：紧跟角色设定 */
   circle: 34,
   voice: 40,
+  /** 外出的地点与天气（D-175）：动态段的开头 */
+  scene: 48,
   now: 50,
   timeRules: 55,
   birthday: 56,
@@ -79,6 +81,11 @@ export interface PromptSection {
   order: number | ({ default: number } & Partial<Record<PromptMode, number>>);
   /** 产出的行；空数组 = 这次不出现 */
   lines(ctx: EngineContext, env: PromptEnv): string[];
+  /**
+   * 稳定段（D-175）：同一段关系里逐轮不变的（人设 / 她是谁 / 规则……），装配时排在所有动态段（此刻 / 记忆 / 舞台提示……）之前，
+   * 供应商把这一整块作为 prompt 缓存的前缀（Anthropic cache_control；千帆靠前缀相同自动命中）。不标 = 动态段。
+   */
+  stable?: boolean;
 }
 
 export const promptSections = createRegistry<PromptSection>('promptSections', (s) => s.name);
@@ -95,13 +102,30 @@ export function sectionsFor(mode: PromptMode): PromptSection[] {
     .sort((a, b) => orderFor(a, mode) - orderFor(b, mode));
 }
 
-/** 装配系统 prompt：各段的行按序拼接，一行一个 '\n' */
-export function assembleSystemPrompt(ctx: EngineContext, opts: { mode?: PromptMode; now?: Date } = {}): string {
+/** 装配出的两块（D-175）：stable = 稳定段（缓存前缀），dynamic = 动态段；系统 prompt = 两块用 '\n' 接起来 */
+export interface SystemPromptParts {
+  stable: string;
+  dynamic: string;
+}
+
+/** 装配系统 prompt 的两块：稳定段按序在前、动态段按序在后，一行一个 '\n' */
+export function assembleSystemPromptParts(ctx: EngineContext, opts: { mode?: PromptMode; now?: Date } = {}): SystemPromptParts {
   const mode = opts.mode ?? ctx.mode;
   const env: PromptEnv = { mode, now: opts.now ?? new Date() };
   const secs = sectionsFor(mode);
   if (!secs.length) {
     throw new Error(`底座未启动：模式「${mode}」没有任何 prompt 分段（先 import "@/features"）`);
   }
-  return secs.flatMap((s) => s.lines(ctx, env)).join('\n');
+  const stable = secs.filter((s) => s.stable).flatMap((s) => s.lines(ctx, env)).join('\n');
+  const dynamic = secs.filter((s) => !s.stable).flatMap((s) => s.lines(ctx, env)).join('\n');
+  return { stable, dynamic };
+}
+
+/** 装配系统 prompt（一整段文本） */
+export function assembleSystemPrompt(ctx: EngineContext, opts: { mode?: PromptMode; now?: Date } = {}): string {
+  return joinPromptParts(assembleSystemPromptParts(ctx, opts));
+}
+
+export function joinPromptParts(p: SystemPromptParts): string {
+  return [p.stable, p.dynamic].filter(Boolean).join('\n');
 }

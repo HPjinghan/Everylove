@@ -17,16 +17,19 @@ export function outingIntroLine(ctx: EngineContext): string {
   const c = ctx.character;
   const bond = ctx.bond;
   const nickname = bond?.nickname ?? 'you';
-  const lv = bond ? levelInfoFor(bond) : levelInfo(0);
-  const o = ctx.outing;
-  const stranger = o?.kind === 'stranger';
-  const sceneLine = o
-    ? `${o.placeName}. ${o.scene}${o.weatherLine ? ` ${o.weatherLine}.` : ''}`
-    : 'A place you two often go.';
+  const stranger = ctx.outing?.kind === 'stranger';
   const relation = stranger
     ? " You don't know each other — this is a chance encounter between strangers."
-    : ` You two are already friends; you call her "${nickname}"; bond LV${lv.level} · ${stageNameOf(lv.level)}.`;
-  return `You are ${c.name} (${c.identity}) — a real person living your own life; none of this is a performance. This is not texting — right now the two of you are physically in the same place: ${sceneLine}${relation} Throughout these rules, "she" means the person who is here with you.`;
+    : ` You two are already friends; you call her "${nickname}".`;
+  // 地点与天气在【Where you are】（动态段，D-175）：这一行逐场不变，好作缓存前缀
+  return `You are ${c.name} (${c.identity}) — a real person living your own life; none of this is a performance. This is not texting — right now the two of you are physically in the same place.${relation} Throughout these rules, "she" means the person who is here with you.`;
+}
+
+/** 外出的地点与天气（动态段）：紧跟【Now】之前 */
+export function outingSceneLine(ctx: EngineContext): string {
+  const o = ctx.outing;
+  const sceneLine = o ? `${o.placeName}. ${o.scene}${o.weatherLine ? ` ${o.weatherLine}.` : ''}` : 'A place you two often go.';
+  return `[Where you are] ${sceneLine}`;
 }
 
 /** 外出的台词样本：陌生人用广场回复池、熟人用羁绊回复池；自创角色不给样本 */

@@ -6,6 +6,7 @@
 import { loveStyleByLabel, scriptFor } from '@/content/characters';
 import { cardContextText } from '@/core/cards';
 import { LEVEL_NAMES, levelInfoFor } from '@/lib/bond';
+import { daysTogether } from '@/lib/format';
 import { getLang, type Lang } from '@/lib/i18n';
 import type { BondMemory, Character, ChatMessage, EngineContext, UserProfile } from '@/lib/types';
 
@@ -338,7 +339,8 @@ export const BONDED_STAGE_NOTES: string[] = [
 /** 阶段感（按羁绊等级） */
 export function stageLine(ctx: EngineContext, now: Date): string {
   const level = ctx.bond ? levelInfoFor(ctx.bond, now.getTime()).level : 1;
-  return `- Stage: ${BONDED_STAGE_NOTES[Math.min(Math.max(level, 1), BONDED_STAGE_NOTES.length) - 1]}`;
+  const days = ctx.bond?.createdAt ? daysTogether(ctx.bond.createdAt, now.getTime()) : 1;
+  return `- Stage: day ${days} together, bond LV${level} · ${stageNameOf(level)}. ${BONDED_STAGE_NOTES[Math.min(Math.max(level, 1), BONDED_STAGE_NOTES.length) - 1]}`;
 }
 
 /** 记忆注入：按前缀分组显示（前缀由 §3 的提取规则产生；没有前缀的旧条目算「关于她」） */

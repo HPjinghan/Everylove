@@ -16,6 +16,8 @@ export type ChatTurn = { role: 'user' | 'assistant'; content: string };
 
 export interface ChatRequest {
   system: string;
+  /** system 的稳定前缀（D-175）：供应商拿它作 prompt 缓存断点；system 以它开头。不传 = 不缓存 */
+  cachePrefix?: string;
   turns: ChatTurn[];
   /** 想要的输出长度；推理模型的供应商会自行加思考余量 */
   maxTokens: number;

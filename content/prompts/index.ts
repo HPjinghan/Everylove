@@ -36,7 +36,7 @@
  * 模型最终看到的整段字：tests/__snapshots__/prompts*.snap（npm test 会逐字校验）。标了「红线」的段落对应 CLAUDE.md §9，请勿删。
  */
 
-import { assembleSystemPrompt } from '@/core/prompt';
+import { type SystemPromptParts, assembleSystemPrompt, assembleSystemPromptParts } from '@/core/prompt';
 import type { EngineContext } from '@/lib/types';
 
 export * from './appointment';
@@ -72,4 +72,9 @@ export * from './warmth';
 /** 分发器：引擎只调这一个——由 core/prompt 按分段表装配（分段在 features/prompts.ts 与各玩法里注册，D-086） */
 export function buildChatSystemPrompt(ctx: EngineContext, now: Date = new Date()): string {
   return assembleSystemPrompt(ctx, { now });
+}
+
+/** 两块（D-175）：稳定段作缓存前缀、动态段在后；引擎把两块都交给供应商 */
+export function buildChatSystemPromptParts(ctx: EngineContext, now: Date = new Date()): SystemPromptParts {
+  return assembleSystemPromptParts(ctx, { now });
 }

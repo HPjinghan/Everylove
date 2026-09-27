@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import '@/features';
 
-import { applyReplyMarkers, bubbleStyleOf, buildTurns, HISTORY_ROUNDS, splitBubbles, splitByClauses, splitBySpaces, stripStageDirections } from '@/lib/engine';
+import { applyReplyMarkers, bubbleStyleOf, buildTurns, HISTORY_ROUNDS, HISTORY_SLACK, splitBubbles, splitByClauses, splitBySpaces, stripStageDirections } from '@/lib/engine';
 import { stripTrailingPeriod } from '@/lib/text';
 import { history, NOW } from './fixtures';
 
@@ -33,13 +33,20 @@ describe('buildTurns', () => {
       { role: 'user', content: '在\n刚回来' },
     ]);
   });
-  it('历史只留最近 HISTORY_ROUNDS 轮，再加本轮', () => {
+  it('历史超过 HISTORY_ROUNDS + HISTORY_SLACK 轮才裁回 HISTORY_ROUNDS 轮，再加本轮（D-175 一档一档滑）', () => {
     const lines: [('me' | 'him'), string][] = [];
-    for (let i = 0; i < HISTORY_ROUNDS + 5; i++) lines.push(['me', `q${i}`], ['him', `a${i}`]);
+    for (let i = 0; i < HISTORY_ROUNDS + HISTORY_SLACK + 1; i++) lines.push(['me', `q${i}`], ['him', `a${i}`]);
     const turns = buildTurns(history(lines), 'last');
     expect(turns.filter((t) => t.role === 'user')).toHaveLength(HISTORY_ROUNDS + 1);
-    expect(turns[0]).toEqual({ role: 'user', content: 'q5' });
+    expect(turns[0]).toEqual({ role: 'user', content: `q${HISTORY_SLACK + 1}` });
     expect(turns[turns.length - 1]).toEqual({ role: 'user', content: 'last' });
+  });
+  it('不到 HISTORY_ROUNDS + HISTORY_SLACK 轮不裁：前缀几轮不变，缓存才命中', () => {
+    const lines: [('me' | 'him'), string][] = [];
+    for (let i = 0; i < HISTORY_ROUNDS + HISTORY_SLACK; i++) lines.push(['me', `q${i}`], ['him', `a${i}`]);
+    const turns = buildTurns(history(lines), 'last');
+    expect(turns.filter((t) => t.role === 'user')).toHaveLength(HISTORY_ROUNDS + HISTORY_SLACK + 1);
+    expect(turns[0]).toEqual({ role: 'user', content: 'q0' });
   });
 });
 
