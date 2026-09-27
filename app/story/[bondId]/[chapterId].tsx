@@ -12,7 +12,7 @@ import { Card } from '@/components/card';
 import { Chip } from '@/components/chip';
 import { StoryBlocks } from '@/components/story-blocks';
 import { showToast } from '@/components/toast';
-import { Space } from '@/constants/design';
+import { Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import { chapterOpen, chaptersForBond } from '@/lib/story';
@@ -68,13 +68,13 @@ export default function StoryReaderScreen() {
 const styles = themed(() =>
   StyleSheet.create({
     content: { padding: Space.screen, paddingBottom: 48, gap: 18 },
-    title: { fontSize: 20, fontWeight: '600', color: Romance.ink, lineHeight: 28 },
+    title: { fontSize: Type.scale.xl.size, fontWeight: '600', color: Romance.ink, lineHeight: 28 },
     tipCard: { marginTop: 14, gap: 10 },
     tipHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    tipLabel: { fontSize: 14, fontWeight: '600', color: Romance.ink },
-    balance: { fontSize: 12, color: Romance.sub },
-    balanceNum: { fontFamily: Fonts.label, fontSize: 13, color: Romance.ink },
+    tipLabel: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
+    balance: { fontSize: Type.scale.caption.size, color: Romance.sub },
+    balanceNum: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.ink },
     tipRow: { flexDirection: 'row', gap: Space.inline, flexWrap: 'wrap' },
-    tipped: { fontSize: 12, color: Romance.accentStrong },
+    tipped: { fontSize: Type.scale.caption.size, color: Romance.accentStrong },
   })
 );

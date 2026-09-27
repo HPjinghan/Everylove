@@ -10,7 +10,7 @@ import { ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type Native
 
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { planTimeLabel } from '@/lib/appointments';
 import { t } from '@/lib/i18n';
@@ -119,9 +119,9 @@ const styles = themed(() =>
       borderRadius: Shape.radius,
     },
     wheelRow: { height: ROW_H, alignItems: 'center', justifyContent: 'center' },
-    wheelText: { fontFamily: Fonts.label, fontSize: 20, color: Romance.sub },
+    wheelText: { fontFamily: Fonts.label, fontSize: Type.scale.xl.size, color: Romance.sub },
     wheelTextOn: { fontFamily: Fonts.labelBold, color: Romance.ink },
-    colon: { fontFamily: Fonts.labelBold, fontSize: 22, color: Romance.ink },
+    colon: { fontFamily: Fonts.labelBold, fontSize: Type.scale.xxl.size, color: Romance.ink },
     submit: { marginTop: 4 },
   })
 );

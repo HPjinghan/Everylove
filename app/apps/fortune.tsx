@@ -16,7 +16,7 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { Chip, Segmented } from '@/components/chip';
 import { MingCute } from '@/components/mingcute';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { FORTUNE_TEXTS } from '@/content/fortunes';
 import { money } from '@/lib/format';
@@ -223,8 +223,8 @@ const styles = themed(() =>
   StyleSheet.create({
     body: { paddingHorizontal: Space.screen, paddingTop: Space.screen, paddingBottom: 40, gap: Space.screen, alignItems: 'stretch' },
     balanceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    balanceLabel: { fontSize: 13, color: Romance.sub },
-    balance: { fontFamily: Fonts.labelBold, fontSize: 22, color: Romance.ink },
+    balanceLabel: { fontSize: Type.scale.label.size, color: Romance.sub },
+    balance: { fontFamily: Fonts.labelBold, fontSize: Type.scale.xxl.size, color: Romance.ink },
     tabs: { alignSelf: 'center' },
     ball: {
       width: BALL,
@@ -240,10 +240,10 @@ const styles = themed(() =>
     },
     glow: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: withAlpha('#FFFFFF', 0.7) },
     result: { alignItems: 'center', paddingHorizontal: 24, gap: 6 },
-    hint: { fontSize: 14, color: Romance.sub, marginTop: 4 },
-    luck: { fontSize: 30, fontWeight: '700', color: Romance.ink },
-    amount: { fontFamily: Fonts.labelBold, fontSize: 20, color: Romance.accentStrong },
-    sign: { fontSize: 13, color: Romance.sub, textAlign: 'center', lineHeight: 19 },
+    hint: { fontSize: Type.scale.sub.size, color: Romance.sub, marginTop: 4 },
+    luck: { fontSize: Type.scale.display.size, fontWeight: '700', color: Romance.ink },
+    amount: { fontFamily: Fonts.labelBold, fontSize: Type.scale.xl.size, color: Romance.accentStrong },
+    sign: { fontSize: Type.scale.label.size, color: Romance.sub, textAlign: 'center', lineHeight: 19 },
     actionBtn: { alignSelf: 'center', minWidth: 160 },
     wheelWrap: { alignSelf: 'center', alignItems: 'center', paddingTop: 6 },
     pointer: {
@@ -260,9 +260,9 @@ const styles = themed(() =>
     },
     wheel: { width: WHEEL, height: WHEEL, borderRadius: WHEEL / 2, overflow: 'hidden' },
     sliceLabelWrap: { position: 'absolute', top: 0, left: 0, width: WHEEL, height: WHEEL, alignItems: 'center', paddingTop: 14 },
-    sliceLabel: { fontFamily: Fonts.labelBold, fontSize: 13, color: Romance.ink },
+    sliceLabel: { fontFamily: Fonts.labelBold, fontSize: Type.scale.label.size, color: Romance.ink },
     sliceLabelHot: { color: '#FFFFFF' },
-    outcome: { fontFamily: Fonts.labelBold, fontSize: 18, color: Romance.accentStrong, textAlign: 'center', minHeight: 24 },
+    outcome: { fontFamily: Fonts.labelBold, fontSize: Type.scale.lg.size, color: Romance.accentStrong, textAlign: 'center', minHeight: 24 },
     bets: { flexDirection: 'row', justifyContent: 'center', gap: Space.inline },
     betOff: { opacity: 0.4 },
   })

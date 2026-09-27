@@ -7,7 +7,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 
-import { Shape } from '@/constants/design';
+import { Shape, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 
 export function Field({
@@ -49,15 +49,15 @@ export function Input({ style, multiline, ...props }: TextInputProps) {
 const styles = themed(() =>
   StyleSheet.create({
     field: { marginTop: 20 },
-    label: { fontSize: 14, fontWeight: '600', color: Romance.ink },
-    hint: { fontSize: 11, color: Romance.sub, marginTop: 2 },
+    label: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
+    hint: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 2 },
     control: { marginTop: 8 },
     input: {
       backgroundColor: Romance.card,
       borderRadius: Shape.radius,
       paddingVertical: 11,
       paddingHorizontal: 14,
-      fontSize: 15,
+      fontSize: Type.scale.body.size,
       color: Romance.ink,
     },
     inputMulti: { minHeight: 120, textAlignVertical: 'top', lineHeight: 22 },

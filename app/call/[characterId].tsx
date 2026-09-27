@@ -23,7 +23,7 @@ import {
 import { showAlert } from '@/components/action-sheet';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
-import { Shape } from '@/constants/design';
+import { Shape, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { VAD, callPickupLine, callReply, formatCallDuration, logCall } from '@/lib/call';
 import { describeAiError } from '@/lib/chat';
@@ -312,19 +312,19 @@ const styles = themed(() =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: CALL_BG, paddingHorizontal: 24, justifyContent: 'space-between' },
     top: { alignItems: 'center', gap: 10, marginTop: 24 },
-    name: { fontSize: 26, fontWeight: '600', color: '#FFFFFF', marginTop: 8 },
+    name: { fontSize: Type.scale.h1.size, fontWeight: '600', color: '#FFFFFF', marginTop: 8 },
     statusRow: { flexDirection: 'row', alignItems: 'baseline' },
-    status: { fontSize: 14, color: withAlpha('#FFFFFF', 0.65) },
-    statusTime: { fontFamily: Fonts.label, fontSize: 14, color: withAlpha('#FFFFFF', 0.65) },
+    status: { fontSize: Type.scale.sub.size, color: withAlpha('#FFFFFF', 0.65) },
+    statusTime: { fontFamily: Fonts.label, fontSize: Type.scale.sub.size, color: withAlpha('#FFFFFF', 0.65) },
     spinner: { marginTop: 8 },
     captions: { flex: 1, justifyContent: 'flex-end', gap: 10, paddingVertical: 24 },
-    himLine: { fontSize: 17, lineHeight: 26, color: '#FFFFFF' },
-    herLine: { fontSize: 14, lineHeight: 20, color: withAlpha('#FFFFFF', 0.55) },
-    note: { fontSize: 12, color: Romance.accent },
+    himLine: { fontSize: Type.scale.screenTitle.size, lineHeight: 26, color: '#FFFFFF' },
+    herLine: { fontSize: Type.scale.sub.size, lineHeight: 20, color: withAlpha('#FFFFFF', 0.55) },
+    note: { fontSize: Type.scale.caption.size, color: Romance.accent },
     meter: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
     meterDot: { width: 10, height: 10, borderRadius: Shape.radiusInner, backgroundColor: withAlpha('#FFFFFF', 0.25) },
     meterDotOn: { backgroundColor: Romance.accent },
-    meterText: { fontSize: 12, color: withAlpha('#FFFFFF', 0.5) },
+    meterText: { fontSize: Type.scale.caption.size, color: withAlpha('#FFFFFF', 0.5) },
     controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
     // 侧键：72 r6 白 12%；挂断：80 r6 accent 底，只转图标不转方块
     sideBtn: {
@@ -336,7 +336,7 @@ const styles = themed(() =>
       justifyContent: 'center',
     },
     sideBtnDisabled: { opacity: 0.35 },
-    sideBtnText: { color: '#FFFFFF', fontSize: 13 },
+    sideBtnText: { color: '#FFFFFF', fontSize: Type.scale.label.size },
     sideBtnTextOn: { fontWeight: '600' },
     hangBtn: {
       width: 80,

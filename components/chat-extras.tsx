@@ -14,7 +14,7 @@ import { Chip } from '@/components/chip';
 import { Input } from '@/components/input';
 import { TimePicker } from '@/components/time-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Space } from '@/constants/design';
+import { Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { PLACES, type Place } from '@/content/places';
 import { money } from '@/lib/format';
@@ -169,18 +169,18 @@ const styles = themed(() =>
   StyleSheet.create({
     sheet: { flex: 1, backgroundColor: Romance.bg },
     sheetHeader: { alignItems: 'center', justifyContent: 'center', paddingTop: 18, paddingBottom: 10 },
-    sheetTitle: { fontSize: 16, fontWeight: '600', color: Romance.ink },
+    sheetTitle: { fontSize: Type.scale.md.size, fontWeight: '600', color: Romance.ink },
     sheetClose: { position: 'absolute', right: 16, top: 14, padding: 6 },
     sheetBody: { paddingHorizontal: Space.screen, paddingBottom: 40, gap: 10 },
     row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    rowEmoji: { fontSize: 24 },
+    rowEmoji: { fontSize: Type.scale.h2.size },
     rowBody: { flex: 1 },
-    rowTitle: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-    rowSub: { fontSize: 12, color: Romance.sub, marginTop: 2 },
+    rowTitle: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
+    rowSub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
     // 金额：白卡 + accent Fredoka（不再用红）
     amountCard: { paddingVertical: 28, alignItems: 'center' },
-    amount: { fontFamily: Fonts.labelBold, fontSize: 30, color: Romance.accentStrong },
-    balance: { fontSize: 12, color: Romance.sub, marginTop: 6 },
+    amount: { fontFamily: Fonts.labelBold, fontSize: Type.scale.display.size, color: Romance.accentStrong },
+    balance: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 6 },
     balanceShort: { color: Romance.accentStrong },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     submit: { marginTop: 6 },

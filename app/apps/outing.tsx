@@ -15,7 +15,7 @@ import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
 import { TimePicker } from '@/components/time-picker';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { PLACES, placeById, type Place } from '@/content/places';
@@ -261,9 +261,9 @@ const styles = themed(() =>
       paddingHorizontal: 14,
       paddingVertical: 9,
     },
-    weatherEmoji: { fontSize: 20 },
-    weatherText: { flex: 1, fontSize: 13, color: Romance.sub },
-    weatherTemp: { fontFamily: Fonts.label, fontSize: 13, color: Romance.sub },
+    weatherEmoji: { fontSize: Type.scale.xl.size },
+    weatherText: { flex: 1, fontSize: Type.scale.label.size, color: Romance.sub },
+    weatherTemp: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.sub },
     planStrip: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -271,9 +271,9 @@ const styles = themed(() =>
       paddingHorizontal: Space.cardX,
       paddingVertical: 8,
     },
-    planText: { flex: 1, fontSize: 13, fontWeight: '500', color: Romance.ink },
-    planClock: { fontFamily: Fonts.label, fontSize: 13, color: Romance.ink },
-    planGo: { fontSize: 13, fontWeight: '600', color: Romance.accent },
+    planText: { flex: 1, fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.ink },
+    planClock: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.ink },
+    planGo: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.accent },
     morePlans: {
       backgroundColor: Romance.card,
       borderRadius: Shape.radius,
@@ -281,7 +281,7 @@ const styles = themed(() =>
       paddingHorizontal: Space.cardX,
       alignItems: 'center',
     },
-    morePlansText: { fontSize: 13, fontWeight: '500', color: Romance.sub },
+    morePlansText: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.sub },
     plaza: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -291,9 +291,9 @@ const styles = themed(() =>
     },
     plazaEmoji: { fontSize: 36 },
     plazaBody: { flex: 1 },
-    plazaTitle: { fontSize: 20, fontWeight: '600', color: Romance.ink },
-    plazaSub: { fontSize: 12, color: Romance.sub, marginTop: 3 },
-    plazaGo: { fontSize: 13, fontWeight: '600', color: Romance.accent },
+    plazaTitle: { fontSize: Type.scale.xl.size, fontWeight: '600', color: Romance.ink },
+    plazaSub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 3 },
+    plazaGo: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.accent },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP },
     placeCard: { overflow: 'hidden' },
     placeArt: { height: 100, backgroundColor: Romance.bg, alignItems: 'center', justifyContent: 'center' },
@@ -307,16 +307,16 @@ const styles = themed(() =>
       paddingHorizontal: 8,
       paddingVertical: 3,
     },
-    placeBadgeText: { fontSize: 10, fontWeight: '600', color: Romance.accentStrong },
-    placeName: { fontSize: 14, fontWeight: '600', color: Romance.ink, marginTop: 8, marginLeft: 4 },
-    placeHook: { fontSize: 11, color: Romance.sub, marginTop: 2, marginLeft: 4 },
+    placeBadgeText: { fontSize: Type.scale.xs.size, fontWeight: '600', color: Romance.accentStrong },
+    placeName: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink, marginTop: 8, marginLeft: 4 },
+    placeHook: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 2, marginLeft: 4 },
     modal: { flex: 1, backgroundColor: Romance.bg, paddingTop: 28, paddingHorizontal: Space.screen },
     modalClose: { position: 'absolute', top: 16, right: 16, padding: 8, zIndex: 2 },
-    modalTitle: { fontSize: 22, fontWeight: '600', color: Romance.ink, marginBottom: 18 },
+    modalTitle: { fontSize: Type.scale.xxl.size, fontWeight: '600', color: Romance.ink, marginBottom: 18 },
     modalRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 10 },
-    modalRowEmoji: { fontSize: 26 },
+    modalRowEmoji: { fontSize: Type.scale.h1.size },
     modalRowBody: { flex: 1 },
-    modalRowText: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-    modalRowSub: { fontSize: 12, color: Romance.sub, marginTop: 2 },
+    modalRowText: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
+    modalRowSub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
   })
 );

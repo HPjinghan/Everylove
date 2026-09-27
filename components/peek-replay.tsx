@@ -12,7 +12,7 @@ import { Animated, Modal, Pressable, StyleSheet, Text, useAnimatedValue, View } 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharAvatar } from '@/components/char-avatar';
-import { NOTE_PAPER, Shape, Space } from '@/constants/design';
+import { NOTE_PAPER, Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { parseDateKey } from '@/content/calendar';
 import { messageContextText } from '@/content/prompts';
@@ -251,8 +251,8 @@ const styles = themed(() =>
     screen: { flex: 1, backgroundColor: Romance.ink },
     // 框：TA 视角
     frame: { flexDirection: 'row', alignItems: 'center', gap: Space.inline, paddingHorizontal: Space.screen, paddingVertical: 12 },
-    frameText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
-    dots: { fontFamily: Fonts.label, fontSize: 10, color: '#FFFFFF', letterSpacing: 2 },
+    frameText: { flex: 1, fontSize: Type.scale.sub.size, fontWeight: '600', color: '#FFFFFF' },
+    dots: { fontFamily: Fonts.label, fontSize: Type.scale.xs.size, color: '#FFFFFF', letterSpacing: 2 },
     // 她的手机（缩一圈，四周留 ink）
     phone: {
       flex: 1,
@@ -265,7 +265,7 @@ const styles = themed(() =>
       borderColor: withAlpha('#FFFFFF', 0.35),
     },
     appBar: { paddingVertical: 12, alignItems: 'center', borderBottomWidth: Shape.stroke, borderBottomColor: Romance.stroke },
-    appTitle: { fontSize: 17, fontWeight: '600', color: Romance.ink },
+    appTitle: { fontSize: Type.scale.screenTitle.size, fontWeight: '600', color: Romance.ink },
     appTitleLatin: { fontFamily: Fonts.labelBold, fontWeight: '400' },
     viewport: { flex: 1, overflow: 'hidden' },
     list: { padding: Space.screen, gap: Space.inline },
@@ -280,30 +280,30 @@ const styles = themed(() =>
       borderColor: Romance.stroke,
     },
     noteRowOn: { borderColor: Romance.accent, borderWidth: 2 },
-    noteText: { fontSize: 13, lineHeight: 18, color: NOTE_PAPER.ink },
-    empty: { fontSize: 13, color: Romance.sub, padding: Space.screen },
+    noteText: { fontSize: Type.scale.label.size, lineHeight: 18, color: NOTE_PAPER.ink },
+    empty: { fontSize: Type.scale.label.size, color: Romance.sub, padding: Space.screen },
     // 日历
-    month: { fontFamily: Fonts.labelBold, fontSize: 17, color: Romance.ink, textAlign: 'center' },
+    month: { fontFamily: Fonts.labelBold, fontSize: Type.scale.screenTitle.size, color: Romance.ink, textAlign: 'center' },
     weekRow: { flexDirection: 'row' },
-    weekCell: { width: '14.28%', textAlign: 'center', fontSize: 11, color: Romance.sub },
+    weekCell: { width: '14.28%', textAlign: 'center', fontSize: Type.scale.timestamp.size, color: Romance.sub },
     grid: { flexDirection: 'row', flexWrap: 'wrap' },
     dayCell: { width: '14.28%', alignItems: 'center', paddingVertical: 4 },
     dayNum: { width: 30, height: 30, borderRadius: Shape.radius, alignItems: 'center', justifyContent: 'center' },
     dayOn: { backgroundColor: Romance.accent },
-    dayText: { fontFamily: Fonts.label, fontSize: 13, color: Romance.ink },
+    dayText: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.ink },
     dayTextOn: { color: '#FFFFFF', fontFamily: Fonts.labelBold },
     eventRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inline, backgroundColor: Romance.card, borderRadius: Shape.radius, borderWidth: Shape.stroke, borderColor: Romance.accent, padding: 10 },
-    eventDate: { fontFamily: Fonts.label, fontSize: 12, color: Romance.accent },
-    eventText: { flex: 1, fontSize: 14, color: Romance.ink },
+    eventDate: { fontFamily: Fonts.label, fontSize: Type.scale.caption.size, color: Romance.accent },
+    eventText: { flex: 1, fontSize: Type.scale.sub.size, color: Romance.ink },
     // Message
-    threadName: { fontSize: 14, fontWeight: '600', color: Romance.ink, textAlign: 'center', marginBottom: 4 },
+    threadName: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink, textAlign: 'center', marginBottom: 4 },
     bubbleRow: { maxWidth: '78%' },
     bubbleRowMe: { alignSelf: 'flex-end' },
     bubbleRowHim: { alignSelf: 'flex-start' },
     bubble: { paddingVertical: Space.bubbleY, paddingHorizontal: Space.bubbleX, borderRadius: Shape.radius },
     bubbleMe: { backgroundColor: Romance.bubbleMe, borderBottomRightRadius: Shape.radiusTail },
     bubbleHim: { backgroundColor: Romance.bubbleHim, borderBottomLeftRadius: Shape.radiusTail },
-    bubbleText: { fontSize: 13, lineHeight: 18, color: Romance.ink },
+    bubbleText: { fontSize: Type.scale.label.size, lineHeight: 18, color: Romance.ink },
     bubbleTextMe: { color: '#FFFFFF' },
   })
 );

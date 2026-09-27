@@ -13,7 +13,7 @@ import { Chip } from '@/components/chip';
 import { Field } from '@/components/input';
 import { showToast } from '@/components/toast';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import type { VoiceOption } from '@/content/voices';
 import type { Lang } from '@/lib/i18n';
@@ -103,7 +103,7 @@ const styles = themed(() =>
     rows: { gap: Space.inline },
     row: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose },
     chip: { minWidth: 88, alignItems: 'center' },
-    tags: { flex: 1, fontSize: 12, color: Romance.sub },
+    tags: { flex: 1, fontSize: Type.scale.caption.size, color: Romance.sub },
     play: {
       width: 30,
       height: 30,

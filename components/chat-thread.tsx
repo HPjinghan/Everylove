@@ -39,7 +39,7 @@ import { ChatWallpaper } from '@/components/paper-bg';
 import { PhotoViewer, Polaroid, type ViewerShot } from '@/components/polaroid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { clockTime, voiceDuration } from '@/lib/format';
 import { cardKindOf } from '@/lib/chat';
@@ -690,14 +690,14 @@ const styles = themed(() =>
     },
     bubbleHim: { backgroundColor: Romance.bubbleHim, borderBottomLeftRadius: Shape.radiusTail },
     bubbleMe: { backgroundColor: Romance.bubbleMe, borderBottomRightRadius: Shape.radiusTail },
-    bubbleText: { fontSize: 15, lineHeight: 22, color: Romance.ink },
+    bubbleText: { fontSize: Type.scale.body.size, lineHeight: 22, color: Romance.ink },
     bubbleTextMe: { color: '#FFFFFF' },
-    typingText: { fontSize: 14, color: Romance.sub },
+    typingText: { fontSize: Type.scale.sub.size, color: Romance.sub },
     systemRow: { alignItems: 'center', marginVertical: 8 },
     polaroidRow: { alignItems: 'center', marginVertical: 12 },
     // 系统条：ink 底白字 r6；hint：白底 accent 字
     systemText: {
-      fontSize: 12,
+      fontSize: Type.scale.caption.size,
       fontWeight: '500',
       color: '#FFFFFF',
       backgroundColor: Romance.ink,
@@ -708,7 +708,7 @@ const styles = themed(() =>
       textAlign: 'center',
     },
     hintText: {
-      fontSize: 12,
+      fontSize: Type.scale.caption.size,
       color: Romance.accentStrong,
       backgroundColor: Romance.card,
       paddingHorizontal: 12,
@@ -717,7 +717,7 @@ const styles = themed(() =>
       overflow: 'hidden',
       textAlign: 'center',
     },
-    recalledText: { fontSize: 12, color: Romance.sub },
+    recalledText: { fontSize: Type.scale.caption.size, color: Romance.sub },
     quote: {
       borderLeftWidth: 3,
       borderLeftColor: Romance.line,
@@ -728,25 +728,25 @@ const styles = themed(() =>
       marginBottom: 6,
     },
     quoteLight: { borderLeftColor: withAlpha('#FFFFFF', 0.6), backgroundColor: withAlpha('#FFFFFF', 0.18) },
-    quoteName: { fontSize: 11, fontWeight: '600', color: Romance.sub },
-    quoteText: { fontSize: 12, color: Romance.sub, marginTop: 1 },
+    quoteName: { fontSize: Type.scale.timestamp.size, fontWeight: '600', color: Romance.sub },
+    quoteText: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 1 },
     quoteTextLight: { color: withAlpha('#FFFFFF', 0.85) },
     metaCol: { justifyContent: 'flex-end', paddingBottom: 2 },
     metaColMe: { alignItems: 'flex-end' },
     metaColHim: { alignItems: 'flex-start' },
-    metaText: { fontFamily: Fonts.label, fontSize: 11, color: Romance.sub, lineHeight: 14 },
+    metaText: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.sub, lineHeight: 14 },
     photo: { width: 220, height: 220, borderRadius: Shape.radiusInner, backgroundColor: Romance.line },
-    photoCaption: { fontSize: 13, color: Romance.sub, marginTop: 8, lineHeight: 19 },
+    photoCaption: { fontSize: Type.scale.label.size, color: Romance.sub, marginTop: 8, lineHeight: 19 },
     voiceRow: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: 2 },
     voiceBar: { width: 3, borderRadius: 2, opacity: 0.75 },
-    voiceDuration: { fontFamily: Fonts.label, fontSize: 13, marginLeft: 6 },
-    voiceHint: { fontSize: 11, color: Romance.sub, marginTop: 4 },
-    voiceTranscript: { fontSize: 14, color: Romance.sub, marginTop: 6, lineHeight: 20 },
+    voiceDuration: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, marginLeft: 6 },
+    voiceHint: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 4 },
+    voiceTranscript: { fontSize: Type.scale.sub.size, color: Romance.sub, marginTop: 6, lineHeight: 20 },
     failedRow: { alignSelf: 'flex-end', marginTop: -2, marginBottom: 6, paddingHorizontal: 4 },
-    failedText: { fontSize: 11, color: Romance.accentStrong },
-    mediaHint: { fontSize: 11, color: Romance.sub, marginTop: 4 },
+    failedText: { fontSize: Type.scale.timestamp.size, color: Romance.accentStrong },
+    mediaHint: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 4 },
     mediaHintLight: { color: withAlpha('#FFFFFF', 0.82) },
-    mediaTranscript: { fontSize: 13, color: Romance.sub, marginTop: 5, lineHeight: 18 },
+    mediaTranscript: { fontSize: Type.scale.label.size, color: Romance.sub, marginTop: 5, lineHeight: 18 },
     replyBar: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -758,8 +758,8 @@ const styles = themed(() =>
       borderTopColor: Romance.line,
     },
     replyBody: { flex: 1 },
-    replyName: { fontSize: 11, fontWeight: '600', color: Romance.accent },
-    replyText: { fontSize: 12, color: Romance.sub, marginTop: 1 },
+    replyName: { fontSize: Type.scale.timestamp.size, fontWeight: '600', color: Romance.accent },
+    replyText: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 1 },
     // 输入栏：白底、一条 1.5px 上沿
     inputBar: {
       flexDirection: 'row',
@@ -777,7 +777,7 @@ const styles = themed(() =>
       borderRadius: Shape.radius,
       backgroundColor: Romance.bg,
       paddingHorizontal: 14,
-      fontSize: 14,
+      fontSize: Type.scale.sub.size,
       color: Romance.ink,
     },
     inputDisabled: { opacity: 0.5 },
@@ -803,8 +803,8 @@ const styles = themed(() =>
       overflow: 'hidden',
     },
     recordingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Romance.accentStrong },
-    recordingTime: { fontFamily: Fonts.labelBold, fontSize: 14, color: Romance.accentStrong },
-    recordingText: { fontSize: 13, color: Romance.accentStrong, flexShrink: 1 },
+    recordingTime: { fontFamily: Fonts.labelBold, fontSize: Type.scale.sub.size, color: Romance.accentStrong },
+    recordingText: { fontSize: Type.scale.label.size, color: Romance.accentStrong, flexShrink: 1 },
     extrasPanel: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -821,6 +821,6 @@ const styles = themed(() =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    extraLabel: { fontSize: 11, color: Romance.sub, marginTop: 6 },
+    extraLabel: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 6 },
   })
 );

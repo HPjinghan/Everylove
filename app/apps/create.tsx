@@ -14,7 +14,7 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import { useAppStore } from '@/store/app-store';
@@ -80,12 +80,12 @@ const styles = themed(() =>
     list: { padding: Space.screen, gap: Space.inline, paddingBottom: 120 },
     row: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose },
     text: { flex: 1, minWidth: 0 },
-    name: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-    sub: { fontSize: 12, color: Romance.sub, marginTop: 2 },
+    name: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
+    sub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
     // 状态标签：中文走系统字体 11/500，r4 小标签
     tag: {
-      fontSize: 11,
+      fontSize: Type.scale.timestamp.size,
       fontWeight: '500',
       color: Romance.sub,
       backgroundColor: Romance.line,
@@ -96,7 +96,7 @@ const styles = themed(() =>
     },
     tagBonded: { color: Romance.accentStrong, backgroundColor: Romance.accentSoft },
     empty: { alignItems: 'center', paddingTop: 60 },
-    emptyText: { fontSize: 14, color: Romance.sub },
+    emptyText: { fontSize: Type.scale.sub.size, color: Romance.sub },
     // 右下角圆钮：appTile 大小、primary 底、1.5 描边同按钮
     fab: {
       position: 'absolute',

@@ -24,7 +24,7 @@ import { LocationPicker } from '@/components/location-picker';
 import { MingCute } from '@/components/mingcute';
 import { PhoneLock } from '@/components/phone-lock';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { ARCHETYPE_LABEL } from '@/content/characters';
 import { characterSecrets, unlockedSecretCount } from '@/content/prompts';
@@ -346,10 +346,10 @@ const styles = themed(() =>
     back: { paddingRight: 2 },
     headerMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose },
     headerText: { flex: 1 },
-    headerName: { fontSize: 17, fontWeight: '600', color: Romance.ink },
+    headerName: { fontSize: Type.scale.screenTitle.size, fontWeight: '600', color: Romance.ink },
     headerSubRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 3 },
-    headerSub: { fontSize: 12, fontWeight: '500', color: Romance.accent, flexShrink: 1 },
-    headerLv: { fontFamily: Fonts.label, fontSize: 12, color: Romance.accent },
+    headerSub: { fontSize: Type.scale.caption.size, fontWeight: '500', color: Romance.accent, flexShrink: 1 },
+    headerLv: { fontFamily: Fonts.label, fontSize: Type.scale.caption.size, color: Romance.accent },
     headerAction: { padding: 4 },
     // TA 的主页
     profile: { flex: 1, backgroundColor: Romance.bg },
@@ -360,16 +360,16 @@ const styles = themed(() =>
       paddingBottom: 10,
       paddingHorizontal: 16,
     },
-    profileTitle: { fontSize: 16, fontWeight: '600', color: Romance.ink },
+    profileTitle: { fontSize: Type.scale.md.size, fontWeight: '600', color: Romance.ink },
     profileClose: { position: 'absolute', right: 16, top: 14 },
     profileBody: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 8, paddingBottom: 40 },
-    profileName: { fontSize: 24, fontWeight: '600', color: Romance.ink, marginTop: 14 },
-    profileIdentity: { fontSize: 13, color: Romance.sub, marginTop: 4 },
+    profileName: { fontSize: Type.scale.h2.size, fontWeight: '600', color: Romance.ink, marginTop: 14 },
+    profileIdentity: { fontSize: Type.scale.label.size, color: Romance.sub, marginTop: 4 },
     stats: { flexDirection: 'row', gap: Space.screen, marginTop: Space.tileGap, alignSelf: 'stretch' },
     stat: { flex: 1, padding: 14, alignItems: 'center' },
     statCenter: { justifyContent: 'center' },
-    statNum: { fontFamily: Fonts.labelBold, fontSize: 24, color: Romance.accent },
-    statLabel: { fontSize: 11, color: Romance.sub, marginTop: 4 },
+    statNum: { fontFamily: Fonts.labelBold, fontSize: Type.scale.h2.size, color: Romance.accent },
+    statLabel: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 4 },
     lvTrack: {
       width: 96,
       height: 6,
@@ -379,7 +379,7 @@ const styles = themed(() =>
       overflow: 'hidden',
     },
     lvFill: { height: '100%', backgroundColor: Romance.accent },
-    lvText: { fontFamily: Fonts.label, fontSize: 10, color: Romance.sub, marginTop: 4 },
+    lvText: { fontFamily: Fonts.label, fontSize: Type.scale.xs.size, color: Romance.sub, marginTop: 4 },
     info: { alignSelf: 'stretch', marginTop: Space.tileGap },
     infoRow: {
       flexDirection: 'row',
@@ -389,12 +389,12 @@ const styles = themed(() =>
       paddingHorizontal: Space.cardX,
       paddingVertical: 12,
     },
-    infoLabel: { fontSize: 13, color: Romance.sub },
+    infoLabel: { fontSize: Type.scale.label.size, color: Romance.sub },
     infoValueRow: { flexDirection: 'row', alignItems: 'baseline', flexShrink: 1 },
-    infoValue: { fontSize: 13, fontWeight: '500', color: Romance.ink },
-    infoValueDim: { fontSize: 13, fontWeight: '500', color: Romance.faint },
-    infoLink: { fontSize: 13, fontWeight: '600', color: Romance.accent },
-    infoNum: { fontFamily: Fonts.label, fontSize: 13, color: Romance.ink },
-    infoNumDim: { fontFamily: Fonts.label, fontSize: 13, color: Romance.faint },
+    infoValue: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.ink },
+    infoValueDim: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.faint },
+    infoLink: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.accent },
+    infoNum: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.ink },
+    infoNumDim: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.faint },
   })
 );

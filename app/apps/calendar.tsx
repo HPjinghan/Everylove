@@ -17,7 +17,7 @@ import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { Input } from '@/components/input';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { dateKey, holidayFor, parseDateKey } from '@/content/calendar';
 import { placeById } from '@/content/places';
@@ -280,17 +280,17 @@ const styles = themed(() =>
     flex: { flex: 1 },
     content: { padding: Space.screen, paddingBottom: 40 },
     monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Space.tileGapLoose, marginBottom: 8 },
-    monthArrow: { fontFamily: Fonts.label, fontSize: 26, color: Romance.accent, paddingHorizontal: 8 },
-    monthTitle: { fontSize: 17, fontWeight: '600', color: Romance.ink },
-    monthNum: { fontFamily: Fonts.labelBold, fontSize: 17, color: Romance.ink },
+    monthArrow: { fontFamily: Fonts.label, fontSize: Type.scale.h1.size, color: Romance.accent, paddingHorizontal: 8 },
+    monthTitle: { fontSize: Type.scale.screenTitle.size, fontWeight: '600', color: Romance.ink },
+    monthNum: { fontFamily: Fonts.labelBold, fontSize: Type.scale.screenTitle.size, color: Romance.ink },
     weekRow: { flexDirection: 'row' },
-    weekCell: { width: '14.28%', textAlign: 'center', fontSize: 12, color: Romance.sub, paddingVertical: 6 },
+    weekCell: { width: '14.28%', textAlign: 'center', fontSize: Type.scale.caption.size, color: Romance.sub, paddingVertical: 6 },
     grid: { flexDirection: 'row', flexWrap: 'wrap' },
     // 7 × (100/7)% 浮点合计会略超 100%，第 7 格被挤到下一行 → 周日列全空；用略小的固定值
     dayCell: { width: '14.28%', alignItems: 'center', paddingVertical: 5 },
     dayNum: { width: 34, height: 34, borderRadius: Shape.radius, alignItems: 'center', justifyContent: 'center' },
     daySelected: { backgroundColor: Romance.accent },
-    dayText: { fontFamily: Fonts.label, fontSize: 14, color: Romance.ink },
+    dayText: { fontFamily: Fonts.label, fontSize: Type.scale.sub.size, color: Romance.ink },
     dayTextSelected: { fontFamily: Fonts.labelBold, color: '#FFFFFF' },
     dotRow: { flexDirection: 'row', gap: 3, height: 6, marginTop: 2 },
     // 三层圆点（D-100）：节日 ink / 纪念 primary / 日程 accent
@@ -300,16 +300,16 @@ const styles = themed(() =>
     dotUser: { backgroundColor: Romance.accentStrong },
     legend: { flexDirection: 'row', justifyContent: 'center', gap: Space.tileGap, marginTop: 10 },
     legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-    legendText: { fontSize: 11, color: Romance.sub },
+    legendText: { fontSize: Type.scale.timestamp.size, color: Romance.sub },
     detail: { padding: 14, marginTop: 12 },
-    detailTitle: { fontSize: 14, fontWeight: '600', color: Romance.ink, marginBottom: 8 },
-    detailEmpty: { fontSize: 13, color: Romance.sub, marginBottom: 4 },
+    detailTitle: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink, marginBottom: 8 },
+    detailEmpty: { fontSize: Type.scale.label.size, color: Romance.sub, marginBottom: 4 },
     markRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inline, paddingVertical: 7 },
-    markText: { flex: 1, fontSize: 14, color: Romance.ink },
-    markTime: { fontFamily: Fonts.label, fontSize: 14, color: Romance.ink },
-    markLayer: { fontSize: 11, color: Romance.sub },
-    markGo: { fontSize: 12, fontWeight: '600', color: Romance.accent },
+    markText: { flex: 1, fontSize: Type.scale.sub.size, color: Romance.ink },
+    markTime: { fontFamily: Fonts.label, fontSize: Type.scale.sub.size, color: Romance.ink },
+    markLayer: { fontSize: Type.scale.timestamp.size, color: Romance.sub },
+    markGo: { fontSize: Type.scale.caption.size, fontWeight: '600', color: Romance.accent },
     addRow: { flexDirection: 'row', gap: Space.inline, marginTop: 10 },
-    addInput: { flex: 1, backgroundColor: Romance.bg, fontSize: 14, paddingVertical: 9, paddingHorizontal: 12 },
+    addInput: { flex: 1, backgroundColor: Romance.bg, fontSize: Type.scale.sub.size, paddingVertical: 9, paddingHorizontal: 12 },
   })
 );

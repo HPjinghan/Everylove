@@ -29,7 +29,7 @@ import { Input } from '@/components/input';
 import { MingCute } from '@/components/mingcute';
 import { DiamondBackground } from '@/components/paper-bg';
 import { showToast } from '@/components/toast';
-import { Shape } from '@/constants/design';
+import { Shape, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import {
@@ -248,8 +248,8 @@ const styles = themed(() =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    title: { fontSize: 26, fontWeight: '600', color: Romance.ink, marginTop: 16, textAlign: 'center' },
-    sub: { fontSize: 14, lineHeight: 21, color: Romance.sub, textAlign: 'center', marginTop: 10 },
+    title: { fontSize: Type.scale.h1.size, fontWeight: '600', color: Romance.ink, marginTop: 16, textAlign: 'center' },
+    sub: { fontSize: Type.scale.sub.size, lineHeight: 21, color: Romance.sub, textAlign: 'center', marginTop: 10 },
     // Apple 登录：ink 底 r6 白字（不用纯黑）
     appleBtn: {
       alignSelf: 'stretch',
@@ -260,17 +260,17 @@ const styles = themed(() =>
       justifyContent: 'center',
       marginTop: 30,
     },
-    appleBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+    appleBtnText: { color: '#FFFFFF', fontSize: Type.scale.body.size, fontWeight: '600' },
     dim: { opacity: 0.4 },
     pressed: { opacity: 0.8 },
     orRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 18, alignSelf: 'stretch' },
     orLine: { flex: 1, height: 1, backgroundColor: Romance.line },
-    orText: { fontSize: 12, color: Romance.sub },
+    orText: { fontSize: Type.scale.caption.size, color: Romance.sub },
     input: { alignSelf: 'stretch', marginBottom: 10 },
     emailBtn: { alignSelf: 'stretch' },
     ghost: { marginTop: 18, padding: 10 },
-    ghostText: { fontSize: 13, color: Romance.sub },
+    ghostText: { fontSize: Type.scale.label.size, color: Romance.sub },
     ghostBtn: { marginTop: 18 },
-    footnote: { fontSize: 11, color: Romance.sub, marginTop: 26, textAlign: 'center' },
+    footnote: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 26, textAlign: 'center' },
   })
 );

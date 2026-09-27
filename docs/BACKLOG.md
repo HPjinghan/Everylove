@@ -75,9 +75,9 @@
 | F3 | ✅ D-197 | 聊天列表性能：输入栏拆子组件、`Bubble` memo、`data` / `readIds` useMemo、语音播放器共用一只 | `components/chat-thread.tsx:88,152,355,369,383,485` | |
 | F4 | ✅ D-198 | 创造表单拆状态：按页签拆子组件或 useReducer | `app/apps/character-edit.tsx:335-394` | |
 | F5 | ✅ D-181 | TA 主页占位行：故事行链传记、相册行链相册 | `app/bond/[bondId].tsx:184-189` | 无供给不摆 |
-| F6 | ⬜ | 流式输出 + 按到达节奏打字 | `core/providers.ts`、`features/providers.ts`、`core/turn.ts:130-135` | 先 Anthropic SSE；`ChatProvider` 加 `stream?` |
+| F6 | ✅ D-200（流式不做，首条延迟扣掉生成耗时） | 流式输出 + 按到达节奏打字 | `core/providers.ts`、`features/providers.ts`、`core/turn.ts:130-135` | 先 Anthropic SSE；`ChatProvider` 加 `stream?` |
 | F7 | ✅ D-197 | 约定窗口外进外出给一句解释；日历「赴约」校验窗口 | `app/outing/[placeId].tsx`、`app/apps/calendar.tsx:240` | |
-| F8 | ⬜ | 字号走 `Type.scale`、Fredoka 从中文上撤下 | 全屏幕；`notes.tsx:191,205`、`his-phone.tsx:512`、`polaroid.tsx:105`、`dating.tsx:128` | 一次性 codemod |
+| F8 | ✅ D-199 | 字号走 `Type.scale`、Fredoka 从中文上撤下 | 全屏幕；`notes.tsx:191,205`、`his-phone.tsx:512`、`polaroid.tsx:105`、`dating.tsx:128` | 一次性 codemod |
 | F9 | ✅ D-198 | 硬写 rgba / hex 与自造控件回收：`phones.tsx:103-124` 自绘 Modal → ConfirmSheet、`ConfirmSheet` 单动作保留 destructive、toast 排队 | `character-edit.tsx:110-115`、`chat-thread.tsx:680-696`、`card-bubble.tsx:64-68`、`phone-lock.tsx:216-254`、`action-sheet.tsx:235-244`、`toast.tsx:28-36` | |
 | F10 | ✅ D-198 | 未 t() 与日期格式：settings 大段、`format.ts:26`「万」、`traffic-log.tsx:51` 露 qianfan、`story:56`；日期全走 `localeOf` | 见界面审计 §6 | 词典测试会扫出 |
 | F11 | ✅ D-198 | 可访问性底线：动作型文字按钮 ≥ 44pt（传记编辑器上移 / 下移 / 删除、锁屏、HeaderAction）、`accessibilityLabel` 给图标按钮 | `story-editor.tsx:106-114`、`phone-lock.tsx:177-196`、`components/app-screen.tsx` | |

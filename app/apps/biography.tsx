@@ -11,7 +11,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppScreen } from '@/components/app-screen';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
-import { Space } from '@/constants/design';
+import { Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import { refreshSharedPool } from '@/lib/pool';
@@ -77,12 +77,12 @@ const styles = themed(() =>
     list: { padding: Space.screen, gap: Space.inline, paddingBottom: 40 },
     row: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose },
     text: { flex: 1, minWidth: 0 },
-    name: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-    sub: { fontSize: 12, color: Romance.sub, marginTop: 2 },
-    count: { fontSize: 12, color: Romance.sub },
-    countNum: { fontFamily: Fonts.label, fontSize: 14, color: Romance.ink },
-    none: { fontSize: 12, color: Romance.faint },
+    name: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
+    sub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
+    count: { fontSize: Type.scale.caption.size, color: Romance.sub },
+    countNum: { fontFamily: Fonts.label, fontSize: Type.scale.sub.size, color: Romance.ink },
+    none: { fontSize: Type.scale.caption.size, color: Romance.faint },
     empty: { alignItems: 'center', paddingTop: 60 },
-    emptyText: { fontSize: 14, color: Romance.sub },
+    emptyText: { fontSize: Type.scale.sub.size, color: Romance.sub },
   })
 );

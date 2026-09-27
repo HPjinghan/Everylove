@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { Card, Divider } from '@/components/card';
-import { Space } from '@/constants/design';
+import { Space, Type } from '@/constants/design';
 import { Romance, themed, withAlpha } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 
@@ -268,18 +268,18 @@ const styles = themed(() =>
       backgroundColor: withAlpha(Romance.ink, 0.45),
     },
     head: { paddingVertical: Space.cardY, paddingHorizontal: 16, gap: 4 },
-    title: { fontSize: 13, lineHeight: 18, color: Romance.sub },
+    title: { fontSize: Type.scale.label.size, lineHeight: 18, color: Romance.sub },
     headBody: { marginTop: 0 },
     row: { paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center' },
     rowPressed: { backgroundColor: Romance.bg },
-    rowText: { fontSize: 15, fontWeight: '500', color: Romance.ink },
+    rowText: { fontSize: Type.scale.body.size, fontWeight: '500', color: Romance.ink },
     rowDanger: { color: Romance.accentStrong },
     cancel: { marginTop: Space.inlineLoose },
     confirm: { padding: 16 },
-    confirmTitle: { fontSize: 16, fontWeight: '600', color: Romance.ink },
+    confirmTitle: { fontSize: Type.scale.md.size, fontWeight: '600', color: Romance.ink },
     bodyScroll: { maxHeight: 260 },
     bodyScrollInner: { flexGrow: 0 },
-    confirmBody: { fontSize: 13, lineHeight: 20, color: Romance.sub, marginTop: 8 },
+    confirmBody: { fontSize: Type.scale.label.size, lineHeight: 20, color: Romance.sub, marginTop: 8 },
     confirmActions: { flexDirection: 'row', gap: Space.inlineLoose, marginTop: 16 },
     flex: { flex: 1 },
   })

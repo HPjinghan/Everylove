@@ -13,7 +13,7 @@ import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
 import { DiamondBackground } from '@/components/paper-bg';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Shape } from '@/constants/design';
+import { Shape, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { getLang, localeOf, t } from '@/lib/i18n';
 import { PHONE_PASSCODE_LENGTH } from '@/lib/phone';
@@ -213,13 +213,13 @@ const styles = themed(() =>
       letterSpacing: -2,
       color: '#FFFFFF',
     },
-    date: { fontSize: 16, color: withAlpha('#FFFFFF', 0.85), marginTop: -6 },
+    date: { fontSize: Type.scale.md.size, color: withAlpha('#FFFFFF', 0.85), marginTop: -6 },
     middle: { alignItems: 'center', gap: 18, paddingHorizontal: 34 },
-    prompt: { fontSize: 18, color: '#FFFFFF' },
+    prompt: { fontSize: Type.scale.lg.size, color: '#FFFFFF' },
     dots: { flexDirection: 'row', gap: 22 },
     dot: { width: 13, height: 13, borderRadius: 6.5, borderWidth: 1.2, borderColor: '#FFFFFF' },
     dotOn: { backgroundColor: '#FFFFFF' },
-    waiting: { fontSize: 12, color: withAlpha('#FFFFFF', 0.7) },
+    waiting: { fontSize: Type.scale.caption.size, color: withAlpha('#FFFFFF', 0.7) },
     replyRow: { flexDirection: 'row', alignItems: 'flex-end', alignSelf: 'stretch', gap: 8 },
     replyBubbles: { flexShrink: 1, alignItems: 'flex-start', gap: 6 },
     bubble: {
@@ -231,7 +231,7 @@ const styles = themed(() =>
       paddingVertical: 8,
       paddingHorizontal: 12,
     },
-    bubbleText: { fontSize: 14, lineHeight: 20, color: Romance.ink },
+    bubbleText: { fontSize: Type.scale.sub.size, lineHeight: 20, color: Romance.ink },
     pad: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -251,9 +251,9 @@ const styles = themed(() =>
     keyPressed: { backgroundColor: withAlpha('#FFFFFF', 0.5) },
     keyBlank: { width: KEY, height: KEY, alignItems: 'center', justifyContent: 'center' },
     keyNum: { fontFamily: Fonts.label, fontSize: 34, lineHeight: 38, color: '#FFFFFF' },
-    keyLetters: { fontSize: 10, letterSpacing: 2, color: withAlpha('#FFFFFF', 0.85), marginTop: -2 },
+    keyLetters: { fontSize: Type.scale.xs.size, letterSpacing: 2, color: withAlpha('#FFFFFF', 0.85), marginTop: -2 },
     bottom: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 34 },
-    bottomText: { fontSize: 16, color: '#FFFFFF' },
+    bottomText: { fontSize: Type.scale.md.size, color: '#FFFFFF' },
     bottomDim: { opacity: 0.5 },
   })
 );

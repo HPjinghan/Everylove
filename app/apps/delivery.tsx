@@ -14,7 +14,7 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { Chip, Segmented } from '@/components/chip';
 import { Input } from '@/components/input';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { MENU } from '@/content/menu';
 import { orderStatusLabel, orderTitle, placeOrder } from '@/lib/delivery';
@@ -200,14 +200,14 @@ const styles = themed(() =>
     flex: { flex: 1 },
     tabs: { marginHorizontal: Space.screen, marginTop: Space.screen },
     body: { paddingHorizontal: Space.screen, paddingTop: Space.screen, paddingBottom: 24, gap: Space.inlineLoose },
-    sectionTitle: { fontSize: 13, fontWeight: '600', color: Romance.sub },
+    sectionTitle: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.sub },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.inline },
     menuCard: { paddingVertical: 4 },
     row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 12 },
     rowLine: { borderTopWidth: Shape.stroke, borderTopColor: Romance.stroke },
     rowBody: { flex: 1 },
-    rowTitle: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-    price: { fontFamily: Fonts.labelBold, fontSize: 13, color: Romance.accentStrong, marginTop: 2 },
+    rowTitle: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
+    price: { fontFamily: Fonts.labelBold, fontSize: Type.scale.label.size, color: Romance.accentStrong, marginTop: 2 },
     stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     stepBtn: {
       width: 28,
@@ -219,9 +219,9 @@ const styles = themed(() =>
       justifyContent: 'center',
     },
     stepBtnOn: { backgroundColor: Romance.accent, borderColor: Romance.accent },
-    stepText: { fontFamily: Fonts.labelBold, fontSize: 16, color: Romance.ink, lineHeight: 18 },
+    stepText: { fontFamily: Fonts.labelBold, fontSize: Type.scale.md.size, color: Romance.ink, lineHeight: 18 },
     stepTextOn: { color: '#FFFFFF' },
-    qty: { fontFamily: Fonts.labelBold, fontSize: 14, color: Romance.ink, minWidth: 14, textAlign: 'center' },
+    qty: { fontFamily: Fonts.labelBold, fontSize: Type.scale.sub.size, color: Romance.ink, minWidth: 14, textAlign: 'center' },
     checkout: {
       paddingHorizontal: Space.screen,
       paddingTop: Space.inlineLoose,
@@ -232,15 +232,15 @@ const styles = themed(() =>
       gap: Space.inlineLoose,
     },
     checkoutRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    totalLabel: { fontSize: 12, color: Romance.sub },
-    total: { fontFamily: Fonts.labelBold, fontSize: 22, color: Romance.ink },
+    totalLabel: { fontSize: Type.scale.caption.size, color: Romance.sub },
+    total: { fontFamily: Fonts.labelBold, fontSize: Type.scale.xxl.size, color: Romance.ink },
     totalShort: { color: Romance.accentStrong },
     submit: { minWidth: 120 },
-    empty: { fontSize: 13, color: Romance.sub, paddingVertical: 10 },
+    empty: { fontSize: Type.scale.label.size, color: Romance.sub, paddingVertical: 10 },
     orderCard: { gap: 4 },
     orderTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
-    orderWho: { fontSize: 12, color: Romance.sub },
-    orderNote: { fontSize: 13, color: Romance.ink },
-    orderStatus: { fontSize: 12, fontWeight: '600', color: Romance.accentStrong, marginTop: 4 },
+    orderWho: { fontSize: Type.scale.caption.size, color: Romance.sub },
+    orderNote: { fontSize: Type.scale.label.size, color: Romance.ink },
+    orderStatus: { fontSize: Type.scale.caption.size, fontWeight: '600', color: Romance.accentStrong, marginTop: 4 },
   })
 );

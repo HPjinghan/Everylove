@@ -16,7 +16,7 @@ import { Card } from '@/components/card';
 import { Chip } from '@/components/chip';
 import { Field, Input } from '@/components/input';
 import { showToast } from '@/components/toast';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { LEVEL_NAMES } from '@/lib/bond';
 import { describeAiError } from '@/lib/chat';
@@ -237,15 +237,15 @@ function ChapterEditor({
 
 const styles = themed(() =>
   StyleSheet.create({
-    sectionHint: { fontSize: 12, color: Romance.sub, marginTop: Space.inlineLoose, lineHeight: 17 },
-    empty: { fontSize: 13, color: Romance.sub, textAlign: 'center', marginTop: 28 },
+    sectionHint: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: Space.inlineLoose, lineHeight: 17 },
+    empty: { fontSize: Type.scale.label.size, color: Romance.sub, textAlign: 'center', marginTop: 28 },
     row: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose, marginTop: Space.inlineLoose },
     rowMain: { flex: 1, minWidth: 0 },
-    rowTitle: { fontSize: 15, fontWeight: '600', color: Romance.ink },
+    rowTitle: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
     rowMeta: { flexDirection: 'row', alignItems: 'center', gap: Space.inline, marginTop: 4 },
     lvTag: {
       fontFamily: Fonts.labelBold,
-      fontSize: 11,
+      fontSize: Type.scale.timestamp.size,
       color: Romance.accentStrong,
       backgroundColor: Romance.accentSoft,
       borderRadius: Shape.radiusInner,
@@ -253,11 +253,11 @@ const styles = themed(() =>
       paddingVertical: 2,
       overflow: 'hidden',
     },
-    rowSub: { fontSize: 12, color: Romance.sub },
+    rowSub: { fontSize: Type.scale.caption.size, color: Romance.sub },
     rowActions: { gap: 2, alignItems: 'flex-end' },
     // 文字型动作按钮的触控面积（D-198）：上下各 6，加 hitSlop 8 到 44pt
     actionHit: { paddingVertical: 6, paddingHorizontal: 6 },
-    action: { fontSize: 12, fontWeight: '500', color: Romance.accent },
+    action: { fontSize: Type.scale.caption.size, fontWeight: '500', color: Romance.accent },
     actionOff: { opacity: 0.3 },
     actionDanger: { color: Romance.danger },
     addBtn: { marginTop: Space.cardX },

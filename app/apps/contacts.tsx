@@ -10,7 +10,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppScreen } from '@/components/app-screen';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { HEART_FULL, levelInfoFor } from '@/lib/bond';
@@ -109,7 +109,7 @@ const styles = themed(() =>
     row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     rowText: { flex: 1 },
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    rowName: { fontSize: 15, fontWeight: '600', color: Romance.ink, flexShrink: 1 },
+    rowName: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, flexShrink: 1 },
     // 「心动中」标签：accentSoft 底、accent 字、内层圆角 4
     tag: {
       backgroundColor: Romance.accentSoft,
@@ -117,9 +117,9 @@ const styles = themed(() =>
       paddingHorizontal: 7,
       paddingVertical: 2,
     },
-    tagText: { fontSize: 10, fontWeight: '600', color: Romance.accentStrong },
-    rowSub: { fontSize: 12, color: Romance.sub, marginTop: 2 },
+    tagText: { fontSize: Type.scale.xs.size, fontWeight: '600', color: Romance.accentStrong },
+    rowSub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
     rowSubNum: { fontFamily: Fonts.label },
-    empty: { textAlign: 'center', color: Romance.sub, marginTop: 60, fontSize: 13 },
+    empty: { textAlign: 'center', color: Romance.sub, marginTop: 60, fontSize: Type.scale.label.size },
   })
 );

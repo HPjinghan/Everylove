@@ -39,7 +39,7 @@ import { Field, Input } from '@/components/input';
 import { StoryEditor } from '@/components/story-editor';
 import { VoicePicker } from '@/components/voice-picker';
 import { showToast } from '@/components/toast';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { BLOCKED_NAME_PATTERN, LOVE_STYLES, loveStyleByLabel, RACES } from '@/content/characters';
 import { DEFAULT_PORTRAIT_STYLE, PORTRAIT_STYLES } from '@/content/prompts';
@@ -1174,20 +1174,20 @@ const styles = themed(() =>
       borderTopColor: Romance.line,
       backgroundColor: Romance.bg,
     },
-    subtitle: { fontSize: 13, color: Romance.sub, marginTop: Space.inlineLoose },
+    subtitle: { fontSize: Type.scale.label.size, color: Romance.sub, marginTop: Space.inlineLoose },
     descFoot: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       marginTop: Space.inline,
     },
-    descCount: { fontFamily: Fonts.label, fontSize: 11, color: Romance.sub },
+    descCount: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.sub },
     btnRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inline },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.inline },
     inputShort: { minHeight: 64 },
-    afterHint: { fontSize: 11, color: Romance.sub, marginTop: Space.inline, lineHeight: 16 },
+    afterHint: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: Space.inline, lineHeight: 16 },
     minorNotice: {
-      fontSize: 12,
+      fontSize: Type.scale.caption.size,
       color: Romance.danger,
       backgroundColor: Romance.accentSoft,
       borderRadius: Shape.radius,
@@ -1196,7 +1196,7 @@ const styles = themed(() =>
       marginTop: Space.inline,
       lineHeight: 18,
     },
-    subLabel: { fontSize: 13, fontWeight: '500', color: Romance.ink, marginBottom: Space.inline },
+    subLabel: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.ink, marginBottom: Space.inline },
     paletteRow: { flexDirection: 'row', gap: Space.inline, marginTop: Space.inline },
     swatchRing: {
       borderWidth: SWATCH_RING.width,
@@ -1216,10 +1216,10 @@ const styles = themed(() =>
       paddingHorizontal: 18,
       paddingVertical: 11,
     },
-    ddText: { fontSize: 14, fontWeight: '500', color: Romance.ink },
+    ddText: { fontSize: Type.scale.sub.size, fontWeight: '500', color: Romance.ink },
     ddTextEmpty: { color: Romance.sub },
     ddClear: { justifyContent: 'center', paddingHorizontal: Space.inline },
-    ddClearText: { fontSize: 12, color: Romance.sub },
+    ddClearText: { fontSize: Type.scale.caption.size, color: Romance.sub },
     btnDisabled: { opacity: 0.4 },
     paceCard: {
       flex: 1,
@@ -1230,12 +1230,12 @@ const styles = themed(() =>
       alignItems: 'center',
     },
     paceCardOn: { backgroundColor: Romance.accent },
-    paceLabel: { fontSize: 14, fontWeight: '600', color: Romance.ink },
+    paceLabel: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
     paceLabelOn: { color: '#FFFFFF' },
-    paceHint: { fontSize: 10, color: Romance.sub, marginTop: 3 },
+    paceHint: { fontSize: Type.scale.xs.size, color: Romance.sub, marginTop: 3 },
     paceHintOn: { color: withAlpha('#FFFFFF', 0.8) },
     styleDesc: {
-      fontSize: 12,
+      fontSize: Type.scale.caption.size,
       color: Romance.accent,
       backgroundColor: Romance.accentSoft,
       borderRadius: Shape.radius,
@@ -1244,7 +1244,7 @@ const styles = themed(() =>
       marginTop: Space.inlineLoose,
       lineHeight: 18,
     },
-    sectionHint: { fontSize: 11, color: Romance.sub, marginTop: Space.inlineLoose },
+    sectionHint: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: Space.inlineLoose },
     rewriteBtn: { marginTop: Space.cardX },
     previewCard: {
       flexDirection: 'row',
@@ -1253,10 +1253,10 @@ const styles = themed(() =>
       marginBottom: Space.inline,
     },
     previewText: { flex: 1 },
-    previewName: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-    previewHook: { fontSize: 12, color: Romance.sub, marginTop: 2 },
+    previewName: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
+    previewHook: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
     primaryBtn: { marginTop: 0 },
-    footnote: { textAlign: 'center', fontSize: 11, color: Romance.sub, marginTop: Space.inline },
+    footnote: { textAlign: 'center', fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: Space.inline },
     // 生日选单：ink 45% 遮罩 + paper 底面板（1.5px ink 上沿，同输入栏）
     pickerMask: {
       flex: 1,
@@ -1274,7 +1274,7 @@ const styles = themed(() =>
       maxHeight: '60%',
     },
     pickerTitle: {
-      fontSize: 15,
+      fontSize: Type.scale.body.size,
       fontWeight: '600',
       color: Romance.ink,
       textAlign: 'center',

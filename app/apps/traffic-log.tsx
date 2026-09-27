@@ -7,7 +7,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
 import { Card } from '@/components/card';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import { LOVE_MODELS, mb } from '@/lib/traffic';
@@ -74,15 +74,15 @@ const styles = themed(() =>
   StyleSheet.create({
     body: { paddingHorizontal: Space.screen, paddingTop: Space.screen, paddingBottom: 40, gap: Space.inlineLoose },
     sum: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    sumLabel: { fontSize: 13, color: Romance.sub },
-    sumValue: { fontFamily: Fonts.labelBold, fontSize: 20, color: Romance.ink },
+    sumLabel: { fontSize: Type.scale.label.size, color: Romance.sub },
+    sumValue: { fontFamily: Fonts.labelBold, fontSize: Type.scale.xl.size, color: Romance.ink },
     list: { paddingVertical: 4 },
-    empty: { fontSize: 13, color: Romance.sub, paddingVertical: 10 },
+    empty: { fontSize: Type.scale.label.size, color: Romance.sub, paddingVertical: 10 },
     row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 12 },
     rowLine: { borderTopWidth: Shape.stroke, borderTopColor: Romance.stroke },
     rowBody: { flex: 1 },
-    rowTitle: { fontSize: 14, fontWeight: '600', color: Romance.ink },
-    rowSub: { fontSize: 11, color: Romance.sub, marginTop: 2 },
-    rowMb: { fontFamily: Fonts.labelBold, fontSize: 14, color: Romance.accentStrong },
+    rowTitle: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
+    rowSub: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 2 },
+    rowMb: { fontFamily: Fonts.labelBold, fontSize: Type.scale.sub.size, color: Romance.accentStrong },
   })
 );

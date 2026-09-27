@@ -11,7 +11,7 @@
 import { Pressable, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
 import { useGuardedPress } from '@/components/press-guard';
-import { Shape } from '@/constants/design';
+import { Shape, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'paper' | 'outline' | 'danger';
@@ -77,8 +77,8 @@ const styles = themed(() =>
     text_secondary: { color: Romance.ink },
     text_paper: { color: Romance.ink },
     text_outline: { color: Romance.accent },
-    textSize_lg: { fontSize: 15 },
-    textSize_md: { fontSize: 14 },
-    textSize_sm: { fontSize: 13 },
+    textSize_lg: { fontSize: Type.scale.body.size },
+    textSize_md: { fontSize: Type.scale.sub.size },
+    textSize_sm: { fontSize: Type.scale.label.size },
   })
 );

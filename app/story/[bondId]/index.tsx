@@ -9,7 +9,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppScreen } from '@/components/app-screen';
 import { Card } from '@/components/card';
 import { MingCute } from '@/components/mingcute';
-import { Space } from '@/constants/design';
+import { Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import { chapterOpen, chaptersForBond, chapterText } from '@/lib/story';
@@ -74,13 +74,13 @@ const styles = themed(() =>
     list: { padding: Space.screen, gap: Space.inline, paddingBottom: 40 },
     row: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose },
     rowLocked: { opacity: 0.55 },
-    index: { fontFamily: Fonts.label, fontSize: 18, color: Romance.faint, width: 22, textAlign: 'center' },
+    index: { fontFamily: Fonts.label, fontSize: Type.scale.lg.size, color: Romance.faint, width: 22, textAlign: 'center' },
     text: { flex: 1, minWidth: 0 },
-    title: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-    preview: { fontSize: 12, color: Romance.sub, marginTop: 3, lineHeight: 17 },
+    title: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
+    preview: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 3, lineHeight: 17 },
     lock: { alignItems: 'center', gap: 2 },
-    lockLevel: { fontFamily: Fonts.label, fontSize: 11, color: Romance.faint },
+    lockLevel: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.faint },
     empty: { alignItems: 'center', paddingTop: 60 },
-    emptyText: { fontSize: 14, color: Romance.sub },
+    emptyText: { fontSize: Type.scale.sub.size, color: Romance.sub },
   })
 );

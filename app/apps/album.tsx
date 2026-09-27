@@ -9,7 +9,7 @@ import { SectionList, StyleSheet, Text, useWindowDimensions, View } from 'react-
 
 import { AppScreen } from '@/components/app-screen';
 import { PhotoViewer, Polaroid } from '@/components/polaroid';
-import { Space } from '@/constants/design';
+import { Space, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { placeById } from '@/content/places';
 import { localeOf, t } from '@/lib/i18n';
@@ -130,10 +130,10 @@ export default function AlbumScreen() {
 const styles = themed(() =>
   StyleSheet.create({
     list: { padding: Space.screen, paddingBottom: 40 },
-    day: { fontSize: 13, fontWeight: '600', color: Romance.ink, marginTop: 14, marginBottom: 8 },
+    day: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.ink, marginTop: 14, marginBottom: 8 },
     gridRow: { flexDirection: 'row', gap: GAP, marginBottom: 8 },
     empty: { alignItems: 'center', marginTop: 90 },
     emptyEmoji: { fontSize: 40 },
-    emptyText: { textAlign: 'center', color: Romance.sub, fontSize: 13, lineHeight: 20, marginTop: 12 },
+    emptyText: { textAlign: 'center', color: Romance.sub, fontSize: Type.scale.label.size, lineHeight: 20, marginTop: 12 },
   })
 );

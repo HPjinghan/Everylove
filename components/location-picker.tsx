@@ -24,7 +24,7 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { showToast } from '@/components/toast';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { getLang, t } from '@/lib/i18n';
 import { getJsonWithTimeout, TIMEOUTS } from '@/lib/proxy';
@@ -280,13 +280,13 @@ const styles = themed(() =>
       borderRadius: Shape.radius,
       backgroundColor: Romance.card,
       paddingHorizontal: 12,
-      fontSize: 15,
+      fontSize: Type.scale.body.size,
       color: Romance.ink,
     },
     hits: { paddingVertical: 4 },
     hit: { paddingHorizontal: Space.cardX, paddingVertical: 9 },
-    hitTitle: { fontSize: 14, fontWeight: '600', color: Romance.ink },
-    hitSub: { fontSize: 11, color: Romance.sub, marginTop: 1 },
+    hitTitle: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
+    hitSub: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 1 },
     // 底栏：白底 + 1.5px 上沿（输入栏同款）
     bottom: {
       position: 'absolute',
@@ -300,8 +300,8 @@ const styles = themed(() =>
       borderTopColor: Romance.stroke,
     },
     picked: { gap: 2 },
-    pickedTitle: { fontSize: 16, fontWeight: '600', color: Romance.ink },
-    pickedSub: { fontSize: 12, color: Romance.sub },
-    hintText: { textAlign: 'center', fontSize: 13, color: Romance.sub, paddingVertical: 6 },
+    pickedTitle: { fontSize: Type.scale.md.size, fontWeight: '600', color: Romance.ink },
+    pickedSub: { fontSize: Type.scale.caption.size, color: Romance.sub },
+    hintText: { textAlign: 'center', fontSize: Type.scale.label.size, color: Romance.sub, paddingVertical: 6 },
   })
 );

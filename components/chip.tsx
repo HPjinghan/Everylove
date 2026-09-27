@@ -6,7 +6,7 @@
 
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { Shape } from '@/constants/design';
+import { Shape, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 
 export function Chip({
@@ -59,13 +59,13 @@ const styles = themed(() =>
   StyleSheet.create({
     chip: { backgroundColor: Romance.card, borderRadius: Shape.radius, paddingVertical: 8, paddingHorizontal: 14 },
     chipOn: { backgroundColor: Romance.accent },
-    chipText: { fontSize: 13, fontWeight: '500', color: Romance.sub },
+    chipText: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.sub },
     chipTextOn: { color: '#FFFFFF', fontWeight: '600' },
     seg: { flexDirection: 'row', backgroundColor: Romance.card, borderRadius: Shape.radius, padding: 3 },
     segPaper: { backgroundColor: Romance.bg },
     segItem: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: Shape.radiusInner },
     segItemOn: { backgroundColor: Romance.accent },
-    segText: { fontSize: 13, fontWeight: '500', color: Romance.sub },
+    segText: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.sub },
     segTextOn: { color: '#FFFFFF', fontWeight: '600' },
   })
 );

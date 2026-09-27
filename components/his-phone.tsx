@@ -20,7 +20,7 @@ import { Polaroid } from '@/components/polaroid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { placeById } from '@/content/places';
 import { characterSecrets, messageContextText, unlockedSecretCount } from '@/content/prompts';
-import { NOTE_PAPER, Shape, Space } from '@/constants/design';
+import { NOTE_PAPER, Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { planTimeLabel } from '@/lib/appointments';
 import { levelOf } from '@/lib/bond';
@@ -419,13 +419,13 @@ const styles = themed(() =>
     homeTop: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Space.screen, paddingTop: 8 },
     homeClose: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
     homeOwner: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Space.inline, marginRight: 36 },
-    homeOwnerName: { fontSize: 13, fontWeight: '600', color: '#FFFFFF' },
+    homeOwnerName: { fontSize: Type.scale.label.size, fontWeight: '600', color: '#FFFFFF' },
     clock: { fontFamily: Fonts.labelBold, fontSize: 64, lineHeight: 64, color: '#FFFFFF', textAlign: 'center', marginTop: 18 },
-    clockDate: { fontSize: 13, color: withAlpha('#FFFFFF', 0.85), textAlign: 'center', marginTop: 4 },
+    clockDate: { fontSize: Type.scale.label.size, color: withAlpha('#FFFFFF', 0.85), textAlign: 'center', marginTop: 4 },
     grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: Space.screen, marginTop: 36, rowGap: 22 },
     tileWrap: { width: '25%', alignItems: 'center' },
     tile: { width: TILE, height: TILE, borderRadius: Shape.radius, backgroundColor: Romance.card, alignItems: 'center', justifyContent: 'center' },
-    tileLabel: { fontSize: 12, fontWeight: '500', color: '#FFFFFF', marginTop: 6 },
+    tileLabel: { fontSize: Type.scale.caption.size, fontWeight: '500', color: '#FFFFFF', marginTop: 6 },
     tileLabelLatin: { fontFamily: Fonts.label },
     badge: {
       position: 'absolute',
@@ -439,19 +439,19 @@ const styles = themed(() =>
       justifyContent: 'center',
       paddingHorizontal: 5,
     },
-    badgeText: { fontFamily: Fonts.labelBold, fontSize: 12, color: '#FFFFFF' },
+    badgeText: { fontFamily: Fonts.labelBold, fontSize: Type.scale.caption.size, color: '#FFFFFF' },
     // 钱包（D-128）
     walletCard: { alignItems: 'center', paddingVertical: 22 },
-    walletLabel: { fontSize: 12, color: Romance.sub },
-    walletBalance: { fontFamily: Fonts.labelBold, fontSize: 30, color: Romance.ink, marginTop: 4 },
-    walletJob: { fontSize: 12, color: Romance.sub, marginTop: 6 },
+    walletLabel: { fontSize: Type.scale.caption.size, color: Romance.sub },
+    walletBalance: { fontFamily: Fonts.labelBold, fontSize: Type.scale.display.size, color: Romance.ink, marginTop: 4 },
+    walletJob: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 6 },
     walletLedger: { paddingVertical: 4, marginTop: 10 },
     walletRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 12 },
     walletRowLine: { borderTopWidth: Shape.stroke, borderTopColor: Romance.stroke },
     walletRowBody: { flex: 1 },
-    walletRowTitle: { fontSize: 14, fontWeight: '600', color: Romance.ink },
-    walletRowSub: { fontSize: 11, color: Romance.sub, marginTop: 2 },
-    walletAmount: { fontFamily: Fonts.labelBold, fontSize: 14, color: Romance.accentStrong },
+    walletRowTitle: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
+    walletRowSub: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 2 },
+    walletAmount: { fontFamily: Fonts.labelBold, fontSize: Type.scale.sub.size, color: Romance.accentStrong },
     walletAmountOut: { color: Romance.ink },
     // 内页
     screen: { flex: 1, backgroundColor: Romance.bg },
@@ -465,20 +465,20 @@ const styles = themed(() =>
       borderBottomColor: Romance.stroke,
     },
     back: { flexDirection: 'row', alignItems: 'center', width: Space.topBarSlot, gap: 2 },
-    backText: { fontSize: 14, fontWeight: '500', color: Romance.ink },
-    title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600', color: Romance.ink },
+    backText: { fontSize: Type.scale.sub.size, fontWeight: '500', color: Romance.ink },
+    title: { flex: 1, textAlign: 'center', fontSize: Type.scale.screenTitle.size, fontWeight: '600', color: Romance.ink },
     titleLatin: { fontFamily: Fonts.labelBold, fontWeight: '400' },
     right: { width: Space.topBarSlot, alignItems: 'flex-end' },
     listBody: { padding: Space.screen, gap: Space.inline, paddingBottom: 40 },
     convRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose },
     convText: { flex: 1, minWidth: 0 },
     convHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Space.inline },
-    convName: { fontSize: 15, fontWeight: '600', color: Romance.ink, flexShrink: 1 },
-    convTag: { fontSize: 11, fontWeight: '500', color: Romance.sub },
-    convPreview: { fontSize: 13, color: Romance.sub, marginTop: 2 },
+    convName: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, flexShrink: 1 },
+    convTag: { fontSize: Type.scale.timestamp.size, fontWeight: '500', color: Romance.sub },
+    convPreview: { fontSize: Type.scale.label.size, color: Romance.sub, marginTop: 2 },
     // 她在 TA 手机里的头像：paper 底 accent 首字（同 X 里「我的头像」）
     herAvatar: { width: 40, height: 40, borderRadius: Shape.radius, backgroundColor: Romance.accentSoft, alignItems: 'center', justifyContent: 'center' },
-    herAvatarText: { fontFamily: Fonts.initial, fontSize: 17, fontWeight: '600', color: Romance.accentStrong },
+    herAvatarText: { fontFamily: Fonts.initial, fontSize: Type.scale.screenTitle.size, fontWeight: '600', color: Romance.accentStrong },
     initial: { borderRadius: Shape.radius, backgroundColor: Romance.line, alignItems: 'center', justifyContent: 'center' },
     initialText: { fontFamily: Fonts.initial, fontWeight: '600', color: Romance.ink },
     // 会话（TA 视角：TA 在右）
@@ -489,9 +489,9 @@ const styles = themed(() =>
     bubble: { paddingVertical: Space.bubbleY, paddingHorizontal: Space.bubbleX, borderRadius: Shape.radius },
     bubbleMine: { backgroundColor: Romance.bubbleMe, borderBottomRightRadius: Shape.radiusTail },
     bubbleTheirs: { backgroundColor: Romance.bubbleHim, borderBottomLeftRadius: Shape.radiusTail },
-    bubbleText: { fontSize: 14, lineHeight: 20, color: Romance.ink },
+    bubbleText: { fontSize: Type.scale.sub.size, lineHeight: 20, color: Romance.ink },
     bubbleTextMine: { color: '#FFFFFF' },
-    bubbleTime: { fontFamily: Fonts.label, fontSize: 10, color: Romance.sub, marginHorizontal: 2 },
+    bubbleTime: { fontFamily: Fonts.label, fontSize: Type.scale.xs.size, color: Romance.sub, marginHorizontal: 2 },
     // TA 的记事本：唯一的米色纸面（NOTE_PAPER），描边同卡片
     note: {
       backgroundColor: NOTE_PAPER.bg,
@@ -502,16 +502,17 @@ const styles = themed(() =>
       gap: 10,
     },
     noteItem: { gap: 2 },
-    noteTime: { fontFamily: Fonts.label, fontSize: 11, color: Romance.sub },
-    noteLine: { fontSize: 14, lineHeight: 21, color: NOTE_PAPER.ink },
-    noteLocked: { fontSize: 13, color: Romance.faint, letterSpacing: 1 },
-    empty: { fontSize: 13, color: Romance.faint, marginLeft: 4 },
+    noteTime: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.sub },
+    noteLine: { fontSize: Type.scale.sub.size, lineHeight: 21, color: NOTE_PAPER.ink },
+    noteLocked: { fontSize: Type.scale.label.size, color: Romance.faint, letterSpacing: 1 },
+    empty: { fontSize: Type.scale.label.size, color: Romance.faint, marginLeft: 4 },
     calCard: { gap: 8 },
     calRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inline },
-    calDay: { fontFamily: Fonts.label, fontSize: 12, color: Romance.accent, width: 64 },
+    calDay: { fontFamily: Fonts.label, fontSize: Type.scale.caption.size, color: Romance.accent, width: 64 },
     calWeekday: { fontFamily: Fonts.sans },
-    calText: { flex: 1, fontSize: 13, color: Romance.ink },
-    time: { fontFamily: Fonts.label, fontSize: 11, color: Romance.sub },
+    calText: { flex: 1, fontSize: Type.scale.label.size, color: Romance.ink },
+    // timeAgo 是中文 / 各语言的字，不上 Fredoka（D-199）
+    time: { fontSize: Type.scale.timestamp.size, color: Romance.sub },
     albumBody: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.inlineLoose, padding: Space.screen, paddingBottom: 40, justifyContent: 'center' },
   })
 );

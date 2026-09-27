@@ -18,7 +18,7 @@ import { CharacterSheet } from '@/components/character-sheet';
 import { MingCute } from '@/components/mingcute';
 import { runJobs } from '@/core/jobs';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { sendText } from '@/lib/chat';
 import { timeAgo } from '@/lib/format';
@@ -213,21 +213,21 @@ const styles = themed(() =>
     },
     rowBody: { flex: 1, minWidth: 0 },
     headLine: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-    name: { fontSize: 15, fontWeight: '600', color: Romance.ink, flexShrink: 1 },
-    handle: { fontSize: 13, color: Romance.sub, flexShrink: 1 },
-    lockedMeta: { fontSize: 11, color: Romance.faint, marginTop: 1 },
-    body: { fontSize: 15, lineHeight: 21, color: Romance.ink, marginTop: 3 },
+    name: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, flexShrink: 1 },
+    handle: { fontSize: Type.scale.label.size, color: Romance.sub, flexShrink: 1 },
+    lockedMeta: { fontSize: Type.scale.timestamp.size, color: Romance.faint, marginTop: 1 },
+    body: { fontSize: Type.scale.body.size, lineHeight: 21, color: Romance.ink, marginTop: 3 },
     actions: { flexDirection: 'row', gap: 46, marginTop: 10 },
     action: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 34, paddingVertical: 6 },
-    actionCount: { fontFamily: Fonts.label, fontSize: 12, color: Romance.sub },
+    actionCount: { fontFamily: Fonts.label, fontSize: Type.scale.caption.size, color: Romance.sub },
     actionCountOn: { color: Romance.accent },
-    actionLabel: { fontSize: 12, color: Romance.sub },
+    actionLabel: { fontSize: Type.scale.caption.size, color: Romance.sub },
     reply: { flexDirection: 'row', gap: Space.inline, marginTop: 12 },
     replyBody: { flex: 1 },
-    replyName: { fontSize: 13, fontWeight: '600', color: Romance.ink },
-    replyHandle: { fontSize: 12, fontWeight: '400', color: Romance.sub },
-    replyText: { fontSize: 14, lineHeight: 20, color: Romance.ink, marginTop: 1 },
-    replyTyping: { fontSize: 13, color: Romance.sub, alignSelf: 'center' },
+    replyName: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.ink },
+    replyHandle: { fontSize: Type.scale.caption.size, fontWeight: '400', color: Romance.sub },
+    replyText: { fontSize: Type.scale.sub.size, lineHeight: 20, color: Romance.ink, marginTop: 1 },
+    replyTyping: { fontSize: Type.scale.label.size, color: Romance.sub, alignSelf: 'center' },
     // 我的头像：paper 底 + accent 首字（不是角色色）
     myAvatar: {
       width: 26,
@@ -237,7 +237,7 @@ const styles = themed(() =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    myAvatarText: { fontSize: 12, fontWeight: '600', color: Romance.accentStrong },
+    myAvatarText: { fontSize: Type.scale.caption.size, fontWeight: '600', color: Romance.accentStrong },
     // 别人的头像（TA 身边的人，D-110）：line 底 ink 首字
     otherAvatar: {
       width: 26,
@@ -247,7 +247,7 @@ const styles = themed(() =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    otherAvatarText: { fontFamily: Fonts.initial, fontSize: 12, fontWeight: '600', color: Romance.ink },
+    otherAvatarText: { fontFamily: Fonts.initial, fontSize: Type.scale.caption.size, fontWeight: '600', color: Romance.ink },
     commentBar: { flexDirection: 'row', alignItems: 'center', gap: Space.inline, marginTop: 10 },
     commentInput: {
       flex: 1,
@@ -255,10 +255,10 @@ const styles = themed(() =>
       borderRadius: Shape.radius,
       backgroundColor: Romance.bg,
       paddingHorizontal: 14,
-      fontSize: 14,
+      fontSize: Type.scale.sub.size,
       color: Romance.ink,
     },
     empty: { alignItems: 'center', paddingVertical: 70 },
-    emptyText: { fontSize: 13, color: Romance.sub, textAlign: 'center', lineHeight: 20 },
+    emptyText: { fontSize: Type.scale.label.size, color: Romance.sub, textAlign: 'center', lineHeight: 20 },
   })
 );

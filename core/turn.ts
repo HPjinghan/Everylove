@@ -186,6 +186,7 @@ async function runOne(scope: TurnScope, userText: string, ui: TurnUi, her: boole
   const pace = ui.pace ?? 'natural';
 
   ui.typing?.(true);
+  const startedAt = Date.now();
   let reply: EngineReply;
   try {
     reply = await generateReply(ctx);
@@ -200,19 +201,24 @@ async function runOne(scope: TurnScope, userText: string, ui: TurnUi, her: boole
   }
 
   const info: TurnInfo = { scope, ctx, mode, reply, darkSide: !!reply.darkSide, ui, her };
-  await settle(info, { pace });
+  // 模型已经花掉的时间从第一条的打字延迟里扣掉（D-200）：TA 不会「生成完了还在打字」
+  await settle(info, { pace, elapsedMs: Date.now() - startedAt });
   return { reply };
 }
 
 /** 管线的后半段：落气泡（bubble 钩子可改写）→ 暗号落状态 → after 钩子；她开口的回合与后台落消息共用（D-177） */
-async function settle(info: TurnInfo, opts: { pace: 'natural' | 'none'; at?: number; extra?: Partial<ChatMessage> }): Promise<void> {
+/** 第一条至少还要「打」这么久（哪怕模型已经想了很久），免得回复像早就写好的 */
+const MIN_FIRST_TYPING_MS = 250;
+
+async function settle(info: TurnInfo, opts: { pace: 'natural' | 'none'; at?: number; extra?: Partial<ChatMessage>; elapsedMs?: number }): Promise<void> {
   const { scope, mode, reply, ui, ctx } = info;
   const total = reply.texts.length;
-  // 每条气泡：「正在输入」按这条的长度停一会儿再上屏（D-146）；模型已经花掉的时间不再另算
+  // 每条气泡：「正在输入」按这条的长度停一会儿再上屏（D-146）；第一条扣掉模型已经花掉的时间（D-200）
   for (const [i, text] of reply.texts.entries()) {
     if (opts.pace === 'natural') {
       ui.typing?.(true);
-      await wait(typingDelay(text, i));
+      const delay = i === 0 ? Math.max(MIN_FIRST_TYPING_MS, typingDelay(text, 0) - (opts.elapsedMs ?? 0)) : typingDelay(text, i);
+      await wait(delay);
     }
     ui.typing?.(false);
     const base: ChatMessage = { ...himMsg(text), ...(opts.at !== undefined ? { at: opts.at + i } : {}), ...opts.extra };

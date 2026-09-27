@@ -15,7 +15,7 @@ import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { Card, Divider } from '@/components/card';
 import { Input } from '@/components/input';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import {
@@ -181,11 +181,11 @@ const styles = themed(() =>
     today: { alignItems: 'center', padding: 24 },
     todayEmoji: { fontSize: 52, lineHeight: 60 },
     todayTemp: { fontFamily: Fonts.labelBold, fontSize: 54, lineHeight: 58, color: Romance.ink, marginTop: 8 },
-    todayLabel: { fontSize: 15, fontWeight: '600', color: Romance.ink, marginTop: 6 },
-    todayHiLo: { fontFamily: Fonts.labelBold, fontSize: 15, color: Romance.ink },
-    todayLine: { fontSize: 12, color: Romance.sub, marginTop: 6 },
-    todayCity: { fontSize: 12, color: Romance.sub, marginTop: 10 },
-    sectionTitle: { fontSize: 13, fontWeight: '600', color: Romance.sub, marginTop: 18, marginBottom: 8 },
+    todayLabel: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, marginTop: 6 },
+    todayHiLo: { fontFamily: Fonts.labelBold, fontSize: Type.scale.body.size, color: Romance.ink },
+    todayLine: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 6 },
+    todayCity: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 10 },
+    sectionTitle: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.sub, marginTop: 18, marginBottom: 8 },
     searchRow: { flexDirection: 'row', gap: Space.inline, marginTop: 8 },
     searchInput: { flex: 1, backgroundColor: Romance.bg },
     hitRow: {
@@ -199,14 +199,14 @@ const styles = themed(() =>
       justifyContent: 'space-between',
       gap: Space.inline,
     },
-    hitName: { fontSize: 14, fontWeight: '600', color: Romance.ink },
-    hitDetail: { fontSize: 11, color: Romance.sub },
+    hitName: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
+    hitDetail: { fontSize: Type.scale.timestamp.size, color: Romance.sub },
     week: { paddingHorizontal: 14 },
     dayRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: Space.inlineLoose },
-    dayName: { width: 58, fontSize: 13, fontWeight: '600', color: Romance.ink },
-    dayEmoji: { fontSize: 18 },
-    dayLabel: { flex: 1, fontSize: 13, color: Romance.sub },
-    dayTemp: { fontFamily: Fonts.label, fontSize: 13, color: Romance.ink },
-    footnote: { textAlign: 'center', fontSize: 11, color: Romance.sub, marginTop: 22, lineHeight: 17 },
+    dayName: { width: 58, fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.ink },
+    dayEmoji: { fontSize: Type.scale.lg.size },
+    dayLabel: { flex: 1, fontSize: Type.scale.label.size, color: Romance.sub },
+    dayTemp: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.ink },
+    footnote: { textAlign: 'center', fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 22, lineHeight: 17 },
   })
 );

@@ -44,6 +44,15 @@ export const Type = {
     eyebrow: { size: 12, letterSpacing: 0.5, weight: '500', color: 'muted' },
     caption: { size: 12, weight: '400', color: 'muted' },
     timestamp: { size: 11, weight: '500', color: 'muted' },
+    // 下面是字号阶梯（D-199）：界面里的 fontSize 只从这里取，不手写数字；≥ 28 的展示型数字（时钟 / 计时 / 金额）各屏自定
+    xs: { size: 10, weight: '400' },
+    sub: { size: 14, weight: '400' },
+    md: { size: 16, weight: '400' },
+    lg: { size: 18, weight: '500' },
+    xl: { size: 20, weight: '600' },
+    xxl: { size: 22, weight: '600' },
+    h2: { size: 24, weight: '600' },
+    h1: { size: 26, weight: '600' },
   },
 } as const;
 

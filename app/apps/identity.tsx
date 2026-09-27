@@ -30,7 +30,7 @@ import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { Chip } from '@/components/chip';
 import { Field, Input } from '@/components/input';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { t } from '@/lib/i18n';
@@ -278,7 +278,7 @@ const styles = themed(() =>
     // 表单类页面左右留白按设计稿 18
     content: { padding: 18, paddingBottom: 60 },
     scopeHint: {
-      fontSize: 12,
+      fontSize: Type.scale.caption.size,
       color: Romance.accent,
       backgroundColor: Romance.accentSoft,
       borderRadius: Shape.radius,
@@ -294,12 +294,12 @@ const styles = themed(() =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    avatarInitial: { fontFamily: Fonts.initial, fontSize: 30, fontWeight: '600', color: Romance.accentStrong },
-    avatarAction: { fontSize: 12, fontWeight: '600', color: Romance.accent, marginTop: Space.inline },
+    avatarInitial: { fontFamily: Fonts.initial, fontSize: Type.scale.display.size, fontWeight: '600', color: Romance.accentStrong },
+    avatarAction: { fontSize: Type.scale.caption.size, fontWeight: '600', color: Romance.accent, marginTop: Space.inline },
     inputNumeric: { fontFamily: Fonts.label },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.inline },
     sectionTitle: {
-      fontSize: 13,
+      fontSize: Type.scale.label.size,
       fontWeight: '600',
       color: Romance.sub,
       marginTop: 28,
@@ -307,7 +307,7 @@ const styles = themed(() =>
     firstField: { marginTop: Space.inline },
     saveBtn: { marginTop: 28 },
     restoreBtn: { alignItems: 'center', marginTop: 16, padding: Space.inline },
-    restoreBtnText: { fontSize: 13, color: Romance.sub },
+    restoreBtnText: { fontSize: Type.scale.label.size, color: Romance.sub },
     perChar: { marginTop: Space.inline },
     charRow: {
       flexDirection: 'row',
@@ -316,8 +316,8 @@ const styles = themed(() =>
       marginTop: Space.inline,
     },
     charRowText: { flex: 1 },
-    charRowName: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-    charRowSub: { fontSize: 12, color: Romance.sub, marginTop: 2 },
-    charRowChevron: { fontSize: 18, color: Romance.sub },
+    charRowName: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
+    charRowSub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
+    charRowChevron: { fontSize: Type.scale.lg.size, color: Romance.sub },
   })
 );

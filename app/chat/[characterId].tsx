@@ -22,7 +22,7 @@ import { CharacterSheet } from '@/components/character-sheet';
 import { ChatThread, type ReplyRef } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { scriptFor } from '@/content/characters';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { HEART_FULL } from '@/lib/bond';
 import { uid } from '@/lib/format';
@@ -217,8 +217,8 @@ const styles = themed(() =>
       borderBottomColor: Romance.stroke,
     },
     headerText: { flex: 1 },
-    headerName: { fontSize: 17, fontWeight: '600', color: Romance.ink },
-    headerSub: { fontSize: 12, color: Romance.sub, marginTop: 3 },
+    headerName: { fontSize: Type.scale.screenTitle.size, fontWeight: '600', color: Romance.ink },
+    headerSub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 3 },
     // 右侧标签：白底 r6 11，无描边
     tag: {
       backgroundColor: Romance.card,
@@ -226,8 +226,8 @@ const styles = themed(() =>
       paddingHorizontal: 8,
       paddingVertical: 4,
     },
-    tagText: { fontSize: 11, fontWeight: '500', color: Romance.sub },
-    tagNum: { fontFamily: Fonts.label, fontSize: 11, color: Romance.sub },
+    tagText: { fontSize: Type.scale.timestamp.size, fontWeight: '500', color: Romance.sub },
+    tagNum: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.sub },
     // 最后一天整条 accent
     tagUrgent: { color: Romance.accentStrong },
     heartBar: {
@@ -240,7 +240,7 @@ const styles = themed(() =>
       borderBottomWidth: Shape.stroke,
       borderBottomColor: Romance.stroke,
     },
-    heartLabel: { fontSize: 12, fontWeight: '600', color: Romance.accentStrong },
+    heartLabel: { fontSize: Type.scale.caption.size, fontWeight: '600', color: Romance.accentStrong },
     heartTrack: {
       flex: 1,
       height: 7,
@@ -249,9 +249,9 @@ const styles = themed(() =>
       overflow: 'hidden',
     },
     heartFill: { height: '100%', backgroundColor: Romance.accent },
-    heartNum: { fontFamily: Fonts.labelBold, fontSize: 12, color: Romance.accentStrong },
+    heartNum: { fontFamily: Fonts.labelBold, fontSize: Type.scale.caption.size, color: Romance.accentStrong },
     // 这一句涨了多少（D-126）：小字，0 不显示
-    heartGain: { fontFamily: Fonts.label, fontSize: 11, color: Romance.accent },
+    heartGain: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.accent },
     // offer 卡：白卡描边，贴在输入栏上方
     cta: {
       flexDirection: 'row',
@@ -261,7 +261,7 @@ const styles = themed(() =>
       marginBottom: 8,
     },
     ctaText: { flex: 1 },
-    ctaTitle: { fontSize: 14, fontWeight: '600', color: Romance.ink },
-    ctaSub: { fontSize: 11, color: Romance.sub, marginTop: 2 },
+    ctaTitle: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
+    ctaSub: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 2 },
   })
 );

@@ -12,7 +12,7 @@ import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { sendShare } from '@/features/share';
 import { t } from '@/lib/i18n';
@@ -88,15 +88,15 @@ const styles = themed(() =>
     content: { padding: Space.screen, gap: Space.inline, paddingBottom: 40 },
     preview: { gap: 8 },
     previewImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: Shape.radius, backgroundColor: Romance.line },
-    previewText: { fontSize: 14, lineHeight: 21, color: Romance.ink },
-    previewUrl: { fontSize: 12, color: Romance.accent },
-    eyebrow: { fontSize: 12, fontWeight: '500', color: Romance.sub, letterSpacing: 0.5, marginTop: 8, marginLeft: 4 },
+    previewText: { fontSize: Type.scale.sub.size, lineHeight: 21, color: Romance.ink },
+    previewUrl: { fontSize: Type.scale.caption.size, color: Romance.accent },
+    eyebrow: { fontSize: Type.scale.caption.size, fontWeight: '500', color: Romance.sub, letterSpacing: 0.5, marginTop: 8, marginLeft: 4 },
     row: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose },
     rowText: { flex: 1, minWidth: 0 },
-    name: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-    sub: { fontSize: 12, color: Romance.sub, marginTop: 2 },
-    go: { fontSize: 13, fontWeight: '600', color: Romance.accent },
+    name: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
+    sub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
+    go: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.accent },
     empty: { alignItems: 'center', paddingTop: 30, gap: 14 },
-    emptyText: { fontSize: 13, color: Romance.sub },
+    emptyText: { fontSize: Type.scale.label.size, color: Romance.sub },
   })
 );

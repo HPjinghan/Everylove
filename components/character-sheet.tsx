@@ -10,7 +10,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { levelOf } from '@/lib/bond';
 import { timeAgo } from '@/lib/format';
@@ -102,7 +102,7 @@ const styles = themed(() =>
   StyleSheet.create({
     sheet: { flex: 1, backgroundColor: Romance.bg },
     header: { alignItems: 'center', justifyContent: 'center', paddingTop: 14, paddingBottom: 10, paddingHorizontal: 16 },
-    title: { fontSize: 16, fontWeight: '600', color: Romance.ink },
+    title: { fontSize: Type.scale.md.size, fontWeight: '600', color: Romance.ink },
     close: { position: 'absolute', right: 16, top: 14 },
     body: { paddingHorizontal: Space.screen, paddingBottom: 40, gap: Space.inlineLoose },
     portraitWrap: { alignItems: 'center', marginTop: 4 },
@@ -115,9 +115,9 @@ const styles = themed(() =>
       backgroundColor: Romance.card,
     },
     nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Space.inline, marginTop: 4 },
-    name: { fontSize: 20, fontWeight: '600', color: Romance.ink },
+    name: { fontSize: Type.scale.xl.size, fontWeight: '600', color: Romance.ink },
     styleTag: {
-      fontSize: 11,
+      fontSize: Type.scale.timestamp.size,
       fontWeight: '500',
       color: Romance.accentStrong,
       backgroundColor: Romance.accentSoft,
@@ -126,15 +126,15 @@ const styles = themed(() =>
       paddingVertical: 2,
       overflow: 'hidden',
     },
-    identity: { textAlign: 'center', fontSize: 13, color: Romance.sub },
-    status: { textAlign: 'center', fontSize: 12, color: Romance.accent, fontWeight: '500' },
+    identity: { textAlign: 'center', fontSize: Type.scale.label.size, color: Romance.sub },
+    status: { textAlign: 'center', fontSize: Type.scale.caption.size, color: Romance.accent, fontWeight: '500' },
     statusNum: { fontFamily: Fonts.label },
     card: { gap: 8 },
-    hook: { fontSize: 15, fontWeight: '600', color: Romance.ink, lineHeight: 22 },
-    intro: { fontSize: 13, lineHeight: 20, color: Romance.sub },
+    hook: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, lineHeight: 22 },
+    intro: { fontSize: Type.scale.label.size, lineHeight: 20, color: Romance.sub },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     tag: {
-      fontSize: 11,
+      fontSize: Type.scale.timestamp.size,
       fontWeight: '500',
       color: Romance.sub,
       backgroundColor: Romance.line,
@@ -143,12 +143,12 @@ const styles = themed(() =>
       paddingVertical: 2,
       overflow: 'hidden',
     },
-    eyebrow: { fontSize: 12, fontWeight: '500', color: Romance.sub, letterSpacing: 0.5, marginTop: 6, marginLeft: 4 },
+    eyebrow: { fontSize: Type.scale.caption.size, fontWeight: '500', color: Romance.sub, letterSpacing: 0.5, marginTop: 6, marginLeft: 4 },
     encounter: { gap: 3 },
     encounterGap: { marginTop: 4, paddingTop: 8, borderTopWidth: Shape.stroke, borderTopColor: Romance.line },
-    encounterHead: { fontSize: 13, fontWeight: '600', color: Romance.ink },
+    encounterHead: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.ink },
     encounterTime: { fontFamily: Fonts.label, fontWeight: '400', color: Romance.sub },
-    encounterText: { fontSize: 13, lineHeight: 19, color: Romance.sub },
-    empty: { fontSize: 13, color: Romance.faint, marginLeft: 4 },
+    encounterText: { fontSize: Type.scale.label.size, lineHeight: 19, color: Romance.sub },
+    empty: { fontSize: Type.scale.label.size, color: Romance.faint, marginLeft: 4 },
   })
 );

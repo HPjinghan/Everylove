@@ -25,8 +25,8 @@ import { Card } from '@/components/card';
 import { Input } from '@/components/input';
 import { MingCute } from '@/components/mingcute';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Shape, Space } from '@/constants/design';
-import { Fonts, Romance, themed } from '@/constants/theme';
+import { Shape, Space, Type } from '@/constants/design';
+import { Romance, themed } from '@/constants/theme';
 import { timeAgo, uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import type { Note } from '@/lib/types';
@@ -185,11 +185,11 @@ const styles = themed(() =>
   StyleSheet.create({
     flex: { flex: 1 },
     list: { padding: Space.screen, gap: Space.inlineLoose, paddingBottom: 40 },
-    empty: { textAlign: 'center', color: Romance.sub, fontSize: 13, marginTop: 40 },
-    title: { fontSize: 15, fontWeight: '600', color: Romance.ink },
+    empty: { textAlign: 'center', color: Romance.sub, fontSize: Type.scale.label.size, marginTop: 40 },
+    title: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
     metaRow: { flexDirection: 'row', gap: Space.inline, marginTop: 4, alignItems: 'center' },
-    time: { fontFamily: Fonts.label, fontSize: 11, color: Romance.sub },
-    preview: { flex: 1, fontSize: 12, color: Romance.sub },
+    time: { fontSize: Type.scale.timestamp.size, color: Romance.sub },
+    preview: { flex: 1, fontSize: Type.scale.caption.size, color: Romance.sub },
     editor: { flex: 1, backgroundColor: Romance.bg },
     editorBar: {
       flexDirection: 'row',
@@ -201,11 +201,11 @@ const styles = themed(() =>
       borderBottomColor: Romance.stroke,
     },
     editorBack: { flexDirection: 'row', alignItems: 'center', width: Space.topBarSlot, gap: 2 },
-    editorBackText: { fontSize: 14, fontWeight: '500', color: Romance.ink },
-    editorTime: { flex: 1, textAlign: 'center', fontFamily: Fonts.label, fontSize: 11, color: Romance.sub },
+    editorBackText: { fontSize: Type.scale.sub.size, fontWeight: '500', color: Romance.ink },
+    editorTime: { flex: 1, textAlign: 'center', fontSize: Type.scale.timestamp.size, color: Romance.sub },
     editorSlot: { width: Space.topBarSlot },
     editorBody: { flex: 1, padding: Space.screen, gap: Space.inlineLoose },
-    titleInput: { fontSize: 17, fontWeight: '600' },
+    titleInput: { fontSize: Type.scale.screenTitle.size, fontWeight: '600' },
     bodyInput: { flex: 1 },
     editorActions: { flexDirection: 'row', gap: Space.inlineLoose, paddingHorizontal: Space.screen },
   })

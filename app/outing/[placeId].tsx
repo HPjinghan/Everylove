@@ -23,7 +23,7 @@ import { Card } from '@/components/card';
 import { CharacterSheet } from '@/components/character-sheet';
 import { ChatThread } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { outingOpenerUserLine, pickOutingOpener } from '@/content/prompts';
 import { placeById } from '@/content/places';
@@ -306,16 +306,16 @@ const styles = themed(() =>
       borderBottomColor: Romance.stroke,
     },
     headerText: { flex: 1, minWidth: 0 },
-    headerName: { fontSize: 16, fontWeight: '600', color: Romance.ink },
-    headerSub: { fontSize: 11, color: Romance.sub, marginTop: 1 },
-    headerTemp: { fontFamily: Fonts.label, fontSize: 11, color: Romance.sub },
+    headerName: { fontSize: Type.scale.md.size, fontWeight: '600', color: Romance.ink },
+    headerSub: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 1 },
+    headerTemp: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.sub },
     leaveBtn: {
       backgroundColor: Romance.card,
       borderRadius: Shape.radius,
       paddingHorizontal: 10,
       paddingVertical: 6,
     },
-    leaveText: { fontSize: 11, fontWeight: '600', color: Romance.sub },
+    leaveText: { fontSize: Type.scale.timestamp.size, fontWeight: '600', color: Romance.sub },
     // 场景条：同 ChatThread 的系统条（ink 底白字 12 r6）
     sceneBanner: {
       alignSelf: 'center',
@@ -324,7 +324,7 @@ const styles = themed(() =>
       paddingHorizontal: 12,
       paddingVertical: 3,
     },
-    sceneBannerText: { fontSize: 12, fontWeight: '500', color: '#FFFFFF', textAlign: 'center' },
+    sceneBannerText: { fontSize: Type.scale.caption.size, fontWeight: '500', color: '#FFFFFF', textAlign: 'center' },
     shootRow: {
       flexDirection: 'row',
       gap: Space.inlineLoose,
@@ -340,13 +340,13 @@ const styles = themed(() =>
       marginBottom: 8,
     },
     offerText: { flex: 1 },
-    offerTitle: { fontSize: 14, fontWeight: '600', color: Romance.ink },
-    offerSub: { fontSize: 11, color: Romance.sub, marginTop: 2 },
+    offerTitle: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
+    offerSub: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 2 },
     emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
     emptyEmoji: { fontSize: 52 },
     emptyText: {
       textAlign: 'center',
-      fontSize: 13,
+      fontSize: Type.scale.label.size,
       color: Romance.sub,
       lineHeight: 21,
       marginTop: 14,

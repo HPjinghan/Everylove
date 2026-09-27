@@ -35,6 +35,7 @@ import { generateCharacterLines } from '@/lib/character-lines';
 import { t } from '@/lib/i18n';
 import { requestNotificationPermission } from '@/lib/notifications';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
+import { Type } from '@/constants/design';
 
 type Step = 'slot' | 'names' | 'ceremony';
 
@@ -281,7 +282,7 @@ const styles = themed(() =>
     screen: { flex: 1, backgroundColor: Romance.bg },
     content: { paddingHorizontal: 28, flexGrow: 1, justifyContent: 'center' },
     center: { alignItems: 'center' },
-    h1: { fontSize: 22, fontWeight: '600', color: Romance.ink, marginTop: 20, textAlign: 'center' },
+    h1: { fontSize: Type.scale.xxl.size, fontWeight: '600', color: Romance.ink, marginTop: 20, textAlign: 'center' },
     // 槽位卡：白卡描边，居中一行；数字 Fredoka
     slotCard: {
       alignSelf: 'stretch',
@@ -290,18 +291,18 @@ const styles = themed(() =>
       paddingVertical: 16,
       paddingHorizontal: 22,
     },
-    slotFree: { fontSize: 15, fontWeight: '600', color: Romance.accentStrong, textAlign: 'center' },
-    slotNum: { fontFamily: Fonts.labelBold, fontSize: 15, color: Romance.accentStrong },
-    slotFull: { fontSize: 15, fontWeight: '600', color: Romance.sub, textAlign: 'center' },
-    slotNumMuted: { fontFamily: Fonts.labelBold, fontSize: 15, color: Romance.sub },
-    slotDesc: { fontSize: 13, lineHeight: 20, color: Romance.sub, marginTop: 8, textAlign: 'center' },
+    slotFree: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.accentStrong, textAlign: 'center' },
+    slotNum: { fontFamily: Fonts.labelBold, fontSize: Type.scale.body.size, color: Romance.accentStrong },
+    slotFull: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.sub, textAlign: 'center' },
+    slotNumMuted: { fontFamily: Fonts.labelBold, fontSize: Type.scale.body.size, color: Romance.sub },
+    slotDesc: { fontSize: Type.scale.label.size, lineHeight: 20, color: Romance.sub, marginTop: 8, textAlign: 'center' },
     nameInput: { marginTop: 10 },
     primaryBtn: { marginTop: 28, alignSelf: 'center', paddingHorizontal: 40 },
     secondaryBtn: { marginTop: 14, alignSelf: 'center', paddingHorizontal: 32 },
     cancelLink: { marginTop: 18, alignSelf: 'center' },
-    cancelLinkText: { fontSize: 13, color: Romance.sub },
+    cancelLinkText: { fontSize: Type.scale.label.size, color: Romance.sub },
     ceremonyLines: { marginTop: 30, gap: 14, alignItems: 'center' },
-    ceremonyLine: { fontSize: 16, color: Romance.ink, textAlign: 'center' },
+    ceremonyLine: { fontSize: Type.scale.md.size, color: Romance.ink, textAlign: 'center' },
     ceremonyHeart: { fontSize: 34, color: Romance.accent, marginTop: 22 },
   })
 );

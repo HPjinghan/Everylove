@@ -9,7 +9,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
 import { Card } from '@/components/card';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { money } from '@/lib/format';
 import { localeOf, t } from '@/lib/i18n';
@@ -90,20 +90,20 @@ const styles = themed(() =>
   StyleSheet.create({
     body: { paddingHorizontal: Space.screen, paddingTop: Space.screen, paddingBottom: 40, gap: Space.screen, alignItems: 'stretch' },
     balanceCard: { alignItems: 'center', gap: 4, paddingVertical: 22 },
-    balanceLabel: { fontSize: 13, color: Romance.sub },
+    balanceLabel: { fontSize: Type.scale.label.size, color: Romance.sub },
     balance: { fontFamily: Fonts.labelBold, fontSize: 34, color: Romance.ink },
     sums: { flexDirection: 'row', gap: 18, marginTop: 8 },
-    sumText: { fontSize: 12, color: Romance.sub },
+    sumText: { fontSize: Type.scale.caption.size, color: Romance.sub },
     sumNum: { fontFamily: Fonts.label, color: Romance.ink },
-    sectionTitle: { fontSize: 13, fontWeight: '600', color: Romance.sub, marginTop: 4 },
+    sectionTitle: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.sub, marginTop: 4 },
     ledgerCard: { paddingVertical: 4 },
-    empty: { fontSize: 13, color: Romance.sub, paddingVertical: 10 },
+    empty: { fontSize: Type.scale.label.size, color: Romance.sub, paddingVertical: 10 },
     row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 12 },
     rowLine: { borderTopWidth: Shape.stroke, borderTopColor: Romance.stroke },
     rowBody: { flex: 1 },
-    rowTitle: { fontSize: 14, fontWeight: '600', color: Romance.ink },
-    rowSub: { fontSize: 11, color: Romance.sub, marginTop: 2 },
-    rowAmount: { fontFamily: Fonts.labelBold, fontSize: 14, color: Romance.accentStrong },
+    rowTitle: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
+    rowSub: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 2 },
+    rowAmount: { fontFamily: Fonts.labelBold, fontSize: Type.scale.sub.size, color: Romance.accentStrong },
     rowAmountOut: { color: Romance.ink },
   })
 );

@@ -923,9 +923,9 @@ const styles = themed(() =>
       justifyContent: 'center',
       marginBottom: Space.screen,
     },
-    introTitle: { fontSize: 22, fontWeight: '600', color: '#FFFFFF' },
+    introTitle: { fontSize: Type.scale.xxl.size, fontWeight: '600', color: '#FFFFFF' },
     introLine: {
-      fontSize: 14,
+      fontSize: Type.scale.sub.size,
       color: withAlpha('#FFFFFF', 0.85),
       textAlign: 'center',
       lineHeight: 21,

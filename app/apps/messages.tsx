@@ -10,7 +10,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { CharAvatar } from '@/components/char-avatar';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { clockTime, timeAgo } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -100,7 +100,7 @@ const styles = themed(() =>
   StyleSheet.create({
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80 },
     emptyHeart: { fontSize: 48, color: Romance.accent, marginBottom: 12 },
-    emptyText: { fontSize: 14, color: Romance.sub, textAlign: 'center', lineHeight: 22 },
+    emptyText: { fontSize: Type.scale.sub.size, color: Romance.sub, textAlign: 'center', lineHeight: 22 },
     emptyBtn: { marginTop: 20 },
     // 通栏列表：白底、1px line 分隔，不做卡片
     list: { backgroundColor: Romance.card },
@@ -113,11 +113,11 @@ const styles = themed(() =>
       paddingVertical: Space.cardY,
     },
     rowBody: { flex: 1 },
-    rowName: { fontSize: 16, fontWeight: '600', color: Romance.ink },
-    rowPreview: { fontSize: 13, color: Romance.sub, marginTop: 3 },
+    rowName: { fontSize: Type.scale.md.size, fontWeight: '600', color: Romance.ink },
+    rowPreview: { fontSize: Type.scale.label.size, color: Romance.sub, marginTop: 3 },
     rowRight: { alignItems: 'flex-end', gap: 5 },
-    rowTime: { fontSize: 11, fontWeight: '500', color: Romance.sub },
-    rowTimeLatin: { fontFamily: Fonts.label, fontSize: 11, color: Romance.sub },
+    rowTime: { fontSize: Type.scale.timestamp.size, fontWeight: '500', color: Romance.sub },
+    rowTimeLatin: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.sub },
     // 未读角标：primary r6、高 19、Fredoka 白字；没有未读留同高占位，时间才能对齐
     unread: {
       minWidth: 19,
@@ -128,7 +128,7 @@ const styles = themed(() =>
       justifyContent: 'center',
       paddingHorizontal: 5,
     },
-    unreadText: { fontFamily: Fonts.labelBold, fontSize: 11, color: '#FFFFFF' },
+    unreadText: { fontFamily: Fonts.labelBold, fontSize: Type.scale.timestamp.size, color: '#FFFFFF' },
     unreadGhost: { height: 19 },
   })
 );

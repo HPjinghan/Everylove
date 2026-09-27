@@ -18,7 +18,7 @@ import { AppScreen } from '@/components/app-screen';
 import { Card, Divider } from '@/components/card';
 import { DiamondBackground } from '@/components/paper-bg';
 import { WALLPAPERS } from '@/constants/apps';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, THEMES, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { aiRouteSync, engineLabel, engineOptions, enginePreference, setEnginePreference } from '@/lib/engine';
@@ -489,7 +489,7 @@ const styles = themed(() =>
     // 表单类页面左右留白按设计稿 18
     content: { paddingHorizontal: 18, paddingBottom: 40 },
     section: { marginTop: 16 },
-    sectionTitle: { fontSize: 13, fontWeight: '600', color: Romance.sub, marginBottom: Space.inline },
+    sectionTitle: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.sub, marginBottom: Space.inline },
     row: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -499,15 +499,15 @@ const styles = themed(() =>
       paddingHorizontal: Space.cardX,
     },
     rowWithHint: { paddingBottom: 4 },
-    rowLabel: { fontSize: 14, color: Romance.ink },
-    rowValue: { fontSize: 13, fontWeight: '500', color: Romance.sub, flexShrink: 1, textAlign: 'right' },
+    rowLabel: { fontSize: Type.scale.sub.size, color: Romance.ink },
+    rowValue: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.sub, flexShrink: 1, textAlign: 'right' },
     rowValueNumeric: { fontFamily: Fonts.labelBold },
     rowValueDim: { color: Romance.faint },
     rowValueAccent: { color: Romance.accentStrong },
-    rowHint: { fontSize: 11, lineHeight: 16, color: Romance.sub, paddingHorizontal: Space.cardX, paddingBottom: Space.cardX },
+    rowHint: { fontSize: Type.scale.timestamp.size, lineHeight: 16, color: Romance.sub, paddingHorizontal: Space.cardX, paddingBottom: Space.cardX },
     rowHintAccent: { color: Romance.accentStrong },
     /** 卡内独立的一句说明（不是行的附注） */
-    cardNote: { fontSize: 11, lineHeight: 16, color: Romance.sub, padding: Space.cardX },
+    cardNote: { fontSize: Type.scale.timestamp.size, lineHeight: 16, color: Romance.sub, padding: Space.cardX },
     // 语言：三段等宽，paper 底 / 选中 primary 白字，无描边
     langRow: { flexDirection: 'row', gap: Space.inline, padding: Space.cardX },
     langItem: {
@@ -518,7 +518,7 @@ const styles = themed(() =>
       backgroundColor: Romance.bg,
     },
     langItemOn: { backgroundColor: Romance.accent },
-    langText: { fontSize: 13, fontWeight: '500', color: Romance.sub },
+    langText: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.sub },
     langTextOn: { color: '#FFFFFF' },
     // 壁纸块：52×88 r6，选中外圈 primary 2 留 1
     wallRow: {
@@ -537,19 +537,19 @@ const styles = themed(() =>
     },
     wallRingOn: { borderColor: Romance.accent },
     wallSwatch: { width: 52, height: 88, borderRadius: Shape.radius, overflow: 'hidden', backgroundColor: Romance.bg },
-    wallLabel: { fontSize: 11, color: Romance.sub, textAlign: 'center', marginTop: 4 },
+    wallLabel: { fontSize: Type.scale.timestamp.size, color: Romance.sub, textAlign: 'center', marginTop: 4 },
     wallLabelOn: { color: Romance.accent },
     quietRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inline, paddingVertical: 10, paddingHorizontal: Space.cardX },
-    quietLabel: { flex: 1, fontSize: 14, color: Romance.ink },
-    quietDash: { fontFamily: Fonts.label, fontSize: 14, color: Romance.sub },
+    quietLabel: { flex: 1, fontSize: Type.scale.sub.size, color: Romance.ink },
+    quietDash: { fontFamily: Fonts.label, fontSize: Type.scale.sub.size, color: Romance.sub },
     stepper: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Romance.bg, borderRadius: Shape.radius, paddingHorizontal: 4 },
     stepBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-    stepBtnText: { fontFamily: Fonts.labelBold, fontSize: 16, color: Romance.accent },
-    stepValue: { fontFamily: Fonts.labelBold, fontSize: 14, color: Romance.ink, minWidth: 44, textAlign: 'center' },
+    stepBtnText: { fontFamily: Fonts.labelBold, fontSize: Type.scale.md.size, color: Romance.accent },
+    stepValue: { fontFamily: Fonts.labelBold, fontSize: Type.scale.sub.size, color: Romance.ink, minWidth: 44, textAlign: 'center' },
     about: {
       textAlign: 'center',
       fontFamily: Fonts.label,
-      fontSize: 11,
+      fontSize: Type.scale.timestamp.size,
       color: Romance.faint,
       marginTop: 30,
       lineHeight: 18,

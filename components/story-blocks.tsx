@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import type { StoryBlock } from '@/lib/types';
 
@@ -56,9 +56,9 @@ export function StoryBlocks({ blocks }: { blocks: StoryBlock[] }) {
 const styles = themed(() =>
   StyleSheet.create({
     body: { gap: 18 },
-    para: { fontSize: 16, lineHeight: 26, color: Romance.ink },
+    para: { fontSize: Type.scale.md.size, lineHeight: 26, color: Romance.ink },
     figure: { gap: 6 },
     image: { borderRadius: Shape.radius, backgroundColor: Romance.line },
-    caption: { fontSize: 12, color: Romance.sub, lineHeight: 17 },
+    caption: { fontSize: Type.scale.caption.size, color: Romance.sub, lineHeight: 17 },
   })
 );

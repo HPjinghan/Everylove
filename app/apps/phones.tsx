@@ -17,7 +17,7 @@ import { CharAvatar } from '@/components/char-avatar';
 import { PhoneSheet } from '@/components/his-phone';
 import { PeekReplay, type PeekPayload } from '@/components/peek-replay';
 import { PhoneLock } from '@/components/phone-lock';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Romance, themed, withAlpha } from '@/constants/theme';
 import { askPasscode as askHisPasscode, peekMyPhone, peekPayload } from '@/features/phone-peek';
 import { aiReadySync } from '@/lib/chat';
@@ -159,7 +159,7 @@ const styles = themed(() =>
   StyleSheet.create({
     flex: { flex: 1 },
     list: { padding: Space.screen, gap: Space.inlineLoose, paddingBottom: 40 },
-    empty: { textAlign: 'center', color: Romance.sub, fontSize: 13, marginTop: 40 },
+    empty: { textAlign: 'center', color: Romance.sub, fontSize: Type.scale.label.size, marginTop: 40 },
     row: { flexDirection: 'row', alignItems: 'center', gap: Space.cardX },
     shellWrap: { width: 72, alignItems: 'center' },
     shell: {
@@ -174,8 +174,8 @@ const styles = themed(() =>
     },
     shellBar: { width: 22, height: 3, borderRadius: Shape.radiusTail, backgroundColor: withAlpha('#FFFFFF', 0.8) },
     main: { flex: 1, gap: 2 },
-    name: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-    sub: { fontSize: 12, color: Romance.sub },
+    name: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
+    sub: { fontSize: Type.scale.caption.size, color: Romance.sub },
     actions: { gap: Space.inline, marginTop: 6 },
   })
 );

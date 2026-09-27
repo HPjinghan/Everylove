@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DiamondBackground } from '@/components/paper-bg';
 import { useGuardedPress } from '@/components/press-guard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 
@@ -93,10 +93,10 @@ const styles = themed(() =>
       borderBottomColor: Romance.stroke,
     },
     back: { flexDirection: 'row', alignItems: 'center', width: Space.topBarSlot, gap: 2 },
-    backText: { fontSize: 14, fontWeight: '500', color: Romance.ink },
-    title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600', color: Romance.ink },
+    backText: { fontSize: Type.scale.sub.size, fontWeight: '500', color: Romance.ink },
+    title: { flex: 1, textAlign: 'center', fontSize: Type.scale.screenTitle.size, fontWeight: '600', color: Romance.ink },
     right: { width: Space.topBarSlot, alignItems: 'flex-end' },
-    action: { fontSize: 14, fontWeight: '600', color: Romance.accent },
+    action: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.accent },
     actionDisabled: { color: Romance.sub },
     body: { flex: 1 },
   })

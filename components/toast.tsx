@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, useAnimatedValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Shape } from '@/constants/design';
+import { Shape, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 
 let emit: ((text: string, durationMs: number) => void) | null = null;
@@ -75,6 +75,6 @@ const styles = themed(() =>
       paddingHorizontal: 14,
       paddingVertical: 8,
     },
-    text: { color: '#FFFFFF', fontSize: 13, fontWeight: '500', textAlign: 'center' },
+    text: { color: '#FFFFFF', fontSize: Type.scale.label.size, fontWeight: '500', textAlign: 'center' },
   })
 );

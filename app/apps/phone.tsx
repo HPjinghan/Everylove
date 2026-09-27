@@ -12,7 +12,7 @@ import { AppScreen } from '@/components/app-screen';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
-import { Shape, Space } from '@/constants/design';
+import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { levelInfoFor } from '@/lib/bond';
 import { callReady } from '@/lib/call';
@@ -86,8 +86,8 @@ const styles = themed(() =>
     row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     rowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
     rowText: { flex: 1 },
-    rowName: { fontSize: 15, fontWeight: '600', color: Romance.ink },
-    rowSub: { fontSize: 12, color: Romance.sub, marginTop: 2 },
+    rowName: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
+    rowSub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
     rowSubNum: { fontFamily: Fonts.label },
     // 拨打：primary 底 + 1.5 描边的方块（主动作，和主按钮同一套描边）
     callBtn: {
@@ -109,6 +109,6 @@ const styles = themed(() =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    emptyText: { fontSize: 13, color: Romance.sub, textAlign: 'center', lineHeight: 20 },
+    emptyText: { fontSize: Type.scale.label.size, color: Romance.sub, textAlign: 'center', lineHeight: 20 },
   })
 );

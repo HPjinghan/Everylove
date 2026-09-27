@@ -11,8 +11,8 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { showAlert } from '@/components/action-sheet';
 import { Button } from '@/components/button';
-import { POLAROID_TILTS, Shape } from '@/constants/design';
-import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
+import { POLAROID_TILTS, Shape, Type } from '@/constants/design';
+import { Romance, themed, withAlpha } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 
 /** 每张照片一个稳定的小倾角（±0.6–1.8°），像随手贴在桌上 */
@@ -102,7 +102,8 @@ const styles = themed(() =>
       alignItems: 'center',
     },
     photo: { borderRadius: Shape.radiusInner, backgroundColor: Romance.bg },
-    caption: { fontFamily: Fonts.label, fontSize: 10, color: Romance.sub, marginTop: 6, textAlign: 'center' },
+    // 手写字幕是她的话，不上 Fredoka（D-199）
+    caption: { fontSize: Type.scale.xs.size, color: Romance.sub, marginTop: 6, textAlign: 'center' },
     viewer: {
       flex: 1,
       backgroundColor: withAlpha(Romance.ink, 0.92),
