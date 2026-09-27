@@ -104,7 +104,7 @@ async function generateRecall(bond: Bond, character: Character, nth: number, day
   const ctx = bondedContext(bond, line);
   if (!ctx) return null;
   try {
-    const reply = await generateReply(ctx);
+    const reply = await generateReply(ctx, undefined, { background: true });
     const texts = stripStageDirections(reply.texts).filter(Boolean).slice(0, 1);
     return texts.length ? texts : null;
   } catch (e) {

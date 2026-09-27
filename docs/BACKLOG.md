@@ -33,7 +33,7 @@
 | # | 状态 | 事项 | 在哪 | 做法 |
 |---|---|---|---|---|
 | C1 | ✅ D-175 | prompt 前缀缓存：静态段（人设 / 硬规则 / 说话方式）排最前并加 `cache_control`，动态段（时间 / 天气 / 记忆 / 舞台提示）统一放尾 | `core/prompt.ts` ORDER、`features/providers.ts:24-31` | Anthropic 用 system 数组 + `cache_control: ephemeral`；千帆靠前缀稳定自动命中；快照必红 |
-| C2 | ⬜ | 后台任务限并发 + 回前台节流；后台生成一律走 task 档（便宜家） | `core/jobs.ts`、`core/providers.ts:199`、`lib/reach-out.ts`、`lib/recall.ts`、`lib/heartbeat.ts` | `runJobs` 用并发 2–3 的队列；回前台 5 分钟内不重跑；`generateReply` 加 `kind: 'task'` 参数 |
+| C2 | ✅ D-176 | 后台任务限并发 + 回前台节流；后台生成一律走 task 档（便宜家） | `core/jobs.ts`、`core/providers.ts:199`、`lib/reach-out.ts`、`lib/recall.ts`、`lib/heartbeat.ts` | `runJobs` 用并发 2–3 的队列；回前台 5 分钟内不重跑；`generateReply` 加 `kind: 'task'` 参数 |
 | C3 | ⬜ | 主动消息预写不再「她一开口就作废重写」 | `lib/reach-out.ts:166-179` | 到点前 10 分钟才写；或她说过话只改舞台提示不重写 |
 | C4 | ⬜ | ASR 多语通道用量按真实时长计，不硬估 15 秒 | `lib/media.ts:144` | 传 `durationMs` 进去 |
 | C5 | ⬜ | 媒体目录清理：TTS / 照片 / 立绘超龄或超量删 | `lib/tts.ts`、`lib/imagegen.ts`、`lib/media.ts` | 启动 job：TTS 保留 7 天，相册 / 立绘只删没被引用的 |

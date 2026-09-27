@@ -200,7 +200,7 @@ async function generateReachOut(bond: Bond, character: Character, at: Date): Pro
   const ctx = bondedContext(bond, line);
   if (!ctx) return null;
   try {
-    const reply = await generateReply(ctx);
+    const reply = await generateReply(ctx, undefined, { background: true });
     const texts = stripStageDirections(reply.texts).filter(Boolean);
     return texts.length ? { ...reply, texts } : null;
   } catch (e) {

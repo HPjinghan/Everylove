@@ -23,6 +23,8 @@ export interface ChatRequest {
   maxTokens: number;
   /** reply = 角色回话（短）；task = 记忆提取 / 解析这类工具调用（长） */
   kind: 'reply' | 'task';
+  /** 后台写的回话（TA 主动 / 召回 / 心跳，D-176）：长度与口吻同 reply，但供应商按 task 走便宜那家、流量记 task */
+  background?: boolean;
 }
 
 export type AiRoute = 'direct' | 'proxy' | 'none';
@@ -110,7 +112,7 @@ export class AiUnavailableError extends Error {
 /** 唯一的对外调用点：选供应商 → 定取路 → 发请求。失败原样抛出，由调用方决定露出还是静默。 */
 export async function completeChat(req: ChatRequest, providerId?: string): Promise<string> {
   // 后台任务不花她的流量，也别用贵的那家（D-132）：没指定、没有开发者偏好时走便宜供应商
-  const taskCheap = !providerId && !preferred && req.kind === 'task' ? chatProviders.get(TASK_CHAT_PROVIDER) : undefined;
+  const taskCheap = !providerId && !preferred && (req.kind === 'task' || req.background) ? chatProviders.get(TASK_CHAT_PROVIDER) : undefined;
   const p = hasRoute(taskCheap) ? taskCheap : currentChatProvider(providerId);
   const route = await chatRoute(p);
   if (route === 'none') throw new AiUnavailableError();
@@ -125,7 +127,7 @@ export async function completeChat(req: ChatRequest, providerId?: string): Promi
       inputTokens: estimateTokens(req.system + req.turns.map((x) => x.content).join('\n')),
       outputTokens: estimateTokens(result.text),
     };
-    reportUsage({ kind: 'chat', provider: p.id, reqKind: req.kind, estimated: !result.usage, ...usage });
+    reportUsage({ kind: 'chat', provider: p.id, reqKind: req.background ? 'task' : req.kind, estimated: !result.usage, ...usage });
     return result.text;
   } catch (e) {
     console.warn(`[provider] ${p.id}${route === 'proxy' ? '（代理）' : ''} 调用失败：`, e);

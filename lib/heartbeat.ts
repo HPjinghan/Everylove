@@ -94,7 +94,7 @@ async function heartbeatTexts(bond: Bond, stage: Stage, title: string, date: str
   const ctx = bondedContext(bond, buildHeartbeatUserLine(STAGE_KEY[stage], title, date));
   if (!ctx) return fallback;
   try {
-    const texts = stripStageDirections((await generateReply(ctx)).texts).filter(Boolean);
+    const texts = stripStageDirections((await generateReply(ctx, undefined, { background: true })).texts).filter(Boolean);
     return texts.length ? texts : fallback;
   } catch (e) {
     console.warn('[heartbeat] 没写成，用模板：', e);
