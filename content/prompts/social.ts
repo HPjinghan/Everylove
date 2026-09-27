@@ -18,6 +18,7 @@ import {
   memoryBlockFor,
   pursuitLine,
   sharedMemoryBlock,
+  TALK_MANNER,
   timeOfDayLine,
   userProfileBlock,
 } from './shared';
@@ -37,7 +38,7 @@ export function buildPostReplySystem(
     ? `你的恋人（你叫她「${bond.nickname}」，羁绊 LV${levelOf(bond)}）`
     : '一个你有点在意的人';
   return [
-    `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。你在一个类似 X（推特）的社交应用上发了帖子，${who}在下面评论了你。下面所有规则里，「她」指评论的用户。`,
+    `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。你在一个类似 X（推特）的社交应用上发了帖子，${who}在下面评论了你。下面所有规则里，「她」指评论的用户。`,
     `【你是谁】${script.persona}`,
     `【你的追法】${pursuitLine(c)}`,
     ...characterProfileBlock(c),
@@ -48,6 +49,7 @@ export function buildPostReplySystem(
     '【回帖的写法】',
     '- 像在社交软件上回评论：短、口语，带着你发这条帖子时的心情，接住她说的那件具体的事；1-2 句，不写小作文。',
     '- 这是半公开的评论区：亲昵可以有，但克制成只有你们俩懂的程度。',
+    ...TALK_MANNER,
     ...CHAT_HARD_RULES_OF(),
     '【输出格式】只输出回复文本本身：不带名字前缀、不解释、不用 markdown、不写（）动作描写、不用 emoji。',
   ].join('\n');
@@ -79,7 +81,7 @@ export function buildCharacterPostSystem(
     ? `看的人里有你的恋人（你叫她「${bond.nickname}」）`
     : '看的人里有你在意的人';
   return [
-    `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。你正要在一个类似 X（推特）的社交应用上发一条帖子——${audience}，但这是半公开的时间线。`,
+    `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。你正要在一个类似 X（推特）的社交应用上发一条帖子——${audience}，但这是半公开的时间线。`,
     `【你是谁】${script.persona}`,
     `【你的追法】${pursuitLine(c)}`,
     ...characterProfileBlock(c),
@@ -132,7 +134,7 @@ export interface ReactionAuthor {
 
 export function buildPostReactionsSystem(c: Character, authors: ReactionAuthor[]): string {
   return [
-    `一个类似 X（推特）的社交应用上，虚构角色「${c.name}」（${c.identity}）发了一条帖子。请写下面这些人在评论区的反应——他们都是这个世界里的人，认识 ${c.name}：`,
+    `一个类似 X（推特）的社交应用上，${c.name}（${c.identity}）发了一条帖子。请写下面这些人在评论区的反应——他们都是这个世界里的人，认识 ${c.name}：`,
     ...authors.map((a) => `- ${a.name}：${a.who}`),
     '【写法】',
     '- 挑其中 1–3 个人各评论一句：短、口语、像熟人随手回的（调侃、关心、接梗、约饭、吐槽都行），每人的口气要配得上他和发帖人的关系。',

@@ -30,7 +30,7 @@ export function buildCircleSystem(c: Character, bond: Pick<Bond, 'nickname'> | u
   const script = scriptFor(c);
   const nonhuman = isNonhumanCharacter(c);
   return [
-    `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。现在要把你身边的人写出来——你的世界里除了恋人${bond ? `（你叫她「${bond.nickname}」）` : ''}还有别人：家人、朋友、同事、邻居……`,
+    `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。现在要把你身边的人写出来——你的世界里除了恋人${bond ? `（你叫她「${bond.nickname}」）` : ''}还有别人：家人、朋友、同事、邻居……`,
     `【你是谁】${script.persona}`,
     ...characterProfileBlock(c),
     '【要写的东西】',
@@ -140,7 +140,7 @@ export interface CircleRefreshInput {
 export function buildCircleRefreshSystem(c: Character, bond: Pick<Bond, 'nickname' | 'circle'>): string {
   const script = scriptFor(c);
   return [
-    `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。现在要把你这段时间和身边的人新聊的几句写出来——你的日子在往前走，手机里的对话也在往前走。你的恋人叫「${bond.nickname}」。`,
+    `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。现在要把你这段时间和身边的人新聊的几句写出来——你的日子在往前走，手机里的对话也在往前走。你的恋人叫「${bond.nickname}」。`,
     `【你是谁】${script.persona}`,
     ...characterProfileBlock(c),
     ...circleBlock(bond.circle),

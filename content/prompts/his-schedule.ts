@@ -17,7 +17,7 @@ export const HIS_SCHEDULE_MAX = 6;
 export function buildHisScheduleSystem(c: Character, bond: Pick<Bond, 'nickname' | 'circle'> | undefined): string {
   const script = scriptFor(c);
   return [
-    `你在扮演恋爱互动应用里的虚构角色「${c.name}」（${c.identity}）。现在要写你自己接下来一周的日程——你的日历，不是和恋人${bond ? `（你叫她「${bond.nickname}」）` : ''}的约定。`,
+    `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。现在要写你自己接下来一周的日程——你的日历，不是和恋人${bond ? `（你叫她「${bond.nickname}」）` : ''}的约定。`,
     `【你是谁】${script.persona}`,
     ...characterProfileBlock(c),
     ...circleBlock(bond?.circle),
