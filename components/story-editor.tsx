@@ -103,13 +103,13 @@ export function StoryEditor({
               </View>
             </Pressable>
             <View style={styles.rowActions}>
-              <Pressable hitSlop={6} disabled={i === 0} onPress={() => move(i, -1)}>
+              <Pressable hitSlop={8} style={styles.actionHit} disabled={i === 0} onPress={() => move(i, -1)}>
                 <Text style={[styles.action, i === 0 && styles.actionOff]}>{t('上移')}</Text>
               </Pressable>
-              <Pressable hitSlop={6} disabled={i === chapters.length - 1} onPress={() => move(i, 1)}>
+              <Pressable hitSlop={8} style={styles.actionHit} disabled={i === chapters.length - 1} onPress={() => move(i, 1)}>
                 <Text style={[styles.action, i === chapters.length - 1 && styles.actionOff]}>{t('下移')}</Text>
               </Pressable>
-              <Pressable hitSlop={6} onPress={() => remove(c)}>
+              <Pressable hitSlop={8} style={styles.actionHit} onPress={() => remove(c)}>
                 <Text style={[styles.action, styles.actionDanger]}>{t('删除')}</Text>
               </Pressable>
             </View>
@@ -254,7 +254,9 @@ const styles = themed(() =>
       overflow: 'hidden',
     },
     rowSub: { fontSize: 12, color: Romance.sub },
-    rowActions: { gap: 6, alignItems: 'flex-end' },
+    rowActions: { gap: 2, alignItems: 'flex-end' },
+    // 文字型动作按钮的触控面积（D-198）：上下各 6，加 hitSlop 8 到 44pt
+    actionHit: { paddingVertical: 6, paddingHorizontal: 6 },
     action: { fontSize: 12, fontWeight: '500', color: Romance.accent },
     actionOff: { opacity: 0.3 },
     actionDanger: { color: Romance.danger },

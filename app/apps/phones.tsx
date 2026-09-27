@@ -6,11 +6,11 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { alertAiUnavailable } from '@/components/ai-unavailable';
 import { AppScreen } from '@/components/app-screen';
+import { ConfirmSheet } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
@@ -29,7 +29,6 @@ import { findCharacter, useAppStore } from '@/store/app-store';
 const SHELL = { width: 56, height: 92, radius: 10 } as const;
 
 export default function PhonesScreen() {
-  const insets = useSafeAreaInsets();
   const bonds = useAppStore((s) => s.bonds);
   const [openId, setOpenId] = useState<string | null>(null);
   const [peeking, setPeeking] = useState<string | null>(null);
@@ -102,29 +101,15 @@ export default function PhonesScreen() {
         )}
       </ScrollView>
 
-      {/* 二次确认（D-100 交互改动 6）：隐私与数据说明，确认后才 peekMyPhone */}
-      <Modal visible={!!confirming} transparent animationType="fade" onRequestClose={() => setConfirmId(null)}>
-        <Pressable style={[styles.overlay, { paddingBottom: insets.bottom + Space.screen }]} onPress={() => setConfirmId(null)}>
-          <Pressable onPress={() => {}}>
-            <Card padded={false} style={styles.confirm}>
-              <Text style={styles.confirmTitle}>{t('让{name}看你的手机？', { name: confirming?.name ?? '' })}</Text>
-              <Text style={styles.confirmBody}>
-                {t('TA 会读到：记事本的全部内容、日历里的安排、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。')}
-              </Text>
-              <View style={styles.confirmActions}>
-                <Button label={t('取消')} variant="paper" size="md" style={styles.flex} onPress={() => setConfirmId(null)} />
-                <Button
-                  label={t('让 TA 看')}
-                  variant="primary"
-                  size="md"
-                  style={styles.flex}
-                  onPress={() => confirming && invitePeek(confirming.id)}
-                />
-              </View>
-            </Card>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      {/* 二次确认（D-100 交互改动 6）：隐私与数据说明，确认后才 peekMyPhone——纸面确认卡（D-198） */}
+      <ConfirmSheet
+        visible={!!confirming}
+        title={t('让{name}看你的手机？', { name: confirming?.name ?? '' })}
+        body={t('TA 会读到：记事本的全部内容、日历里的安排、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。')}
+        confirmLabel={t('让 TA 看')}
+        onConfirm={() => confirming && invitePeek(confirming.id)}
+        onClose={() => setConfirmId(null)}
+      />
 
       {replay ? (
         <PeekReplay
@@ -187,20 +172,10 @@ const styles = themed(() =>
       justifyContent: 'center',
       gap: 10,
     },
-    shellBar: { width: 22, height: 3, borderRadius: Shape.radiusTail, backgroundColor: 'rgba(255,255,255,0.8)' },
+    shellBar: { width: 22, height: 3, borderRadius: Shape.radiusTail, backgroundColor: withAlpha('#FFFFFF', 0.8) },
     main: { flex: 1, gap: 2 },
     name: { fontSize: 15, fontWeight: '600', color: Romance.ink },
     sub: { fontSize: 12, color: Romance.sub },
     actions: { gap: Space.inline, marginTop: 6 },
-    overlay: {
-      flex: 1,
-      justifyContent: 'flex-end',
-      paddingHorizontal: Space.screen,
-      backgroundColor: withAlpha(Romance.ink, 0.45),
-    },
-    confirm: { padding: 16 },
-    confirmTitle: { fontSize: 16, fontWeight: '600', color: Romance.ink },
-    confirmBody: { fontSize: 13, lineHeight: 20, color: Romance.sub, marginTop: 8 },
-    confirmActions: { flexDirection: 'row', gap: Space.inlineLoose, marginTop: 16 },
   })
 );

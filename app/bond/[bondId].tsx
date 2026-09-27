@@ -141,7 +141,7 @@ export default function BondScreen() {
 
   const infoRows: ReactNode[] = [
     <InfoRow key="nick" label={t('TA 叫你')}>
-      <Text style={styles.infoValue}>「{bond.nickname}」</Text>
+      <Text style={styles.infoValue}>{t('「{x}」', { x: bond.nickname })}</Text>
     </InfoRow>,
     <InfoRow key="anniversary" label={t('纪念日')}>
       <Text style={styles.infoNum}>

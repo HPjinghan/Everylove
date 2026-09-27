@@ -73,6 +73,8 @@ function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: 
         <View style={styles.actions}>
           <Pressable
             style={styles.action}
+            hitSlop={8}
+            accessibilityLabel={t('评论')}
             onPress={() => canComment && setCommentOpen((v) => !v)}
             disabled={!canComment}>
             <MingCute name="chat" size={15} color={Romance.sub} />
@@ -216,7 +218,7 @@ const styles = themed(() =>
     lockedMeta: { fontSize: 11, color: Romance.faint, marginTop: 1 },
     body: { fontSize: 15, lineHeight: 21, color: Romance.ink, marginTop: 3 },
     actions: { flexDirection: 'row', gap: 46, marginTop: 10 },
-    action: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 34 },
+    action: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 34, paddingVertical: 6 },
     actionCount: { fontFamily: Fonts.label, fontSize: 12, color: Romance.sub },
     actionCountOn: { color: Romance.accent },
     actionLabel: { fontSize: 12, color: Romance.sub },

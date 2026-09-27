@@ -24,16 +24,31 @@ export function ToastHost() {
   const opacity = useAnimatedValue(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 排队（D-198）：一条在显示时来了下一条，等它淡出再显示，不互相覆盖（与 showAlert 的排队口径一致）
+  const queue = useRef<{ text: string; durationMs: number }[]>([]);
+  const showing = useRef(false);
   useEffect(() => {
-    emit = (next, durationMs) => {
+    const show = (next: string, durationMs: number) => {
+      showing.current = true;
       setText(next);
-      if (timer.current) clearTimeout(timer.current);
       Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
       timer.current = setTimeout(() => {
-        Animated.timing(opacity, { toValue: 0, duration: 260, useNativeDriver: true }).start(() =>
-          setText(null)
-        );
+        Animated.timing(opacity, { toValue: 0, duration: 260, useNativeDriver: true }).start(() => {
+          setText(null);
+          showing.current = false;
+          const q = queue.current.shift();
+          if (q) show(q.text, q.durationMs);
+        });
       }, durationMs);
+    };
+    emit = (next, durationMs) => {
+      if (showing.current) {
+        // 同一句连着来只留一条
+        if (queue.current.some((q) => q.text === next)) return;
+        queue.current.push({ text: next, durationMs });
+        return;
+      }
+      show(next, durationMs);
     };
     return () => {
       emit = null;

@@ -90,6 +90,7 @@ vi.mock('@/constants/theme', () => ({
   Romance: new Proxy({}, { get: (_t, k) => (typeof k === 'symbol' || k === 'then' ? undefined : '#000000') }),
   Fonts: {},
   themed: (f: () => unknown) => f(),
+  withAlpha: (_hex: string, a: number) => `rgba(0,0,0,${a})`,
 }));
 
 vi.mock('@/lib/weather', () => ({

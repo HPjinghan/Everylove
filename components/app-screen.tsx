@@ -41,6 +41,7 @@ export function AppScreen({
             onBack ? onBack() : router.canGoBack() ? router.back() : router.replace('/')
           }
           hitSlop={10}
+          accessibilityLabel={t('返回')}
           style={styles.back}>
           <IconSymbol name="chevron.left" size={16} color={Romance.ink} />
           <Text style={styles.backText}>{t('桌面')}</Text>

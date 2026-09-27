@@ -14,7 +14,7 @@ import { useGuardedPress } from '@/components/press-guard';
 import { Shape } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'paper' | 'outline';
+export type ButtonVariant = 'primary' | 'secondary' | 'paper' | 'outline' | 'danger';
 export type ButtonSize = 'lg' | 'md' | 'sm';
 
 export function Button({
@@ -61,6 +61,8 @@ const styles = themed(() =>
   StyleSheet.create({
     base: { borderRadius: Shape.radius, alignItems: 'center', justifyContent: 'center' },
     primary: { backgroundColor: Romance.accent, borderWidth: Shape.stroke, borderColor: Romance.stroke },
+    // 破坏性动作（删除）：底色 danger（D-198）
+    danger: { backgroundColor: Romance.danger, borderWidth: Shape.stroke, borderColor: Romance.stroke },
     secondary: { backgroundColor: Romance.card },
     paper: { backgroundColor: Romance.bg },
     outline: { backgroundColor: Romance.card, borderWidth: Shape.stroke, borderColor: Romance.stroke },
@@ -71,6 +73,7 @@ const styles = themed(() =>
     pressed: { opacity: 0.8 },
     text: { fontWeight: '600' },
     text_primary: { color: '#FFFFFF' },
+    text_danger: { color: '#FFFFFF' },
     text_secondary: { color: Romance.ink },
     text_paper: { color: Romance.ink },
     text_outline: { color: Romance.accent },

@@ -4,7 +4,7 @@
  * 纸面：Chip 选中 = primary；试听键 ink 图标。
  */
 
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { useAudioPlayer } from 'expo-audio';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -22,7 +22,7 @@ import { recommendVoices, voicesFor } from '@/lib/speech';
 import { previewVoice } from '@/lib/tts';
 import { audioSession, claimVoicePlayback } from '@/lib/audio-session';
 
-export function VoicePicker({
+export const VoicePicker = memo(function VoicePicker({
   lang,
   gender,
   hints,
@@ -96,7 +96,7 @@ export function VoicePicker({
       <Button label={t('换一批')} variant="outline" size="sm" style={styles.more} onPress={() => setRound((r) => r + 1)} />
     </Field>
   );
-}
+});
 
 const styles = themed(() =>
   StyleSheet.create({

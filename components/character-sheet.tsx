@@ -62,7 +62,7 @@ export function CharacterSheet({ characterId, visible, onClose }: { characterId:
           ) : null}
 
           <Card style={styles.card}>
-            <Text style={styles.hook}>「{c.hook}」</Text>
+            <Text style={styles.hook}>{t('「{x}」', { x: c.hook })}</Text>
             <Text style={styles.intro}>{c.intro}</Text>
             {c.tags.length ? (
               <View style={styles.tags}>

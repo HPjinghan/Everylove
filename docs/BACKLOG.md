@@ -73,14 +73,14 @@
 | F1 | ✅ D-180 | 开发者话术与「试装模拟」字样只在 `__DEV__` 露出；AI 不可用统一一句情绪化文案 | `app/apps/settings.tsx:162-171,246,307-310,373-468`、`bond/[bondId].tsx:126`、`phones.tsx:49`、`phone.tsx:28`、`auth.tsx:140` | 过文案纪律（§11-6）+ 补四语词典 |
 | F2 | ✅ D-182 | onboarding 第二步可回语言步；生日改选择器 | `app/onboarding.tsx:58,115-185`、`identity.tsx:205`、`calendar.tsx:62` | 复用 `time-picker` 的日期部分 |
 | F3 | ✅ D-197 | 聊天列表性能：输入栏拆子组件、`Bubble` memo、`data` / `readIds` useMemo、语音播放器共用一只 | `components/chat-thread.tsx:88,152,355,369,383,485` | |
-| F4 | ⬜ | 创造表单拆状态：按页签拆子组件或 useReducer | `app/apps/character-edit.tsx:335-394` | |
+| F4 | ✅ D-198 | 创造表单拆状态：按页签拆子组件或 useReducer | `app/apps/character-edit.tsx:335-394` | |
 | F5 | ✅ D-181 | TA 主页占位行：故事行链传记、相册行链相册 | `app/bond/[bondId].tsx:184-189` | 无供给不摆 |
 | F6 | ⬜ | 流式输出 + 按到达节奏打字 | `core/providers.ts`、`features/providers.ts`、`core/turn.ts:130-135` | 先 Anthropic SSE；`ChatProvider` 加 `stream?` |
 | F7 | ✅ D-197 | 约定窗口外进外出给一句解释；日历「赴约」校验窗口 | `app/outing/[placeId].tsx`、`app/apps/calendar.tsx:240` | |
 | F8 | ⬜ | 字号走 `Type.scale`、Fredoka 从中文上撤下 | 全屏幕；`notes.tsx:191,205`、`his-phone.tsx:512`、`polaroid.tsx:105`、`dating.tsx:128` | 一次性 codemod |
-| F9 | ⬜ | 硬写 rgba / hex 与自造控件回收：`phones.tsx:103-124` 自绘 Modal → ConfirmSheet、`ConfirmSheet` 单动作保留 destructive、toast 排队 | `character-edit.tsx:110-115`、`chat-thread.tsx:680-696`、`card-bubble.tsx:64-68`、`phone-lock.tsx:216-254`、`action-sheet.tsx:235-244`、`toast.tsx:28-36` | |
-| F10 | ⬜ | 未 t() 与日期格式：settings 大段、`format.ts:26`「万」、`traffic-log.tsx:51` 露 qianfan、`story:56`；日期全走 `localeOf` | 见界面审计 §6 | 词典测试会扫出 |
-| F11 | ⬜ | 可访问性底线：动作型文字按钮 ≥ 44pt（传记编辑器上移 / 下移 / 删除、锁屏、HeaderAction）、`accessibilityLabel` 给图标按钮 | `story-editor.tsx:106-114`、`phone-lock.tsx:177-196`、`components/app-screen.tsx` | |
+| F9 | ✅ D-198 | 硬写 rgba / hex 与自造控件回收：`phones.tsx:103-124` 自绘 Modal → ConfirmSheet、`ConfirmSheet` 单动作保留 destructive、toast 排队 | `character-edit.tsx:110-115`、`chat-thread.tsx:680-696`、`card-bubble.tsx:64-68`、`phone-lock.tsx:216-254`、`action-sheet.tsx:235-244`、`toast.tsx:28-36` | |
+| F10 | ✅ D-198 | 未 t() 与日期格式：settings 大段、`format.ts:26`「万」、`traffic-log.tsx:51` 露 qianfan、`story:56`；日期全走 `localeOf` | 见界面审计 §6 | 词典测试会扫出 |
+| F11 | ✅ D-198 | 可访问性底线：动作型文字按钮 ≥ 44pt（传记编辑器上移 / 下移 / 删除、锁屏、HeaderAction）、`accessibilityLabel` 给图标按钮 | `story-editor.tsx:106-114`、`phone-lock.tsx:177-196`、`components/app-screen.tsx` | |
 | F12 | ✅ D-197（红包预设 → OPEN_QUESTIONS #37） | 拟真小断裂：自创角色 handle `@c_17xxx`、红包预设 6 / 13 / 52 / 520 按市场、挂断留「通话结束」、location UA 去掉 prototype | `moments.tsx:35`、`chat-extras.tsx:121`、`call:241`、`location-picker.tsx:54` | 红包预设进 OPEN_QUESTIONS |
 | F13 | ✅ D-197 | 静默吞错补提示：定位拒绝 / 搜索失败、试听失败、立绘循环、分享不等不 catch | `location-picker.tsx:131-149`、`voice-picker.tsx:62`、`settings.tsx:171`、`his-phone.tsx:113`、`share.tsx:31` | 统一 showToast |
 | F15 | ✅ D-195 | 语音条与通话无视静音键：统一音频会话 | `lib/audio-session.ts` | Harper 2026-09-27 提出 |

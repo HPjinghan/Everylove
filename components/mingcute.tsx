@@ -8,6 +8,7 @@
  */
 
 import Svg, { Path } from 'react-native-svg';
+import { Romance } from '@/constants/theme';
 
 const PATHS = {
   chat: ['M2 11.5C2 6.64261 6.65561 3 12 3C17.3444 3 22 6.64261 22 11.5C22 16.3574 17.3444 20 12 20C11.3472 20 10.708 19.9469 10.0886 19.8452C9.99597 19.918 9.83571 20.0501 9.63851 20.1891C9.0713 20.5887 8.24917 21 7 21C6.44772 21 6 20.5523 6 20C6 19.4499 6.14332 18.7663 5.90624 18.2438C3.57701 16.7225 2 14.2978 2 11.5Z'],
@@ -52,7 +53,7 @@ export type MingCuteName = keyof typeof PATHS;
 export function MingCute({
   name,
   size = 24,
-  color = '#4A2B36',
+  color = Romance.ink,
 }: {
   name: MingCuteName;
   size?: number;

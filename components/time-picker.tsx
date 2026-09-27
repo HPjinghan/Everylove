@@ -14,8 +14,8 @@ import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { planTimeLabel } from '@/lib/appointments';
 import { t } from '@/lib/i18n';
+import { weekdayDate } from '@/lib/format';
 
-const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
 /** 能约到多少天以后 */
 const DAYS_AHEAD = 14;
 /** 滚轮：一行高、可见几行（奇数，选中的在正中） */
@@ -28,7 +28,7 @@ function dayLabel(offset: number, d: Date): string {
   if (offset === 0) return t('今天');
   if (offset === 1) return t('明天');
   if (offset === 2) return t('后天');
-  return `${t('周{d}', { d: t(WEEKDAY[d.getDay()]) })} ${d.getMonth() + 1}/${d.getDate()}`;
+  return weekdayDate(d);
 }
 
 /** 纯 JS 滚轮：一格一格吸附，正中那格就是选中的（生日选择器也用它，D-182） */

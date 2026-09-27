@@ -1,5 +1,5 @@
 import { stageName } from '@/lib/bond';
-import { localeOf, t } from '@/lib/i18n';
+import { getLang, localeOf, t } from '@/lib/i18n';
 
 export function timeAgo(at: number, now = Date.now()): string {
   const s = Math.max(1, Math.floor((now - at) / 1000));
@@ -23,7 +23,10 @@ export function clockTime(at: number): string {
 
 /** 热度数字（D-032：原「N 人领养」改为小火苗 + 热度；火苗图标由界面渲染） */
 export function heatLabel(n: number): string {
-  if (n >= 10000) return `${(n / 10000).toFixed(1)} 万`;
+  const lang = getLang();
+  // 单位按语言（D-198）：中 / 日「万」、韩「만」、英 k
+  if (lang === 'en') return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${Math.max(0, n)}`;
+  if (n >= 10000) return `${(n / 10000).toFixed(1)} ${lang === 'ko' ? '만' : '万'}`;
   return `${Math.max(0, n)}`;
 }
 
@@ -56,4 +59,14 @@ export function uid(prefix = 'id'): string {
   return `${prefix}-${Date.now().toString(36)}-${idCounter.toString(36)}-${Math.floor(
     Math.random() * 1e6
   ).toString(36)}`;
+}
+
+/** 「9/27 21:30」这类短时间戳按界面语言（D-198）：流水 / 外卖订单用 */
+export function shortDateTime(at: number): string {
+  return new Date(at).toLocaleString(localeOf(), { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+/** 「周五 9/27」这类日期按界面语言（D-198）：约时间的日期 chip 用 */
+export function weekdayDate(d: Date): string {
+  return d.toLocaleDateString(localeOf(), { weekday: 'short', month: 'numeric', day: 'numeric' });
 }

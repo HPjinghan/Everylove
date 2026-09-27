@@ -10,9 +10,10 @@ import { Card } from '@/components/card';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
-import { mb } from '@/lib/traffic';
+import { LOVE_MODELS, mb } from '@/lib/traffic';
 import type { TrafficEntry } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
+import { shortDateTime } from '@/lib/format';
 
 const KIND_LABEL: Record<TrafficEntry['kind'], string> = {
   reply: '聊天',
@@ -23,9 +24,12 @@ const KIND_LABEL: Record<TrafficEntry['kind'], string> = {
   vision: '看图',
 };
 
-function timeLabel(at: number): string {
-  const d = new Date(at);
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+const timeLabel = shortDateTime;
+
+/** 供应商在界面上叫模型档的名字（love-v1 / love-v2），不露千帆 / Anthropic 这类字（D-198）；生图 / 语音的走原名 */
+function providerLabel(id: string): string {
+  const m = Object.values(LOVE_MODELS).find((x) => x.provider === id);
+  return m ? m.label : id;
 }
 
 export default function TrafficLogScreen() {
@@ -48,7 +52,7 @@ export default function TrafficLogScreen() {
               <View key={e.id} style={[styles.row, i > 0 && styles.rowLine]}>
                 <View style={styles.rowBody}>
                   <Text style={styles.rowTitle}>
-                    {t(KIND_LABEL[e.kind])} · {e.provider}
+                    {t(KIND_LABEL[e.kind])} · {providerLabel(e.provider)}
                   </Text>
                   <Text style={styles.rowSub}>
                     {timeLabel(e.at)}

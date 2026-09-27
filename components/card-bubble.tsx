@@ -8,7 +8,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import { Shape } from '@/constants/design';
-import { Romance, themed } from '@/constants/theme';
+import { Romance, themed, withAlpha } from '@/constants/theme';
 
 export function CardShell({
   emoji,
@@ -61,10 +61,10 @@ const styles = themed(() =>
   StyleSheet.create({
     card: { minWidth: 190, maxWidth: 240 },
     map: { height: 110, borderRadius: Shape.radiusInner, overflow: 'hidden', marginBottom: 8 },
-    kicker: { fontSize: 10, color: 'rgba(0,0,0,0.45)', letterSpacing: 0.5 },
-    kickerLight: { color: 'rgba(255,255,255,0.8)' },
+    kicker: { fontSize: 10, color: withAlpha(Romance.ink, 0.45), letterSpacing: 0.5 },
+    kickerLight: { color: withAlpha('#FFFFFF', 0.8) },
     title: { fontSize: 16, fontWeight: '700', color: Romance.ink, marginTop: 4 },
     titleLight: { color: '#FFFFFF' },
-    sub: { fontSize: 12, color: 'rgba(0,0,0,0.55)', marginTop: 3, lineHeight: 17 },
+    sub: { fontSize: 12, color: withAlpha(Romance.ink, 0.55), marginTop: 3, lineHeight: 17 },
   })
 );

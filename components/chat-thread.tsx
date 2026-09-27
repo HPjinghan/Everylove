@@ -40,7 +40,7 @@ import { PhotoViewer, Polaroid, type ViewerShot } from '@/components/polaroid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
 import { Shape, Space } from '@/constants/design';
-import { Fonts, Romance, themed } from '@/constants/theme';
+import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { clockTime, voiceDuration } from '@/lib/format';
 import { cardKindOf } from '@/lib/chat';
 import { t } from '@/lib/i18n';
@@ -571,6 +571,7 @@ export function ChatThread({
         title={t('删除这条消息？')}
         body={t('只从你的手机上删除，不会留下痕迹。')}
         confirmLabel={t('删除')}
+        destructive
         onConfirm={() => deleteMsg && onDelete?.(deleteMsg)}
         onClose={() => setDeleteMsg(null)}
       />
@@ -595,7 +596,7 @@ export function ChatThread({
         {recording ? (
           <>
             {/* 录音中（D-091）：整行让给录音条——「+」与相册先收起来；麦克风变 accent、右侧发送键都是「停止并发送」 */}
-            <Pressable onPress={() => void stopRecord()} hitSlop={6}>
+            <Pressable onPress={() => void stopRecord()} hitSlop={6} accessibilityLabel={t('停止录音并发送')}>
               <MingCute name="mic" size={Space.iconBar} color={Romance.accentStrong} />
             </Pressable>
             <View style={styles.recordingPill}>
@@ -605,19 +606,19 @@ export function ChatThread({
                 {t('再点一下发送')}
               </Text>
             </View>
-            <Pressable onPress={() => void stopRecord()} hitSlop={8} style={styles.sendBtn}>
+            <Pressable onPress={() => void stopRecord()} hitSlop={8} style={styles.sendBtn} accessibilityLabel={t('停止录音并发送')}>
               <IconSymbol name="arrow.up" size={18} color="#FFFFFF" />
             </Pressable>
           </>
         ) : (
           <>
             {extras?.length ? (
-              <Pressable onPress={() => setExtrasOpen((v) => !v)} hitSlop={6} disabled={inputDisabled}>
+              <Pressable onPress={() => setExtrasOpen((v) => !v)} hitSlop={6} disabled={inputDisabled} accessibilityLabel={t('更多')}>
                 <MingCute name={extrasOpen ? 'close' : 'plus'} size={Space.iconBar} color={extrasOpen ? Romance.accent : iconColor} />
               </Pressable>
             ) : null}
             {onSendVoice ? (
-              <Pressable onPress={toggleRecord} hitSlop={6} disabled={inputDisabled}>
+              <Pressable onPress={toggleRecord} hitSlop={6} disabled={inputDisabled} accessibilityLabel={t('录语音')}>
                 <MingCute name="mic" size={Space.iconBar} color={iconColor} />
               </Pressable>
             ) : null}
@@ -633,11 +634,11 @@ export function ChatThread({
               submitBehavior="submit"
             />
             {hasDraft ? (
-              <Pressable onPress={send} hitSlop={8} style={styles.sendBtn}>
+              <Pressable onPress={send} hitSlop={8} style={styles.sendBtn} accessibilityLabel={t('发送')}>
                 <IconSymbol name="arrow.up" size={18} color="#FFFFFF" />
               </Pressable>
             ) : onSendImage ? (
-              <Pressable onPress={pickImage} hitSlop={6} disabled={inputDisabled}>
+              <Pressable onPress={pickImage} hitSlop={6} disabled={inputDisabled} accessibilityLabel={t('选照片')}>
                 <MingCute name="pic" size={Space.iconBar} color={iconColor} />
               </Pressable>
             ) : null}
@@ -726,10 +727,10 @@ const styles = themed(() =>
       paddingVertical: 5,
       marginBottom: 6,
     },
-    quoteLight: { borderLeftColor: 'rgba(255,255,255,0.6)', backgroundColor: 'rgba(255,255,255,0.18)' },
+    quoteLight: { borderLeftColor: withAlpha('#FFFFFF', 0.6), backgroundColor: withAlpha('#FFFFFF', 0.18) },
     quoteName: { fontSize: 11, fontWeight: '600', color: Romance.sub },
     quoteText: { fontSize: 12, color: Romance.sub, marginTop: 1 },
-    quoteTextLight: { color: 'rgba(255,255,255,0.85)' },
+    quoteTextLight: { color: withAlpha('#FFFFFF', 0.85) },
     metaCol: { justifyContent: 'flex-end', paddingBottom: 2 },
     metaColMe: { alignItems: 'flex-end' },
     metaColHim: { alignItems: 'flex-start' },
@@ -744,7 +745,7 @@ const styles = themed(() =>
     failedRow: { alignSelf: 'flex-end', marginTop: -2, marginBottom: 6, paddingHorizontal: 4 },
     failedText: { fontSize: 11, color: Romance.accentStrong },
     mediaHint: { fontSize: 11, color: Romance.sub, marginTop: 4 },
-    mediaHintLight: { color: 'rgba(255,255,255,0.82)' },
+    mediaHintLight: { color: withAlpha('#FFFFFF', 0.82) },
     mediaTranscript: { fontSize: 13, color: Romance.sub, marginTop: 5, lineHeight: 18 },
     replyBar: {
       flexDirection: 'row',

@@ -15,7 +15,7 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState, useRef } from 'react';
+import { memo, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -148,6 +148,7 @@ const BUBBLE_STYLES = [
 const daysInMonth = (m: number) => (m === 2 ? 29 : [4, 6, 9, 11].includes(m) ? 30 : 31);
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
 
+const LOVE_STYLE_LABELS = LOVE_STYLES.map((l) => l.label);
 const MBTI_LIST = [
   'INTJ', 'INTP', 'ENTJ', 'ENTP',
   'INFJ', 'INFP', 'ENFJ', 'ENFP',
@@ -299,6 +300,25 @@ function OptionChip({ label, active, onPress }: { label: string; active: boolean
   return <Chip label={t(label)} selected={active} onPress={onPress} />;
 }
 
+/** 单选 chip 组（D-198）：memo——表单别的字段每次击键不再重画 14 种恋爱类型 / 16 个 MBTI */
+const ChipGroup = memo(function ChipGroup({
+  options,
+  value,
+  onChange,
+}: {
+  options: string[];
+  value: string | undefined;
+  onChange: (next: string | undefined) => void;
+}) {
+  return (
+    <View style={styles.chipRow}>
+      {options.map((o) => (
+        <OptionChip key={o} label={o} active={value === o} onPress={() => onChange(value === o ? undefined : o)} />
+      ))}
+    </View>
+  );
+});
+
 /** 三选一的小卡（节奏 / 主动强度）：白底 r6，选中 primary 白字 */
 function PaceCard({
   label,
@@ -393,6 +413,8 @@ function CreateForm({ edit }: { edit?: string }) {
       ? `${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
       : '';
   const style = loveStyleByLabel(loveStyle);
+  // 音色推荐的线索（D-198）：只在这几项变了才换引用，VoicePicker 才不每次击键重画
+  const voiceHints = useMemo(() => [loveStyle, race === '其他' ? raceCustom : race], [loveStyle, race, raceCustom]);
   const allText = [
     desc, name, look, story, raceCustom, catchphrase, likes, dislikes,
     presetMemories, taboos, secrets, chatNotes, schedule,
@@ -774,6 +796,7 @@ function CreateForm({ edit }: { edit?: string }) {
               <Pressable
                 key={i}
                 onPress={() => setPalette(i)}
+                hitSlop={6}
                 style={[styles.swatchRing, palette === i && styles.swatchRingOn]}>
                 <View style={[styles.swatch, { backgroundColor: p.color }]} />
               </Pressable>
@@ -827,7 +850,7 @@ function CreateForm({ edit }: { edit?: string }) {
           <VoicePicker
             lang={getLang()}
             gender={gender}
-            hints={[loveStyle, race === '其他' ? raceCustom : race]}
+            hints={voiceHints}
             value={voiceId}
             onChange={setVoiceId}
             sampleText={lines?.opening?.[0] ?? t(VOICE_SAMPLE_LINE)}
@@ -888,7 +911,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 <Input
                   value={catchphrase}
                   onChangeText={setCatchphrase}
-                  placeholder="「……真拿你没办法」"
+                  placeholder={t('「……真拿你没办法」')}
                   maxLength={20}
                 />
               </Field>
@@ -926,30 +949,12 @@ function CreateForm({ edit }: { edit?: string }) {
               </Field>
 
               <Field label={t('TA 在恋爱中的类型')}>
-                <View style={styles.chipRow}>
-                  {LOVE_STYLES.map((l) => (
-                    <OptionChip
-                      key={l.label}
-                      label={l.label}
-                      active={loveStyle === l.label}
-                      onPress={() => setLoveStyle(loveStyle === l.label ? undefined : l.label)}
-                    />
-                  ))}
-                </View>
+                <ChipGroup options={LOVE_STYLE_LABELS} value={loveStyle} onChange={setLoveStyle} />
                 {style ? <Text style={styles.styleDesc}>{style.desc}</Text> : null}
               </Field>
 
               <Field label="MBTI">
-                <View style={styles.chipRow}>
-                  {MBTI_LIST.map((m) => (
-                    <OptionChip
-                      key={m}
-                      label={m}
-                      active={mbti === m}
-                      onPress={() => setMbti(mbti === m ? undefined : m)}
-                    />
-                  ))}
-                </View>
+                <ChipGroup options={MBTI_LIST} value={mbti} onChange={setMbti} />
               </Field>
 
               <Field label={t('主动联系强度')}>
@@ -994,7 +999,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 <Input
                   value={taboos}
                   onChangeText={setTaboos}
-                  placeholder="不谈家里的事；不喝酒；被问到左手的疤会岔开话题……"
+                  placeholder={t('不谈家里的事；不喝酒；被问到左手的疤会岔开话题……')}
                   multiline
                   maxLength={120}
                 />
@@ -1014,7 +1019,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 <Input
                   value={chatNotes}
                   onChangeText={setChatNotes}
-                  placeholder="如：会用一点方言；不主动发语音；叫我「小朋友」……"
+                  placeholder={t('如：会用一点方言；不主动发语音；叫我「小朋友」……')}
                   multiline
                   maxLength={120}
                 />
@@ -1024,7 +1029,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 <Input
                   value={schedule}
                   onChangeText={setSchedule}
-                  placeholder="早八晚六上班，周三晚上健身，习惯凌晨一点睡……"
+                  placeholder={t('早八晚六上班，周三晚上健身，习惯凌晨一点睡……')}
                   multiline
                   maxLength={120}
                 />
@@ -1228,7 +1233,7 @@ const styles = themed(() =>
     paceLabel: { fontSize: 14, fontWeight: '600', color: Romance.ink },
     paceLabelOn: { color: '#FFFFFF' },
     paceHint: { fontSize: 10, color: Romance.sub, marginTop: 3 },
-    paceHintOn: { color: 'rgba(255,255,255,0.8)' },
+    paceHintOn: { color: withAlpha('#FFFFFF', 0.8) },
     styleDesc: {
       fontSize: 12,
       color: Romance.accent,

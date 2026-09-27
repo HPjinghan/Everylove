@@ -106,6 +106,7 @@ export function ConfirmSheet({
   cancelLabel,
   onConfirm,
   onClose,
+  destructive,
 }: {
   visible: boolean;
   title: string;
@@ -114,6 +115,8 @@ export function ConfirmSheet({
   cancelLabel?: string;
   onConfirm: () => void;
   onClose: () => void;
+  /** 删除这类破坏性动作：确认键用 danger 底（D-198） */
+  destructive?: boolean;
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -125,7 +128,7 @@ export function ConfirmSheet({
             <Button label={cancelLabel ?? t('取消')} variant="paper" size="md" style={styles.flex} onPress={onClose} />
             <Button
               label={confirmLabel}
-              variant="primary"
+              variant={destructive ? 'danger' : 'primary'}
               size="md"
               style={styles.flex}
               onPress={() => {
@@ -238,6 +241,7 @@ export function SheetHost() {
         body={current.body}
         confirmLabel={acts[0].text}
         cancelLabel={cancel?.text}
+        destructive={acts[0].style === 'destructive'}
         onConfirm={() => acts[0].onPress?.()}
         onClose={onCancel}
       />

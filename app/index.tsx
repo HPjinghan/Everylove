@@ -42,7 +42,7 @@ import { MingCute } from '@/components/mingcute';
 import { DiamondBackground } from '@/components/paper-bg';
 import { appById, DEFAULT_DESKTOP_ORDER, type DesktopApp } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
-import { Fonts, Romance, themed } from '@/constants/theme';
+import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import { tempNow, todayWeather, weatherCity } from '@/lib/weather';
 import { useAppStore, useHydrated } from '@/store/app-store';
@@ -926,14 +926,14 @@ const styles = themed(() =>
     introTitle: { fontSize: 22, fontWeight: '600', color: '#FFFFFF' },
     introLine: {
       fontSize: 14,
-      color: 'rgba(255,255,255,0.85)',
+      color: withAlpha('#FFFFFF', 0.85),
       textAlign: 'center',
       lineHeight: 21,
       marginTop: 8,
     },
     introBtn: { marginTop: 26, minWidth: 180 },
     introSkip: {
-      color: 'rgba(255,255,255,0.55)',
+      color: withAlpha('#FFFFFF', 0.55),
       fontSize: Type.scale.caption.size,
       marginTop: Space.screen,
       padding: 6,

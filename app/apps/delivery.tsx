@@ -18,16 +18,13 @@ import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { MENU } from '@/content/menu';
 import { orderStatusLabel, orderTitle, placeOrder } from '@/lib/delivery';
-import { money } from '@/lib/format';
+import { money, shortDateTime } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { useAppStore } from '@/store/app-store';
 
 type Tab = 'order' | 'history';
 
-function timeLabel(at: number): string {
-  const d = new Date(at);
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
+const timeLabel = shortDateTime;
 
 export default function DeliveryScreen() {
   const router = useRouter();
@@ -186,7 +183,7 @@ export default function DeliveryScreen() {
                   <Text style={styles.orderWho}>
                     {who} · {timeLabel(o.at)}
                   </Text>
-                  {o.note ? <Text style={styles.orderNote}>「{o.note}」</Text> : null}
+                  {o.note ? <Text style={styles.orderNote}>{t('「{x}」', { x: o.note })}</Text> : null}
                   <Text style={styles.orderStatus}>{now ? orderStatusLabel(o, now) : t('…')}</Text>
                 </Card>
               );

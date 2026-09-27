@@ -14,7 +14,7 @@ import { MingCute } from '@/components/mingcute';
 import { DiamondBackground } from '@/components/paper-bg';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape } from '@/constants/design';
-import { Fonts, Romance, themed } from '@/constants/theme';
+import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { getLang, localeOf, t } from '@/lib/i18n';
 import { PHONE_PASSCODE_LENGTH } from '@/lib/phone';
 import { useAppStore } from '@/store/app-store';
@@ -174,7 +174,7 @@ export function PhoneLock({
 
         <View style={styles.pad}>
           {KEYS.map((k) => (
-            <Pressable key={k.n} style={({ pressed }) => [styles.key, pressed && styles.keyPressed]} onPress={() => press(k.n)}>
+            <Pressable key={k.n} hitSlop={4} style={({ pressed }) => [styles.key, pressed && styles.keyPressed]} onPress={() => press(k.n)}>
               <Text style={styles.keyNum}>{k.n}</Text>
               <Text style={styles.keyLetters}>{k.letters || ' '}</Text>
             </Pressable>
@@ -213,13 +213,13 @@ const styles = themed(() =>
       letterSpacing: -2,
       color: '#FFFFFF',
     },
-    date: { fontSize: 16, color: 'rgba(255,255,255,0.85)', marginTop: -6 },
+    date: { fontSize: 16, color: withAlpha('#FFFFFF', 0.85), marginTop: -6 },
     middle: { alignItems: 'center', gap: 18, paddingHorizontal: 34 },
     prompt: { fontSize: 18, color: '#FFFFFF' },
     dots: { flexDirection: 'row', gap: 22 },
     dot: { width: 13, height: 13, borderRadius: 6.5, borderWidth: 1.2, borderColor: '#FFFFFF' },
     dotOn: { backgroundColor: '#FFFFFF' },
-    waiting: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
+    waiting: { fontSize: 12, color: withAlpha('#FFFFFF', 0.7) },
     replyRow: { flexDirection: 'row', alignItems: 'flex-end', alignSelf: 'stretch', gap: 8 },
     replyBubbles: { flexShrink: 1, alignItems: 'flex-start', gap: 6 },
     bubble: {
@@ -244,14 +244,14 @@ const styles = themed(() =>
       width: KEY,
       height: KEY,
       borderRadius: Shape.radius,
-      backgroundColor: 'rgba(255,255,255,0.22)',
+      backgroundColor: withAlpha('#FFFFFF', 0.22),
       alignItems: 'center',
       justifyContent: 'center',
     },
-    keyPressed: { backgroundColor: 'rgba(255,255,255,0.5)' },
+    keyPressed: { backgroundColor: withAlpha('#FFFFFF', 0.5) },
     keyBlank: { width: KEY, height: KEY, alignItems: 'center', justifyContent: 'center' },
     keyNum: { fontFamily: Fonts.label, fontSize: 34, lineHeight: 38, color: '#FFFFFF' },
-    keyLetters: { fontSize: 10, letterSpacing: 2, color: 'rgba(255,255,255,0.85)', marginTop: -2 },
+    keyLetters: { fontSize: 10, letterSpacing: 2, color: withAlpha('#FFFFFF', 0.85), marginTop: -2 },
     bottom: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 34 },
     bottomText: { fontSize: 16, color: '#FFFFFF' },
     bottomDim: { opacity: 0.5 },

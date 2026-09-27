@@ -543,7 +543,7 @@ const styles = themed(() =>
     quietLabel: { flex: 1, fontSize: 14, color: Romance.ink },
     quietDash: { fontFamily: Fonts.label, fontSize: 14, color: Romance.sub },
     stepper: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Romance.bg, borderRadius: Shape.radius, paddingHorizontal: 4 },
-    stepBtn: { width: 26, height: 30, alignItems: 'center', justifyContent: 'center' },
+    stepBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
     stepBtnText: { fontFamily: Fonts.labelBold, fontSize: 16, color: Romance.accent },
     stepValue: { fontFamily: Fonts.labelBold, fontSize: 14, color: Romance.ink, minWidth: 44, textAlign: 'center' },
     about: {
