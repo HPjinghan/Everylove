@@ -7,6 +7,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { requestWithTimeout, TIMEOUTS } from '@/lib/proxy';
 
 const STORE_KEY = 'everylove-weather-v2';
 const REFRESH_MS = 30 * 60_000;
@@ -119,9 +120,9 @@ export async function refreshWeather(force = false): Promise<boolean> {
       `https://api.open-meteo.com/v1/forecast?latitude=${st.lat}&longitude=${st.lon}` +
       '&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min' +
       '&timezone=auto&forecast_days=7';
-    const res = await fetch(url);
+    const res = await requestWithTimeout(url, { method: 'GET', timeoutMs: TIMEOUTS.web });
     if (!res.ok) throw new Error(`open-meteo ${res.status}`);
-    const data = (await res.json()) as {
+    const data = JSON.parse(res.text) as {
       current?: { temperature_2m?: number; weather_code?: number };
       daily?: {
         time?: string[];
@@ -163,9 +164,9 @@ export async function searchPlaces(query: string): Promise<PlaceHit[]> {
   const url =
     'https://geocoding-api.open-meteo.com/v1/search?count=5&language=zh&name=' +
     encodeURIComponent(query.trim());
-  const res = await fetch(url);
+  const res = await requestWithTimeout(url, { method: 'GET', timeoutMs: TIMEOUTS.web });
   if (!res.ok) throw new Error(`geocoding ${res.status}`);
-  const data = (await res.json()) as {
+  const data = JSON.parse(res.text) as {
     results?: { name: string; admin1?: string; country?: string; latitude: number; longitude: number }[];
   };
   return (data.results ?? []).map((r) => ({

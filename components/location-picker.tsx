@@ -26,6 +26,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { getLang, t } from '@/lib/i18n';
+import { getJsonWithTimeout, TIMEOUTS } from '@/lib/proxy';
 
 export interface PickedLocation {
   lat: number;
@@ -49,12 +50,11 @@ const CLOSE: Pick<Region, 'latitudeDelta' | 'longitudeDelta'> = { latitudeDelta:
 
 async function searchPlaces(q: string): Promise<Hit[]> {
   const lang = getLang() === 'zh' ? 'zh-CN,zh' : getLang() === 'ja' ? 'ja,en' : getLang() === 'ko' ? 'ko,en' : 'en';
-  const res = await fetch(
+  const data = await getJsonWithTimeout<{ display_name: string; name?: string; lat: string; lon: string }[]>(
     `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=${encodeURIComponent(q)}`,
-    { headers: { 'User-Agent': 'everylove-app/0.1 (prototype)', 'Accept-Language': lang } }
+    TIMEOUTS.web,
+    { 'User-Agent': 'ringring/0.2', 'Accept-Language': lang }
   );
-  if (!res.ok) throw new Error(`nominatim ${res.status}`);
-  const data = (await res.json()) as { display_name: string; name?: string; lat: string; lon: string }[];
   return data.map((r) => {
     const parts = r.display_name.split(',').map((s) => s.trim());
     return {

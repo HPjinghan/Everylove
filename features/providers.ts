@@ -6,7 +6,7 @@
 
 import { CONFIG } from '@/core/config';
 import { chatProviders, type ChatProvider } from '@/core/providers';
-import { proxyJson } from '@/lib/proxy';
+import { postJsonWithTimeout, proxyJson, TIMEOUTS } from '@/lib/proxy';
 
 type AnthropicJson = { content: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
 type OpenAIJson = { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
@@ -31,17 +31,14 @@ const anthropic: ChatProvider = {
     };
     let data: AnthropicJson;
     if (route === 'direct') {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': CONFIG.anthropicKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(body),
-      });
+      const res = await postJsonWithTimeout(
+        'https://api.anthropic.com/v1/messages',
+        { 'x-api-key': CONFIG.anthropicKey, 'anthropic-version': '2023-06-01' },
+        body,
+        TIMEOUTS.chat
+      );
       if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
-      data = await res.json();
+      data = JSON.parse(res.text) as AnthropicJson;
     } else {
       data = await proxyJson<AnthropicJson>('anthropic.messages', body);
     }
@@ -68,13 +65,14 @@ const qianfan: ChatProvider = {
     };
     let data: OpenAIJson;
     if (route === 'direct') {
-      const res = await fetch('https://qianfan.baidubce.com/v2/chat/completions', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${CONFIG.qianfanKey}` },
-        body: JSON.stringify(body),
-      });
+      const res = await postJsonWithTimeout(
+        'https://qianfan.baidubce.com/v2/chat/completions',
+        { authorization: `Bearer ${CONFIG.qianfanKey}` },
+        body,
+        TIMEOUTS.chat
+      );
       if (!res.ok) throw new Error(`Qianfan API ${res.status}`);
-      data = await res.json();
+      data = JSON.parse(res.text) as OpenAIJson;
     } else {
       data = await proxyJson<OpenAIJson>('qianfan.chat', body);
     }

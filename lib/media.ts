@@ -18,7 +18,7 @@ import { imageCaptionSystem, IMAGE_CAPTION_USER } from '@/content/prompts';
 import { CONFIG } from '@/core/config';
 import { AiUnavailableError, aiRoute, envKey } from '@/lib/engine';
 import { getLang, t } from '@/lib/i18n';
-import { proxyJson } from '@/lib/proxy';
+import { postJsonWithTimeout, proxyJson, TIMEOUTS } from '@/lib/proxy';
 import { asrChannelFor, BAIDU_ASR_LANGS } from '@/lib/speech';
 
 export const QIANFAN_VISION_MODEL = CONFIG.qianfanVisionModel;
@@ -168,13 +168,9 @@ export async function transcribeVoice(uri: string): Promise<string> {
   const body = { format, rate: 16000, channel: 1, cuid: CUID, len, speech, dev_pid: devPid };
   let data: AsrResponse;
   if (route === 'direct') {
-    const res = await fetch(pro ? ASR_PRO_URL : ASR_STD_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${envKey('qianfan')}` },
-      body: JSON.stringify(body),
-    });
+    const res = await postJsonWithTimeout(pro ? ASR_PRO_URL : ASR_STD_URL, { authorization: `Bearer ${envKey('qianfan')}` }, body, TIMEOUTS.asr);
     if (!res.ok) throw new Error(`Baidu ASR ${res.status}`);
-    data = (await res.json()) as AsrResponse;
+    data = JSON.parse(res.text) as AsrResponse;
   } else {
     data = await proxyJson<AsrResponse>(pro ? 'baidu.asr_pro' : 'baidu.asr', body);
   }
@@ -218,13 +214,9 @@ export async function describeImage(uri: string): Promise<string> {
   };
   let data: ChatJson;
   if (route === 'direct') {
-    const res = await fetch(QIANFAN_CHAT_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${envKey('qianfan')}` },
-      body: JSON.stringify(body),
-    });
+    const res = await postJsonWithTimeout(QIANFAN_CHAT_URL, { authorization: `Bearer ${envKey('qianfan')}` }, body, TIMEOUTS.chat);
     if (!res.ok) throw new Error(`Qianfan VL ${res.status}`);
-    data = (await res.json()) as ChatJson;
+    data = JSON.parse(res.text) as ChatJson;
   } else {
     data = await proxyJson<ChatJson>('qianfan.chat', body);
   }

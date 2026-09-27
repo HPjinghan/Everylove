@@ -15,7 +15,7 @@ import { generationBlocked, reportUsage } from '@/core/usage';
 import { pronounFor } from '@/content/prompts';
 import { CONFIG } from '@/core/config';
 import { getLang, type Lang } from '@/lib/i18n';
-import { proxyJson, proxyReadySync } from '@/lib/proxy';
+import { proxyJson, proxyReadySync, requestWithTimeout, TIMEOUTS, type TimedResponse } from '@/lib/proxy';
 import { defaultVoiceId } from '@/lib/speech';
 import type { Character } from '@/lib/types';
 
@@ -110,15 +110,13 @@ function formBody(params: Record<string, string>): string {
     .join('&');
 }
 
-/** 二进制音频响应 → base64；出错时（JSON / 非 2xx）抛错 */
-async function audioBase64(res: Response, label: string): Promise<string> {
-  const contentType = res.headers.get('content-type') ?? '';
-  if (!res.ok || contentType.includes('application/json')) {
-    const errText = await res.text();
-    throw new Error(`${label} ${res.status}: ${errText.slice(0, 160)}`);
+/** 二进制音频响应 → base64；出错时（JSON / 非 2xx / 空）抛错，错误正文按 ASCII 读前 160 字 */
+function audioBase64(res: TimedResponse, label: string): string {
+  const buf = res.buffer;
+  if (!res.ok || res.contentType.includes('application/json') || !buf?.byteLength) {
+    const errText = buf ? String.fromCharCode(...new Uint8Array(buf).subarray(0, 160)) : res.text;
+    throw new Error(`${label} ${res.status}: ${errText.slice(0, 160) || 'empty audio'}`);
   }
-  const buf = await res.arrayBuffer();
-  if (!buf.byteLength) throw new Error(`${label}: empty audio`);
   return toBase64(buf);
 }
 
@@ -129,10 +127,11 @@ function fishBody(text: string, voiceId: string): Record<string, unknown> {
 
 /** 通道 1：Fish 直连 */
 async function fishDirect(text: string, voiceId: string): Promise<string> {
-  const res = await fetch(FISH_TTS_URL, {
-    method: 'POST',
+  const res = await requestWithTimeout(FISH_TTS_URL, {
     headers: { 'content-type': 'application/json', authorization: `Bearer ${FISH_KEY}`, model: FISH_MODEL },
     body: JSON.stringify(fishBody(text, voiceId)),
+    timeoutMs: TIMEOUTS.tts,
+    binary: true,
   });
   return audioBase64(res, 'Fish TTS');
 }
@@ -150,13 +149,11 @@ function baiduParams(tex: string, per: string): Record<string, string> {
 
 /** 通道 2：百度 text2audio 直连（本地千帆 key） */
 async function baiduDirect(tex: string, per: string): Promise<string> {
-  const res = await fetch(BAIDU_TTS_URL, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      authorization: `Bearer ${ENV_QIANFAN_KEY}`,
-    },
+  const res = await requestWithTimeout(BAIDU_TTS_URL, {
+    headers: { 'content-type': 'application/x-www-form-urlencoded', authorization: `Bearer ${ENV_QIANFAN_KEY}` },
     body: formBody(baiduParams(tex, per)),
+    timeoutMs: TIMEOUTS.tts,
+    binary: true,
   });
   return audioBase64(res, 'Baidu TTS');
 }

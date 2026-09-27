@@ -25,25 +25,87 @@ export async function proxyAvailable(): Promise<boolean> {
 }
 
 /**
- * 带超时的 POST（D-109）：RN 的 fetch 不能设超时，iOS 会落到 NSURLSession 默认 60 秒——生图（qwen-image 约 1 分钟）经代理常常超过，
- * 客户端只看到「Network request failed」。用 XMLHttpRequest 的 timeout 显式放宽；超时 / 断网都抛带原因的 Error。
+ * 带超时、可取消的请求（D-109 / D-171）：RN 的 fetch 不能设超时，iOS 会落到 NSURLSession 默认 60 秒——生图（qwen-image 约 1 分钟）经代理常常超过，
+ * 客户端只看到「Network request failed」。用 XMLHttpRequest 的 timeout 显式设；超时 / 断网 / 取消都抛带原因的 Error。
+ * 全 App 的直连（聊天 / 看图 / 识别 / 合成 / 生图 / 天气 / 地图）与代理都走这里，不再有裸 fetch。
  */
+export interface TimedResponse {
+  ok: boolean;
+  status: number;
+  /** 文本响应（binary 时为空） */
+  text: string;
+  contentType: string;
+  /** binary 时的响应体 */
+  buffer?: ArrayBuffer;
+}
+
+export interface TimedRequest {
+  method?: 'GET' | 'POST';
+  headers?: Record<string, string>;
+  /** 已序列化的请求体（JSON 字符串 / 表单串）；GET 不传 */
+  body?: string;
+  timeoutMs: number;
+  /** 要二进制响应（语音合成） */
+  binary?: boolean;
+  /** 取消：调用方 `AbortController.abort()` */
+  signal?: AbortSignal;
+}
+
+/** 各类直连请求的超时（D-171）：聊天 / 看图与代理一致 90 s（思考模型慢）、识别 60 s、合成 30 s、天气 / 地图 15 s；生图在 lib/imagegen 自己 180 s */
+export const TIMEOUTS = { chat: 90_000, asr: 60_000, tts: 30_000, web: 15_000 } as const;
+
+export function requestWithTimeout(url: string, req: TimedRequest): Promise<TimedResponse> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(req.method ?? 'POST', url);
+    xhr.timeout = req.timeoutMs;
+    if (req.binary) xhr.responseType = 'arraybuffer';
+    for (const [k, v] of Object.entries(req.headers ?? {})) xhr.setRequestHeader(k, v);
+    const onAbort = () => {
+      xhr.abort();
+      reject(new Error('请求已取消'));
+    };
+    if (req.signal?.aborted) return onAbort();
+    req.signal?.addEventListener('abort', onAbort, { once: true });
+    const done = () => req.signal?.removeEventListener('abort', onAbort);
+    xhr.onload = () => {
+      done();
+      resolve({
+        ok: xhr.status >= 200 && xhr.status < 300,
+        status: xhr.status,
+        text: req.binary ? '' : xhr.responseText,
+        contentType: xhr.getResponseHeader('content-type') ?? '',
+        buffer: req.binary ? (xhr.response as ArrayBuffer) : undefined,
+      });
+    };
+    xhr.onerror = () => {
+      done();
+      reject(new Error('网络请求失败'));
+    };
+    xhr.ontimeout = () => {
+      done();
+      reject(new Error(`请求超时（${Math.round(req.timeoutMs / 1000)} 秒）`));
+    };
+    xhr.send(req.body);
+  });
+}
+
+/** POST JSON（content-type 自动带上） */
 export function postJsonWithTimeout(
   url: string,
   headers: Record<string, string>,
   body: unknown,
-  timeoutMs: number
-): Promise<{ ok: boolean; status: number; text: string }> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', url);
-    xhr.timeout = timeoutMs;
-    for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
-    xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, text: xhr.responseText });
-    xhr.onerror = () => reject(new Error('网络请求失败'));
-    xhr.ontimeout = () => reject(new Error(`请求超时（${Math.round(timeoutMs / 1000)} 秒）`));
-    xhr.send(JSON.stringify(body));
-  });
+  timeoutMs: number,
+  signal?: AbortSignal
+): Promise<TimedResponse> {
+  return requestWithTimeout(url, { headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body), timeoutMs, signal });
+}
+
+/** GET JSON：非 2xx 抛错 */
+export async function getJsonWithTimeout<T>(url: string, timeoutMs: number, headers?: Record<string, string>): Promise<T> {
+  const res = await requestWithTimeout(url, { method: 'GET', headers, timeoutMs });
+  if (!res.ok) throw new Error(`GET ${res.status}`);
+  return JSON.parse(res.text) as T;
 }
 
 /** 默认 90 秒；生图这类慢请求调用方自己传更长的 */
