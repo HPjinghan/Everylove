@@ -14,7 +14,6 @@ import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AudioModule,
-  setAudioModeAsync,
   useAudioPlayer,
   useAudioPlayerStatus,
   useAudioRecorder,
@@ -32,6 +31,7 @@ import { t } from '@/lib/i18n';
 import { ASR_RECORDING, transcribeVoice } from '@/lib/media';
 import { synthesizeVoice } from '@/lib/tts';
 import { findCharacter, useAppStore } from '@/store/app-store';
+import { audioSession } from '@/lib/audio-session';
 
 type Phase = 'dialing' | 'connecting' | 'speaking' | 'listening' | 'thinking' | 'ended';
 
@@ -85,7 +85,7 @@ export default function CallScreen() {
   /* ── 开始听她说 ── */
   const listen = useCallback(async () => {
     if (!alive.current) return;
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+    await audioSession.record();
     await recorder.prepareToRecordAsync();
     recorder.record();
     speechStarted.current = false;
@@ -109,7 +109,7 @@ export default function CallScreen() {
         if (alive.current) void listen();
         return;
       }
-      await setAudioModeAsync({ allowsRecording: !speakerRef.current, playsInSilentMode: true });
+      await audioSession.call(speakerRef.current);
       player.replace({ uri });
       player.seekTo(0);
       player.play();
@@ -213,7 +213,7 @@ export default function CallScreen() {
         player.pause();
       } catch {}
       void recorder.stop().catch(() => {});
-      void setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+      void audioSession.playback();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [characterId]);
@@ -224,9 +224,7 @@ export default function CallScreen() {
     speakerRef.current = next;
     setSpeaker(next);
     if (phaseRef.current === 'speaking') {
-      void setAudioModeAsync({ allowsRecording: !next, playsInSilentMode: true }).catch((e) =>
-        console.warn('[call] 切换出声口失败：', e)
-      );
+      void audioSession.call(next);
     }
   };
 

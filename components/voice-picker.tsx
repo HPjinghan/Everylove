@@ -19,6 +19,7 @@ import type { Lang } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
 import { recommendVoices, voicesFor } from '@/lib/speech';
 import { previewVoice } from '@/lib/tts';
+import { audioSession } from '@/lib/audio-session';
 
 export function VoicePicker({
   lang,
@@ -61,6 +62,7 @@ export function VoicePicker({
     const uri = await previewVoice(sampleText, v.id, pronoun);
     setBusyId(null);
     if (!uri) return;
+    await audioSession.playback();
     player.replace({ uri });
     player.seekTo(0);
     player.play();

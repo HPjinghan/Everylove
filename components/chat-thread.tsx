@@ -12,7 +12,6 @@
 
 import {
   AudioModule,
-  setAudioModeAsync,
   useAudioPlayer,
   useAudioRecorder,
 } from 'expo-audio';
@@ -49,6 +48,7 @@ import { ASR_MAX_SECONDS, ASR_RECORDING } from '@/lib/media';
 import { synthesizeVoice, ttsReady } from '@/lib/tts';
 import type { ChatMessage } from '@/lib/types';
 import { findCharacter } from '@/store/app-store';
+import { audioSession } from '@/lib/audio-session';
 
 export type ReplyRef = { from: ChatMessage['from']; text: string };
 /** 「+」面板的一项（D-081）：调用方决定有哪些 */
@@ -110,6 +110,7 @@ function VoiceBubble({
       player.replace({ uri });
       setStatus('ready');
     }
+    await audioSession.playback();
     player.seekTo(0);
     player.play();
     setPlaying(true);
@@ -151,11 +152,12 @@ function VoiceBubble({
 function AudioVoiceBubble({ uri, durationMs, tint }: { uri: string; durationMs?: number; tint: string }) {
   const player = useAudioPlayer(uri);
   const [playing, setPlaying] = useState(false);
-  const toggle = () => {
+  const toggle = async () => {
     if (playing) {
       player.pause();
       setPlaying(false);
     } else {
+      await audioSession.playback();
       player.seekTo(0);
       player.play();
       setPlaying(true);
@@ -450,7 +452,7 @@ export function ChatThread({
     clearInterval(recordTimer.current);
     recordTimer.current = null;
     await recorder.stop();
-    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+    await audioSession.playback();
     setRecording(false);
     const ms = Date.now() - recordStartAt.current;
     const uri = recorder.uri;
@@ -465,7 +467,7 @@ export function ChatThread({
         showAlert(t('需要麦克风权限'), t('在系统设置里允许录音后再试。'));
         return;
       }
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await audioSession.record();
       await recorder.prepareToRecordAsync();
       recorder.record();
       recordStartAt.current = Date.now();

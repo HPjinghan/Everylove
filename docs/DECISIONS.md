@@ -1,7 +1,7 @@
 # DECISIONS.md — 现行决策总账（按主题合并）
 
 > **怎么用**：一个主题一条，只写**现在的口径**；被推翻、已下线的不保留（2026-09-15 Harper：「已废弃的删掉」）——要看历史，D-001～D-096 的逐条原文在 `docs/archive/DECISIONS-log-2026-08-13_09-06.md`，之后的查 git 历史。
-> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-195**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换、旧的直接删（索引里被推翻的编号也删）；整个机制下线 = 连条目一起删；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
+> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-196**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换、旧的直接删（索引里被推翻的编号也删）；整个机制下线 = 连条目一起删；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
 > 代码注释里的 D-编号一律按索引表查；索引里没有的编号 = 已废弃的决策（原文在存档或 git）；D-087 / D-088 各撞号一次，用 a / b 区分。
 
 ## 编号索引
@@ -110,6 +110,7 @@
 | D-125 | 09-15 | TestFlight 公测前：默认语言 English（没选过语言的新装机一打开就是英文，测试环境钉回中文）；onboarding 第一屏「已有账号？去登录」提到语言按钮正下方做成 outline 按钮、English 排第一 | H2 / G1 |
 | D-126 | 09-15 | 亲密度数值体系：心动改模型判（数值与措辞现为 D-157）；XP 来源表 15 种 + 当天递减 + 日上限 150；等级 = XP 门槛 100/200/300/500/900 × 天数下限 0/3/7/21/60，只升不降；温度 0–100 每天 −8，疏远降频、到 0 停主动进推送召回（7 / 14 / 30 天各一条后停） | D1 / D2 / D7 / D8 |
 | D-149 | 09-17 | 传记落地：桌面「传记」App（只看）——已缔结 TA 的传记按章读、章按羁绊 LV 锁、章末打赏 Coin（读者扣零钱、kind tip；Coin 仍不售卖，分成另算）；创造 App 改列表模式（右下角 + 进创建流程），表单拆分页签（基础 / 形象 / 设定 / 台词 / 传记），传记页签 = 章节编辑器（文字块 + 图片块：上传 / gif / 现场生图走玩家流量；每章设开放 LV）；六位种子中 / 英各两章内置，日 / 韩待写手；图片不进共享池（存储待接 #36） | E7 / E2 |
+| D-195 | 09-27 | 音频会话统一：`lib/audio-session.ts` 三档——playback（语音条 / 回放 / 试听：无视静音键、扬声器、压低别的 App）、record（录语音）、call（听筒 / 免提，独占）；启动即切 playback，播放前再确认；此前 expo-audio 默认 ambient，静音键拨上语音条没声 | B3 |
 | D-194 | 09-27 | 玩法归位：「让 TA 看我的手机」（peekPayload / peekMyPhone）从 lib/chat.ts 搬进 features/phone-peek.tsx；零钱玩法保持 features/wallet.tsx（注册）+ lib/wallet / salary / delivery（纯函数）四处，明示为例外 | A3 |
 | D-193 | 09-27 | 类型收紧 + persist v12：羁绊的 memory / notes / hisEvents / circle / circleChats / warmth / warmthAt、试聊的 heart 改必填（缔结 / 新试聊即建，老存档补默认值），Bond 退役字段 arrivalAt / notifId / away / awayNotified 与 AppState.themeId 删掉，`ChatCard.type` 封闭联合（六种） | A3 / D2 |
 | D-192 | 09-27 | 暗号解析健壮：首尾括号全角【】/［］也认、同一暗号多处全剥、带数值的取第一处，好奇值认三位数（再夹）；后处理剥 `*动作*` 与不含字母数字的半角 (动作)，英文句子里的 (aside) 留着；句子切分放过 Mr. / Dr. / e.g. 这类缩写 | C3 / C1 |
@@ -230,7 +231,7 @@
 - **编号**：D-057、D-073/D-074/D-076（services 增补）、D-088a、D-166。
 
 ### B3 · 语音：识别 / 合成 / 角色音色
-- **现行**（**D-139**，`lib/media.ts` 识别、`lib/tts.ts` 合成、`lib/speech.ts` 纯逻辑、`content/voices.ts` 音色池、`components/voice-picker.tsx`；Harper：「识别我其实可以继续用百度，合成换成小鱼，有了新的声线之后创建和编辑角色的时候就可以允许用户选择音色，推荐三个，不满意可以刷新」）： **识别用量按真实时长（D-186）**：三条通道都按录音字节 / 32000 秒计，不再有硬估 15 秒的分支。
+- **现行**（**D-139**，`lib/media.ts` 识别、`lib/tts.ts` 合成、`lib/speech.ts` 纯逻辑、`content/voices.ts` 音色池、`components/voice-picker.tsx`；Harper：「识别我其实可以继续用百度，合成换成小鱼，有了新的声线之后创建和编辑角色的时候就可以允许用户选择音色，推荐三个，不满意可以刷新」）： **识别用量按真实时长（D-186）**：三条通道都按录音字节 / 32000 秒计，不再有硬估 15 秒的分支。 **音频会话（D-195，Harper：「静音的时候应该也听得见，应该走打电话那个通道」）**：expo-audio 原生默认 `playsInSilentMode = false` = ambient 类别，静音键一拨语音条就没声、只有录过音 / 打过电话才被切走——现在 `lib/audio-session.ts` 统一切：`playback`（playback 类别，无视静音键、出扬声器、duckOthers 压低别的 App）启动就切、语音条 / 她的语音回放 / 音色试听播放前再确认；`record`（playAndRecord）录语音；`call(speaker)` 通话——听筒 = playAndRecord、免提 = playback，doNotMix 独占。别处不再直接调 `setAudioModeAsync`。
   - **她的语音 → 文字，按界面语言分流**（`asrChannelFor`）：中 / 英走 **百度 ASR**（`vop.baidu.com`，极速版 80001 普通话 / 1737 英语，同一把千帆 key、免费且快；录音 16k 单声道 wav、最长 59 s 自动停）；日 / 韩走**多语种通道**——默认 **Fish transcribe-1**（`api.fish.audio/v1/asr`，multipart 字段 `audio`，与合成同一把 key，$0.36 / 小时按秒计，80 多种语言自动识别、中英混说不用切；Harper：「fish 也可以语音转文字，为什么不考虑也用 fish」——一把 key 一张账单，识别成本本来就可忽略）；`EXPO_PUBLIC_ASR_PROVIDER=whisper` 切到备选的 **Whisper 协议通道**（`EXPO_PUBLIC_ASR_BASE_URL / _API_KEY / _MODEL`，Groq `whisper-large-v3-turbo` $0.04 / 小时、OpenAI / 硅基流动 / 百炼同一套接口）。哪些语言走多语种通道由 `EXPO_PUBLIC_ASR_LANGS`（默认 `ja,ko`，`all` = 全部）定；只有多语种通道时中文也走它。百度不会的语言、通道又没接上 → 直接露出「这门语言的语音识别还没接上」，不假装听到。走代理时先乐观试 `fish.asr` / `asr.transcribe`，服务端 503「not configured」再回落百度。
   - **TA 的语音合成 → Fish Audio**（`POST api.fish.audio/v1/tts`，`EXPO_PUBLIC_FISH_API_KEY`，模型 header 默认 `s2.1-pro`、免费期可填 `s2.1-pro-free`；中 / 英 / 日 / 韩全语种，`latency: balanced`、mp3）→ 未配置回落 **百度 `tsn.baidu.com/text2audio`**（只会中 / 英；音色按人称 他 4193 / 她 4194 / TA 4115，`EXPO_PUBLIC_BAIDU_TTS_PER` 可换）；代理同序（`fish.tts` 503「fish not configured」再百度）。按（通道 + 模型 + 音色 + 文本）缓存本机；失败气泡显示「语音暂时没接通」可看文字。OpenAI 兼容 `/audio/speech` 通道（D-074）下线。
   - **每个角色自己的音色** `Character.voiceId`（Fish reference_id；缔结即随角色快照进羁绊，语音气泡与电话共用同一把嗓子）。取值顺序 `defaultVoiceId`：角色选的 > 种子预定（`SEED_VOICES`，`id@lang` 优先）> 音色池同语言同性别第一把 > `EXPO_PUBLIC_FISH_VOICE_HE|SHE|TA` > Fish 默认声。

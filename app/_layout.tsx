@@ -21,6 +21,7 @@ import { applyPaperTint, Romance } from '@/constants/theme';
 import { runJobs } from '@/core/jobs';
 import { currentChatProvider } from '@/core/providers';
 import { authConfigured, ensureGuestSession } from '@/lib/auth';
+import { audioSession } from '@/lib/audio-session';
 import { loadEnginePreference } from '@/lib/engine';
 import { setLang } from '@/lib/i18n';
 import { initCloudSync } from '@/lib/sync';
@@ -96,6 +97,8 @@ export default function RootLayout() {
   // 引擎偏好（D-106）：设置 → 开发者点选的供应商，存本机，启动读回
   useEffect(() => {
     void loadEnginePreference();
+    // 音频会话（D-195）：一启动就切到 playback，TA 的语音条在静音键拨上时也出声
+    void audioSession.playback();
   }, []);
 
   useEffect(() => {
