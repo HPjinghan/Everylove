@@ -48,12 +48,15 @@ replyMarkers.register({
     mode.append(scope, [msg], { unreadDelta: unread ? 1 : 0 });
     // 主动拍的才记冷却；她要的 / 送到的不占主动的额度
     if (!requested) useAppStore.getState().setExtraFired(bond.id, himTurnCount(useAppStore.getState().bonds.find((b) => b.id === bond.id)?.messages ?? []), now);
-    try {
-      const uri = await generateScenePhoto(buildHisPhotoPrompt(ctx.character, { desc, withHim }), ctx.character);
-      useAppStore.getState().patchMessage({ bondId: bond.id }, id, { imageUri: uri, mediaStatus: undefined });
-    } catch (e) {
-      console.warn('[his-photo] 照片没洗出来：', e);
-      useAppStore.getState().patchMessage({ bondId: bond.id }, id, { mediaStatus: 'failed' });
-    }
+    // 生图约 10 s～1 min：不在这里等（D-173）——回合的 after 钩子（记忆 / 约定识别）与主动消息的锁不被拖住，洗好再回填
+    void (async () => {
+      try {
+        const uri = await generateScenePhoto(buildHisPhotoPrompt(ctx.character, { desc, withHim }), ctx.character);
+        useAppStore.getState().patchMessage({ bondId: bond.id }, id, { imageUri: uri, mediaStatus: undefined });
+      } catch (e) {
+        console.warn('[his-photo] 照片没洗出来：', e);
+        useAppStore.getState().patchMessage({ bondId: bond.id }, id, { mediaStatus: 'failed' });
+      }
+    })();
   },
 });

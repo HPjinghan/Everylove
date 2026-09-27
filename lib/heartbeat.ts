@@ -5,20 +5,22 @@
  * 她的日历是私密的（D-113）：只有她让 TA 看过手机、TA 读到过的日程（event.knownBy）才会有人来关心，投进每一位知道的 TA 的会话；
  * 没人知道就没人来。内容走模型（D-115）：亲密模式整套 prompt + 这一段的舞台提示（content/prompts/heartbeat.ts），
  * TA 按自己的性格和你们的关系说；AI 不可用 / 失败回落同文件的模板——这一段的时间点不能错过（他说到做到）。
+ * 三个时间点都过勿扰时段（D-174）：默认 23–8 时「当天 7:00 加油」推到 8:00。
  */
 
 import { dateKey, parseDateKey } from '@/content/calendar';
 import { buildHeartbeatUserLine, heartbeatLine } from '@/content/prompts';
 import { bondedContext } from '@/lib/chat';
 import { generateReply, stripStageDirections } from '@/lib/engine';
+import { outsideQuiet } from '@/lib/reach-out';
 import { uid } from '@/lib/format';
 import type { Bond } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
-type Stage = 'caredBefore' | 'caredDay' | 'caredAfter';
+export type Stage = 'caredBefore' | 'caredDay' | 'caredAfter';
 
-/** 某段的可投递起点 */
-function stageDue(eventDate: Date, stage: Stage): number {
+/** 某段的可投递起点：落在勿扰时段里的推到勿扰结束（D-174；rand = 0 让起点确定） */
+export function stageDue(eventDate: Date, stage: Stage, quiet?: { from: number; to: number }): number {
   const d = new Date(eventDate);
   if (stage === 'caredBefore') {
     d.setDate(d.getDate() - 1);
@@ -29,7 +31,7 @@ function stageDue(eventDate: Date, stage: Stage): number {
     d.setDate(d.getDate() + 1);
     d.setHours(12, 0, 0, 0);
   }
-  return d.getTime();
+  return outsideQuiet(d.getTime(), 0, quiet);
 }
 
 /** 过了下一段的起点就不再补投上一段（错过就是错过——与「他有作息」一致；错过回溯是付费点，D-020） */
