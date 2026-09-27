@@ -24,7 +24,7 @@
 | B2 | ✅ D-169 | 回合按 scope 串行：TA 在回时她再发的排队，不并行 | `core/turn.ts:163-172` | scope 级 inflight 队列（Promise 链），typing 由队列统一管 |
 | B3 | ✅ D-170 | 通知点开进会话：响应监听 + 冷启动 last response | `lib/notifications.ts`、`app/_layout.tsx` | `addNotificationResponseReceivedListener` → `router.push('/bond/[bondId]')`；通知 data 带 bondId |
 | B4 | ✅ D-171 | 直连 fetch 统一超时与取消 | `features/providers.ts:34,71`、`lib/media.ts:171,221`、`lib/tts.ts:132,153` | 全部走 `lib/proxy.ts` 的 `postJsonWithTimeout` 同款；`EngineContext` 可带 AbortSignal |
-| B5 | ⬜ | 「TA 正在看」回放加逃生门：超时或点遮罩可关 | `components/peek-replay.tsx:90-99` | 30 s 无结果自动 done；`onRequestClose` 生效 |
+| B5 | ✅ D-172 | 「TA 正在看」回放加逃生门：超时或点遮罩可关 | `components/peek-replay.tsx:90-99` | 30 s 无结果自动 done；`onRequestClose` 生效 |
 | B6 | ⬜ | TA 发图的 apply 不再 await 生图 | `features/his-photo.tsx:38-58`、`lib/reach-out.ts:134` | apply 只落 pending 气泡，生图 fire-and-forget 后 patch |
 | B7 | ⬜ | 心跳三个时间点过勿扰时段 | `lib/heartbeat.ts:25-30` | 复用 `outsideQuiet` 推到勿扰结束后 |
 

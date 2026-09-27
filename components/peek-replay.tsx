@@ -2,12 +2,13 @@
  * 「TA 正在看你的手机」（D-118）：她让 TA 看手机的那几秒，屏幕上把她的 App 一个个打开给她看——
  * 记事本（列表往下滑、停在一条上）→ 日历（月网格、停在一条日程上）→ Message（和别人的聊天往上翻）。
  * 这是回放，不是真的「他在操作」：TA 拿到的是同一份数据（lib/chat peekPayload），停在哪一条按数据挑；
- * 外面套一个「TA 的名字 正在看 · ●●●」的框让她知道这是他视角。放完（且 TA 已回话）显示「TA 放下了手机」自动关。
+ * 外面套一个「TA 的名字 正在看 · ●●●」的框让她知道这是他视角。放完（且 TA 已回话）显示「TA 放下了手机」自动关；
+ * 放完后 TA 还没回上，最多再等 DONE_GRACE_MS 也关、点一下屏幕也能关（D-172：不把她锁在这里，TA 的话之后照常落进会话）。
  * 全部 Animated，不打模型；纸面样式，米色记事本 NOTE_PAPER 只用于她的本子回放。
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Modal, StyleSheet, Text, useAnimatedValue, View } from 'react-native';
+import { Animated, Modal, Pressable, StyleSheet, Text, useAnimatedValue, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharAvatar } from '@/components/char-avatar';
@@ -29,6 +30,8 @@ const ORDER: Screen[] = ['notes', 'calendar', 'messages'];
 /** 每个 App 停留多久；停在某一条上的额外时间 */
 const SCREEN_MS = 3200;
 const LINGER_MS = 1400;
+/** 放完后最多再等 TA 回话多久（D-172） */
+const DONE_GRACE_MS = 20_000;
 const ROW_H = 58;
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -86,18 +89,18 @@ export function PeekReplay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
-  // 放完且 TA 已回话 → 「放下了手机」→ 关
+  // 放完且 TA 已回话 → 「放下了手机」→ 关；TA 还没回上 → 最多再等一会儿也关（D-172）
   useEffect(() => {
-    if (!visible || !finished || !done) return;
-    const id = setTimeout(onClose, 1200);
+    if (!visible || !finished) return;
+    const id = setTimeout(onClose, done ? 1200 : DONE_GRACE_MS);
     return () => clearTimeout(id);
   }, [visible, finished, done, onClose]);
 
   const closing = finished && done;
 
   return (
-    <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={() => {}}>
-      <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={finished ? onClose : () => {}}>
+      <Pressable style={[styles.screen, { paddingTop: insets.top }]} onPress={finished ? onClose : undefined} disabled={!finished}>
         <View style={styles.frame}>
           <CharAvatar name={name} color={color} size={28} characterId={characterId} />
           <Text style={styles.frameText} numberOfLines={1}>
@@ -119,7 +122,7 @@ export function PeekReplay({
             </Animated.View>
           </View>
         </Animated.View>
-      </View>
+      </Pressable>
     </Modal>
   );
 }
