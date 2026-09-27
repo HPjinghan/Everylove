@@ -257,7 +257,8 @@ export function splitByClauses(text: string, max = BURST_MAX_BUBBLES): string[] 
 
 /** 句子：到句末标点（中英日韩）为止，带上后面的引号 / 括号；单换行也算一句的边界 */
 // 正文用懒匹配：英文句号不在排除集里（小数点 5.20 要保住），贪婪会一路吃到下一个「！」
-const SENTENCE_RE = /[^。！？!?…\n]+?(?:[。！？!?…]+|\.(?=\s|$)|\n|$)[」』"”'’）)]*\s*/g;
+// 英文句号：Mr. / Dr. / e.g. 这类缩写后面的点不算句末（D-192）
+const SENTENCE_RE = /[^。！？!?…\n]+?(?:[。！？!?…]+|(?<!\b(?:Mr|Mrs|Ms|Dr|St|vs|etc|e\.g|i\.e))\.(?=\s|$)|\n|$)[」』"”'’）)]*\s*/g;
 /** 短于这个字数的回复不拆 */
 const SPLIT_MIN_CHARS = 8;
 
@@ -298,7 +299,15 @@ export function splitBySentences(text: string, max: number): string[] {
  */
 export function stripStageDirections(texts: string[]): string[] {
   const cleaned = texts
-    .map((t) => t.replace(/（[^（）]*）/g, '').replace(/ {2,}/g, ' ').trim())
+    .map((t) =>
+      t
+        .replace(/（[^（）]*）/g, '')
+        // *动作* 与半角 (动作)：只剥里面没有字母数字的（英文句子里的 (aside) 留着）（D-192）
+        .replace(/\*[^*\n]{1,40}\*/g, '')
+        .replace(/\(([^()]*)\)/g, (whole, inner: string) => (/[A-Za-z0-9]/.test(inner) ? whole : ''))
+        .replace(/ {2,}/g, ' ')
+        .trim()
+    )
     .filter(Boolean);
   return cleaned.length ? cleaned : texts;
 }

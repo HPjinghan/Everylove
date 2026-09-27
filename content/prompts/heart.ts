@@ -9,7 +9,7 @@ import type { ArchetypeId, Character } from '@/lib/types';
 
 /** 暗号原文（说明用）与解析式：[好奇 22] / [好奇22] */
 export const HEART_MARK = '[好奇 n]';
-export const HEART_PATTERN = /\[好奇\s*(\d{1,2})\s*\]/;
+export const HEART_PATTERN = /\[好奇\s*(\d{1,3})\s*\]/;
 
 /** 性子：创造表单的「确定关系节奏」三档 */
 const PACE_LINES: Record<HeartPace, string> = {

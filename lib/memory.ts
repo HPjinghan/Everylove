@@ -24,6 +24,27 @@ export const MEMORY_MAX_FACTS = 30;
 /** 每隔多少个用户轮次做一次记忆提取（后台、不阻塞聊天） */
 export const MEMORY_EVERY_TURNS = 3;
 
+/** 事实条目的归一化（去重比较用）：去空白、去末尾标点、小写 */
+const normFact = (f: string) => f.replace(/\s+/g, '').replace(/[。.!！?？]+$/, '').toLowerCase();
+
+/**
+ * 合并事实（D-191）：模型返回的是「更新后的全表」，以它为主（顺序也按它）、全表去重；
+ * 它这次比旧表少了一半以上（多半只写了新增、漏了旧的）才把旧表没提到的补回来——平时不补，模型有意删掉的过时条目才删得掉。封顶 MEMORY_MAX_FACTS。
+ */
+export function mergeFacts(old: string[], next: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const push = (f: string) => {
+    const k = normFact(f);
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    out.push(f.trim());
+  };
+  next.forEach(push);
+  if (old.length >= 6 && next.length < old.length / 2) old.forEach(push);
+  return out.slice(0, MEMORY_MAX_FACTS);
+}
+
 export const EMPTY_MEMORY: BondMemory = {
   facts: [],
   summary: '',
@@ -113,8 +134,10 @@ export async function updateBondMemory(bondId: string, force = false): Promise<b
       console.warn('[memory] 提取结果不是合法 JSON，跳过：', raw.slice(0, 120));
       return false;
     }
+    // 写回以当下为准（期间外出 / 记事本并入可能写过）
+    const latest = useAppStore.getState().bonds.find((b) => b.id === bondId)?.memory ?? memory;
     const next: BondMemory = {
-      facts: parsed.facts,
+      facts: mergeFacts(latest.facts, parsed.facts),
       summary: aged.length ? parsed.summary : memory.summary || parsed.summary,
       summarizedUpTo: Math.max(memory.summarizedUpTo, winStart),
       factsUpTo: msgs.length,
@@ -172,7 +195,7 @@ export async function absorbOutingMemory(
     const latest = useAppStore.getState().bonds.find((b) => b.id === bondId)?.memory ?? memory;
     useAppStore.getState().setBondMemory(bondId, {
       ...latest,
-      facts: parsed.facts,
+      facts: mergeFacts(latest.facts, parsed.facts),
       summary: parsed.summary || latest.summary,
       updatedAt: Date.now(),
     });
@@ -215,7 +238,7 @@ export async function absorbNotesMemory(
     const parsed = parseMemoryJSON(raw);
     if (!parsed) return false;
     const latest = useAppStore.getState().bonds.find((b) => b.id === bondId)?.memory ?? memory;
-    useAppStore.getState().setBondMemory(bondId, { ...latest, facts: parsed.facts, updatedAt: Date.now() });
+    useAppStore.getState().setBondMemory(bondId, { ...latest, facts: mergeFacts(latest.facts, parsed.facts), updatedAt: Date.now() });
     return true;
   } catch (e) {
     console.warn('[memory] 记事本并入失败，跳过：', e);

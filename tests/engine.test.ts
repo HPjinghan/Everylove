@@ -82,6 +82,25 @@ describe('applyReplyMarkers', () => {
     expect(applyReplyMarkers({ texts: ['[拆红包]'] })).toEqual({ texts: ['……'], flags: { openRedPacket: true } });
     expect(applyReplyMarkers({ texts: ['没有标记'] })).toEqual({ texts: ['没有标记'] });
   });
+  it('全角括号也认、同一暗号多处全剥、两枚暗号同一行、三位数好奇值（D-192）', () => {
+    expect(applyReplyMarkers({ texts: ['好【拆红包】', '[拆红包]'] })).toEqual({ texts: ['好'], flags: { openRedPacket: true } });
+    expect(applyReplyMarkers({ texts: ['密码 4821 [解锁手机] [拆红包]'] })).toEqual({
+      texts: ['密码 4821'],
+      flags: { unlockPhone: true, openRedPacket: true },
+    });
+    expect(applyReplyMarkers({ texts: ['嗯 ［好奇 100］'] })).toEqual({ texts: ['嗯'], flags: { heart: true }, values: { heart: '100' } });
+  });
+});
+
+describe('后处理边界（D-192）', () => {
+  it('*动作* 与半角 (动作) 剥掉；英文括号里的补充留着', () => {
+    expect(stripStageDirections(['*笑* 你来了 (歪头)'])).toEqual(['你来了']);
+    expect(stripStageDirections(['See you at the café (the one on 5th).'])).toEqual(['See you at the café (the one on 5th).']);
+  });
+  it('Mr. / e.g. 后面的点不算句末', () => {
+    expect(splitBubbles('Mr. Lee is here. Come over.', 2)).toEqual(['Mr. Lee is here.', 'Come over.']);
+    expect(splitBubbles('Bring snacks, e.g. chips. Not too many.', 2)).toEqual(['Bring snacks, e.g. chips.', 'Not too many.']);
+  });
 });
 
 describe('fixtures', () => {

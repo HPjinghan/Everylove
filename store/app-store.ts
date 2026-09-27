@@ -715,9 +715,21 @@ export const useAppStore = create<AppState>()(
       deleteMessage: ({ bondId, characterId }, msgId) => {
         if (bondId) {
           set({
-            bonds: get().bonds.map((b) =>
-              b.id === bondId ? { ...b, messages: b.messages.filter((m) => m.id !== msgId) } : b
-            ),
+            bonds: get().bonds.map((b) => {
+              if (b.id !== bondId) return b;
+              const idx = b.messages.findIndex((m) => m.id === msgId);
+              if (idx < 0) return b;
+              const messages = b.messages.filter((m) => m.id !== msgId);
+              // 记忆的进度是消息下标（D-191）：删了它前面的一条，进度一起往前挪，别把还没提取的那条漏掉
+              const memory = b.memory
+                ? {
+                    ...b.memory,
+                    factsUpTo: idx < b.memory.factsUpTo ? b.memory.factsUpTo - 1 : b.memory.factsUpTo,
+                    summarizedUpTo: idx < b.memory.summarizedUpTo ? b.memory.summarizedUpTo - 1 : b.memory.summarizedUpTo,
+                  }
+                : b.memory;
+              return { ...b, messages, memory };
+            }),
           });
         } else if (characterId) {
           const chat = get().squareChats[characterId];

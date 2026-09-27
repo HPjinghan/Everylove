@@ -31,6 +31,10 @@ export interface ReplyMarker {
 
 export const replyMarkers = createRegistry<ReplyMarker>('replyMarkers', (m) => m.key);
 
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** 模型偶尔写全角括号【】/［］（D-192）：正则的首尾方括号放宽成三种都认 */
+const bracketTolerant = (src: string) => src.replace(/^\\\[/, '[\\[【［]').replace(/\\\]$/, '[\\]】］]');
+
 /** 剥掉所有已注册的暗号并置位；全剥空则留一个省略号（TA 至少要回一声） */
 export function stripReplyMarkers(reply: EngineReply): EngineReply {
   let texts = reply.texts;
@@ -39,21 +43,24 @@ export function stripReplyMarkers(reply: EngineReply): EngineReply {
   let hit = false;
   let valued = false;
   for (const m of replyMarkers.list()) {
-    if (m.pattern) {
-      const re = new RegExp(m.pattern.source, m.pattern.flags.replace('g', ''));
-      let found: string | undefined;
-      texts = texts.map((t) => {
-        const mt = re.exec(t);
-        if (!mt) return t;
+    // 首尾括号全角也认；同一暗号写了多次全剥掉，带数值的取第一处（D-192）
+    const src = m.pattern ? bracketTolerant(m.pattern.source) : bracketTolerant(escapeRegExp(m.mark));
+    const flagsNoG = (m.pattern?.flags ?? '').replace('g', '');
+    const first = new RegExp(src, flagsNoG);
+    const all = new RegExp(src, flagsNoG + 'g');
+    let found: string | undefined;
+    for (const t of texts) {
+      const mt = first.exec(t);
+      if (mt) {
         found = mt[1] ?? '';
-        return t.replace(re, '').trim();
-      });
-      if (found === undefined) continue;
+        break;
+      }
+    }
+    if (found === undefined) continue;
+    texts = texts.map((t) => t.replace(all, '').replace(/ {2,}/g, ' ').trim());
+    if (m.pattern) {
       values[m.key] = found;
       valued = true;
-    } else {
-      if (!texts.some((t) => t.includes(m.mark))) continue;
-      texts = texts.map((t) => t.split(m.mark).join('').trim());
     }
     flags[m.key] = true;
     hit = true;
