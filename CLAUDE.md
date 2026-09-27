@@ -113,7 +113,7 @@ onboarding（语言 → 先让 TA 们认识你；**默认语言 English**、语�
 
 ## 12\. 待拍板清单
 
-见 `docs/OPEN_QUESTIONS.md`（#1–#26；已了结的条目在原位标注）。
+见 `docs/OPEN_QUESTIONS.md`（#1–#26；已了结的条目在原位标注）。2026-09-27 全工程审计的整改清单在 `docs/BACKLOG.md`（A 安全红线 / B 北极星体验 / C 成本 / D 底座纪律 / E 存储同步 / F 界面质量，逐条勾掉）。
 
 ## 13\. 技术栈与工程（现行；细节与编号见 `docs/DECISIONS.md` A–H）
 
