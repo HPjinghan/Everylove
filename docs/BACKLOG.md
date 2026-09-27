@@ -70,7 +70,7 @@
 
 | # | 状态 | 事项 | 在哪 | 做法 |
 |---|---|---|---|---|
-| F1 | ⬜ | 开发者话术与「试装模拟」字样只在 `__DEV__` 露出；AI 不可用统一一句情绪化文案 | `app/apps/settings.tsx:162-171,246,307-310,373-468`、`bond/[bondId].tsx:126`、`phones.tsx:49`、`phone.tsx:28`、`auth.tsx:140` | 过文案纪律（§11-6）+ 补四语词典 |
+| F1 | ✅ D-180 | 开发者话术与「试装模拟」字样只在 `__DEV__` 露出；AI 不可用统一一句情绪化文案 | `app/apps/settings.tsx:162-171,246,307-310,373-468`、`bond/[bondId].tsx:126`、`phones.tsx:49`、`phone.tsx:28`、`auth.tsx:140` | 过文案纪律（§11-6）+ 补四语词典 |
 | F2 | ⬜ | onboarding 第二步可回语言步；生日改选择器 | `app/onboarding.tsx:58,115-185`、`identity.tsx:205`、`calendar.tsx:62` | 复用 `time-picker` 的日期部分 |
 | F3 | ⬜ | 聊天列表性能：输入栏拆子组件、`Bubble` memo、`data` / `readIds` useMemo、语音播放器共用一只 | `components/chat-thread.tsx:88,152,355,369,383,485` | |
 | F4 | ⬜ | 创造表单拆状态：按页签拆子组件或 useReducer | `app/apps/character-edit.tsx:335-394` | |

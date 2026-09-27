@@ -29,6 +29,7 @@ import {
 } from 'react-native';
 
 import { showAlert } from '@/components/action-sheet';
+import { alertAiUnavailable } from '@/components/ai-unavailable';
 import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -540,7 +541,7 @@ function CreateForm({ edit }: { edit?: string }) {
     const draft = draftCharacter();
     if (!draft) return;
     if (!imageKeyReady()) {
-      showAlert(t('AI 不可用'), t('立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。'));
+      alertAiUnavailable();
       return;
     }
     if (!guard()) return;

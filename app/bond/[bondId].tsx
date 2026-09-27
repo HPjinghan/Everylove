@@ -14,6 +14,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/components/action-sheet';
+import { alertAiUnavailable } from '@/components/ai-unavailable';
 import { Card, Divider } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { InviteSheet, RedPacketSheet, type ExtraSheet } from '@/components/chat-extras';
@@ -125,7 +126,7 @@ export default function BondScreen() {
   /** 打电话（D-077）：管线式通话，全屏 */
   const startCall = () => {
     if (!callReady()) {
-      showAlert(t('AI 不可用'), t('通话需要语音与聊天模型：在 .env.local 配置千帆 key，或登录后走服务端代理。'));
+      alertAiUnavailable();
       return;
     }
     router.push({ pathname: '/call/[characterId]', params: { characterId: character.id } });

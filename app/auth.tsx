@@ -137,7 +137,7 @@ export default function AuthScreen() {
       <View style={[styles.screen, styles.center, { paddingTop: insets.top }]}>
         <DiamondBackground />
         <Text style={styles.title}>{t('账号服务未配置')}</Text>
-        <Text style={styles.sub}>在 .env.local 配好 Supabase 后重启（docs/supabase-setup.sql）。</Text>
+        <Text style={styles.sub}>{__DEV__ ? '[dev] 在 .env.local 配好 Supabase 后重启（docs/supabase-setup.sql）。' : t('账号功能暂不可用。')}</Text>
         <Button label={t('返回')} variant="secondary" onPress={leave} style={styles.ghostBtn} />
       </View>
     );

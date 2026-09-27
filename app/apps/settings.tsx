@@ -13,6 +13,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
 import { showAlert } from '@/components/action-sheet';
+import { alertAiUnavailable } from '@/components/ai-unavailable';
 import { AppScreen } from '@/components/app-screen';
 import { Card, Divider } from '@/components/card';
 import { DiamondBackground } from '@/components/paper-bg';
@@ -159,7 +160,7 @@ export default function MeScreen() {
   /** 立绘（D-019/D-092）：种子角色已内置立绘，这里只补没有的（新加的种子）或重画首个羁绊角色（存本机、盖过内置） */
   const genSeedPortraits = () => {
     if (!imageKeyReady()) {
-      showAlert('AI 不可用', '立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。');
+      alertAiUnavailable();
       return;
     }
     const missing = CHARACTERS.filter((c) => !portraitFor(c.id));
@@ -180,7 +181,7 @@ export default function MeScreen() {
       return;
     }
     if (!imageKeyReady()) {
-      showAlert('AI 不可用', '立绘与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。');
+      alertAiUnavailable();
       return;
     }
     showAlert('重画中', `约 1 分钟，${bond.name}之后的画面都会以新立绘为参考。`);
@@ -243,7 +244,7 @@ export default function MeScreen() {
   const subscribe = (p: 'free' | 'pro' | 'max') => {
     if (p === plan) return;
     const label = p === 'max' ? t('Max：羁绊不限量') : p === 'pro' ? t('Pro：5 个羁绊槽') : t('Free：1 个羁绊槽');
-    showAlert(p === 'free' ? t('取消订阅') : t('订阅（试装模拟，不扣费）'), label, [
+    showAlert(p === 'free' ? t('取消订阅') : t('订阅'), label, [
       { text: t('取消'), style: 'cancel' },
       { text: p === 'free' ? t('确认取消') : t('订阅'), onPress: () => useAppStore.getState().setPlan(p) },
     ]);
@@ -293,7 +294,7 @@ export default function MeScreen() {
         onPress: async () => {
           await deleteCloudData();
           await signOut();
-          showAlert(t('已删除'), t('云端已清空。账号本体删除将在正式版提供。'));
+          showAlert(t('已删除'), t('云端已清空。'));
         },
       },
     ]);
@@ -305,8 +306,7 @@ export default function MeScreen() {
         <Section title={t('账号 · 云端')}>
           {!authConfigured() ? (
             <Text style={styles.cardNote}>
-              未配置 Supabase：在 .env.local 填 EXPO_PUBLIC_SUPABASE_URL 与
-              EXPO_PUBLIC_SUPABASE_ANON_KEY 并重启 expo start；建表 SQL 见 docs/supabase-setup.sql。
+              {__DEV__ ? '[dev] 未配置 Supabase：在 .env.local 填 EXPO_PUBLIC_SUPABASE_URL 与 EXPO_PUBLIC_SUPABASE_ANON_KEY 并重启；建表 SQL 见 docs/supabase-setup.sql。' : t('账号功能暂不可用。')}
             </Text>
           ) : session ? (
             <>
@@ -370,7 +370,7 @@ export default function MeScreen() {
           </View>
         </Section>
 
-        <Section title={t('订阅计划（试装模拟，不扣费）')}>
+        <Section title={t('订阅计划')}>
           <Row label={t('当前计划')} value={plan === 'max' ? 'Max' : plan === 'pro' ? 'Pro' : 'Free'} />
           <Row
             label={t('羁绊槽位')}
@@ -392,7 +392,7 @@ export default function MeScreen() {
           {plan !== 'free' ? <Row label={t('取消订阅（回 Free）')} onPress={() => subscribe('free')} /> : null}
         </Section>
 
-        <Section title={t('流量（试装模拟，不扣费）')}>
+        <Section title={t('流量')}>
           <Row label={t('剩余流量')} value={plan === 'max' ? '∞' : mb(traffic.balance)} numeric hint={plan === 'max' ? t('Max 不限流量') : t('今天免费的还剩 {n}', { n: mb(freeLeft(traffic, trafficNow)) })} />
           {LOVE_MODEL_ORDER.map((id) => {
             const m = LOVE_MODELS[id];
@@ -410,7 +410,7 @@ export default function MeScreen() {
             <Row
               key={p.id}
               label={t('流量包 {n}', { n: mb(p.mb) })}
-              value={t('买（模拟）')}
+              value={t('买')}
               onPress={() => {
                 useAppStore.getState().addTraffic(p.mb);
                 showAlert(t('已到账'), mb(p.mb));
@@ -438,7 +438,9 @@ export default function MeScreen() {
           />
         </Section>
 
-        <Section title={t('开发者（试装）')}>
+        {/* 开发者区只在开发构建显示（D-180）：用户看不到 key / 取路 / GM */}
+        {__DEV__ ? (
+          <Section title="开发者">
           <Row
             label={t('GM：加 1000 MB')}
             value={mb(traffic.balance)}
@@ -466,7 +468,8 @@ export default function MeScreen() {
           <Row label="为 6 位种子角色生成立绘（测试，后台逐个）" onPress={genSeedPortraits} />
           <Row label="重画首个羁绊角色的立绘（测试）" onPress={redrawBondPortrait} />
           <Row label="重置全部数据" onPress={reset} />
-        </Section>
+          </Section>
+        ) : null}
 
         <Text style={styles.about}>ver. {Constants.expoConfig?.version ?? '0.2.0'}</Text>
       </ScrollView>

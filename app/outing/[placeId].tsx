@@ -17,6 +17,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/components/action-sheet';
+import { alertAiUnavailable } from '@/components/ai-unavailable';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { CharacterSheet } from '@/components/character-sheet';
@@ -148,7 +149,7 @@ export default function OutingSceneScreen() {
   const shoot = async (kind: 'solo' | 'together') => {
     if (shooting) return;
     if (!imageKeyReady()) {
-      showAlert(t('AI 不可用'), t('拍照与聊天共用千帆 key：在 .env.local 配置，或登录后走服务端代理。'));
+      alertAiUnavailable();
       return;
     }
     setShooting(kind);
