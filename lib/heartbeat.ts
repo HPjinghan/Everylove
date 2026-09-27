@@ -15,6 +15,7 @@ import { bondScope } from '@/lib/chat';
 import { outsideQuiet } from '@/lib/reach-out';
 import type { Bond } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
+import { createInflight } from '@/lib/inflight';
 
 export type Stage = 'caredBefore' | 'caredDay' | 'caredAfter';
 
@@ -48,14 +49,13 @@ const STAGE_KEY: Record<Stage, 'before' | 'day' | 'after'> = {
   caredAfter: 'after',
 };
 
-let running = false;
+const inflight = createInflight();
 
 /** 补投所有到点的心跳；返回投递条数 */
 export async function deliverDueHeartbeats(now = Date.now()): Promise<number> {
-  if (running) return 0;
-  running = true;
+  return inflight.run('heartbeat', async () => {
   let delivered = 0;
-  try {
+  {
     const state = useAppStore.getState();
     if (!state.bonds.length) return 0;
     for (const event of state.userEvents) {
@@ -76,10 +76,9 @@ export async function deliverDueHeartbeats(now = Date.now()): Promise<number> {
         }
       }
     }
-  } finally {
-    running = false;
   }
   return delivered;
+  }, 0);
 }
 
 /** 这一段 TA 说的话：模型（亲密 prompt + 舞台提示）→ 回落模板 */

@@ -11,11 +11,12 @@ import { completeText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import type { HisEvent } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
+import { createInflight } from '@/lib/inflight';
 
 const RETRY_MS = 6 * 3600_000;
 const KEEP_DAYS = 14;
 const lastTry = new Map<string, number>();
-const inflight = new Set<string>();
+const inflight = createInflight();
 
 /** 今天起的安排（排序） */
 export function upcomingHisEvents(events: HisEvent[] | undefined, today = dateKey(new Date())): HisEvent[] {
@@ -38,8 +39,8 @@ export async function ensureHisSchedule(bondId: string, now = Date.now()): Promi
   if (!bond || !character) return false;
   const today = dateKey(new Date(now));
   if (upcomingHisEvents(bond.hisEvents, today).length >= HIS_SCHEDULE_MIN) return false;
-  if (inflight.has(bondId) || now - (lastTry.get(bondId) ?? 0) < RETRY_MS) return false;
-  inflight.add(bondId);
+  if (now - (lastTry.get(bondId) ?? 0) < RETRY_MS) return false;
+  return inflight.run(bondId, async () => {
   lastTry.set(bondId, now);
   try {
     const raw = await completeText(
@@ -63,7 +64,6 @@ export async function ensureHisSchedule(bondId: string, now = Date.now()): Promi
   } catch (e) {
     console.warn('[his-schedule] TA 的日程没写成，稍后再试：', e);
     return false;
-  } finally {
-    inflight.delete(bondId);
   }
+  }, false);
 }

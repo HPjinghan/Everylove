@@ -8,8 +8,9 @@ import { completeText } from '@/lib/engine';
 import type { Bond, Character } from '@/lib/types';
 import { emptyHisWallet, parseSalaryJSON, SALARY_CATCHUP_MAX, SALARY_PERIOD_MS, weeklySalaryFallback } from '@/lib/wallet';
 import { findCharacter, useAppStore } from '@/store/app-store';
+import { createInflight } from '@/lib/inflight';
 
-const inflight = new Set<string>();
+const inflight = createInflight();
 
 /** 周薪没定过就估一次（模型 → 兜底）；只定一次 */
 async function ensureSalary(bond: Bond, character: Character): Promise<void> {
@@ -30,28 +31,25 @@ export async function deliverDueSalaries(now = Date.now()): Promise<number> {
   let paid = 0;
   for (const bond of useAppStore.getState().bonds) {
     const character = findCharacter(bond.characterId);
-    if (!character || inflight.has(bond.id)) continue;
-    inflight.add(bond.id);
-    try {
+    if (!character) continue;
+    await inflight.run(bond.id, async () => {
       if (!bond.wallet) useAppStore.getState().patchHisWallet(bond.id, emptyHisWallet(now));
       const fresh = () => useAppStore.getState().bonds.find((b) => b.id === bond.id)!;
       await ensureSalary(fresh(), character);
       const w = fresh().wallet!;
-      if (!w.weekly) continue;
+      if (!w.weekly) return;
       let last = w.lastSalaryAt ?? now;
       let n = 0;
       while (now - last >= SALARY_PERIOD_MS && n < SALARY_CATCHUP_MAX) {
         last += SALARY_PERIOD_MS;
         n++;
       }
-      if (!n) continue;
+      if (!n) return;
       for (let i = 0; i < n; i++) useAppStore.getState().adjustHisWallet(bond.id, { amount: w.weekly, kind: 'salary', note: w.job || '工资' });
       // 补太多周就把钟对齐到现在（免得下次又补）
       useAppStore.getState().patchHisWallet(bond.id, { lastSalaryAt: now - last >= SALARY_PERIOD_MS ? now : last });
       paid += n;
-    } finally {
-      inflight.delete(bond.id);
-    }
+    }, undefined);
   }
   return paid;
 }

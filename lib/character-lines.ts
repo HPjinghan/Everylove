@@ -8,6 +8,7 @@ import { langOf } from '@/content/characters';
 import { buildCharacterLinesUser, characterLinesSystem } from '@/content/prompts';
 import { completeText, stripStageDirections } from '@/lib/engine';
 import type { Character, CharacterLines } from '@/lib/types';
+import { parseJsonObject } from '@/lib/json';
 
 const MAX_LINE = 120;
 const MAX_PERSONA = 120;
@@ -34,11 +35,9 @@ function cleanLine(v: unknown, max: number): string | undefined {
 
 /** 模型输出 → CharacterLines；三组台词缺任何一组都算失败 */
 export function parseCharacterLines(raw: string): CharacterLines | null {
-  const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  if (start < 0 || end <= start) return null;
+  const obj = parseJsonObject(raw);
+  if (!obj) return null;
   try {
-    const obj = JSON.parse(raw.slice(start, end + 1)) as Record<string, unknown>;
     const opening = cleanList(obj.opening, 3);
     const offer = cleanList(obj.offer, 4);
     const arrival = cleanList(obj.arrival, 4);

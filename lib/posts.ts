@@ -26,6 +26,7 @@ import { rollAboutHer } from '@/lib/her-share';
 import { getLang, type Lang } from '@/lib/i18n';
 import type { Character, Post, PostComment } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
+import { jitteredIntervalMs, perDayOf } from '@/lib/schedule';
 
 /**
  * MBTI → 每天几条帖（试装数值，正式版另调）。
@@ -44,11 +45,7 @@ export const POST_RECENT = 4;
 
 /** 下一条帖子的间隔：24h / 每日条数，±35% 抖动（别像闹钟一样准点发帖） */
 export function postIntervalMs(c: Character): number {
-  const perDay =
-    (c.mbti && MBTI_POSTS_PER_DAY[c.mbti.toUpperCase()]) || DEFAULT_POSTS_PER_DAY;
-  const base = (24 * 3600_000) / perDay;
-  const jitter = 0.65 + Math.random() * 0.7;
-  return Math.round(base * jitter);
+  return jitteredIntervalMs(perDayOf(c.mbti, MBTI_POSTS_PER_DAY, DEFAULT_POSTS_PER_DAY));
 }
 
 /** 补投所有到点的帖子；返回发出的条数 */

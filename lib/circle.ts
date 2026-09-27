@@ -31,16 +31,19 @@ import { getLang, type Lang } from '@/lib/i18n';
 import type { Bond, Character, CircleLine, CirclePerson } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, useAppStore } from '@/store/app-store';
+import { createInflight } from '@/lib/inflight';
+import { parseJsonObject } from '@/lib/json';
+import { mbtiAxis } from '@/lib/schedule';
 
-const inflight = new Set<string>();
+const inflight = createInflight();
 const refreshing = new Set<string>();
 
 /** 续写间隔（D-124）：上一段聊天隔了这么久才续；E 更常和人聊、I 少 */
 export const CIRCLE_REFRESH_HOURS = { E: 6, I: 10, default: 8 } as const;
 
 export function circleRefreshIntervalMs(c: Pick<Character, 'mbti'> | undefined): number {
-  const first = c?.mbti?.trim().toUpperCase()[0];
-  const hours = first === 'E' ? CIRCLE_REFRESH_HOURS.E : first === 'I' ? CIRCLE_REFRESH_HOURS.I : CIRCLE_REFRESH_HOURS.default;
+  const axis = mbtiAxis(c?.mbti);
+  const hours = axis ? CIRCLE_REFRESH_HOURS[axis] : CIRCLE_REFRESH_HOURS.default;
   return hours * 3600_000;
 }
 
@@ -190,9 +193,7 @@ export async function ensureCircle(bondId: string): Promise<CirclePerson[]> {
   const bond = useAppStore.getState().bonds.find((b) => b.id === bondId);
   if (!bond) return [];
   if (bond.circle?.length && !bond.circleFallback) return bond.circle;
-  if (inflight.has(bondId)) return bond.circle ?? [];
-  inflight.add(bondId);
-  try {
+  return inflight.run(bondId, async () => {
     const built = await generateCircle(bond);
     if (built) {
       useAppStore.getState().setCircle(bondId, built.circle, built.chats, false);
@@ -203,9 +204,7 @@ export async function ensureCircle(bondId: string): Promise<CirclePerson[]> {
     const fb = fallbackCircle(getLang(), character ? isNonhumanCharacter(character) : false);
     useAppStore.getState().setCircle(bondId, fb.circle, fb.chats, true);
     return fb.circle;
-  } finally {
-    inflight.delete(bondId);
-  }
+  }, bond.circle ?? []);
 }
 
 /**

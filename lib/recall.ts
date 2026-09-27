@@ -15,11 +15,12 @@ import { cancelScheduled, hasNotificationPermission, scheduleArrivalNotification
 import { outsideQuiet } from '@/lib/reach-out';
 import type { Bond, Character, RecallState } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
+import { createInflight } from '@/lib/inflight';
 
 const DAY_MS = 24 * 3600_000;
 /** 给模型看 TA 最近几条记事本 / 帖 */
 const RECENT = 3;
-const inflight = new Set<string>();
+const inflight = createInflight();
 
 /** 取消已排的召回通知并清状态；recall 传入时用它（store 里可能已经清掉） */
 export async function cancelRecall(bondId: string, recall?: RecallState): Promise<void> {
@@ -39,23 +40,22 @@ export async function deliverDueRecalls(now = Date.now()): Promise<number> {
   let landed = 0;
   for (const bond of useAppStore.getState().bonds) {
     const character = findCharacter(bond.characterId);
-    if (!character || inflight.has(bond.id)) continue;
-    inflight.add(bond.id);
-    try {
+    if (!character) continue;
+    await inflight.run(bond.id, async () => {
       const band = warmthBand(warmthNow(bond, now));
       if (band === 'warm' || band === 'plain') {
         if (bond.recall) await cancelRecall(bond.id, bond.recall);
-        continue;
+        return;
       }
       const zeroAt = warmthZeroAt(bond, now);
       if (!bond.recall || Math.abs(bond.recall.zeroAt - zeroAt) > 60_000) {
         await cancelRecall(bond.id, bond.recall);
         await scheduleRecall(bond, character, zeroAt);
       }
-      if (band !== 'cold') continue;
+      if (band !== 'cold') return;
       const fresh = useAppStore.getState().bonds.find((b) => b.id === bond.id);
       const item = fresh?.recall ? landableRecall(fresh.recall, now) : undefined;
-      if (!fresh?.recall || !item) continue;
+      if (!fresh?.recall || !item) return;
       // 走管线的后半段（D-177）
       await landReply(bondScope(bond.id), { texts: item.texts }, { at: now, unread: true });
       // 她回这条也算「回复 TA 主动」
@@ -65,9 +65,7 @@ export async function deliverDueRecalls(now = Date.now()): Promise<number> {
         items: fresh.recall.items.map((i) => (i.due <= now ? { ...i, landed: true } : i)),
       });
       landed++;
-    } finally {
-      inflight.delete(bond.id);
-    }
+    }, undefined);
   }
   return landed;
 }

@@ -29,6 +29,7 @@ import { absorbOutingMemory, addMemoryFact } from '@/lib/memory';
 import type { Character, OutingSession } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, useAppStore } from '@/store/app-store';
+import { parseJsonObject } from '@/lib/json';
 
 /** 一小时没说话，再进来就是新的一场 */
 export const OUTING_IDLE_MS = 3600_000;
@@ -146,14 +147,9 @@ const TIME_HINT =
 const checked = new Map<string, string>();
 
 function parseAppointmentJSON(raw: string): { cancel?: boolean; placeId?: string; at?: number } | null {
-  const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  if (start < 0 || end <= start) return null;
+  const obj = parseJsonObject<{ appointment?: { placeId?: unknown; at?: unknown } | null; cancel?: unknown }>(raw);
+  if (!obj) return null;
   try {
-    const obj = JSON.parse(raw.slice(start, end + 1)) as {
-      appointment?: { placeId?: unknown; at?: unknown } | null;
-      cancel?: unknown;
-    };
     if (obj.cancel === true) return { cancel: true };
     const a = obj.appointment;
     if (!a || typeof a.placeId !== 'string' || typeof a.at !== 'string') return null;

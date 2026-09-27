@@ -16,6 +16,8 @@ import { withoutDark } from '@/lib/dark-side';
 import { completeText, HISTORY_ROUNDS } from '@/lib/engine';
 import type { BondMemory, ChatMessage } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
+import { createInflight } from '@/lib/inflight';
+import { parseJsonObject } from '@/lib/json';
 
 /** 事实条目上限（注入 prompt 的成本可控） */
 export const MEMORY_MAX_FACTS = 30;
@@ -30,7 +32,7 @@ export const EMPTY_MEMORY: BondMemory = {
   updatedAt: 0,
 };
 
-const inflight = new Set<string>();
+const inflight = createInflight();
 
 /** 找到「最近 HISTORY_ROUNDS 轮」在 messages 里的起点下标（之前的都算已滑出窗口） */
 function windowStartIndex(msgs: ChatMessage[]): number {
@@ -51,11 +53,9 @@ function userTurnsBetween(msgs: ChatMessage[], from: number, to: number): number
 }
 
 export function parseMemoryJSON(raw: string): { facts: string[]; summary: string } | null {
-  const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  if (start < 0 || end <= start) return null;
+  const obj = parseJsonObject<{ facts?: unknown; summary?: unknown }>(raw);
+  if (!obj) return null;
   try {
-    const obj = JSON.parse(raw.slice(start, end + 1)) as { facts?: unknown; summary?: unknown };
     const facts = Array.isArray(obj.facts)
       ? obj.facts
           .filter((f): f is string => typeof f === 'string')
@@ -105,7 +105,7 @@ export async function updateBondMemory(bondId: string, force = false): Promise<b
     recent,
   });
 
-  inflight.add(bondId);
+  return inflight.run(bondId, async () => {
   try {
     const raw = await completeText(memoryExtractSystem(), userPrompt);
     const parsed = parseMemoryJSON(raw);
@@ -125,9 +125,8 @@ export async function updateBondMemory(bondId: string, force = false): Promise<b
   } catch (e) {
     console.warn('[memory] 记忆提取失败，跳过：', e);
     return false;
-  } finally {
-    inflight.delete(bondId);
   }
+  }, false);
 }
 
 /**
@@ -161,7 +160,7 @@ export async function absorbOutingMemory(
     context: outingMemoryContext(outing),
   });
 
-  inflight.add(key);
+  return inflight.run(key, async () => {
   try {
     const raw = await completeText(memoryExtractSystem(), userPrompt);
     const parsed = parseMemoryJSON(raw);
@@ -181,9 +180,8 @@ export async function absorbOutingMemory(
   } catch (e) {
     console.warn('[memory] 外出记忆并入失败，跳过：', e);
     return false;
-  } finally {
-    inflight.delete(key);
   }
+  }, false);
 }
 
 /** 她让 TA 看的记事本（D-085）：当作她说的话提取事实（[她]），summary 不动 */
@@ -211,7 +209,7 @@ export async function absorbNotesMemory(
     recent,
     context: NOTES_MEMORY_CONTEXT,
   });
-  inflight.add(key);
+  return inflight.run(key, async () => {
   try {
     const raw = await completeText(memoryExtractSystem(), userPrompt);
     const parsed = parseMemoryJSON(raw);
@@ -222,9 +220,8 @@ export async function absorbNotesMemory(
   } catch (e) {
     console.warn('[memory] 记事本并入失败，跳过：', e);
     return false;
-  } finally {
-    inflight.delete(key);
   }
+  }, false);
 }
 
 /** 直接写一条事实（不经模型；D-079 爽约这类系统确知的事）：放最前、去重、封顶 */

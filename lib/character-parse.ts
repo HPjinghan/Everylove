@@ -5,9 +5,11 @@
 
 import { characterParseSystem } from '@/content/prompts';
 import { completeText } from '@/lib/engine';
+import { parseJsonObject } from '@/lib/json';
 
 export async function parseCharacterDescription(text: string): Promise<Record<string, unknown>> {
   const raw = await completeText(characterParseSystem(), text);
-  const jsonStr = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
-  return JSON.parse(jsonStr) as Record<string, unknown>;
+  const obj = parseJsonObject(raw);
+  if (!obj) throw new Error('parse: not a JSON object');
+  return obj;
 }

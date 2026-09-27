@@ -13,6 +13,8 @@ import { rollAboutHer } from '@/lib/her-share';
 import type { Bond, Character } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, useAppStore } from '@/store/app-store';
+import { createInflight } from '@/lib/inflight';
+import { jitteredIntervalMs, perDayOf } from '@/lib/schedule';
 
 export const MBTI_NOTES_PER_DAY: Record<string, number> = {
   INFP: 2.5, INFJ: 2, ISFP: 2, INTP: 1.5,
@@ -27,12 +29,10 @@ export const HIS_NOTES_MAX = 30;
 export const HIS_NOTE_RECENT = 6;
 
 export function noteIntervalMs(c: Character): number {
-  const perDay = (c.mbti && MBTI_NOTES_PER_DAY[c.mbti.toUpperCase()]) || DEFAULT_NOTES_PER_DAY;
-  const base = (24 * 3600_000) / perDay;
-  return Math.round(base * (0.65 + Math.random() * 0.7));
+  return jitteredIntervalMs(perDayOf(c.mbti, MBTI_NOTES_PER_DAY, DEFAULT_NOTES_PER_DAY));
 }
 
-const inflight = new Set<string>();
+const inflight = createInflight();
 
 /** 补写所有到点的记事本；返回写了几条 */
 export async function deliverDueHisNotes(now = Date.now()): Promise<number> {
@@ -47,18 +47,15 @@ export async function deliverDueHisNotes(now = Date.now()): Promise<number> {
     if (inflight.has(bond.id)) continue;
     // 先排下一次的钟：失败也不会每次回前台都重试轰炸
     useAppStore.getState().setNoteDue(character.id, now + noteIntervalMs(character));
-    inflight.add(bond.id);
     // 补写的按到点那一刻落时间（D-162）；第一条（还没排过钟）就是现在
     const at = due && due <= now ? due : now;
-    try {
+    await inflight.run(bond.id, async () => {
       const text = await generateNote(character, bond, new Date(at));
       if (text) {
         useAppStore.getState().addHisNote(bond.id, text, at);
         written++;
       }
-    } finally {
-      inflight.delete(bond.id);
-    }
+    }, undefined);
   }
   return written;
 }

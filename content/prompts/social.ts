@@ -11,6 +11,7 @@ import { weatherLine } from '@/lib/weather';
 
 import { circleBlock } from './circle';
 import { CHAT_HARD_RULES_OF, characterProfileBlock, langName, memoryBlockFor, pursuitLine, timeOfDayLine } from './shared';
+import { parseJsonObject } from '@/lib/json';
 
 /**
  * X 回帖 = 第五种会话模式 post（D-178）：亲密背景（人设 / 追法 / 资料 / 身边的人 / 她是谁 / 共同记忆 / 记忆）+ 下面三段；
@@ -121,11 +122,9 @@ export function buildPostReactionsUserPrompt(input: { postText: string; existing
 }
 
 export function parseReactionsJSON(raw: string): { comments: { by: string; text: string }[]; reply?: string } | null {
-  const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  if (start < 0 || end <= start) return null;
+  const obj = parseJsonObject<{ comments?: unknown; reply?: unknown }>(raw);
+  if (!obj) return null;
   try {
-    const obj = JSON.parse(raw.slice(start, end + 1)) as { comments?: unknown; reply?: unknown };
     const comments = (Array.isArray(obj.comments) ? obj.comments : [])
       .map((x) => x as { by?: unknown; text?: unknown })
       .filter((x) => typeof x.by === 'string' && typeof x.text === 'string' && String(x.text).trim())

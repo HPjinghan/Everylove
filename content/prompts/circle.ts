@@ -10,6 +10,7 @@ import type { HerShareTier } from '@/lib/her-share';
 import type { Bond, Character, CircleLine, CirclePerson } from '@/lib/types';
 
 import { characterProfileBlock, langName, timeOfDayLine } from './shared';
+import { parseJsonObject } from '@/lib/json';
 
 /** 身边的人的数量范围与聊天条数 */
 export const CIRCLE_MIN = 4;
@@ -72,16 +73,7 @@ function chatsFrom(raw: unknown): ParsedCircleChat[] {
     .filter((c) => c.lines.length);
 }
 
-function jsonObject(raw: string): Record<string, unknown> | null {
-  const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  if (start < 0 || end <= start) return null;
-  try {
-    return JSON.parse(raw.slice(start, end + 1)) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
+const jsonObject = (raw: string) => parseJsonObject(raw);
 
 /** 解析续写输出（D-124）：只有 chats；结构不对返回 null */
 export function parseCircleChatsJSON(raw: string): ParsedCircleChat[] | null {

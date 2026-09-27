@@ -17,6 +17,8 @@ import { cancelScheduled, hasNotificationPermission, scheduleArrivalNotification
 import type { Bond, Character, ChatMessage, EngineReply } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, useAppStore } from '@/store/app-store';
+import { createInflight } from '@/lib/inflight';
+import { jitteredIntervalMs, mbtiAxis } from '@/lib/schedule';
 
 /** 每天几条（基准），按主动联系强度；没填按中 */
 export const REACH_PER_DAY: Record<NonNullable<Character['initiative']>, number> = { high: 2.5, mid: 1.2, low: 0.4 };
@@ -46,11 +48,11 @@ export function reachIntervalMs(
   band: WarmthBand = 'plain'
 ): number {
   const perDay = REACH_PER_DAY[c.initiative ?? 'mid'];
-  const mbti = c.mbti?.toUpperCase().startsWith('E') ? REACH_MBTI.E : c.mbti?.toUpperCase().startsWith('I') ? REACH_MBTI.I : 1;
+  const axis = mbtiAxis(c.mbti);
+  const mbti = axis ? REACH_MBTI[axis] : 1;
   const level = REACH_LEVEL[Math.min(REACH_LEVEL.length, bondLevel(affinity)) - 1] ?? 1;
   const warmth = WARMTH_REACH_MULT[band] || 1;
-  const base = (24 * 3600_000) / (perDay * mbti * level * warmth);
-  const jittered = Math.round(base * (0.65 + rand * 0.7));
+  const jittered = jitteredIntervalMs(perDay * mbti * level * warmth, rand);
   return band === 'distant' ? Math.max(jittered, DISTANT_MIN_INTERVAL_MS) : jittered;
 }
 
@@ -86,37 +88,36 @@ export function reachAllowed(bond: Pick<Bond, 'messages' | 'unread'>, now = Date
   return true;
 }
 
-const inflight = new Set<string>();
+const inflight = createInflight();
 
 /** 补投所有到点的主动消息，并给每段羁绊备好下一条；返回发出的条数 */
 export async function deliverDueReachOuts(now = Date.now()): Promise<number> {
   let delivered = 0;
   for (const bond of useAppStore.getState().bonds) {
     const character = findCharacter(bond.characterId);
-    if (!character || inflight.has(bond.id)) continue;
-    inflight.add(bond.id);
-    try {
+    if (!character) continue;
+    await inflight.run(bond.id, async () => {
       // 温度到 0（D-126）：主动停、写好的作废，钟留在原地；召回由 lib/recall.ts 接手，她回来后按新上下文重排
       if (warmthBand(warmthNow(bond, now)) === 'cold') {
         await clearPending(bond.id);
-        continue;
+        return;
       }
       const due = useAppStore.getState().reachSchedule[bond.id];
       if (!due) {
         // 首次：排钟（不立刻发——缔结时 TA 已经打过招呼）
         useAppStore.getState().setReachDue(bond.id, nextReachAt(now, character, bond));
-        continue;
+        return;
       }
       if (now < due) {
         await preparePending(bond, character, due);
-        continue;
+        return;
       }
       const fresh = useAppStore.getState().bonds.find((b) => b.id === bond.id)!;
       if (!reachAllowed(fresh, now)) {
         // 守门没过：往后挪；写好的那条作废
         await clearPending(bond.id);
         useAppStore.getState().setReachDue(bond.id, outsideQuiet(now + DEFER_MIN_MS + Math.random() * (DEFER_MAX_MS - DEFER_MIN_MS)));
-        continue;
+        return;
       }
       const reply = await replyForDelivery(fresh, character, now);
       // 不管发没发成，先排下一次的钟：失败不会每次回前台都重试轰炸
@@ -129,21 +130,14 @@ export async function deliverDueReachOuts(now = Date.now()): Promise<number> {
         useAppStore.getState().markReachDelivered(bond.id, now);
         delivered++;
       }
-    } finally {
-      inflight.delete(bond.id);
-    }
+    }, undefined);
   }
   // 发完再为每段备好下一条（含刚发过的）
   for (const bond of useAppStore.getState().bonds) {
     const character = findCharacter(bond.characterId);
     const due = useAppStore.getState().reachSchedule[bond.id];
-    if (character && due && now < due && !inflight.has(bond.id) && warmthBand(warmthNow(bond, now)) !== 'cold') {
-      inflight.add(bond.id);
-      try {
-        await preparePending(bond, character, due);
-      } finally {
-        inflight.delete(bond.id);
-      }
+    if (character && due && now < due && warmthBand(warmthNow(bond, now)) !== 'cold') {
+      await inflight.run(bond.id, () => preparePending(bond, character, due), undefined);
     }
   }
   return delivered;

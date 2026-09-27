@@ -9,6 +9,7 @@ import type { Bond, Character, HisEvent } from '@/lib/types';
 
 import { circleBlock } from './circle';
 import { characterProfileBlock, langName } from './shared';
+import { parseJsonObject } from '@/lib/json';
 
 export const HIS_SCHEDULE_DAYS = 7;
 export const HIS_SCHEDULE_MIN = 3;
@@ -40,11 +41,9 @@ export function buildHisScheduleUserPrompt(input: { today: string; recentNotes: 
 }
 
 export function parseHisScheduleJSON(raw: string): { date: string; time?: string; title: string }[] | null {
-  const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  if (start < 0 || end <= start) return null;
+  const obj = parseJsonObject<{ events?: unknown }>(raw);
+  if (!obj) return null;
   try {
-    const obj = JSON.parse(raw.slice(start, end + 1)) as { events?: unknown };
     if (!Array.isArray(obj.events)) return null;
     return obj.events
       .map((e) => e as { date?: unknown; time?: unknown; title?: unknown })
