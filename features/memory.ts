@@ -6,6 +6,8 @@
 import { turnHooks } from '@/core/turn';
 import { updateBondMemory } from '@/lib/memory';
 
-turnHooks.after.on(({ scope }) => {
+// 命中暗面路由的那一轮不提取（D-167）；命中的消息本身在 lib/memory 里被过滤
+turnHooks.after.on(({ scope, darkSide }) => {
+  if (darkSide) return;
   if (scope.mode === 'bonded' && scope.bondId) void updateBondMemory(scope.bondId);
 });

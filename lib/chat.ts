@@ -154,8 +154,13 @@ export async function peekMyPhone(bondId: string): Promise<boolean> {
   mode.append(scope, [sysMsg(t('TA 看了你的手机'))]);
   showToast(t('TA 拿起了你的手机'));
 
-  // 暗面路由前置（红线 3）：记事本里有危机内容 → 温柔模式，不入戏
-  const dark = darkSideCheck(notes.map((n) => n.text).join('\n'));
+  // 暗面路由前置（红线 3 / D-167）：记事本、日历标题、她和别人聊天里她说的话，任一处有危机内容 → 温柔模式，不入戏
+  const herWords = [
+    ...notes.map((n) => n.text),
+    ...events.map((e) => e.title),
+    ...chats.flatMap((c) => c.messages.filter((m) => m.from === 'me').map((m) => [m.text, m.transcript, m.caption].filter(Boolean).join(' '))),
+  ];
+  const dark = darkSideCheck(herWords.join('\n'));
   if (dark) {
     mode.append(scope, dark.texts.map(himMsg), { unreadDelta: dark.texts.length });
     return true;

@@ -46,6 +46,7 @@ export * from './caption';
 export * from './chat';
 export * from './circle';
 export * from './create';
+export * from './dark-side';
 export * from './delivery';
 export * from './heart';
 export * from './heartbeat';

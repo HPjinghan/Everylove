@@ -331,6 +331,11 @@ export function darkSideReply(lang: Lang = getLang()): string {
   return DARK_SIDE_REPLIES[lang];
 }
 
+/** 这段字是不是某种语言的暗面路由固定回复（记忆提取跳过它，D-167） */
+export function isDarkSideReply(text: string): boolean {
+  return Object.values(DARK_SIDE_REPLIES).includes(text);
+}
+
 /** 捏＋发布审核的最小拦截样例（完整审核流程见 OPEN_QUESTIONS #7；红线 #1/#4）：四语 */
 export const BLOCKED_NAME_PATTERN =
   /肖战|王一博|易烊千玺|蔡徐坤|迪丽热巴|杨幂|赵丽颖|龚俊|檀健次|哈利波特|柯南|鸣人|佐助|五条悟|灶门|路飞|光遇|原神|明日方舟|harry potter|naruto|sasuke|gojo|luffy|genshin|arknights|taylor swift|timoth[ée]e|bts\b|jungkook|五条 悟|竈門|ルフィ|ハリー・?ポッター|原神|アークナイツ|방탄소년단|블랙핑크|뉴진스|아이유|해리 ?포터|나루토|사스케|고죠 사토루|루피|원신|명일방주/i;

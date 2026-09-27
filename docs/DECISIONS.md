@@ -1,7 +1,7 @@
 # DECISIONS.md — 现行决策总账（按主题合并）
 
 > **怎么用**：一个主题一条，只写**现在的口径**；被推翻、已下线的不保留（2026-09-15 Harper：「已废弃的删掉」）——要看历史，D-001～D-096 的逐条原文在 `docs/archive/DECISIONS-log-2026-08-13_09-06.md`，之后的查 git 历史。
-> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-167**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换、旧的直接删（索引里被推翻的编号也删）；整个机制下线 = 连条目一起删；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
+> **怎么记新决策**（CLAUDE.md §11-1，D-097）：编号继续递增（下一个 **D-168**）；在下面的索引表加一行；改写它所属主题的条目——推翻旧口径 = 原地替换、旧的直接删（索引里被推翻的编号也删）；整个机制下线 = 连条目一起删；没有合适主题就新开一条。**不逐条追加、不留「下次补」**。产品级问题不自行拍板 → `docs/OPEN_QUESTIONS.md`。
 > 代码注释里的 D-编号一律按索引表查；索引里没有的编号 = 已废弃的决策（原文在存档或 git）；D-087 / D-088 各撞号一次，用 a / b 区分。
 
 ## 编号索引
@@ -110,6 +110,7 @@
 | D-125 | 09-15 | TestFlight 公测前：默认语言 English（没选过语言的新装机一打开就是英文，测试环境钉回中文）；onboarding 第一屏「已有账号？去登录」提到语言按钮正下方做成 outline 按钮、English 排第一 | H2 / G1 |
 | D-126 | 09-15 | 亲密度数值体系：心动改模型判（数值与措辞现为 D-157）；XP 来源表 15 种 + 当天递减 + 日上限 150；等级 = XP 门槛 100/200/300/500/900 × 天数下限 0/3/7/21/60，只升不降；温度 0–100 每天 −8，疏远降频、到 0 停主动进推送召回（7 / 14 / 30 天各一条后停） | D1 / D2 / D7 / D8 |
 | D-149 | 09-17 | 传记落地：桌面「传记」App（只看）——已缔结 TA 的传记按章读、章按羁绊 LV 锁、章末打赏 Coin（读者扣零钱、kind tip；Coin 仍不售卖，分成另算）；创造 App 改列表模式（右下角 + 进创建流程），表单拆分页签（基础 / 形象 / 设定 / 台词 / 传记），传记页签 = 章节编辑器（文字块 + 图片块：上传 / gif / 现场生图走玩家流量；每章设开放 LV）；六位种子中 / 英各两章内置，日 / 韩待写手；图片不进共享池（存储待接 #36） | E7 / E2 |
+| D-167 | 09-27 | 暗面路由的历史窗口：她最近 6 条里命中过 → 四种对话的系统 prompt 带一句「放下一切认真陪着」（`lib/dark-side.ts` 判定、`content/prompts/dark-side.ts` 文本、`features/dark-side.ts` 注册，ORDER.crisis 紧跟硬规则）；记忆提取跳过命中的那句与固定回复、命中那一轮不提取；让 TA 看手机的检查扩到日历标题与她和别人聊天里她说的话 | B1 |
 | D-166 | 09-27 | 代理护栏：限流改 service role 调 `increment_ai_usage`（security definer 原子自增，客户端对 `ai_usage` 零权限），匿名游客 100 / 真账号 500 次每日；每个 service 只放行已知字段、模型走白名单（Secrets `ANTHROPIC_MODELS` / `QIANFAN_CHAT_MODELS` / `QIANFAN_IMAGE_MODELS`）、max_tokens 封顶 8192、生图 n=1 / 1024x1024、合成 ≤ 1000 字、音频 ≤ 8 MB、请求体 ≤ 4 MB；上游失败只回一句话、函数出错只回 `internal`；`ai_usage` 建表与函数入 `docs/supabase-setup.sql` | B2 |
 | D-165 | 09-22 | dev build 通道：`eas.json` 加 `development` 档（dev client + ad-hoc internal 分发，channel / environment = development）、装 expo-dev-client ~57.0.19；只给开发者真机调 Expo Go 跑不了的原生能力，不是分发通道；装后 Expo Go 要 `npx expo start --go`；AGENTS.md / README 残留的 SDK 54 改 57 | A2 |
 | D-164 | 09-21 | 全项目不再用系统弹窗：`showAlert(title, body?, buttons?)` 与 `Alert.alert` 同签名，宿主 `SheetHost` 挂根布局——无按钮 = 通知卡（一颗「好」）、一个非取消按钮 = 确认卡、两个以上 = 动作卡，连弹排队；53 处 `Alert.alert` 全部换掉 | H3 |
@@ -194,7 +195,7 @@
 ## B. AI 供给
 
 ### B1 · 聊天引擎与取路
-- **现行**：`lib/engine.ts` 是 ChatEngine 门面（组历史 → `core/providers.completeChat` → 拆气泡 → 剥暗号）；供应商 **anthropic（Claude，模型 `EXPO_PUBLIC_ANTHROPIC_MODEL` 可换、默认 `claude-sonnet-5`；D-108：Opus 5 / Fable 家族默认开思考、思考 token 算进 max_tokens，供应商侧给回话加 2048 余量并送 `output_config.effort: low`，任务类保持默认）/ qianfan（百度千帆 v2 OpenAI 兼容接口，模型默认 `deepseek-v4-pro`，`EXPO_PUBLIC_QIANFAN_MODEL` 可换）** 在 `features/providers.ts` 注册，再接一家 = 再注册一个。**引擎与 key 只读工程配置** `.env.local`（不进 git，模板 `.env.example`；`EXPO_PUBLIC_AI_ENGINE` 可选引擎，不填有 Claude key 用 Claude 否则千帆）。**手动切换（D-106）**：设置 → 开发者点「AI 引擎」弹出已注册供应商（各标 直连 / 代理 / 不可用）与「跟随配置」；选定后 `core/providers.setChatProviderPreference` 立即生效，`lib/engine.setEnginePreference` 落本机 AsyncStorage（`everylove-engine-pref`），启动 `loadEnginePreference` 读回；优先级 指定 id > 运行期偏好 > `EXPO_PUBLIC_AI_ENGINE` > 第一个有 key 的 > 默认千帆。偏好不是用户数据：不进 store、不进云端快照（延续 D-069 口径）。**取路** `aiRoute()`：本地 key 直连 > 有会话（真账号或匿名游客）走服务端代理 > 不可用抛 `AiUnavailableError`。**失败不回落、直接露出**：聊天 / 羁绊 / 外出插系统消息「模型调用失败，TA 这条没回上：{原因}」（她的消息与心动 / XP 照常，该回合不触发 offer）；X 回帖弹窗露原因；后台任务（发帖 / 记忆 / 记事本）静默记 warn。暗面路由、尺度、无 PUA 在引擎入口执行，任何供应商不可绕过。设置 → 开发者只读显示引擎与取路。
+- **现行**：`lib/engine.ts` 是 ChatEngine 门面（组历史 → `core/providers.completeChat` → 拆气泡 → 剥暗号）；供应商 **anthropic（Claude，模型 `EXPO_PUBLIC_ANTHROPIC_MODEL` 可换、默认 `claude-sonnet-5`；D-108：Opus 5 / Fable 家族默认开思考、思考 token 算进 max_tokens，供应商侧给回话加 2048 余量并送 `output_config.effort: low`，任务类保持默认）/ qianfan（百度千帆 v2 OpenAI 兼容接口，模型默认 `deepseek-v4-pro`，`EXPO_PUBLIC_QIANFAN_MODEL` 可换）** 在 `features/providers.ts` 注册，再接一家 = 再注册一个。**引擎与 key 只读工程配置** `.env.local`（不进 git，模板 `.env.example`；`EXPO_PUBLIC_AI_ENGINE` 可选引擎，不填有 Claude key 用 Claude 否则千帆）。**手动切换（D-106）**：设置 → 开发者点「AI 引擎」弹出已注册供应商（各标 直连 / 代理 / 不可用）与「跟随配置」；选定后 `core/providers.setChatProviderPreference` 立即生效，`lib/engine.setEnginePreference` 落本机 AsyncStorage（`everylove-engine-pref`），启动 `loadEnginePreference` 读回；优先级 指定 id > 运行期偏好 > `EXPO_PUBLIC_AI_ENGINE` > 第一个有 key 的 > 默认千帆。偏好不是用户数据：不进 store、不进云端快照（延续 D-069 口径）。**取路** `aiRoute()`：本地 key 直连 > 有会话（真账号或匿名游客）走服务端代理 > 不可用抛 `AiUnavailableError`。**失败不回落、直接露出**：聊天 / 羁绊 / 外出插系统消息「模型调用失败，TA 这条没回上：{原因}」（她的消息与心动 / XP 照常，该回合不触发 offer）；X 回帖弹窗露原因；后台任务（发帖 / 记忆 / 记事本）静默记 warn。暗面路由、尺度、无 PUA 在引擎入口执行，任何供应商不可绕过。**暗面路由三层（D-167）**：命中当前这句 → 固定温柔回复、不进模型（`darkSideCheck`）；她最近 6 条里命中过（`lib/dark-side.recentDarkHit`，语音转写 / 照片描述也算）→ 四种对话的系统 prompt 带 `DARK_FOLLOWUP_LINE`「放下一切认真陪着，不调情不开玩笑」（`features/dark-side.ts`，ORDER.crisis 紧跟硬规则；热线那句仍只在硬规则里）；记忆提取跳过命中的那句与固定回复（`withoutDark`，常规 / 外出并入都过）、命中那一轮不触发提取；让 TA 看手机时记事本、日历标题、她和别人聊天里她说的话任一处命中即温柔模式。设置 → 开发者只读显示引擎与取路。
 - **编号**：D-004 → D-010 → D-057 → D-069 → D-086 → D-088a。
 
 ### B2 · 服务端代理与游客身份

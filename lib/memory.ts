@@ -12,6 +12,7 @@
  */
 
 import { buildMemoryExtractPrompt, memoryExtractSystem, NOTES_MEMORY_CONTEXT, outingMemoryContext } from '@/content/prompts';
+import { withoutDark } from '@/lib/dark-side';
 import { completeText, HISTORY_ROUNDS } from '@/lib/engine';
 import type { BondMemory, ChatMessage } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -91,8 +92,9 @@ export async function updateBondMemory(bondId: string, force = false): Promise<b
   if (!force && !memoryDue(msgs, memory)) return false;
 
   const winStart = windowStartIndex(msgs);
-  const aged = msgs.slice(memory.summarizedUpTo, Math.max(memory.summarizedUpTo, winStart));
-  const recent = msgs.slice(memory.factsUpTo);
+  // 危机内容不进记忆（D-167，红线 3）：她命中触发词的那句与固定回复都跳过
+  const aged = withoutDark(msgs.slice(memory.summarizedUpTo, Math.max(memory.summarizedUpTo, winStart)));
+  const recent = withoutDark(msgs.slice(memory.factsUpTo));
   if (!recent.length && !aged.length) return false;
 
   const userPrompt = buildMemoryExtractPrompt({
@@ -147,7 +149,7 @@ export async function absorbOutingMemory(
   if (inflight.has(key)) return false;
   const bond = useAppStore.getState().bonds.find((b) => b.id === bondId);
   if (!bond) return false;
-  const said = outing.messages.filter((m) => m.from !== 'system');
+  const said = withoutDark(outing.messages.filter((m) => m.from !== 'system'));
   if (!said.some((m) => m.from === 'me' && m.kind === 'text')) return false;
   const memory = bond.memory ?? EMPTY_MEMORY;
   const userPrompt = buildMemoryExtractPrompt({
