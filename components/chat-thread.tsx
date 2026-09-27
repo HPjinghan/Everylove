@@ -17,7 +17,7 @@ import {
 } from 'expo-audio';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -206,7 +206,7 @@ function AudioVoiceBubble({ uri, durationMs, tint }: { uri: string; durationMs?:
   );
 }
 
-function Bubble({
+const Bubble = memo(function Bubble({
   msg,
   color,
   name,
@@ -342,7 +342,7 @@ function Bubble({
     ) : null}
     </View>
   );
-}
+});
 
 export function ChatThread({
   messages,
@@ -408,7 +408,8 @@ export function ChatThread({
   const recordTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordStartAt = useRef(0);
 
-  const data = [...messages].reverse();
+  // 倒序数据与已读集合只在消息变了才重算（D-197：每次击键不再重建）
+  const data = useMemo(() => [...messages].reverse(), [messages]);
 
   useEffect(
     () => () => {
@@ -418,13 +419,13 @@ export function ChatThread({
   );
 
   // 「已读」：我的消息之后 TA 说过话，就算已读
-  let lastHimAt = -1;
-  messages.forEach((m, i) => {
-    if (m.from === 'him') lastHimAt = i;
-  });
-  const readIds = new Set(
-    messages.filter((m, i) => m.from === 'me' && i < lastHimAt).map((m) => m.id)
-  );
+  const readIds = useMemo(() => {
+    let lastHimAt = -1;
+    messages.forEach((m, i) => {
+      if (m.from === 'him') lastHimAt = i;
+    });
+    return new Set(messages.filter((m, i) => m.from === 'me' && i < lastHimAt).map((m) => m.id));
+  }, [messages]);
 
   const send = () => {
     const text = draft.trim();
@@ -436,31 +437,47 @@ export function ChatThread({
     onSend(text, ref);
   };
 
-  /** 长按菜单：引用 / 撤回（自己的、24h 内）/ 删除——纸面底部动作卡（D-160） */
-  const actionsFor = (msg: ChatMessage): SheetAction[] => {
-    const list: SheetAction[] = [];
-    if (msg.kind === 'text' && msg.text) {
-      list.push({ label: t('引用'), onPress: () => setReplyTo({ from: msg.from, text: msg.text }) });
-    }
-    if (onRecall && msg.from === 'me' && Date.now() - msg.at <= RECALL_WINDOW_MS) {
-      list.push({ label: t('撤回'), onPress: () => onRecall(msg) });
-    }
-    if (onDelete) list.push({ label: t('删除'), destructive: true, onPress: () => setDeleteMsg(msg) });
-    return list;
-  };
-  const excerptOf = (msg: ChatMessage) =>
-    msg.kind === 'image'
-      ? t('[照片]')
-      : msg.kind === 'voice'
-        ? t('[语音]')
-        : msg.kind === 'card'
-          ? (msg.card?.title ?? '')
-          : msg.text.slice(0, 40);
-  const openActions = (msg: ChatMessage) => {
-    // 动作在长按那一刻算好（撤回窗口要看 Date.now()），渲染期不再算
-    const actions = actionsFor(msg);
-    if (actions.length) setActionSheet({ title: excerptOf(msg), actions });
-  };
+  /** 长按菜单：引用 / 撤回（自己的、24h 内）/ 删除——纸面底部动作卡（D-160）；稳定引用，气泡 memo 才生效 */
+  const openActions = useCallback(
+    (msg: ChatMessage) => {
+      // 动作在长按那一刻算好（撤回窗口要看 Date.now()），渲染期不再算
+      const actions: SheetAction[] = [];
+      if (msg.kind === 'text' && msg.text) {
+        actions.push({ label: t('引用'), onPress: () => setReplyTo({ from: msg.from, text: msg.text }) });
+      }
+      if (onRecall && msg.from === 'me' && Date.now() - msg.at <= RECALL_WINDOW_MS) {
+        actions.push({ label: t('撤回'), onPress: () => onRecall(msg) });
+      }
+      if (onDelete) actions.push({ label: t('删除'), destructive: true, onPress: () => setDeleteMsg(msg) });
+      if (!actions.length) return;
+      const title =
+        msg.kind === 'image'
+          ? t('[照片]')
+          : msg.kind === 'voice'
+            ? t('[语音]')
+            : msg.kind === 'card'
+              ? (msg.card?.title ?? '')
+              : msg.text.slice(0, 40);
+      setActionSheet({ title, actions });
+    },
+    [onRecall, onDelete]
+  );
+  const renderItem = useCallback(
+    ({ item }: { item: ChatMessage }) => (
+      <Bubble
+        msg={item}
+        color={color}
+        name={name}
+        characterId={characterId}
+        read={readIds.has(item.id)}
+        onLongPress={openActions}
+        onOpenPhoto={setViewingShot}
+        onAvatarPress={onAvatarPress}
+        onResend={onResend}
+      />
+    ),
+    [color, name, characterId, readIds, openActions, onAvatarPress, onResend]
+  );
 
   const pickImage = async () => {
     if (!onSendImage || inputDisabled) return;
@@ -524,19 +541,8 @@ export function ChatThread({
           inverted
           data={data}
           keyExtractor={(m) => m.id}
-          renderItem={({ item }) => (
-            <Bubble
-              msg={item}
-              color={color}
-              name={name}
-              characterId={characterId}
-              read={readIds.has(item.id)}
-              onLongPress={openActions}
-              onOpenPhoto={setViewingShot}
-              onAvatarPress={onAvatarPress}
-              onResend={onResend}
-            />
-          )}
+          renderItem={renderItem}
+          windowSize={7}
           style={styles.list}
           contentContainerStyle={styles.listContent}
           ListFooterComponent={banner ? <View style={styles.bannerWrap}>{banner}</View> : null}

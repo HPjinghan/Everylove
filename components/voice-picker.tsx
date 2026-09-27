@@ -11,6 +11,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
 import { Field } from '@/components/input';
+import { showToast } from '@/components/toast';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
@@ -61,7 +62,10 @@ export function VoicePicker({
     setBusyId(v.id);
     const uri = await previewVoice(sampleText, v.id, pronoun);
     setBusyId(null);
-    if (!uri) return;
+    if (!uri) {
+      showToast(t('试听没成功'));
+      return;
+    }
     await audioSession.playback();
     claimVoicePlayback(() => {
       player.pause();

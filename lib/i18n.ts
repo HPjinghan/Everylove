@@ -884,6 +884,11 @@ const en: Record<string, string> = {
   '还没有照片': 'No photos yet',
   '不填': 'Skip',
   '填一下': 'Pick a date',
+  '偶遇了{name} · 约在{time}': 'Ran into {name} · date at {time}',
+  '没有定位权限': 'No location permission',
+  '定位没成功': "Couldn't get your location",
+  '搜索没成功': 'Search failed',
+  '试听没成功': "Couldn't play the sample",
   // __EN_END__
 };
 
@@ -1740,6 +1745,11 @@ const ja: Record<string, string> = {
   '还没有照片': 'まだ写真はない',
   '不填': '入力しない',
   '填一下': '選ぶ',
+  '偶遇了{name} · 约在{time}': '{name}に偶然会った · 約束は{time}',
+  '没有定位权限': '位置情報の許可がありません',
+  '定位没成功': '現在地を取得できませんでした',
+  '搜索没成功': '検索できませんでした',
+  '试听没成功': '試聴できませんでした',
   // __JA_END__
 };
 
@@ -2599,6 +2609,11 @@ const ko: Record<string, string> = {
   '还没有照片': '아직 사진이 없어요',
   '不填': '건너뛰기',
   '填一下': '선택하기',
+  '偶遇了{name} · 约在{time}': '{name}와 우연히 만남 · 약속은 {time}',
+  '没有定位权限': '위치 권한이 없어요',
+  '定位没成功': '위치를 가져오지 못했어요',
+  '搜索没成功': '검색에 실패했어요',
+  '试听没成功': '미리듣기에 실패했어요',
   // __KO_END__
 };
 

@@ -7,7 +7,7 @@
 
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { showAlert } from '@/components/action-sheet';
 import { AppScreen, HeaderAction } from '@/components/app-screen';
@@ -94,7 +94,7 @@ export default function OutingScreen() {
     setPlanPlaceId(null);
   };
 
-  const cardWidth = (Dimensions.get('window').width - Space.screen * 2 - GRID_GAP) / 2;
+  const cardWidth = (useWindowDimensions().width - Space.screen * 2 - GRID_GAP) / 2;
 
   return (
     <AppScreen

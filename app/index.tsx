@@ -81,6 +81,17 @@ function useClock(): { time: string; date: string } {
   };
 }
 
+/** 时钟自己刷新（D-197）：15 秒一次只重绘这两行，不带动整个桌面 */
+function Clock() {
+  const clock = useClock();
+  return (
+    <>
+      <Text style={styles.bigClock}>{clock.time}</Text>
+      <Text style={styles.clockSub}>{clock.date}</Text>
+    </>
+  );
+}
+
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /**
@@ -202,7 +213,6 @@ export default function Desktop() {
   const storedDock = useAppStore((s) => s.desktopDock);
   const bonds = useAppStore((s) => s.bonds);
 
-  const clock = useClock();
 
   const [editMode, setEditMode] = useState(false);
   /** 拖拽中的图标：state 给渲染用（浮层 / 隐藏原位 / 锁翻页）；dragRef 是同一份，给 PanResponder 回调读 */
@@ -573,8 +583,7 @@ export default function Desktop() {
         ) : null}
 
         <View style={styles.clockBlock}>
-          <Text style={styles.bigClock}>{clock.time}</Text>
-          <Text style={styles.clockSub}>{clock.date}</Text>
+          <Clock />
         </View>
 
         {/* 世界天气（D-036）：大大地放在首页 */}

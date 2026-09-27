@@ -40,6 +40,8 @@ import { findCharacter, useAppStore } from '@/store/app-store';
 export default function OutingSceneScreen() {
   const { placeId } = useLocalSearchParams<{ placeId: string }>();
   const insets = useSafeAreaInsets();
+  const outingPlans = useAppStore((st) => st.outingPlans);
+  const [openedAt] = useState(() => Date.now());
   const router = useRouter();
   const place = placeById(placeId);
   const session = useAppStore((s) => s.outingSession);
@@ -163,12 +165,17 @@ export default function OutingSceneScreen() {
 
   const heart = Math.min(HEART_FULL, squareChat?.heart ?? 0);
   const offered = !bond && !!squareChat?.adoptionOffered;
+  // 约定窗口还没开就进来了（比如从日历太早点「赴约」）：这一场是偶遇，副文带上约的时间（D-197）
+  const pendingPlan = kind === 'encounter' ? outingPlans.find((p) => p.characterId === character.id && p.placeId === place.id && p.at !== undefined && p.at > openedAt) : undefined;
+  const planAt = pendingPlan?.at;
   const subtitle =
     kind === 'date'
       ? `${t('和{name}的约会', { name })}${active.planAt ? ` · ${planTimeLabel(active.planAt)}` : ''}`
       : kind === 'stranger'
         ? t('陌生人 · {name} · 好奇 {h}/{f}', { name, h: heart, f: HEART_FULL })
-        : t('偶遇了{name}', { name });
+        : planAt
+          ? t('偶遇了{name} · 约在{time}', { name, time: planTimeLabel(planAt) })
+          : t('偶遇了{name}', { name });
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>

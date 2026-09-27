@@ -94,6 +94,10 @@ export default function BondScreen() {
 
   // 零钱余额（D-128）：红包面板看它；hooks 要在提前 return 之前
   const walletBalance = useAppStore((s) => s.wallet.balance);
+  // 查手机的密码第一次需要时生成——effect 里写 store，渲染期只读（D-197）
+  useEffect(() => {
+    if (sheet === 'phone' && bond) useAppStore.getState().ensurePhoneCode(bond.id);
+  }, [sheet, bond]);
   if (!bond) return <Redirect href="/apps/messages" />;
   const character = findCharacter(bond.characterId);
   if (!character) return <Redirect href="/apps/messages" />;
@@ -264,7 +268,7 @@ export default function BondScreen() {
       <PhoneLock
         visible={sheet === 'phone' && !bond.phoneUnlocked}
         color={character.color}
-        passcode={sheet === 'phone' ? useAppStore.getState().ensurePhoneCode(bond.id) : ''}
+        passcode={sheet === 'phone' ? (bond.phoneCode ?? '') : ''}
         bondId={bond.id}
         characterId={character.id}
         name={bond.name}

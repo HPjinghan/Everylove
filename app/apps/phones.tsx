@@ -5,7 +5,7 @@
  * 锁屏上「问 TA 要密码」不再跳回会话：卡片照发，TA 的回复在锁屏上原地显示（components/phone-lock.tsx）。
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -37,6 +37,10 @@ export default function PhonesScreen() {
   // 「TA 正在看」回放（D-118）：和 peekMyPhone 用同一份数据；放完且 TA 回了话才关
   const [replay, setReplay] = useState<{ bondId: string; payload: PeekPayload } | null>(null);
   const [replayDone, setReplayDone] = useState(false);
+  // 密码第一次需要时生成（D-082）——在 effect 里写 store，渲染期只读（D-197）
+  useEffect(() => {
+    if (openId) useAppStore.getState().ensurePhoneCode(openId);
+  }, [openId]);
 
   const open = bonds.find((b) => b.id === openId);
   const openCharacter = open ? findCharacter(open.characterId) : undefined;
@@ -139,7 +143,7 @@ export default function PhonesScreen() {
           <PhoneLock
             visible={!open.phoneUnlocked}
             color={openCharacter.color}
-            passcode={useAppStore.getState().ensurePhoneCode(open.id)}
+            passcode={open.phoneCode ?? ''}
             onUnlock={() => useAppStore.getState().setPhoneUnlocked(open.id)}
             onAsk={() => void askHisPasscode(open.id)}
             onClose={() => setOpenId(null)}

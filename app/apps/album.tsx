@@ -5,7 +5,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Dimensions, SectionList, StyleSheet, Text, View } from 'react-native';
+import { SectionList, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
 import { PhotoViewer, Polaroid } from '@/components/polaroid';
@@ -75,7 +75,7 @@ export default function AlbumScreen() {
     });
   }, [bonds, album]);
 
-  const cell = (Dimensions.get('window').width - Space.screen * 2 - GAP * (COLS - 1)) / COLS;
+  const cell = (useWindowDimensions().width - Space.screen * 2 - GAP * (COLS - 1)) / COLS;
 
   return (
     <AppScreen title={t('相册')}>

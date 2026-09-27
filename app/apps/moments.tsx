@@ -26,9 +26,10 @@ import { t } from '@/lib/i18n';
 import type { Character, Post } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
-/** @handle：角色 id 转推特腔（拟真细节） */
+/** @handle：种子角色用 id 转推特腔；自创的 id 是 c_17xxx 这种时间戳，用名字（D-197） */
 function handleFor(c: Character): string {
-  return `@${c.id.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+  const fromId = c.id.replace(/[^a-zA-Z0-9_]/g, '_');
+  return `@${c.custom || /^c_\d+/.test(c.id) ? c.name.replace(/\s+/g, '_') : fromId}`;
 }
 
 function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: string) => void }) {

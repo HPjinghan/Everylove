@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
+import { showToast } from '@/components/toast';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
@@ -128,11 +129,15 @@ export function LocationPicker({
     setBusy('locate');
     try {
       const perm = await Location.requestForegroundPermissionsAsync();
-      if (!perm.granted) return;
+      if (!perm.granted) {
+        showToast(t('没有定位权限'));
+        return;
+      }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       await choose(pos.coords.latitude, pos.coords.longitude);
     } catch (e) {
       console.warn('[location] 定位失败：', e);
+      showToast(t('定位没成功'));
     } finally {
       setBusy(null);
     }
@@ -146,6 +151,7 @@ export function LocationPicker({
       setHits(await searchPlaces(q));
     } catch (e) {
       console.warn('[location] 搜索失败：', e);
+      showToast(t('搜索没成功'));
       setHits([]);
     } finally {
       setBusy(null);

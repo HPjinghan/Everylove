@@ -170,7 +170,13 @@ export default function MeScreen() {
     }
     showAlert('后台生成中', `${missing.length} 位角色，逐个约 1 分钟。生成完交友卡面和会话头像会换成立绘。`);
     void (async () => {
-      for (const c of missing) await ensurePortrait(c.id);
+      for (const c of missing) {
+        try {
+          await ensurePortrait(c.id);
+        } catch (e) {
+          console.warn('[settings] 立绘没画成：', c.id, e);
+        }
+      }
     })();
   };
 

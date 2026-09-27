@@ -28,7 +28,7 @@ export default function ShareScreen() {
     if (sending) return;
     setSending(bondId);
     // 不等 TA 回：落进会话就跳过去，TA 的回复在会话里出现
-    void sendShare(bondId, { text, url, imageUri: image });
+    void sendShare(bondId, { text, url, imageUri: image }).catch((e) => console.warn('[share] 转给他没发出去：', e));
     router.replace({ pathname: '/bond/[bondId]', params: { bondId } });
   };
 

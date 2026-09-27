@@ -234,7 +234,8 @@ export default function CallScreen() {
     if (connectedAt.current) {
       logCall(bond.id, Date.now() - connectedAt.current);
     }
-    router.back();
+    // 「通话结束」停一下再走（D-197），别像被挂断
+    setTimeout(() => router.back(), 1200);
   };
 
   if (!bond || !character) return <Redirect href="/apps/phone" />;
