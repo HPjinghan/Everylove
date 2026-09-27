@@ -71,10 +71,10 @@
 | # | 状态 | 事项 | 在哪 | 做法 |
 |---|---|---|---|---|
 | F1 | ✅ D-180 | 开发者话术与「试装模拟」字样只在 `__DEV__` 露出；AI 不可用统一一句情绪化文案 | `app/apps/settings.tsx:162-171,246,307-310,373-468`、`bond/[bondId].tsx:126`、`phones.tsx:49`、`phone.tsx:28`、`auth.tsx:140` | 过文案纪律（§11-6）+ 补四语词典 |
-| F2 | ⬜ | onboarding 第二步可回语言步；生日改选择器 | `app/onboarding.tsx:58,115-185`、`identity.tsx:205`、`calendar.tsx:62` | 复用 `time-picker` 的日期部分 |
+| F2 | ✅ D-182 | onboarding 第二步可回语言步；生日改选择器 | `app/onboarding.tsx:58,115-185`、`identity.tsx:205`、`calendar.tsx:62` | 复用 `time-picker` 的日期部分 |
 | F3 | ⬜ | 聊天列表性能：输入栏拆子组件、`Bubble` memo、`data` / `readIds` useMemo、语音播放器共用一只 | `components/chat-thread.tsx:88,152,355,369,383,485` | |
 | F4 | ⬜ | 创造表单拆状态：按页签拆子组件或 useReducer | `app/apps/character-edit.tsx:335-394` | |
-| F5 | ⬜ | TA 主页占位行：故事行链传记、相册行链相册 | `app/bond/[bondId].tsx:184-189` | 无供给不摆 |
+| F5 | ✅ D-181 | TA 主页占位行：故事行链传记、相册行链相册 | `app/bond/[bondId].tsx:184-189` | 无供给不摆 |
 | F6 | ⬜ | 流式输出 + 按到达节奏打字 | `core/providers.ts`、`features/providers.ts`、`core/turn.ts:130-135` | 先 Anthropic SSE；`ChatProvider` 加 `stream?` |
 | F7 | ⬜ | 约定窗口外进外出给一句解释；日历「赴约」校验窗口 | `app/outing/[placeId].tsx`、`app/apps/calendar.tsx:240` | |
 | F8 | ⬜ | 字号走 `Type.scale`、Fredoka 从中文上撤下 | 全屏幕；`notes.tsx:191,205`、`his-phone.tsx:512`、`polaroid.tsx:105`、`dating.tsx:128` | 一次性 codemod |

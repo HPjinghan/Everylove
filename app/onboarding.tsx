@@ -12,6 +12,7 @@ import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,11 +20,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BirthdayPicker } from '@/components/birthday-picker';
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
 import { Field, Input } from '@/components/input';
 import { DiamondBackground } from '@/components/paper-bg';
-import { Type } from '@/constants/design';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Space, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { authConfigured } from '@/lib/auth';
 import { t, type Lang } from '@/lib/i18n';
@@ -115,6 +118,10 @@ export default function OnboardingScreen() {
   return (
     <View style={styles.screen}>
       <DiamondBackground />
+      {/* 回语言步（D-182）：选错语言不用重装 */}
+      <Pressable onPress={() => setStep('lang')} hitSlop={10} style={[styles.back, { top: insets.top + 8 }]}>
+        <IconSymbol name="chevron.left" size={22} color={Romance.ink} />
+      </Pressable>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           style={styles.flex}
@@ -175,7 +182,7 @@ export default function OnboardingScreen() {
           </Field>
 
           <Field label={t('生日')}>
-            <Input value={birthday} onChangeText={setBirthday} placeholder={t('比如 05-20')} maxLength={5} />
+            <BirthdayPicker value={birthday} onChange={setBirthday} />
           </Field>
 
           <Button label={t('进去看看')} disabled={!ready} onPress={finish} style={styles.submit} />
@@ -187,6 +194,7 @@ export default function OnboardingScreen() {
 
 const styles = themed(() =>
   StyleSheet.create({
+    back: { position: 'absolute', left: Space.screen, zIndex: 1, padding: Space.inline },
     flex: { flex: 1 },
     screen: { flex: 1, backgroundColor: Romance.bg, paddingHorizontal: 28 },
     title: {

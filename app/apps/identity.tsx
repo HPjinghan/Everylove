@@ -24,6 +24,7 @@ import {
 
 import { showAlert } from '@/components/action-sheet';
 import { AppScreen } from '@/components/app-screen';
+import { BirthdayPicker } from '@/components/birthday-picker';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
@@ -198,13 +199,9 @@ export default function IdentityScreen() {
             value={draft.signature ?? ''}
             onChange={(v) => patch({ signature: v })}
           />
-          <TextField
-            label={t('生日')}
-            value={draft.birthday ?? ''}
-            onChange={(v) => patch({ birthday: v })}
-            placeholder={t('比如 05-20')}
-            numeric
-          />
+          <Field label={t('生日')}>
+            <BirthdayPicker value={draft.birthday ?? ''} onChange={(v) => patch({ birthday: v || undefined })} />
+          </Field>
 
           <Text style={styles.sectionTitle}>{t('完整设定')}</Text>
           <TextField

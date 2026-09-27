@@ -41,6 +41,7 @@ import type { ChatMessage } from '@/lib/types';
 import { daysTogether } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { refreshSharedPool } from '@/lib/pool';
+import { chaptersForBond } from '@/lib/story';
 import { showToast } from '@/components/toast';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
@@ -60,6 +61,9 @@ export default function BondScreen() {
   const { bondId } = useLocalSearchParams<{ bondId: string }>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const customCharacters = useAppStore((s2) => s2.customCharacters);
+  const sharedPool = useAppStore((s2) => s2.sharedPool);
+  const album = useAppStore((s2) => s2.album);
   const bond = useAppStore((s) => s.bonds.find((b) => b.id === bondId));
   const [typing, setTyping] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -183,12 +187,27 @@ export default function BondScreen() {
       )}
     </InfoRow>
   );
+  // 传记与相册（D-181）：有供给才给入口，没有就只说没有（无供给不摆）
+  const chapterCount = chaptersForBond(bond, { customCharacters, sharedPool }).length;
+  const shotCount = album.filter((s) => s.characterId === character.id).length;
   infoRows.push(
     <InfoRow key="story" label={t('TA 的故事')}>
-      <Text style={styles.infoValueDim}>{t('主线连载 · 敬请期待')}</Text>
+      {chapterCount ? (
+        <Pressable hitSlop={8} onPress={() => router.push({ pathname: '/story/[bondId]', params: { bondId: bond.id } } as never)}>
+          <Text style={styles.infoLink}>{t('{n} 章 ›', { n: chapterCount })}</Text>
+        </Pressable>
+      ) : (
+        <Text style={styles.infoValueDim}>{t('还没有传记')}</Text>
+      )}
     </InfoRow>,
     <InfoRow key="album" label={t('相册')}>
-      <Text style={styles.infoValueDim}>{t('正在慢慢变厚')}</Text>
+      {shotCount ? (
+        <Pressable hitSlop={8} onPress={() => router.push('/apps/album' as never)}>
+          <Text style={styles.infoLink}>{t('{n} 张 ›', { n: shotCount })}</Text>
+        </Pressable>
+      ) : (
+        <Text style={styles.infoValueDim}>{t('还没有照片')}</Text>
+      )}
     </InfoRow>
   );
 

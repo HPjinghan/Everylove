@@ -58,7 +58,7 @@ export default function CalendarScreen() {
     };
     // 她的生日以身份为准（D-088），旧存档回落缔结时抄下的那份
     const birthday = myBirthday ?? bonds[0]?.birthday;
-    if (birthday && bonds.length) {
+    if (birthday && bonds.length && /^\d{2}-\d{2}$/.test(birthday)) {
       const [mm, dd] = birthday.split('-').map(Number);
       if (mm && dd) push(dateKey(new Date(ym.y, mm - 1, dd)), t('你的生日'), 'relation');
     }

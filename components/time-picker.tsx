@@ -31,8 +31,8 @@ function dayLabel(offset: number, d: Date): string {
   return `${t('周{d}', { d: t(WEEKDAY[d.getDay()]) })} ${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-/** 纯 JS 滚轮：一格一格吸附，正中那格就是选中的 */
-function Wheel({ values, index, onChange }: { values: string[]; index: number; onChange: (i: number) => void }) {
+/** 纯 JS 滚轮：一格一格吸附，正中那格就是选中的（生日选择器也用它，D-182） */
+export function Wheel({ values, index, onChange }: { values: string[]; index: number; onChange: (i: number) => void }) {
   const ref = useRef<ScrollView>(null);
   const pad = ROW_H * Math.floor(ROWS / 2);
   const settle = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
