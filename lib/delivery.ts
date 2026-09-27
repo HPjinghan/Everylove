@@ -96,7 +96,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<{ ok: true; or
   });
   store.addOrder(order);
   const ok = await hasNotificationPermission().catch(() => false);
-  if (ok && !bond) void scheduleArrivalNotification(t('外卖'), t('你的{item}到了', { item: title }), new Date(order.arriveAt), '');
+  if (ok && !bond) void scheduleArrivalNotification(t('外卖'), t('你的{item}到了', { item: title }), new Date(order.arriveAt), '', { screen: '/apps/delivery' });
   if (bond) {
     void sendCard(
       { mode: 'bonded', bondId: bond.id },

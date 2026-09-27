@@ -24,7 +24,7 @@ import { authConfigured, ensureGuestSession } from '@/lib/auth';
 import { loadEnginePreference } from '@/lib/engine';
 import { setLang } from '@/lib/i18n';
 import { initCloudSync } from '@/lib/sync';
-import '@/lib/notifications';
+import { onNotificationOpened } from '@/lib/notifications';
 import { useAppStore, useHydrated } from '@/store/app-store';
 
 SplashScreen.preventAutoHideAsync();
@@ -40,6 +40,28 @@ function ShareIntentGate() {
     resetShareIntent();
     router.push({ pathname: '/share', params } as never);
   }, [hasShareIntent, shareIntent, resetShareIntent, router]);
+  return null;
+}
+
+/** 通知点开进会话（D-170）：TA 主动 / 召回 / 外卖到了的通知带 bondId，点开直达那段会话；她自己的外卖进外卖 App */
+function NotificationGate() {
+  const router = useRouter();
+  useEffect(
+    () =>
+      onNotificationOpened((target) => {
+        const bonds = useAppStore.getState().bonds;
+        try {
+          if (target.bondId && bonds.some((b) => b.id === target.bondId)) {
+            router.push({ pathname: '/bond/[bondId]', params: { bondId: target.bondId } });
+          } else if (target.screen) {
+            router.push(target.screen as never);
+          }
+        } catch (e) {
+          console.warn('[notifications] 点开跳转失败：', e);
+        }
+      }),
+    [router]
+  );
   return null;
 }
 
@@ -102,6 +124,7 @@ export default function RootLayout() {
     <ShareIntentProvider>
     <ThemeProvider key={`${wallpaper}-${language}`} value={theme}>
       {ready ? <ShareIntentGate /> : null}
+      {ready ? <NotificationGate /> : null}
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Romance.bg } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: 'fade' }} />
