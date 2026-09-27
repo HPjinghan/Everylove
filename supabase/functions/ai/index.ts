@@ -154,7 +154,7 @@ function baiduAsrBody(b: Rec): Rec {
 }
 
 /** Whisper 协议 / Fish 识别共用：base64 音频 + 可选语言 */
-function audioUpload(b: Rec): { bytes: Uint8Array; mime: string; filename: string; language?: string } {
+function audioUpload(b: Rec): { bytes: Uint8Array<ArrayBuffer>; mime: string; filename: string; language?: string } {
   const b64 = str(b.audio_base64, AUDIO_B64_MAX, 'audio_base64');
   const bin = atob(b64);
   const bytes = new Uint8Array(new ArrayBuffer(bin.length));
