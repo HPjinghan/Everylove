@@ -7,6 +7,7 @@ import { jobs } from '@/core/jobs';
 import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { deliverDueHisNotes } from '@/lib/his-notes';
 import { deliverDueHisSchedules } from '@/lib/his-schedule';
+import { gcMedia } from '@/lib/media-gc';
 import { deliverDueArrivals } from '@/lib/delivery';
 import { checkMissedPlans } from '@/lib/outing';
 import { deliverDuePosts, deliverDueReactions } from '@/lib/posts';
@@ -55,3 +56,6 @@ jobs.register({ id: 'his-schedule', on: ['launch', 'foreground'], run: (now) => 
 
 /** TA 的记事本（D-085）：按 MBTI 频率写心事 */
 jobs.register({ id: 'his-notes', on: ['launch', 'foreground'], run: (now) => deliverDueHisNotes(now) });
+
+/** 媒体目录清理（D-186）：语音缓存过期的、没人引用的照片 / 立绘，启动时清 */
+jobs.register({ id: 'media-gc', on: ['launch'], run: (now) => gcMedia(now) });

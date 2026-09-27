@@ -33,6 +33,8 @@ export const MAX_UNREAD = 2;
 /** 守门没过：往后挪 2–4 小时 */
 const DEFER_MIN_MS = 2 * 3600_000;
 const DEFER_MAX_MS = 4 * 3600_000;
+/** 预写的那条写好不到这么久就先留着，哪怕她之后又说过话（D-185：不每次回前台都重写；到点真发时 replyForDelivery 再看新不新鲜） */
+export const REWRITE_MIN_GAP_MS = 2 * 3600_000;
 /** 给模型看 TA 最近几条记事本 / 帖 */
 const RECENT = 3;
 
@@ -159,7 +161,11 @@ async function replyForDelivery(bond: Bond, character: Character, now: number): 
 async function preparePending(bond: Bond, character: Character, due: number): Promise<void> {
   const pending = useAppStore.getState().reachPending[bond.id];
   const her = lastFrom(bond.messages, 'me');
-  if (pending && pending.due === due && (!her || her.at < pending.generatedAt)) return;
+  if (pending && pending.due === due) {
+    const stale = !!her && her.at >= pending.generatedAt;
+    // 她说过话就作废重写太费（D-185）：写好不到 REWRITE_MIN_GAP_MS 的先留着
+    if (!stale || Date.now() - pending.generatedAt < REWRITE_MIN_GAP_MS) return;
+  }
   await clearPending(bond.id);
   const reply = await generateReachOut(bond, character, new Date(due));
   if (!reply) return;

@@ -139,15 +139,16 @@ export async function transcribeVoice(uri: string): Promise<string> {
     if (route === 'none') throw new AiUnavailableError();
     throw new Error(t('这门语言的语音识别还没接上'));
   }
-  if (channel === 'multi' && asrConfigured()) {
-    const text = ASR_PROVIDER === 'fish' ? await transcribeFishDirect(uri, lang) : await transcribeWhisperDirect(uri, lang);
-    reportUsage({ kind: 'asr', provider: ASR_PROVIDER, seconds: 15, estimated: true });
-    return text;
-  }
-  if (route === 'none') throw new AiUnavailableError();
+  // 录音是 16k 单声道 wav：字节数 / 32000 = 秒数（用量按真实时长，D-186）
   const info = await FileSystem.getInfoAsync(uri);
   const len = info.exists && 'size' in info ? info.size : 0;
   if (!len) throw new Error(t('录音文件是空的'));
+  if (channel === 'multi' && asrConfigured()) {
+    const text = ASR_PROVIDER === 'fish' ? await transcribeFishDirect(uri, lang) : await transcribeWhisperDirect(uri, lang);
+    reportUsage({ kind: 'asr', provider: ASR_PROVIDER, seconds: len / 32000, estimated: true });
+    return text;
+  }
+  if (route === 'none') throw new AiUnavailableError();
   const speech = await FileSystem.readAsStringAsync(uri, {
     encoding: FileSystem.EncodingType.Base64,
   });
