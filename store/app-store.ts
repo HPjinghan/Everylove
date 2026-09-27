@@ -219,6 +219,8 @@ interface AppState {
   deleteMessage: (scope: { bondId?: string; characterId?: string }, msgId: string) => void;
   /** 写入羁绊记忆库（由 lib/memory.ts 后台提取后调用，D-016） */
   setBondMemory: (bondId: string, memory: BondMemory) => void;
+  /** 归档（D-201）：去掉最早的 n 条，记忆的两个下标一起往前挪 */
+  trimBondMessages: (bondId: string, n: number) => void;
   toggleLike: (postId: string) => void;
   addMyComment: (postId: string, text: string) => void;
   /** 发帖调度（D-055） */
@@ -746,6 +748,18 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      trimBondMessages: (bondId, n) =>
+        set({
+          bonds: get().bonds.map((b) =>
+            b.id === bondId && n > 0
+              ? {
+                  ...b,
+                  messages: b.messages.slice(n),
+                  memory: { ...b.memory, summarizedUpTo: Math.max(0, b.memory.summarizedUpTo - n), factsUpTo: Math.max(0, b.memory.factsUpTo - n) },
+                }
+              : b
+          ),
+        }),
       setBondMemory: (bondId, memory) =>
         set({
           bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, memory } : b)),
@@ -1069,6 +1083,8 @@ export const useAppStore = create<AppState>()(
       name: 'everylove-store',
       version: 12,
       storage: createJSONStorage(() => AsyncStorage),
+      // 分区（D-201）：共享池缓存不落盘（启动会重新拉，5 分钟节流）——它可能上百个角色带章节，落盘 / 上云都白费
+      partialize: ({ sharedPool: _pool, sharedPoolAt: _at, ...rest }) => rest as AppState,
       // v2：种子角色改版（陆隽行下架、人外上新），清掉指向已删除角色的数据
       // v3：新手流标记（D-058）——已有存档的老用户不重走新手流
       // v4：Dock 默认收窄为通讯录+设置（D-064）——仍是旧默认的存档跟随新默认

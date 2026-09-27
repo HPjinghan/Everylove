@@ -49,6 +49,7 @@ import { synthesizeVoice, ttsReady } from '@/lib/tts';
 import type { ChatMessage } from '@/lib/types';
 import { findCharacter } from '@/store/app-store';
 import { audioSession, claimVoicePlayback, releaseVoicePlayback } from '@/lib/audio-session';
+import { copyIntoDocuments } from '@/lib/media-paths';
 
 export type ReplyRef = { from: ChatMessage['from']; text: string };
 /** 「+」面板的一项（D-081）：调用方决定有哪些 */
@@ -486,7 +487,8 @@ export function ChatThread({
       quality: 0.8,
     });
     if (!result.canceled && result.assets[0]?.uri) {
-      onSendImage(result.assets[0].uri);
+      // 相册给的是 cache 路径（D-203）：拷进 Documents 再存进会话
+      onSendImage(await copyIntoDocuments(result.assets[0].uri, 'photos'));
     }
   };
 

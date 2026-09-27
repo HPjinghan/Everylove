@@ -54,6 +54,7 @@ import { VOICE_SAMPLE_LINE } from '@/lib/speech';
 import { publishCharacter, unpublishCharacter } from '@/lib/pool';
 import type { Character, CharacterLines, StoryChapter } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
+import { copyIntoDocuments } from '@/lib/media-paths';
 
 /** 页签（D-149）：台词只在编辑已创建的角色时出现（发布时模型才写出第一版） */
 type Tab = 'basic' | 'look' | 'settings' | 'lines' | 'story';
@@ -554,7 +555,8 @@ function CreateForm({ edit }: { edit?: string }) {
       aspect: [3, 4],
     });
     if (!result.canceled && result.assets[0]?.uri) {
-      setPortraitUri(result.assets[0].uri);
+      // 相册给的是 cache 路径（D-203）：拷进 Documents 再当立绘
+      setPortraitUri(await copyIntoDocuments(result.assets[0].uri, 'portraits'));
     }
   };
 

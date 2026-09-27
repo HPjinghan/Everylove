@@ -46,7 +46,7 @@ export async function publishCharacter(c: Character): Promise<boolean> {
   const { error } = await sb.from('shared_characters').upsert({
     id: c.id,
     owner_id: session.user.id,
-    data: { ...c, shared: undefined },
+    data: poolPayload(c),
     updated_at: new Date().toISOString(),
   });
   if (error) {
@@ -54,6 +54,22 @@ export async function publishCharacter(c: Character): Promise<boolean> {
     return false;
   }
   return true;
+}
+
+/** 共享池里的角色数据最大多少字符（D-203）：超了就不带传记 */
+export const POOL_MAX_CHARS = 200_000;
+
+/**
+ * 入池前整理（D-203）：本机 file:// 的图片别的手机打不开——传记里这种图片块去掉；整份太大就不带传记（章节图片存储待 #36）。
+ */
+export function poolPayload(c: Character): Record<string, unknown> {
+  const chapters = c.chapters?.map((ch) => ({ ...ch, blocks: ch.blocks.filter((b) => b.type === 'text' || !b.uri.startsWith('file:')) }));
+  const data: Record<string, unknown> = { ...c, shared: undefined, chapters };
+  if (JSON.stringify(data).length > POOL_MAX_CHARS) {
+    console.warn('[pool] 角色数据太大，不带传记上传：', c.id);
+    return { ...data, chapters: undefined };
+  }
+  return data;
 }
 
 /** 转私密/删除：从共享池撤下 */

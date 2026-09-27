@@ -5,8 +5,10 @@
  * - **新设备 / 换账号（D-096）**：这台手机还没和这个账号对过账时，本机不许覆盖云端——
  *   本机是空的（还没认识 TA）→ 静默把云端接回来；本机已有关系 → 返回 conflict，由登录界面问她「接回云端 / 用本机覆盖」。
  * - 离线/未登录：一切照旧跑在本地缓存上，回线后按上面规则补同步。
- * 同步单位 = zustand persist 的整份快照（含聊天/记忆，按最高敏感级）。
+ * 同步单位 = zustand persist 的整份快照（含聊天/记忆，按最高敏感级；归档的旧消息与共享池缓存不在里面，D-201）。
  * 服务端只有一张表 snapshots（建表 SQL 见 docs/supabase-setup.sql，RLS 只许本人读写）。
+ * 版本号 rev（D-202）：每次上传 rev + 1 且只在云端 rev 等于本机记的那个时才更新——别的设备写过就会更不到，
+ *   这时按 D-057「正在用的设备赢」覆盖，但记一笔 warn 并对齐 rev；上传失败按 30 / 60 / 120 s 重试三次；同一时刻只有一份上传在跑。
  * 正式版演进：按实体增量同步 + 服务端记忆库（D-016 预留），接口保持本文件不变。
  */
 
@@ -31,6 +33,8 @@ interface SyncMeta {
   dirty: boolean;
   /** 上次对账的账号（D-096）：换账号登录 = 这台手机对新账号而言是「新设备」 */
   userId?: string;
+  /** 本机最后一次见到的云端版本号（D-202） */
+  rev?: number;
 }
 
 let meta: SyncMeta = { lastSyncedAt: 0, dirty: false };
@@ -52,28 +56,75 @@ function saveMeta(): void {
   void AsyncStorage.setItem(META_KEY, JSON.stringify(meta)).catch(() => {});
 }
 
-/** 上传当前本地快照（覆盖云端） */
-export async function uploadSnapshot(): Promise<'ok' | 'no-session' | 'fail'> {
+/** 重试节奏（D-202） */
+const RETRY_MS = [30_000, 60_000, 120_000];
+let uploading: Promise<'ok' | 'no-session' | 'fail'> | null = null;
+let uploadAgain = false;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let retryCount = 0;
+
+/** 上传当前本地快照（覆盖云端）；正在传时再叫 = 传完再传一次；失败自动按节奏重试 */
+export function uploadSnapshot(): Promise<'ok' | 'no-session' | 'fail'> {
+  if (uploading) {
+    uploadAgain = true;
+    return uploading;
+  }
+  uploading = doUpload().finally(() => {
+    uploading = null;
+    if (uploadAgain) {
+      uploadAgain = false;
+      void uploadSnapshot();
+    }
+  });
+  return uploading;
+}
+
+async function doUpload(): Promise<'ok' | 'no-session' | 'fail'> {
   const sb = getSupabase();
   const session = await signedInSession();
   if (!sb || !session) return 'no-session';
+  await loadMeta();
   try {
     const raw = await AsyncStorage.getItem(STORE_KEY);
     if (!raw) return 'fail';
-    const { error } = await sb.from('snapshots').upsert({
-      user_id: session.user.id,
-      data: JSON.parse(raw),
-      updated_at: new Date().toISOString(),
-    });
-    if (error) throw error;
+    const uid = session.user.id;
+    const payload = { data: JSON.parse(raw) as unknown, updated_at: new Date().toISOString() };
+    const expected = meta.rev ?? 0;
+    // 条件更新：只在云端还是本机见过的那个版本时才写
+    const upd = await sb.from('snapshots').update({ ...payload, rev: expected + 1 }).eq('user_id', uid).eq('rev', expected).select('rev').maybeSingle();
+    if (upd.error) throw upd.error;
+    let rev = upd.data?.rev as number | undefined;
+    if (rev === undefined) {
+      const cloud = await sb.from('snapshots').select('rev').eq('user_id', uid).maybeSingle();
+      if (cloud.error) throw cloud.error;
+      if (!cloud.data) {
+        const ins = await sb.from('snapshots').insert({ user_id: uid, ...payload, rev: 1 }).select('rev').maybeSingle();
+        if (ins.error) throw ins.error;
+        rev = 1;
+      } else {
+        // 别的设备写过（D-202）：正在用的这台赢（D-057），覆盖并对齐版本号
+        const cloudRev = Number(cloud.data.rev) || 0;
+        console.warn(`[sync] 云端已被别的设备改过（rev ${cloudRev} ≠ 本机 ${expected}），以这台为准覆盖`);
+        const force = await sb.from('snapshots').update({ ...payload, rev: cloudRev + 1 }).eq('user_id', uid).select('rev').maybeSingle();
+        if (force.error) throw force.error;
+        rev = cloudRev + 1;
+      }
+    }
     lastSyncAt = Date.now();
     meta.lastSyncedAt = lastSyncAt;
     meta.dirty = false;
-    meta.userId = session.user.id;
+    meta.userId = uid;
+    meta.rev = rev;
     saveMeta();
+    retryCount = 0;
     return 'ok';
   } catch (e) {
     console.warn('[sync] 上传失败：', e);
+    if (retryCount < RETRY_MS.length) {
+      const wait = RETRY_MS[retryCount++];
+      if (retryTimer) clearTimeout(retryTimer);
+      retryTimer = setTimeout(() => void uploadSnapshot(), wait);
+    }
     return 'fail';
   }
 }
@@ -99,13 +150,14 @@ export async function restoreSnapshot(): Promise<boolean> {
   if (!sb || !session) return false;
   const { data, error } = await sb
     .from('snapshots')
-    .select('data')
+    .select('data, rev')
     .eq('user_id', session.user.id)
     .maybeSingle();
   if (error || !data?.data) return false;
   restoring = true;
   try {
     await AsyncStorage.setItem(STORE_KEY, JSON.stringify(data.data));
+    // rehydrate 会按 persist 的 version 跑 migrate（云端是老版本的快照也能接回来，D-202）
     await useAppStore.persist.rehydrate();
   } finally {
     setTimeout(() => {
@@ -116,6 +168,7 @@ export async function restoreSnapshot(): Promise<boolean> {
   meta.lastSyncedAt = lastSyncAt;
   meta.dirty = false;
   meta.userId = session.user.id;
+  meta.rev = Number(data.rev) || 0;
   saveMeta();
   return true;
 }
@@ -158,10 +211,10 @@ export function planReconcile(input: {
   return 'noop';
 }
 
-/** 本机「还是空的」：没建过关系（羁绊 / 自创角色都没有）——试聊记录属于免费层，本就会过期，不算 */
+/** 本机「还是空的」：没建过关系（羁绊 / 自创角色）、也没拍过照 / 写过记事本（D-202）——试聊记录属于免费层，本就会过期，不算 */
 export function localIsFresh(): boolean {
   const s = useAppStore.getState();
-  return !s.onboarded || (s.bonds.length === 0 && !s.customCharacters.some((c) => !c.shared));
+  return !s.onboarded || (s.bonds.length === 0 && !s.customCharacters.some((c) => !c.shared) && s.album.length === 0 && s.notes.length === 0);
 }
 
 export type ReconcileResult = 'pulled' | 'pushed' | 'conflict' | 'noop';

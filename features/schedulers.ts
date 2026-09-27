@@ -8,7 +8,9 @@ import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { deliverDueHisNotes } from '@/lib/his-notes';
 import { ensureCircle, refreshCircleChats } from '@/lib/circle';
 import { deliverDueHisSchedules, ensureHisSchedule } from '@/lib/his-schedule';
+import { archiveOldMessages } from '@/lib/archive';
 import { gcMedia } from '@/lib/media-gc';
+import { repairMediaPaths } from '@/lib/media-paths';
 import { deliverDueArrivals } from '@/lib/delivery';
 import { checkMissedPlans } from '@/lib/outing';
 import { deliverDuePosts, deliverDueReactions } from '@/lib/posts';
@@ -17,6 +19,12 @@ import { deliverDueRecalls } from '@/lib/recall';
 import { deliverDueSalaries } from '@/lib/salary';
 import { initWeather, refreshWeather } from '@/lib/weather';
 import { useAppStore } from '@/store/app-store';
+
+/** 存档里的文件路径换机后修复（D-203）：排最前，别的任务读到的就是对的路径 */
+jobs.register({ id: 'media-paths', on: ['launch'], run: () => repairMediaPaths() });
+
+/** 消息滚动归档（D-201）：会话里只留最近 200 条，更早的搬到各自的键 */
+jobs.register({ id: 'archive-messages', on: ['launch'], run: () => archiveOldMessages() });
 
 /** 广场公开帖的种子（首次启动补齐） */
 jobs.register({ id: 'seed-posts', on: ['launch'], run: () => useAppStore.getState().ensureSeedPosts() });

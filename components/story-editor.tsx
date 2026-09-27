@@ -24,6 +24,7 @@ import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { generateScenePhoto, imageKeyReady } from '@/lib/imagegen';
 import type { Character, StoryBlock, StoryChapter } from '@/lib/types';
+import { copyIntoDocuments } from '@/lib/media-paths';
 
 const TITLE_MAX = 30;
 const TEXT_MAX = 2000;
@@ -144,7 +145,11 @@ function ChapterEditor({
   const upload = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 });
     const uri = result.canceled ? undefined : result.assets[0]?.uri;
-    if (uri) setBlocks((bs) => [...bs, { type: 'image', uri }]);
+    if (uri) {
+      // 相册给的是 cache 路径（D-203）：拷进 Documents 再进章节
+      const local = await copyIntoDocuments(uri, 'story');
+      setBlocks((bs) => [...bs, { type: 'image', uri: local }]);
+    }
   };
 
   /** 现场生图：按角色画风，走流量闸门与用量记账（lib/imagegen） */

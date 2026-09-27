@@ -59,12 +59,12 @@
 
 | # | 状态 | 事项 | 在哪 | 做法 |
 |---|---|---|---|---|
-| E1 | ⬜ | 消息滚动归档：每段会话内存只留最近 N 条，旧的落单独 key，上下文只需 20 轮 | `store/app-store.ts:641,439`、`lib/memory.ts:94-117` | 归档前先保证记忆摘要已覆盖 |
-| E2 | ⬜ | 持久化分区：`partialize` 排除 `sharedPool` / `outingSession`；按 bond 分 key 或换 SQLite / MMKV | `store/app-store.ts:1053-1056` | 先 partialize（小），再分 key（大） |
-| E3 | ⬜ | 云快照带 `rev` 条件更新，冲突时合并不覆盖；上传失败重试；防抖与上传加 inflight 锁 | `lib/sync.ts:63-67,157,222` | `.eq('rev', prev)` 失败则拉下来 merge；`planReconcile` 补用例 |
-| E4 | ⬜ | 图片存相对路径 + 选图 copy 进 documentDirectory；正式版上 Storage | `lib/imagegen.ts:35-41`、`components/chat-thread.tsx:430`、`character-edit.tsx:535` | 存 `photos/xxx.jpg`，读时拼 documentDirectory |
-| E5 | ⬜ | 共享池入库前剥本机 URI、校验大小 | `lib/pool.ts:46-51` | 章节图暂不上传（OPEN #36） |
-| E6 | ⬜ | `localIsFresh` 把相册 / 记事本 / 零钱也算「有数据」；`restoreSnapshot` 显式跑 migrate | `lib/sync.ts:108-109,164` | |
+| E1 | ✅ D-201 | 消息滚动归档：每段会话内存只留最近 N 条，旧的落单独 key，上下文只需 20 轮 | `store/app-store.ts:641,439`、`lib/memory.ts:94-117` | 归档前先保证记忆摘要已覆盖 |
+| E2 | ✅ D-201（partialize；分键 / SQLite 留正式版） | 持久化分区：`partialize` 排除 `sharedPool` / `outingSession`；按 bond 分 key 或换 SQLite / MMKV | `store/app-store.ts:1053-1056` | 先 partialize（小），再分 key（大） |
+| E3 | ✅ D-202 | 云快照带 `rev` 条件更新，冲突时合并不覆盖；上传失败重试；防抖与上传加 inflight 锁 | `lib/sync.ts:63-67,157,222` | `.eq('rev', prev)` 失败则拉下来 merge；`planReconcile` 补用例 |
+| E4 | ✅ D-203 | 图片存相对路径 + 选图 copy 进 documentDirectory；正式版上 Storage | `lib/imagegen.ts:35-41`、`components/chat-thread.tsx:430`、`character-edit.tsx:535` | 存 `photos/xxx.jpg`，读时拼 documentDirectory |
+| E5 | ✅ D-203 | 共享池入库前剥本机 URI、校验大小 | `lib/pool.ts:46-51` | 章节图暂不上传（OPEN #36） |
+| E6 | ✅ D-202 | `localIsFresh` 把相册 / 记事本 / 零钱也算「有数据」；`restoreSnapshot` 显式跑 migrate | `lib/sync.ts:108-109,164` | |
 
 ## F. 界面质量
 

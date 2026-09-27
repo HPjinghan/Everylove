@@ -6,8 +6,11 @@
 create table if not exists public.snapshots (
   user_id uuid primary key references auth.users (id) on delete cascade,
   data jsonb not null,
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  -- 版本号（D-202）：客户端条件更新用，每次上传 +1
+  rev bigint not null default 0
 );
+alter table public.snapshots add column if not exists rev bigint not null default 0;
 
 alter table public.snapshots enable row level security;
 
