@@ -561,8 +561,8 @@ export type EngineId = 'anthropic' | 'qianfan';
 
 export interface EngineContext {
   character: Character;
-  /** square 初识 / bonded 亲密 / outing 外出（亲身互动故事模式，D-038）/ call 通话（亲密背景 + 电话口吻，D-077） */
-  mode: 'square' | 'bonded' | 'outing' | 'call';
+  /** square 初识 / bonded 亲密 / outing 外出（亲身互动故事模式，D-038）/ call 通话（亲密背景 + 电话口吻，D-077）/ post X 回帖（亲密背景 + 回帖写法，D-178） */
+  mode: 'square' | 'bonded' | 'outing' | 'call' | 'post';
   /** bonded/outing 模式下的关系信息（含记忆库、缔结时间，注入系统 prompt） */
   bond?: Pick<
     Bond,
@@ -601,6 +601,8 @@ export interface EngineContext {
     /** 赴约的约定（D-079）：约的什么时候、她晚到了几分钟（负数 = 早到）——TA 据此反应 */
     appointment?: { atLabel: string; lateMinutes: number };
   };
+  /** post 模式（D-178）：她评论的那条帖子与评论线 */
+  post?: { text: string; comments: { from: 'me' | 'him' | 'other'; text: string; name?: string }[] };
   history: ChatMessage[];
   userText: string;
 }

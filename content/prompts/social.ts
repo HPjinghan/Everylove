@@ -5,71 +5,38 @@
  */
 
 import { scriptFor } from '@/content/characters';
-import { levelOf } from '@/lib/bond';
 import { herShareTier, type HerShareTier } from '@/lib/her-share';
-import type { Bond, Character, UserProfile } from '@/lib/types';
+import type { Bond, Character, EngineContext } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 
 import { circleBlock } from './circle';
-import {
-  CHAT_HARD_RULES_OF,
-  characterProfileBlock,
-  langName,
-  memoryBlockFor,
-  pursuitLine,
-  sharedMemoryBlock,
-  TALK_MANNER,
-  timeOfDayLine,
-  userProfileBlock,
-} from './shared';
+import { CHAT_HARD_RULES_OF, characterProfileBlock, langName, memoryBlockFor, pursuitLine, timeOfDayLine } from './shared';
 
 /**
- * X（原朋友圈）的评论回复实装模型：短、口语、带着发帖时的心情。
- * 引擎走 completeText（AI 不可用/失败时调用方弹窗露出原因，不回落台词库——D-069）。
- * 暗面路由由调用方前置（红线 #3：评论区也不例外）。
+ * X 回帖 = 第五种会话模式 post（D-178）：亲密背景（人设 / 追法 / 资料 / 身边的人 / 她是谁 / 共同记忆 / 记忆）+ 下面三段；
+ * 评论线走用户消息（buildPostThreadUser），历史为空。引擎、暗面路由、失败口径与其他会话一样（core/turn）。
  */
-export function buildPostReplySystem(
-  c: Character,
-  bond: Pick<Bond, 'name' | 'nickname' | 'affinity' | 'memory' | 'circle' | 'createdAt' | 'legacyLevel'> | undefined,
-  me: UserProfile | undefined
-): string {
-  const script = scriptFor(c);
-  const who = bond
-    ? `你的恋人（你叫她「${bond.nickname}」，羁绊 LV${levelOf(bond)}）`
-    : '一个你有点在意的人';
-  return [
-    `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。你在一个类似 X（推特）的社交应用上发了帖子，${who}在下面评论了你。下面所有规则里，「她」指评论的用户。`,
-    `【你是谁】${script.persona}`,
-    `【你的追法】${pursuitLine(c)}`,
-    ...characterProfileBlock(c),
-    ...circleBlock(bond?.circle),
-    ...userProfileBlock(me, bond ? 'bonded' : 'square'),
-    ...sharedMemoryBlock(c),
-    ...(bond ? memoryBlockFor(bond.memory) : []),
-    '【回帖的写法】',
-    '- 像在社交软件上回评论：短、口语，带着你发这条帖子时的心情，接住她说的那件具体的事；1-2 句，不写小作文。',
-    '- 这是半公开的评论区：亲昵可以有，但克制成只有你们俩懂的程度。',
-    ...TALK_MANNER,
-    ...CHAT_HARD_RULES_OF(),
-    '【输出格式】只输出回复文本本身：不带名字前缀、不解释、不用 markdown、不写（）动作描写、不用 emoji。',
-  ].join('\n');
+export function postIntroLine(ctx: EngineContext): string {
+  const c = ctx.character;
+  const nickname = ctx.bond?.nickname ?? 'her';
+  return `You are ${c.name} (${c.identity}) — a real person living your own life; none of this is a performance. You posted something on an X-like social app, and she — you two are already friends and have exchanged contacts; you call her "${nickname}" — left a comment under it. Throughout these rules, "she" means the person who commented.`;
 }
 
-/** 喂给模型的内容：帖子 + 评论线，最后一条是她刚发的 */
-export function buildPostReplyUserPrompt(input: {
-  postText: string;
-  /** 评论线：她 / TA / 别人（TA 身边的人或其他 TA，带名字，D-110） */
-  comments: { from: 'me' | 'him' | 'other'; text: string; name?: string }[];
-  hisName: string;
-}): string {
-  const thread = input.comments
-    .map((cm) => `${cm.from === 'me' ? '她' : cm.from === 'other' ? (cm.name ?? '别人') : input.hisName}：${cm.text}`)
+export const POST_REPLY_MANNER = [
+  '[How to reply] Like answering a comment on social media: short, casual, in the mood you posted in, picking up the specific thing she said; one or two sentences, no essays.',
+  '- This is a semi-public comment section: affection is fine, but keep it to the level only you two would understand.',
+];
+
+export const POST_OUTPUT_FORMAT = [
+  '[Output format] Output only the reply text itself: no name prefix, no explanation, no markdown, no (stage directions), no emoji.',
+];
+
+/** 喂给模型的内容：帖子 + 评论线（最后一条是她刚发的） */
+export function buildPostThreadUser(post: NonNullable<EngineContext['post']>, hisName: string): string {
+  const thread = post.comments
+    .map((cm) => `${cm.from === 'me' ? 'her' : cm.from === 'other' ? (cm.name ?? 'someone') : hisName}: ${cm.text}`)
     .join('\n');
-  return [
-    `你的帖子：「${input.postText}」`,
-    thread ? `评论区：\n${thread}` : '评论区还是空的。',
-    '请回复她最新的那条评论。',
-  ].join('\n\n');
+  return [`Your post: "${post.text}"`, thread ? `Comments:\n${thread}` : 'No comments yet.', 'Reply to her latest comment.'].join('\n\n');
 }
 
 export function buildCharacterPostSystem(

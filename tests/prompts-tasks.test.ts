@@ -16,8 +16,6 @@ import {
   buildOutingPhotoPrompt,
   buildPeekMyPhoneUser,
   buildPortraitPrompt,
-  buildPostReplySystem,
-  buildPostReplyUserPrompt,
   characterLinesSystem,
   characterParseSystem,
   heartbeatLine,
@@ -76,14 +74,6 @@ describe('记忆', () => {
 });
 
 describe('X', () => {
-  it('回帖（有羁绊 / 无羁绊）', () => {
-    expect(buildPostReplySystem(seed, bondBase, me)).toMatchSnapshot();
-    expect(buildPostReplySystem(custom, undefined, me)).toMatchSnapshot();
-    expect(
-      buildPostReplyUserPrompt({ postText: '今晚的月亮很圆', comments: [{ from: 'me', text: '在哪看的？' }], hisName: '沈之言' })
-    ).toMatchSnapshot();
-    expect(buildPostReplyUserPrompt({ postText: '今晚的月亮很圆', comments: [], hisName: '沈之言' })).toMatchSnapshot();
-  });
   it('发帖', () => {
     expect(buildCharacterPostSystem(seed, bondBase)).toMatchSnapshot();
     expect(buildCharacterPostSystem(custom, undefined)).toMatchSnapshot();

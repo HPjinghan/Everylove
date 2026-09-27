@@ -132,6 +132,23 @@ export const bondedCtx: EngineContext = {
   userText: '今天好累，想听你说说话。',
 };
 
+/** X 回帖（D-178）：她在 TA 的帖子下评论 */
+export const postCtx: EngineContext = {
+  character: seed,
+  mode: 'post',
+  bond: bondBase,
+  me,
+  post: {
+    text: '今晚的月亮很圆',
+    comments: [
+      { from: 'other', name: '陈默', text: '又在装文艺' },
+      { from: 'me', text: '在哪看的？' },
+    ],
+  },
+  history: [],
+  userText: '在哪看的？',
+};
+
 export const bondedUnlockedCustomCtx: EngineContext = {
   ...bondedCtx,
   character: custom,

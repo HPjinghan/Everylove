@@ -1,11 +1,11 @@
 /**
- * 四种会话模式（D-086）：初识（交友试聊）/ 亲密（羁绊会话）/ 外出（现场）/ 通话。
+ * 五种会话模式（D-086 / D-178）：初识（交友试聊）/ 亲密（羁绊会话）/ 外出（现场）/ 通话 / X 回帖。
  * 每种只回答五个问题：历史在哪、消息落到哪、她开口算什么账、组什么上下文、回复怎么拆。
  * 界面与后台都通过 core/turn 的管线用它们，不再各自拼 EngineContext。
  */
 
 import { placeById } from '@/content/places';
-import { HIS_POSTS_POOL } from '@/content/prompts';
+import { buildPostThreadUser, HIS_POSTS_POOL } from '@/content/prompts';
 import { modes, type ConversationMode, type TurnScope } from '@/core/modes';
 import { appointmentAtLabel } from '@/lib/appointments';
 import { anniversaryToday, type UtteranceKind } from '@/lib/bond';
@@ -208,7 +208,47 @@ const outing: ConversationMode = {
   },
 };
 
+/* ── X 回帖（D-178）：她在 TA 的帖子下评论，TA 回一句——亲密背景，评论线走用户消息，历史为空 ── */
+const post: ConversationMode = {
+  id: 'post',
+  maxBubbles: 1,
+  stripStage: true,
+  context(scope) {
+    const s = useAppStore.getState();
+    const target = scope.postId ? s.posts.find((p) => p.id === scope.postId) : undefined;
+    const bond = bondOf(scope);
+    const character = bond && findCharacter(bond.characterId);
+    if (!target || !bond || !character) return null;
+    const thread = { text: target.text, comments: target.comments.map((c) => ({ from: c.from, text: c.text, name: c.name })) };
+    return {
+      character,
+      mode: 'post',
+      bond: bondPick(bond),
+      me: meForCharacter(character.id),
+      post: thread,
+      history: [],
+      // 她的评论已在评论线里（append 先落）：模型看到整条线，最后一条是她刚发的
+      userText: buildPostThreadUser(thread, bond.name),
+    };
+  },
+  append(scope, msgs) {
+    if (!scope.postId) return;
+    const s = useAppStore.getState();
+    for (const m of msgs) {
+      if (m.from === 'me') s.addMyComment(scope.postId, m.text);
+      else if (m.from === 'him') s.addHisReply(scope.postId, m.text);
+    }
+  },
+  creditUserTurn(scope) {
+    if (scope.bondId) useAppStore.getState().creditBond(scope.bondId, 'comment');
+  },
+  patch() {
+    // 评论没有语音 / 照片要回填；失败态也不标在评论上
+  },
+};
+
 modes.register(square);
 modes.register(bonded);
 modes.register(call);
 modes.register(outing);
+modes.register(post);

@@ -124,7 +124,7 @@ interface TurnJob {
 }
 /** 每段会话一条队列：正在回的那轮 + 期间攒下的 */
 const running = new Map<string, TurnJob[]>();
-const scopeKey = (s: TurnScope) => `${s.mode}:${s.bondId ?? s.characterId ?? ''}`;
+const scopeKey = (s: TurnScope) => `${s.mode}:${s.bondId ?? s.characterId ?? ''}:${s.postId ?? ''}`;
 
 /**
  * TA 回一轮。userText 是模型视角的文字（语音 / 照片 / 卡片已经包装过；舞台提示也从这里进），

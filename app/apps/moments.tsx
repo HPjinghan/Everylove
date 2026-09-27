@@ -2,8 +2,8 @@
  * X（原朋友圈，D-053 推特模式改版；D-100 纸面）：缔结契约（领养）的 TA 们的时间线（D-027 口径不变）。
  * - 白通栏、行间 1px line：头像 40、名 15/600 + @handle 13 muted、正文 15/21、动作行 Fredoka 12 muted（已赞 primary）
  * - 回复缩进、头像 26；「我的头像」= paper 底 accent 首字（不是角色色）；评论输入框 paper r6
- * - 回复实装模型（D-053）：她评论 → TA 用当前引擎真的回一条（带人设/关系/记忆），
- *   暗面路由前置（红线 #3：评论区也不例外）；AI 不可用/失败不回帖、弹窗露出原因（D-069 起没有脚本回落）
+ * - 回复走回合管线的 post 模式（D-053 / D-178）：她评论 → TA 用当前引擎真的回一条（亲密背景 + 回帖写法），
+ *   暗面路由、失败口径与会话一样（轻提示「TA 这条没回上」，没有脚本回落）
  * - 加好友前的公开帖只能看（免费层口径不变）；在广场见过的 TA 的公开帖带「在广场见过」（D-110）
  * - 评论区不只有她（D-110）：TA 身边的人与其他缔结的 TA 会来评论（lib/posts.ts deliverDueReactions，进页补投），TA 可回一句
  * - 点头像打开 TA 的资料页（components/character-sheet.tsx）；回帖失败走轻提示，不弹窗
@@ -16,45 +16,19 @@ import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
 import { CharacterSheet } from '@/components/character-sheet';
 import { MingCute } from '@/components/mingcute';
-import { showToast } from '@/components/toast';
-import { TURN_ERROR_TOAST_MS } from '@/core/turn';
 import { deliverDueReactions } from '@/lib/posts';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
-import { DARK_SIDE_PATTERN, darkSideReply } from '@/content/characters';
-import { buildPostReplySystem, buildPostReplyUserPrompt } from '@/content/prompts';
-import { completeText, describeAiError, splitBubbles, stripStageDirections } from '@/lib/engine';
+import { sendText } from '@/lib/chat';
 import { timeAgo } from '@/lib/format';
 import { t } from '@/lib/i18n';
-import type { Bond, Character, Post } from '@/lib/types';
-import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
+import type { Character, Post } from '@/lib/types';
+import { findCharacter, useAppStore } from '@/store/app-store';
 
 /** @handle：角色 id 转推特腔（拟真细节） */
 function handleFor(c: Character): string {
   return `@${c.id.replace(/[^a-zA-Z0-9_]/g, '_')}`;
-}
-
-/** TA 的回帖：模型实装（D-053），暗面前置；失败抛错由调用方露出原因（D-069：不再回落台词库） */
-async function generatePostReply(
-  post: Post,
-  character: Character,
-  bond: Bond | undefined,
-  userComment: string
-): Promise<string> {
-  if (DARK_SIDE_PATTERN.test(userComment)) return darkSideReply();
-  const raw = await completeText(
-    buildPostReplySystem(character, bond, meForCharacter(character.id)),
-    buildPostReplyUserPrompt({
-      postText: post.text,
-      comments: [...post.comments, { from: 'me', text: userComment }],
-      hisName: bond?.name ?? character.name,
-    }),
-    300
-  );
-  const cleaned = stripStageDirections(splitBubbles(raw, 1, character.name));
-  if (!cleaned[0]) throw new Error('empty reply');
-  return cleaned[0];
 }
 
 function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: string) => void }) {
@@ -70,22 +44,12 @@ function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: 
   const canComment = !!post.bondId;
   const myName = me?.nickname || t('你');
 
-  const submitComment = async () => {
+  // 回帖走 post 模式（D-178）：她的评论落评论线 + 记账 → TA 回一句；失败同会话口径（轻提示）
+  const submitComment = () => {
     const text = commentDraft.trim();
-    if (!text || replying) return;
+    if (!text || replying || !post.bondId) return;
     setCommentDraft('');
-    useAppStore.getState().addMyComment(post.id, text);
-    if (post.bondId) useAppStore.getState().creditBond(post.bondId, 'comment');
-    setReplying(true);
-    try {
-      const reply = await generatePostReply(post, character, bond, text);
-      useAppStore.getState().addHisReply(post.id, reply);
-    } catch (e) {
-      console.warn('[x] 回帖生成失败：', e);
-      showToast(t('模型调用失败，TA 这条没回上：{reason}', { reason: describeAiError(e) }), { durationMs: TURN_ERROR_TOAST_MS });
-    } finally {
-      setReplying(false);
-    }
+    void sendText({ mode: 'post', bondId: post.bondId, postId: post.id }, text, { ui: { pace: 'none', typing: setReplying } });
   };
 
   return (

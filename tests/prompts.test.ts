@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import '@/features';
 
-import { buildChatSystemPrompt, buildChatSystemPromptParts, buildHisNoteSystem, buildHisNoteUserPrompt, messageContextText } from '@/content/prompts';
+import { buildChatSystemPrompt, buildChatSystemPromptParts, buildHisNoteSystem, buildHisNoteUserPrompt, buildPostThreadUser, messageContextText } from '@/content/prompts';
 import { setLang } from '@/lib/i18n';
 import {
   bondedCtx,
@@ -20,6 +20,7 @@ import {
   outingEncounterCtx,
   outingLateCtx,
   outingStrangerCtx,
+  postCtx,
   squareCtx,
   squareCustomCtx,
 } from './fixtures';
@@ -60,6 +61,11 @@ describe('系统 prompt 装配', () => {
   });
   it('通话', () => {
     expect(buildChatSystemPrompt(callCtx, NOW)).toMatchSnapshot();
+  });
+  it('X 回帖（D-178）：亲密背景 + 回帖写法；评论线走用户消息', () => {
+    expect(buildChatSystemPrompt(postCtx, NOW)).toMatchSnapshot();
+    expect(buildPostThreadUser(postCtx.post!, '沈之言')).toMatchSnapshot();
+    expect(buildPostThreadUser({ text: '今晚的月亮很圆', comments: [] }, '沈之言')).toMatchSnapshot();
   });
   it('TA 的记事本', () => {
     expect(buildHisNoteSystem(noteCtx, NOW)).toMatchSnapshot();
@@ -167,5 +173,6 @@ describe('prompt 长度守卫（D-152）', () => {
     expect(buildChatSystemPrompt(squareCtx, NOW).length).toBeLessThanOrEqual(5600);
     // D-158：通话夹具多了【你最近的日子】4 行数据（约 330 字符，指令只 150），守卫 6300 → 6500
     expect(buildChatSystemPrompt(callCtx, NOW).length).toBeLessThanOrEqual(6500);
+    expect(buildChatSystemPrompt(postCtx, NOW).length).toBeLessThanOrEqual(5200);
   });
 });

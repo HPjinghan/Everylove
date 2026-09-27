@@ -15,6 +15,8 @@ export interface TurnScope {
   mode: ModeId;
   bondId?: string;
   characterId?: string;
+  /** post 模式（D-178）：她评论的那条帖子 */
+  postId?: string;
 }
 
 export interface ConversationMode {

@@ -139,6 +139,28 @@ describe('亲密会话', () => {
   });
 });
 
+describe('X 回帖走管线（D-178）', () => {
+  it('她的评论落评论线 + 记 comment XP → TA 回一句落评论线；模型看到整条线', async () => {
+    const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });
+    const bond = () => useAppStore.getState().bonds.find((b) => b.id === bondId)!;
+    const postId = useAppStore.getState().posts.find((p) => p.bondId === bondId)?.id;
+    expect(postId).toBeTruthy();
+    const xp = bond().affinity;
+    nextReply = '在阳台。';
+    const r = await sendText({ mode: 'post', bondId, postId }, '在哪看的？', { ui: noPace });
+    expect(r.reply?.texts).toEqual(['在阳台']);
+    const post = useAppStore.getState().posts.find((p) => p.id === postId)!;
+    expect(post.comments.slice(-2).map((c) => [c.from, c.text])).toEqual([
+      ['me', '在哪看的？'],
+      ['him', '在阳台'],
+    ]);
+    expect(bond().affinity).toBe(xp + 3);
+    expect(lastReq?.system).toContain('left a comment under it');
+    expect(lastReq?.turns.at(-1)?.content).toContain('her: 在哪看的？');
+    expect(lastReq?.turns.at(-1)?.content).toContain('Reply to her latest comment.');
+  });
+});
+
 describe('后台落消息走同一条管线（D-177）', () => {
   it('landReply：bubble 钩子照跑、extra 标记落在消息上、计未读；TA 正在回她时排在那轮之后', async () => {
     const bondId = useAppStore.getState().createBond({ characterId: 'shen-zhiyan', name: '沈之言', nickname: '小满' });

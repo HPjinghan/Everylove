@@ -37,6 +37,9 @@ import {
   outingIntroLine,
   outingMomentLine,
   outingSceneLine,
+  POST_OUTPUT_FORMAT,
+  POST_REPLY_MANNER,
+  postIntroLine,
   outingVoiceBlock,
   pursuitLine,
   secretsBlock,
@@ -60,8 +63,9 @@ import type { EngineContext } from '@/lib/types';
 export const BONDED_FAMILY: readonly PromptMode[] = ['bonded', 'call', 'note'];
 /** 其中「和她说话」的两个：亲密聊天 / 通话——她的资料卡、追法落地、怎么爱她、手机与红包规则只进这两个；记事本不带（D-098） */
 export const BONDED_CHAT: readonly PromptMode[] = ['bonded', 'call'];
-/** 四种对话（不含记事本）：追法只在对话里 */
-const TALK: readonly PromptMode[] = ['square', 'bonded', 'call', 'outing'];
+/** 五种对话（不含记事本）：追法只在对话里；post = X 回帖（D-178） */
+const TALK: readonly PromptMode[] = ['square', 'bonded', 'call', 'outing', 'post'];
+const POST: readonly PromptMode[] = ['post'];
 const SQUARE: readonly PromptMode[] = ['square'];
 const OUTING: readonly PromptMode[] = ['outing'];
 const NOTE: readonly PromptMode[] = ['note'];
@@ -73,6 +77,7 @@ promptSections.register({ name: 'intro-square', stable: true, modes: SQUARE, ord
 promptSections.register({ name: 'intro-bonded', stable: true, modes: BONDED_CHAT, order: ORDER.intro, lines: (ctx) => [bondedIntroLine(ctx)] });
 promptSections.register({ name: 'intro-note', stable: true, modes: NOTE, order: ORDER.intro, lines: (ctx, env) => [noteIntroLine(ctx, env.now)] });
 promptSections.register({ name: 'intro-outing', stable: true, modes: OUTING, order: ORDER.intro, lines: (ctx) => [outingIntroLine(ctx)] });
+promptSections.register({ name: 'intro-post', stable: true, modes: POST, order: ORDER.intro, lines: (ctx) => [postIntroLine(ctx)] });
 promptSections.register({ name: 'outing-scene', modes: OUTING, order: ORDER.scene, lines: (ctx) => [outingSceneLine(ctx)] });
 promptSections.register({ name: 'persona', stable: true, modes: 'all', order: ORDER.persona, lines: (ctx) => [`[Who you are] ${scriptFor(ctx.character).persona}`] });
 promptSections.register({ name: 'pursuit', stable: true, modes: TALK, order: ORDER.pursuit, lines: (ctx) => [`[How you pursue] ${pursuitLine(ctx.character)}`] });
@@ -80,7 +85,7 @@ promptSections.register({ name: 'pursuit', stable: true, modes: TALK, order: ORD
 promptSections.register({ name: 'love-style-talk', stable: true, modes: TALK, order: ORDER.pursuit, lines: (ctx) => loveStyleTalkLines(ctx.character) });
 promptSections.register({ name: 'profile', stable: true, modes: 'all', order: ORDER.profile, lines: (ctx) => characterProfileBlock(ctx.character) });
 // 身边的人（D-110）只在羁绊层（陌生人偶遇没有）
-promptSections.register({ name: 'circle', stable: true, modes: BONDED_FAMILY, order: ORDER.circle, lines: (ctx) => circleBlock(ctx.bond?.circle) });
+promptSections.register({ name: 'circle', stable: true, modes: [...BONDED_FAMILY, 'post'], order: ORDER.circle, lines: (ctx) => circleBlock(ctx.bond?.circle) });
 promptSections.register({ name: 'circle-outing', stable: true, modes: OUTING, order: ORDER.circle, lines: (ctx) => (isStranger(ctx) ? [] : circleBlock(ctx.bond?.circle)) });
 // TA 自己的作息（D-119）：羁绊层都知道自己接下来要干嘛
 promptSections.register({ name: 'his-schedule', modes: BONDED_FAMILY, order: ORDER.circle, lines: (ctx, env) => hisScheduleBlock(ctx.bond?.hisEvents, dateKey(env.now)) });
@@ -100,7 +105,7 @@ promptSections.register({ name: 'outing-moment', modes: OUTING, order: ORDER.mom
 
 /* ── 她是谁（初识只给资料卡；陌生人偶遇只给边界，D-035/D-040） ── */
 promptSections.register({ name: 'user-square', stable: true, modes: SQUARE, order: ORDER.user, lines: (ctx) => userProfileBlock(ctx.me, 'square') });
-promptSections.register({ name: 'user-bonded', stable: true, modes: BONDED_CHAT, order: ORDER.user, lines: (ctx) => userProfileBlock(ctx.me, 'bonded') });
+promptSections.register({ name: 'user-bonded', stable: true, modes: [...BONDED_CHAT, 'post'], order: ORDER.user, lines: (ctx) => userProfileBlock(ctx.me, 'bonded') });
 // 记事本里不放她的资料卡（那会把本子写成恋爱日记），只保留她的边界（红线优先级最高，D-035/D-098）
 promptSections.register({ name: 'user-note', stable: true, modes: NOTE, order: ORDER.user, lines: (ctx) => boundariesBlock(ctx.me) });
 promptSections.register({
@@ -115,7 +120,7 @@ promptSections.register({ name: 'encounters', stable: true, modes: ['square', 'o
 promptSections.register({ name: 'square-situation', modes: SQUARE, order: ORDER.situation, lines: (ctx) => squareSituationLines(ctx) });
 
 /* ── 记忆与秘密（只在羁绊层，商业承重墙；陌生人偶遇没有） ── */
-promptSections.register({ name: 'memory', modes: BONDED_FAMILY, order: ORDER.memory, lines: (ctx) => memoryBlockFor(ctx.bond?.memory) });
+promptSections.register({ name: 'memory', modes: [...BONDED_FAMILY, 'post'], order: ORDER.memory, lines: (ctx) => memoryBlockFor(ctx.bond?.memory) });
 promptSections.register({ name: 'memory-outing', modes: OUTING, order: ORDER.memory, lines: (ctx) => (isStranger(ctx) ? [] : memoryBlockFor(ctx.bond?.memory)) });
 promptSections.register({ name: 'secrets', stable: true, modes: BONDED_FAMILY, order: ORDER.secrets, lines: (ctx, env) => secretsBlock(ctx.character, ctx.bond ? levelOf(ctx.bond, env.now.getTime()) : 1) });
 promptSections.register({
@@ -133,6 +138,8 @@ promptSections.register({ name: 'stage', modes: BONDED_CHAT, order: ORDER.stage,
 // 温度（D-126）：疏远 / 久别归来时多一句口吻；热络 / 平常不加字
 promptSections.register({ name: 'warmth', modes: BONDED_CHAT, order: ORDER.warmth, lines: (ctx, env) => warmthLine(ctx, env.now) });
 promptSections.register({ name: 'outing-manner', stable: true, modes: OUTING, order: ORDER.manner, lines: () => OUTING_MANNER });
+// X 回帖的写法（D-178）：与各模式的分寸同一个槽位
+promptSections.register({ name: 'post-manner', stable: true, modes: POST, order: ORDER.manner, lines: () => POST_REPLY_MANNER });
 // 记事本：TA 自己的生活（D-098；她出现多少按分量 D-099）——和聊天的「怎么爱她」占同一个槽位
 promptSections.register({ name: 'note-life', stable: true, modes: NOTE, order: ORDER.manner, lines: (ctx) => hisNoteLifeLines(ctx.character) });
 promptSections.register({ name: 'stranger-manner', stable: true, modes: OUTING, order: ORDER.strangerManner, lines: (ctx) => (isStranger(ctx) ? OUTING_STRANGER_MANNER : []) });
@@ -149,5 +156,6 @@ promptSections.register({ name: 'output-chat', stable: true, modes: ['square', '
 promptSections.register({ name: 'output-call', stable: true, modes: ['call'], order: ORDER.output, lines: () => CALL_MANNER });
 promptSections.register({ name: 'output-note', stable: true, modes: ['note'], order: ORDER.output, lines: () => HIS_NOTE_MANNER });
 promptSections.register({ name: 'output-outing', stable: true, modes: OUTING, order: ORDER.output, lines: () => OUTING_OUTPUT_FORMAT });
+promptSections.register({ name: 'output-post', stable: true, modes: POST, order: ORDER.output, lines: () => POST_OUTPUT_FORMAT });
 promptSections.register({ name: 'length-square', stable: true, modes: SQUARE, order: ORDER.length, lines: () => [SQUARE_LENGTH] });
 promptSections.register({ name: 'length-bonded', stable: true, modes: ['bonded'], order: ORDER.length, lines: () => BONDED_LENGTH });

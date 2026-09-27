@@ -43,7 +43,7 @@
 | # | 状态 | 事项 | 在哪 | 做法 |
 |---|---|---|---|---|
 | D1 | ✅ D-177 | 主动 / 召回 / 心跳三条路改走管线 | `lib/reach-out.ts:203`、`lib/recall.ts:107`、`lib/heartbeat.ts:95` | `core/turn` 加 `draft(scope, userText)` 返回 EngineReply 不落屏，三处用它 + `applyMarkers`；bubble / after 钩子照跑 |
-| D2 | ⬜ | X 回帖做成一种 `ConversationMode` | `app/apps/moments.tsx:46-55`、`features/modes.ts` | mode `'post'`，历史 = 该帖评论链 |
+| D2 | ✅ D-178 | X 回帖做成一种 `ConversationMode` | `app/apps/moments.tsx:46-55`、`features/modes.ts` | mode `'post'`，历史 = 该帖评论链 |
 | D3 | ⬜ | core 去掉对玩法与界面的认识 | `core/providers.ts:48,68`（写死 qianfan）、`core/prompt.ts:37-42`（ORDER 槽名）、`core/turn.ts:9`（import toast） | 默认供应商由 `features/providers` 注册时声明；ORDER 改锚点区间（persona / rules / dynamic / tail）；toast 经 `TurnUi.notify` 注入 |
 | D4 | ⬜ | 界面绕过会话层的 import 收回 | `app/apps/moments.tsx:20,27`、`character-edit.tsx:47`、`settings.tsx:23-25`、`app/call/[characterId].tsx:30-33`、`app/bond/[bondId].tsx:30`、`app/chat/[characterId].tsx:27`、`app/outing/[placeId].tsx:29-35`、`components/chat-thread.tsx:44`、`his-phone.tsx:25`、`time-picker.tsx:15` | `lib/chat.ts` 补导出门面；卡片渲染注册表经 `features/cards` 暴露 |
 | D5 | ⬜ | 补投入口收口：界面只调 `runJobs('screen:xxx')` | `components/his-phone.tsx:111-118`、`app/apps/calendar.tsx:124`、`moments.tsx:209` | `JobTrigger` 加 `'screen:phone' / 'screen:x' / 'screen:calendar'` |
