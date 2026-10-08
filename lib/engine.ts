@@ -157,8 +157,9 @@ export function buildTurns(history: ChatMessage[], userText: string): ChatTurn[]
  * 1. 先按空行拆（模型自己分好的照用）；1.5 中文之间的空格也当它自己分好的段（D-159「哈哈哈 我知道了 下次」→ 三条，上限放到连发的四条）；
  * 2. 还没拆到 max 条就按句子拆——两句以上的回复在句末标点处断开，长度尽量均衡；
  * 初识 / 外出 / 通话 max = 1 不拆。顺手去掉模型偶尔加的名字前缀（「沈之言：」）与包裹引号。
- * 超过上限时（D-212）不再把剩下的全塞进最后一条，而是把相邻的几段按长度均匀并成 max 条（packBalanced）；
- * 整句的人用了空行 / 空格分段时，其中长的一段（≥ LONG_PIECE 字、两句以上）先按句子拆开再一起均分——不会剩一大坨。
+ * 超过上限时（D-212）不再把剩下的全塞进最后一条，而是把相邻的几段按长度均匀并成 max 条（packBalanced）。
+ * 整句的人（D-213）：回复越长条数越多——每条约 BUBBLE_CHARS 字，条数 = max(上限, 总长 ÷ BUBBLE_CHARS)，封顶 BURST_MAX_BUBBLES；
+ * 模型自己分的段不够这个数时，长段先按句子拆，句子还长（一整段全是逗号）再在逗号处拆（逗号留在条内，只去掉条尾那个）——不会剩一大坨。
  */
 export function splitBubbles(text: string, max: number, name?: string, style: 'flow' | 'burst' = 'flow'): string[] {
   let cap = Math.max(1, max);
@@ -177,20 +178,43 @@ export function splitBubbles(text: string, max: number, name?: string, style: 'f
   }
   // 连发（D-155）：模型分好的每段再按标点拆
   if (style === 'burst') return packBalanced(parts.flatMap((p) => splitByClauses(p, Infinity)), cap);
-  if (parts.length === 1) return splitBySentences(parts[0], cap);
-  // 还有空位才拆长段（模型自己分好的段数已经到上限就照它的来，只均分不再拆）
-  const pieces = parts.length < cap ? parts.flatMap((p) => (p.length >= LONG_PIECE ? splitBySentences(p, Infinity) : [p])) : parts;
-  return packBalanced(pieces, cap);
+  // 整句（D-213）：越长条数越多，每条约 BUBBLE_CHARS 字
+  const total = parts.reduce((n, p) => n + textWeight(p), 0);
+  const want = Math.min(Math.max(cap, BURST_MAX_BUBBLES), Math.max(cap, Math.ceil(total / BUBBLE_CHARS)));
+  if (parts.length === 1 && textWeight(parts[0]) < BUBBLE_CHARS) return splitBySentences(parts[0], cap);
+  // 模型自己分好的段数够了就照它的来，只均分不再拆
+  if (parts.length >= want) return packBalanced(parts, want);
+  const pieces = parts.flatMap((p) => (textWeight(p) >= BUBBLE_CHARS ? splitLong(p) : [p]));
+  return packBalanced(pieces, want).map(trimClauseTail);
 }
 
-/** 连发 / 空格断句最多几条（D-155 → D-212 从 4 放到 6） */
+/** 连发 / 空格断句最多几条（D-155 → D-212 从 4 放到 6）；整句的人长回复也封顶在这（D-213） */
 export const BURST_MAX_BUBBLES = 6;
-/** 整句的人分好的段里，这么长（且两句以上）的再按句子拆开 */
-const LONG_PIECE = 36;
+/** 整句的人一条气泡大约多长（中日韩一字算 1，拉丁字母 / 数字 / 空格算 0.5）；这么长的段才拆 */
+const BUBBLE_CHARS = 36;
 
-/** 两段并成一条时的接缝：前一段以中日句末标点收尾、后一段不是拉丁字 / 数字开头 → 直接接；否则隔一个空格 */
+/** 长度按读起来的分量算：中日韩一字 1，其余（英文字母、数字、空格、标点）0.5——英文同样的意思字符多一倍 */
+function textWeight(s: string): number {
+  let n = 0;
+  for (const ch of s) n += /[぀-ヿ㐀-䶿一-鿿가-힯ｦ-ﾟ]/.test(ch) ? 1 : 0.5;
+  return n;
+}
+
+/** 整句的人的长段（D-213）：先按句子拆，还长的句子（全是逗号）再在逗号 / 顿号 / 分号处拆，标点留在原处 */
+function splitLong(p: string): string[] {
+  return splitBySentences(p, Infinity).flatMap((s) =>
+    textWeight(s) >= BUBBLE_CHARS ? (s.match(CLAUSE_RE) ?? [s]).map((c) => c.trim()).filter(Boolean) : [s]
+  );
+}
+
+/** 条尾留下的逗号 / 顿号 / 分号去掉（在逗号处断开的那一条）；句末标点不动 */
+function trimClauseTail(s: string): string {
+  return s.replace(/[，,、；;]+$/, '');
+}
+
+/** 两段并成一条时的接缝：前一段以中日标点收尾、后一段不是拉丁字 / 数字开头 → 直接接；否则隔一个空格 */
 function joinPieces(a: string, b: string): string {
-  return /[。！？…～」』）]$/.test(a) && !/^[A-Za-z0-9]/.test(b) ? a + b : `${a} ${b}`;
+  return /[。！？…～」』），、；]$/.test(a) && !/^[A-Za-z0-9]/.test(b) ? a + b : `${a} ${b}`;
 }
 
 /**
@@ -200,7 +224,7 @@ function joinPieces(a: string, b: string): string {
 export function packBalanced(pieces: string[], n: number): string[] {
   const items = pieces.map((p) => p.trim()).filter(Boolean);
   if (items.length <= n) return items;
-  const lens = items.map((p) => p.length);
+  const lens = items.map(textWeight);
   const target = lens.reduce((a, b) => a + b, 0) / n;
   const out: string[] = [];
   let i = 0;

@@ -155,6 +155,22 @@ describe('说话节奏：连发（D-155）', () => {
       '我刚查了一下那家店周三不营业。所以我们改到周四吧，晚上七点我去接你。',
     ]);
   });
+  it('整句的人的长回复（D-213）：越长条数越多；一整段全是逗号也在逗号处拆，逗号留在条内、只去条尾那个', () => {
+    const commas = '我刚查了一下那家店周三不营业，所以我们改到周四吧，晚上七点我去接你，你下班直接出来就行，别再加班了，最近你太累了';
+    expect(splitBubbles(commas, 2)).toEqual(['我刚查了一下那家店周三不营业，所以我们改到周四吧', '晚上七点我去接你，你下班直接出来就行，别再加班了，最近你太累了']);
+    const longer = `${commas}，我都看在眼里，周末我们哪也不去就在家躺着，我给你做饭，你想吃什么提前告诉我`;
+    const out = splitBubbles(longer, 2);
+    expect(out).toHaveLength(3);
+    expect(out.join('，')).toBe(longer);
+    // 英文按分量算（字母算半个字），同样长度的意思不会被拆得更碎
+    expect(splitBubbles('I checked and the place is closed on Wednesday, so let us move it to Thursday, I will pick you up at seven, just come straight out after work', 2)).toEqual([
+      'I checked and the place is closed on Wednesday, so let us move it to Thursday',
+      'I will pick you up at seven, just come straight out after work',
+    ]);
+    // 短的照旧不拆
+    expect(splitBubbles('嗯，好', 2)).toEqual(['嗯，好']);
+    expect(splitBubbles('今天好累，不过还行，你呢', 2)).toEqual(['今天好累，不过还行，你呢']);
+  });
   it('节奏判定：角色自己设的 > 恋爱类型 > 原型（毒舌家族连发）', () => {
     expect(bubbleStyleOf({ archetype: 'gentle' })).toBe('flow');
     expect(bubbleStyleOf({ archetype: 'sharp' })).toBe('burst');
