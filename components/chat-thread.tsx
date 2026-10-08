@@ -8,6 +8,9 @@
  * - 文本 / 图片（相册选图）/ 语音（录音发送、点按播放）/「+」面板（调用方给项目——外出邀请 / 查手机 / 红包 / 位置）
  * - 卡片消息（kind 'card'）：怎么画由 core/cards 的注册表决定
  * - 引用：长按 → 引用，气泡上方带被引摘要；撤回：长按自己的消息（24h 内）→ 双方可见占位；删除：仅本地移除
+ *
+ * 手感（D-207）：打开会话之后才落下的消息从下方淡入升起（之前的不动）；TA 的一条落下轻震一下、她发出一条轻点一下；
+ * 「正在输入」是三颗依次轻跳的点（components/typing-dots），调用方给了 typingLabel（外出的「……」）就照旧显示字。
  */
 
 import {
@@ -29,6 +32,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionSheet, ConfirmSheet, showAlert, type SheetAction } from '@/components/action-sheet';
@@ -37,12 +41,14 @@ import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
 import { ChatWallpaper } from '@/components/paper-bg';
 import { PhotoViewer, Polaroid, type ViewerShot } from '@/components/polaroid';
+import { TypingDots } from '@/components/typing-dots';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { clockTime, voiceDuration } from '@/lib/format';
 import { cardKindOf } from '@/lib/chat';
+import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
 import { ASR_MAX_SECONDS, ASR_RECORDING } from '@/lib/media';
 import { synthesizeVoice, ttsReady } from '@/lib/tts';
@@ -62,6 +68,8 @@ export type ChatExtra = {
 
 /** 撤回时限（24 小时内可撤回） */
 export const RECALL_WINDOW_MS = 24 * 60 * 60 * 1000;
+/** 新消息入场：从下方 10px 淡入升起（倒置列表里格子与列表各翻一次，方向不变） */
+const BUBBLE_ENTER = FadeInUp.duration(240).withInitialValues({ transform: [{ translateY: 10 }] });
 
 /** 卡片气泡（D-081）：怎么画由卡片种类注册表决定（core/cards，各玩法注册；D-086）；没注册的画一张只有标题的通用卡 */
 function CardBody({ msg, dark }: { msg: ChatMessage; dark: boolean }) {
@@ -414,6 +422,15 @@ export function ChatThread({
 
   // 倒序数据与已读集合只在消息变了才重算（D-197：每次击键不再重建）
   const data = useMemo(() => [...messages].reverse(), [messages]);
+  // 打开会话的时刻（D-207）：之后才落下的消息才有入场动画与震动
+  const [openedAt] = useState(() => Date.now());
+  const lastArrival = useRef<string | null>(null);
+  useEffect(() => {
+    const last = messages.at(-1);
+    if (!last || last.at < openedAt || last.id === lastArrival.current) return;
+    lastArrival.current = last.id;
+    if (last.from === 'him') haptic.soft();
+  }, [messages, openedAt]);
 
   useEffect(
     () => () => {
@@ -438,6 +455,7 @@ export function ChatThread({
     const ref = replyTo ?? undefined;
     setReplyTo(null);
     setExtrasOpen(false);
+    haptic.tap();
     onSend(text, ref);
   };
 
@@ -468,19 +486,21 @@ export function ChatThread({
   );
   const renderItem = useCallback(
     ({ item }: { item: ChatMessage }) => (
-      <Bubble
-        msg={item}
-        color={color}
-        name={name}
-        characterId={characterId}
-        read={readIds.has(item.id)}
-        onLongPress={openActions}
-        onOpenPhoto={setViewingShot}
-        onAvatarPress={onAvatarPress}
-        onResend={onResend}
-      />
+      <Animated.View entering={item.at >= openedAt ? BUBBLE_ENTER : undefined}>
+        <Bubble
+          msg={item}
+          color={color}
+          name={name}
+          characterId={characterId}
+          read={readIds.has(item.id)}
+          onLongPress={openActions}
+          onOpenPhoto={setViewingShot}
+          onAvatarPress={onAvatarPress}
+          onResend={onResend}
+        />
+      </Animated.View>
     ),
-    [color, name, characterId, readIds, openActions, onAvatarPress, onResend]
+    [color, name, characterId, readIds, openActions, onAvatarPress, onResend, openedAt]
   );
 
   const pickImage = async () => {
@@ -554,12 +574,12 @@ export function ChatThread({
           ListFooterComponent={banner ? <View style={styles.bannerWrap}>{banner}</View> : null}
           ListHeaderComponent={
             typing ? (
-              <View style={[styles.msgRow, styles.msgRowHim]}>
+              <Animated.View entering={BUBBLE_ENTER} style={[styles.msgRow, styles.msgRowHim]}>
                 <CharAvatar name={name} color={color} size={Space.avatar.bubble} characterId={characterId} />
                 <View style={[styles.bubble, styles.bubbleHim]}>
-                  <Text style={styles.typingText}>{typingLabel ?? t('正在输入…')}</Text>
+                  {typingLabel ? <Text style={styles.typingText}>{typingLabel}</Text> : <TypingDots />}
                 </View>
-              </View>
+              </Animated.View>
             ) : null
           }
           keyboardDismissMode="interactive"

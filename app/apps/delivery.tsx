@@ -21,6 +21,7 @@ import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { MENU } from '@/content/menu';
 import { orderStatus, orderTitle, placeOrder, type OrderStatus } from '@/lib/delivery';
 import { money, shortDateTime } from '@/lib/format';
+import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
 import { DELIVERY_ETA_MIN } from '@/lib/wallet';
 import { useAppStore } from '@/store/app-store';
@@ -66,6 +67,7 @@ export default function DeliveryScreen() {
   const short = total > balance;
 
   const bump = (itemId: string, delta: number) => {
+    haptic.tick();
     const key = `${shop.id}/${itemId}`;
     setCart((c) => {
       const next = Math.max(0, (c[key] ?? 0) + delta);
@@ -93,6 +95,7 @@ export default function DeliveryScreen() {
           return;
         }
       }
+      haptic.success();
       setCart({});
       setNote('');
       setTab('history');

@@ -7,7 +7,6 @@
  * 签纸（D-206）：抽到的运势落成一张御神签式的签纸——签号 / 大字运势 / 签文 / 斜盖的金额印章，从水晶球下面滑出来。
  */
 
-import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, useAnimatedValue, View } from 'react-native';
@@ -22,6 +21,7 @@ import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { FORTUNE_TEXTS } from '@/content/fortunes';
 import { money } from '@/lib/format';
+import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
 import { drawFortune, fortuneDayKey, FORTUNES, spinWheel, WHEEL_BETS, WHEEL_SLICES } from '@/lib/wallet';
 import { useAppStore } from '@/store/app-store';
@@ -101,7 +101,7 @@ function SignTab() {
       store.creditWallet({ amount, kind: 'fortune', note: t('日签 · {luck}', { luck: t(FORTUNES[luck].label) }) });
       setToday(day);
       setRevealing(false);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      haptic.success();
       Animated.spring(slip, { toValue: 1, friction: 7, tension: 60, useNativeDriver: true }).start();
     });
   };
@@ -196,7 +196,8 @@ function WheelTab({ balance }: { balance: number }) {
       angleRef.current = target;
       useAppStore.getState().creditWallet({ amount: r.net, kind: 'wheel', note: t('转盘 · {mult}', { mult: multLabel(r.mult) }) });
       setLast({ mult: r.mult, net: r.net });
-      void Haptics.notificationAsync(r.net > 0 ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      if (r.net > 0) haptic.success();
+      else haptic.warn();
       setSpinning(false);
       lockRef.current = false;
     });

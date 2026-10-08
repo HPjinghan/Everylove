@@ -7,10 +7,12 @@
  * - 加好友前的公开帖只能看（免费层口径不变）；在广场见过的 TA 的公开帖带「在广场见过」（D-110）
  * - 评论区不只有她（D-110）：TA 身边的人与其他缔结的 TA 会来评论（lib/posts.ts deliverDueReactions，进页补投），TA 可回一句
  * - 点头像打开 TA 的资料页（components/character-sheet.tsx）；回帖失败走轻提示，不弹窗
+ * - 点赞（D-207）：心形弹一下（1 → 1.35 → 1）并轻点震动；取消赞不弹
  */
 
 import { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 
 import { AppScreen } from '@/components/app-screen';
 import { CharAvatar } from '@/components/char-avatar';
@@ -22,6 +24,7 @@ import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { sendText } from '@/lib/chat';
 import { compactAgo } from '@/lib/format';
+import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
 import type { Character, Post } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -30,6 +33,29 @@ import { findCharacter, useAppStore } from '@/store/app-store';
 function handleFor(c: Character): string {
   const fromId = c.id.replace(/[^a-zA-Z0-9_]/g, '_');
   return `@${c.custom || /^c_\d+/.test(c.id) ? c.name.replace(/\s+/g, '_') : fromId}`;
+}
+
+/** 点赞键：赞上时心形弹一下 + 轻震 */
+function LikeButton({ liked, count, onToggle }: { liked: boolean; count: number; onToggle: () => void }) {
+  const scale = useSharedValue(1);
+  const pop = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
+  return (
+    <Pressable
+      style={styles.action}
+      accessibilityLabel={t('赞')}
+      onPress={() => {
+        if (!liked) {
+          scale.set(withSequence(withTiming(1.35, { duration: 110 }), withSpring(1, { damping: 8, stiffness: 260 })));
+          haptic.tap();
+        }
+        onToggle();
+      }}>
+      <Animated.View style={pop}>
+        <MingCute name="heart" size={15} color={liked ? Romance.accent : Romance.sub} />
+      </Animated.View>
+      <Text style={[styles.actionCount, liked && styles.actionCountOn]}>{count || ''}</Text>
+    </Pressable>
+  );
 }
 
 function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: string) => void }) {
@@ -90,18 +116,16 @@ function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: 
               <Text style={styles.actionLabel}>{t('只能看看')}</Text>
             )}
           </Pressable>
-          <Pressable
-            style={styles.action}
-            onPress={() => {
+          <LikeButton
+            liked={!!post.liked}
+            count={post.likes}
+            onToggle={() => {
               const s = useAppStore.getState();
               // 点赞（不是取消）TA 的帖子 = 亲密度来源（D-126）
               if (!post.liked && post.bondId) s.creditBond(post.bondId, 'like');
               s.toggleLike(post.id);
             }}
-          >
-            <MingCute name="heart" size={15} color={post.liked ? Romance.accent : Romance.sub} />
-            <Text style={[styles.actionCount, post.liked && styles.actionCountOn]}>{post.likes || ''}</Text>
-          </Pressable>
+          />
         </View>
 
         {/* 回复线（推特式缩进） */}

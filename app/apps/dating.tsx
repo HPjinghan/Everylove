@@ -40,6 +40,7 @@ import { CHARACTERS, seedCharactersFor } from '@/content/characters';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { heatLabel } from '@/lib/format';
+import { haptic } from '@/lib/haptics';
 import { portraitSource } from '@/lib/imagegen';
 import { t } from '@/lib/i18n';
 import { refreshSharedPool } from '@/lib/pool';
@@ -169,6 +170,8 @@ export default function DatingScreen() {
   const animating = useRef(false);
   // 手势原点：触摸落下时记一次，接管手势时再归零（同 PanResponder：dx 从接管点起算）
   const gestureOrigin = useRef({ x: 0, y: 0 });
+  // 拖过提交阈值那一下震一次（D-207），拖回来再过一次再震
+  const pastCommit = useRef(false);
   const [deckH, setDeckH] = useState(0);
   const pan = useAnimatedValueXY({ x: 0, y: 0 });
 
@@ -267,12 +270,14 @@ export default function DatingScreen() {
     pan.setValue({ x: 0, y: 0 });
     recordSwipe(c.id);
     if (liked) {
+      haptic.success();
       // 右滑心动：TA 一定会同意——当场配对，等她去打招呼
       clearPassToast();
       useAppStore.getState().ensureSquareChat(c.id);
       setMatch(c);
     } else {
       // 左滑略过：记进推荐算法的冷却项（不是拉黑，之后回流）；3 秒内可撤销
+      haptic.tap();
       useAppStore.getState().markDatingPass(c.id);
       showPassToast(c);
     }
@@ -316,9 +321,15 @@ export default function DatingScreen() {
   const onResponderMove = (e: GestureResponderEvent) => {
     const { dx, dy } = gestureDelta(e);
     pan.setValue({ x: dx, y: dy });
+    const past = Math.abs(dx) > SWIPE_COMMIT_PX;
+    if (past !== pastCommit.current) {
+      pastCommit.current = past;
+      if (past) haptic.tick();
+    }
   };
   const onResponderRelease = (e: GestureResponderEvent) => {
     const { dx } = gestureDelta(e);
+    pastCommit.current = false;
     if (Math.abs(dx) > SWIPE_COMMIT_PX) flyOut(dx >= 0 ? 1 : -1);
     else springBack();
   };
