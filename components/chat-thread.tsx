@@ -41,6 +41,7 @@ import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
 import { ChatWallpaper } from '@/components/paper-bg';
 import { PhotoViewer, Polaroid, type ViewerShot } from '@/components/polaroid';
+import { DevelopingFilm } from '@/components/developing';
 import { TypingDots } from '@/components/typing-dots';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
@@ -68,6 +69,8 @@ export type ChatExtra = {
 
 /** 撤回时限（24 小时内可撤回） */
 export const RECALL_WINDOW_MS = 24 * 60 * 60 * 1000;
+/** 会话里照片的边长 */
+const PHOTO = 220;
 /** 新消息入场：从下方 10px 淡入升起（倒置列表里格子与列表各翻一次，方向不变） */
 const BUBBLE_ENTER = FadeInUp.duration(240).withInitialValues({ transform: [{ translateY: 10 }] });
 
@@ -332,10 +335,15 @@ const Bubble = memo(function Bubble({
             ) : null}
           </View>
         ) : msg.kind === 'image' && !msg.imageUri ? (
-          // TA 主动发的照片（D-130）：还在生成 / 没生成出来
-          <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>
-            {msg.mediaStatus === 'failed' ? t('照片没洗出来') : t('照片冲洗中…')}
-          </Text>
+          // TA 主动发的照片（D-130）：还在生成 = 一块正在显影的底（D-209）/ 没生成出来
+          msg.mediaStatus === 'failed' ? (
+            <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>{t('照片没洗出来')}</Text>
+          ) : (
+            <View>
+              <DevelopingFilm width={PHOTO} />
+              <Text style={[styles.mediaHint, !textDark && styles.mediaHintLight]}>{t('照片冲洗中…')}</Text>
+            </View>
+          )
         ) : msg.kind === 'card' && msg.card ? (
           <CardBody msg={msg} dark={textDark} />
         ) : (
@@ -761,7 +769,7 @@ const styles = themed(() =>
     metaColMe: { alignItems: 'flex-end' },
     metaColHim: { alignItems: 'flex-start' },
     metaText: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.sub, lineHeight: 14 },
-    photo: { width: 220, height: 220, borderRadius: Shape.radiusInner, backgroundColor: Romance.line },
+    photo: { width: PHOTO, height: PHOTO, borderRadius: Shape.radiusInner, backgroundColor: Romance.line },
     photoCaption: { fontSize: Type.scale.label.size, color: Romance.sub, marginTop: 8, lineHeight: 19 },
     voiceRow: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: 2 },
     voiceBar: { width: 3, borderRadius: 2, opacity: 0.75 },

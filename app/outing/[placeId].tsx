@@ -14,6 +14,7 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/components/action-sheet';
@@ -22,6 +23,7 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { CharacterSheet } from '@/components/character-sheet';
 import { ChatThread } from '@/components/chat-thread';
+import { DevelopingPolaroid } from '@/components/developing';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
@@ -29,6 +31,7 @@ import { outingOpenerUserLine, pickOutingOpener } from '@/content/prompts';
 import { placeById } from '@/content/places';
 import { HEART_FULL } from '@/lib/bond';
 import { uid } from '@/lib/format';
+import { haptic } from '@/lib/haptics';
 import { imageKeyReady } from '@/lib/imagegen';
 import { t } from '@/lib/i18n';
 import { ON_TIME_TOLERANCE_MIN, planTimeLabel } from '@/lib/appointments';
@@ -49,6 +52,9 @@ export default function OutingSceneScreen() {
   const [typing, setTyping] = useState(false);
   const [noOne, setNoOne] = useState(false);
   const [shooting, setShooting] = useState<null | 'solo' | 'together'>(null);
+  // 快门白闪（D-209）
+  const flash = useSharedValue(0);
+  const flashStyle = useAnimatedStyle(() => ({ opacity: flash.get() }));
   const [sheetOpen, setSheetOpen] = useState(false);
   const booted = useRef(false);
 
@@ -152,6 +158,9 @@ export default function OutingSceneScreen() {
       alertAiUnavailable();
       return;
     }
+    // 快门（D-209）：白闪一下 + 一记震动，然后相纸在输入栏上方慢慢显影
+    haptic.medium();
+    flash.set(withSequence(withTiming(0.85, { duration: 60 }), withTiming(0, { duration: 320 })));
     setShooting(kind);
     try {
       await shootPhoto(active, character, place, kind, name);
@@ -179,6 +188,7 @@ export default function OutingSceneScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <Animated.View pointerEvents="none" style={[styles.flash, flashStyle]} />
       <Header
         place={place}
         subtitle={subtitle}
@@ -218,6 +228,11 @@ export default function OutingSceneScreen() {
                   }
                 />
               </Card>
+            ) : null}
+            {shooting ? (
+              <View style={styles.developing}>
+                <DevelopingPolaroid width={150} lines={DEVELOP_LINES.map((l) => t(l))} tiltKey={place.id} />
+              </View>
             ) : null}
             <View style={styles.shootRow}>
               <Button
@@ -292,6 +307,9 @@ function Header({
   );
 }
 
+/** 显影相纸下面那行字：按快门之后一句一句往下走，停在最后一句（出图约 10 秒到 1 分钟） */
+const DEVELOP_LINES = ['咔嚓——', '相纸在慢慢显影…', '轮廓出来了…', '快好了…'];
+
 const styles = themed(() =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: Romance.bg },
@@ -325,6 +343,8 @@ const styles = themed(() =>
       paddingVertical: 3,
     },
     sceneBannerText: { fontSize: Type.scale.caption.size, fontWeight: '500', color: '#FFFFFF', textAlign: 'center' },
+    flash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#FFFFFF', zIndex: 10 },
+    developing: { alignItems: 'center', paddingTop: Space.inlineLoose, paddingBottom: 4 },
     shootRow: {
       flexDirection: 'row',
       gap: Space.inlineLoose,

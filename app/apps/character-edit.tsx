@@ -34,6 +34,7 @@ import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
+import { DevelopingFilm, useStepLine } from '@/components/developing';
 import { Chip, Segmented } from '@/components/chip';
 import { Field, Input } from '@/components/input';
 import { StoryEditor } from '@/components/story-editor';
@@ -827,7 +828,9 @@ function CreateForm({ edit }: { edit?: string }) {
                 ? t('出图约 10 秒。')
                 : t('出图约 1 分钟。')}
             </Text>
-            {portraitUri ? (
+            {generating ? (
+              <PortraitDeveloping />
+            ) : portraitUri ? (
               <Image source={{ uri: portraitUri }} style={styles.portrait} contentFit="cover" />
             ) : null}
             <View style={styles.portraitBtnRow}>
@@ -1159,6 +1162,18 @@ function CreateForm({ edit }: { edit?: string }) {
   );
 }
 
+/** 立绘出图中（D-209）：立绘位上一块正在显影的底，下面一行字一句一句往下走 */
+const PORTRAIT_LINES = ['在描轮廓…', '在上色…', '在调光线…', '快好了…'];
+function PortraitDeveloping() {
+  const line = useStepLine(PORTRAIT_LINES, 12_000);
+  return (
+    <View style={styles.portraitWait}>
+      <DevelopingFilm width={180} style={styles.portraitFilm} />
+      <Text style={styles.afterHint}>{t(line)}</Text>
+    </View>
+  );
+}
+
 const styles = themed(() =>
   StyleSheet.create({
     flex: { flex: 1 },
@@ -1209,6 +1224,8 @@ const styles = themed(() =>
     swatchRingOn: { borderColor: Romance.ink },
     swatch: { width: 32, height: 32, borderRadius: Shape.radius },
     portrait: { width: 180, height: 180, borderRadius: Shape.radius, alignSelf: 'center', marginTop: Space.inlineLoose },
+    portraitWait: { alignItems: 'center', marginTop: Space.inlineLoose, gap: 6 },
+    portraitFilm: { borderRadius: Shape.radius },
     portraitBtnRow: { flexDirection: 'row', gap: Space.inlineLoose, marginTop: Space.inlineLoose },
     portraitBtn: { flex: 1 },
     raceCustomInput: { marginTop: Space.inlineLoose },
