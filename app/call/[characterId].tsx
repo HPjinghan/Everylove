@@ -6,6 +6,7 @@
  * 免提 = 播放走扬声器（iOS 类别 .playback）；听筒 = 录音类别 .playAndRecord，iOS 默认从听筒出声。
  * 切换（D-091）：TA 正在说话就立刻重设音频类别（播放中切类别会当场改出声口），否则下一句开口时生效；
  * 用 ref 记当前选择，免得 speak 闭包拿到旧值。
+ * 按分钟计（D-210）：接通后每 10 秒扣一次她的语音时长（features/call-meter）；剩不到一分钟 TA 自己收尾，用完了 TA 说完这句就挂。
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -22,10 +23,12 @@ import {
 
 import { showAlert } from '@/components/action-sheet';
 import { CharAvatar } from '@/components/char-avatar';
+import { alertNoVoice } from '@/components/voice-gate';
 import { MingCute } from '@/components/mingcute';
 import { Shape, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { VAD, callPickupLine, callReply, formatCallDuration, logCall } from '@/lib/call';
+import { callSecondsLeft, chargeCall, endCallMeter } from '@/features/call-meter';
 import { describeAiError } from '@/lib/chat';
 import { t } from '@/lib/i18n';
 import { ASR_RECORDING, transcribeVoice } from '@/lib/media';
@@ -36,6 +39,8 @@ import { audioSession } from '@/lib/audio-session';
 type Phase = 'dialing' | 'connecting' | 'speaking' | 'listening' | 'thinking' | 'ended';
 
 const RECORDING = { ...ASR_RECORDING, isMeteringEnabled: true };
+/** 通话时长每隔多久扣一次 */
+const CHARGE_EVERY_MS = 10_000;
 
 /** 设计稿指定的通话深底（D-100）：全 App 唯一允许的 palette 外常量 */
 const CALL_BG = '#1C1A1E';
@@ -62,6 +67,9 @@ export default function CallScreen() {
 
   const alive = useRef(true);
   const connectedAt = useRef(0);
+  /** 扣到哪一刻了 / 时长用完了（TA 说完这句就挂） */
+  const chargedAt = useRef(0);
+  const outOfTime = useRef(false);
   const speechStarted = useRef(false);
   // 渲染只读 state：这两个是 connectedAt / speechStarted 的镜像，写 ref 的地方同步写它们（管线逻辑仍看 ref）
   const [connected, setConnected] = useState(false);
@@ -74,13 +82,25 @@ export default function CallScreen() {
     if (alive.current) setPhase(p);
   };
 
-  /* ── 计时 ── */
+  /** 把上次扣到现在的时长扣掉；返回还剩几秒 */
+  const charge = useCallback(() => {
+    if (!bond || !chargedAt.current) return callSecondsLeft();
+    const now = Date.now();
+    const left = chargeCall(bond.characterId, (now - chargedAt.current) / 1000);
+    chargedAt.current = now;
+    if (left <= 0) outOfTime.current = true;
+    return left;
+  }, [bond]);
+
+  /* ── 计时 + 分段扣时长 ── */
   useEffect(() => {
     const id = setInterval(() => {
-      if (connectedAt.current) setElapsed(Date.now() - connectedAt.current);
+      if (!connectedAt.current) return;
+      setElapsed(Date.now() - connectedAt.current);
+      if (chargedAt.current && Date.now() - chargedAt.current >= CHARGE_EVERY_MS) charge();
     }, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [charge]);
 
   /* ── 开始听她说 ── */
   const listen = useCallback(async () => {
@@ -101,7 +121,7 @@ export default function CallScreen() {
       if (!alive.current || !character) return;
       setHimLine(text);
       setPhaseSafe('speaking');
-      const uri = await synthesizeVoice(text, character);
+      const uri = await synthesizeVoice(text, character, 'included');
       if (!alive.current) return;
       if (!uri) {
         setNote(t('语音没接通，TA 的话在字幕里'));
@@ -133,7 +153,7 @@ export default function CallScreen() {
       }
       let text: string;
       try {
-        text = await transcribeVoice(uri);
+        text = await transcribeVoice(uri, 'included');
       } catch {
         setNote(t('没听清，再说一遍？'));
         turnBusy.current = false;
@@ -174,9 +194,12 @@ export default function CallScreen() {
     }
   }, [rec.metering, rec.durationMillis, rec.isRecording, phase, endTurn, listen, recorder]);
 
-  /* ── TA 说完 → 听她 ── */
+  /* ── TA 说完 → 听她；时长用完了就挂 ── */
   useEffect(() => {
-    if (phase === 'speaking' && ps.didJustFinish) void listen();
+    if (phase !== 'speaking' || !ps.didJustFinish) return;
+    if (outOfTime.current) hangUp();
+    else void listen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ps.didJustFinish, phase, listen]);
 
   /* ── 拨号 → 接起 ── */
@@ -185,6 +208,12 @@ export default function CallScreen() {
     if (!character || !bond) return;
     let cancelled = false;
     (async () => {
+      // 没有通话时长就不拨（D-210）
+      if (callSecondsLeft() <= 0) {
+        router.back();
+        alertNoVoice();
+        return;
+      }
       const perm = await AudioModule.requestRecordingPermissionsAsync();
       if (!perm.granted) {
         showAlert(t('需要麦克风权限'), t('在系统设置里允许录音后再试。'));
@@ -198,6 +227,7 @@ export default function CallScreen() {
         const line = await callPickupLine(bond.id);
         if (cancelled) return;
         connectedAt.current = Date.now();
+        chargedAt.current = connectedAt.current;
         setConnected(true);
         await speak(line);
       } catch (e) {
@@ -209,6 +239,10 @@ export default function CallScreen() {
     return () => {
       cancelled = true;
       alive.current = false;
+      // 划走也算挂断：剩下的时长扣掉
+      if (bond && chargedAt.current) chargeCall(bond.characterId, (Date.now() - chargedAt.current) / 1000);
+      chargedAt.current = 0;
+      endCallMeter();
       try {
         player.pause();
       } catch {}
@@ -228,15 +262,18 @@ export default function CallScreen() {
     }
   };
 
-  const hangUp = () => {
-    if (!bond) return;
+  function hangUp() {
+    if (!bond || phaseRef.current === 'ended') return;
+    charge();
+    chargedAt.current = 0;
+    endCallMeter();
     setPhaseSafe('ended');
     if (connectedAt.current) {
       logCall(bond.id, Date.now() - connectedAt.current);
     }
     // 「通话结束」停一下再走（D-197），别像被挂断
     setTimeout(() => router.back(), 1200);
-  };
+  }
 
   if (!bond || !character) return <Redirect href="/apps/phone" />;
 

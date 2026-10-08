@@ -2,7 +2,7 @@
  * TA 发图（D-130 → D-135，Harper：「聊天里要允许生图，比如我给他点了外卖，他收到之后我要看个图」）：
  * - 她要看 / 东西刚送到（她的话或舞台提示里有「拍给我看」「送到」这类词）：随时可以发，不走主动那三道门；
  * - 主动拍一张：这一轮过了三道门（LV2+、10 条冷却、概率，lib/extras.ts）才把选项给模型，落了记冷却。
- * TA 写了 [发图 描述] 就先落一条「照片冲洗中」的图片消息，后台按角色画风生成（外出拍照同一条管线，按真实用量扣流量），洗好回填；
+ * TA 写了 [发图 描述] 就先落一条「照片冲洗中」的图片消息，后台按角色画风生成（外出拍照同一条管线；她要看的扣她的流量、TA 主动拍的平台出，D-210），洗好回填；
  * 没洗出来标 failed、不重试。主动找她那条也可能带一张（lib/reach-out.ts applyMarkers）。
  */
 
@@ -36,7 +36,7 @@ replyMarkers.register({
   key: 'hisPhoto',
   mark: HIS_PHOTO_MARK,
   pattern: HIS_PHOTO_PATTERN,
-  async apply({ scope, mode, ctx, value, unread }) {
+  async apply({ scope, mode, ctx, value, unread, billing }) {
     const store = useAppStore.getState();
     const bond = scope.bondId ? store.bonds.find((b) => b.id === scope.bondId) : undefined;
     const { withHim, desc } = parseHisPhotoPayload(value ?? '');
@@ -52,7 +52,12 @@ replyMarkers.register({
     // 生图约 10 s～1 min：不在这里等（D-173）——回合的 after 钩子（记忆 / 约定识别）与主动消息的锁不被拖住，洗好再回填
     void (async () => {
       try {
-        const uri = await generateScenePhoto(buildHisPhotoPrompt(ctx.character, { desc, withHim }), ctx.character);
+        // 她要看的、在她这一轮里拍的记她的账；TA 主动拍的、后台落的平台出（D-210）
+        const uri = await generateScenePhoto(
+          buildHisPhotoPrompt(ctx.character, { desc, withHim }),
+          ctx.character,
+          requested && billing === 'user' ? 'user' : 'house'
+        );
         useAppStore.getState().patchMessage({ bondId: bond.id }, id, { imageUri: uri, mediaStatus: undefined });
       } catch (e) {
         console.warn('[his-photo] 照片没洗出来：', e);

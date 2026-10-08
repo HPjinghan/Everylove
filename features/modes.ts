@@ -143,6 +143,8 @@ const call: ConversationMode = {
   maxBubbles: 1,
   // 通话的字要送去合成，句号留着（D-145）
   keepTrailingPeriod: true,
+  // 通话按分钟计（D-210）：电话里的回话、识别、合成都含在通话分钟里，不再扣流量
+  billing: 'included',
   context(scope, userText) {
     const ctx = bonded.context(scope, userText);
     return ctx ? { ...ctx, mode: 'call' } : null;

@@ -13,7 +13,7 @@ import { seedPortrait } from '@/content/portraits';
 import { buildPortraitPrompt, imageModelFor, PORTRAIT_NEGATIVE } from '@/content/prompts';
 // （外出拍照的 prompt 由调用方拼好传入，见 content/prompts/photo.ts 的 buildOutingPhotoPrompt，D-051）
 import { CONFIG } from '@/core/config';
-import { GenerationBlockedError, generationBlocked, reportUsage } from '@/core/usage';
+import { GenerationBlockedError, generationBlocked, reportUsage, type Billing } from '@/core/usage';
 import { postJsonWithTimeout, proxyJson, proxyReadySync } from '@/lib/proxy';
 import { uid } from '@/lib/format';
 import type { Character } from '@/lib/types';
@@ -49,9 +49,9 @@ const IMAGE_TIMEOUT_MS = 180_000;
  * 千帆同步文生图（本地 key 直连，无 key 走服务端代理），下载到本机后返回本地 URI。
  * model 由画风决定（D-076：动漫 → 蒸汽机，其余 → qwen-image）；不传按工程默认。
  */
-async function generateImage(prompt: string, subdir = 'portraits', model: string = QIANFAN_IMAGE_MODEL): Promise<string> {
-  // 生成闸门（D-133）：流量用完了就不画
-  const blocked = generationBlocked('image');
+async function generateImage(prompt: string, subdir = 'portraits', model: string = QIANFAN_IMAGE_MODEL, billing: Billing = 'user'): Promise<string> {
+  // 生成闸门（D-133）：流量用完了就不画；TA 自己拍的看平台的保险丝（D-210）
+  const blocked = generationBlocked('image', billing);
   if (blocked) throw new GenerationBlockedError(blocked);
   const key = imageKey();
   const muse = model.startsWith(MUSE_MODEL_PREFIX);
@@ -80,15 +80,15 @@ async function generateImage(prompt: string, subdir = 'portraits', model: string
   // 真实用量（D-134）：API 返回了张数 / token 就按它，否则按 1 张
   const u = data.usage;
   const images = u?.generated_images && u.generated_images > 0 ? u.generated_images : u?.output_tokens || u?.total_tokens ? undefined : 1;
-  reportUsage({ kind: 'image', provider: model, images, outputTokens: u?.output_tokens ?? u?.total_tokens, estimated: !u });
+  reportUsage({ kind: 'image', provider: model, images, outputTokens: u?.output_tokens ?? u?.total_tokens, billing, estimated: !u });
   return downloadTo(url, subdir, uid('img'));
 }
 
 // 立绘 prompt（画风表 / system / 红线）在 content/prompts/portrait.ts（D-017/D-087）
 
-/** 外出拍照（D-051）：她主动按快门的场景照——非会话自动投放（D-037 纪律不变）；模型跟角色画风走（D-076） */
-export async function generateScenePhoto(prompt: string, character?: Pick<Character, 'artStyle'>): Promise<string> {
-  return generateImage(prompt, 'photos', character ? imageModelFor(character) : QIANFAN_IMAGE_MODEL);
+/** 外出拍照（D-051）：她主动按快门的场景照——非会话自动投放（D-037 纪律不变）；模型跟角色画风走（D-076）。TA 自己拍的传 house（D-210） */
+export async function generateScenePhoto(prompt: string, character?: Pick<Character, 'artStyle'>, billing: Billing = 'user'): Promise<string> {
+  return generateImage(prompt, 'photos', character ? imageModelFor(character) : QIANFAN_IMAGE_MODEL, billing);
 }
 
 /* ────────────────────────────── 立绘（D-019） ────────────────────────────── */
@@ -111,8 +111,8 @@ export function portraitFor(characterId: string): string | undefined {
 }
 
 /** 只生成、不入库：捏＋预览用（角色还没创建，先看一眼、可重生成） */
-export async function generatePortraitFor(character: Character): Promise<string> {
-  return generateImage(buildPortraitPrompt(character), 'portraits', imageModelFor(character));
+export async function generatePortraitFor(character: Character, billing: Billing = 'user'): Promise<string> {
+  return generateImage(buildPortraitPrompt(character), 'portraits', imageModelFor(character), billing);
 }
 
 const portraitInflight = new Set<string>();
@@ -132,7 +132,8 @@ export async function ensurePortrait(
   if (!character) return existing;
   portraitInflight.add(characterId);
   try {
-    const uri = await generatePortraitFor(character);
+    // 后台补画平台出，她点「重画」才记她的账（D-210）
+    const uri = await generatePortraitFor(character, force ? 'user' : 'house');
     useAppStore.getState().setPortrait(characterId, uri);
     return uri;
   } catch (e) {

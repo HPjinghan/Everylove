@@ -8,11 +8,13 @@
  * 纸面（D-100）：顶栏 ‹ / 头像 36 / 名 17 / 身份 12，右侧标签白底 r6——自创显示「你创造的 TA」，配对显示倒计时「还剩 N 天」（最后一天 accent）；
  * 心动条吸顶：header 下方通栏（白底、1.5px ink 下沿），不随消息滚动，满 100 保持满格；
  * offer 仍是输入栏上方的 cta 卡（白卡描边 + primary 小按钮），贴近拇指。
+ * 手感（D-207）：好奇条涨的时候填充平滑推过去、「+n」从下面冒出来；涨满 100 那一下震一次。
  */
 
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { Easing, FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
@@ -21,11 +23,13 @@ import { CharAvatar } from '@/components/char-avatar';
 import { CharacterSheet } from '@/components/character-sheet';
 import { ChatThread, type ReplyRef } from '@/components/chat-thread';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { micGate } from '@/components/voice-gate';
 import { scriptFor } from '@/content/characters';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { HEART_FULL } from '@/lib/bond';
 import { uid } from '@/lib/format';
+import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
 import { himMsg, resendTurn, sendImage, sendText, sendVoice, squareScope, wait } from '@/lib/chat';
 import type { ChatMessage } from '@/lib/types';
@@ -152,10 +156,13 @@ export default function SquareChatScreen() {
       {/* 好奇条吸顶（D-100 / D-157）：白底通栏 + 1.5px 下沿，不随消息滚动 */}
       <View style={styles.heartBar}>
         <Text style={styles.heartLabel}>{t('好奇')}</Text>
-        <View style={styles.heartTrack}>
-          <View style={[styles.heartFill, { width: `${heart}%` }]} />
-        </View>
-        {!offered && (chat?.lastHeartGain ?? 0) > 0 ? <Text style={styles.heartGain}>+{chat?.lastHeartGain}</Text> : null}
+        <HeartMeter heart={heart} />
+        {!offered && (chat?.lastHeartGain ?? 0) > 0 ? (
+          // key = 当前值：每涨一次重新挂一次，入场动画才会再放
+          <Animated.Text key={heart} entering={FadeInDown.duration(260)} style={styles.heartGain}>
+            +{chat?.lastHeartGain}
+          </Animated.Text>
+        ) : null}
         <Text style={styles.heartNum}>
           {heart}/{HEART_FULL}
         </Text>
@@ -170,6 +177,7 @@ export default function SquareChatScreen() {
         onSend={onSend}
         onSendImage={onSendImage}
         onSendVoice={onSendVoice}
+        micGate={micGate}
         onResend={onResend}
         onRecall={(m) => useAppStore.getState().recallMessage({ characterId: character.id }, m.id)}
         onDelete={(m) => useAppStore.getState().deleteMessage({ characterId: character.id }, m.id)}
@@ -198,6 +206,24 @@ export default function SquareChatScreen() {
           ) : null
         }
       />
+    </View>
+  );
+}
+
+/** 好奇条的填充：按 scaleX 从左边推过去（进页直接停在当前值，之后每次变化 420 ms 缓出）；涨满那一下震一次 */
+function HeartMeter({ heart }: { heart: number }) {
+  const fill = useSharedValue(heart / HEART_FULL);
+  const prev = useRef(heart);
+  useEffect(() => {
+    if (heart === prev.current) return;
+    if (heart >= HEART_FULL && prev.current < HEART_FULL) haptic.success();
+    prev.current = heart;
+    fill.set(withTiming(heart / HEART_FULL, { duration: 420, easing: Easing.out(Easing.cubic) }));
+  }, [heart, fill]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scaleX: fill.get() }] }));
+  return (
+    <View style={styles.heartTrack}>
+      <Animated.View style={[styles.heartFill, style]} />
     </View>
   );
 }
@@ -248,7 +274,7 @@ const styles = themed(() =>
       backgroundColor: Romance.bg,
       overflow: 'hidden',
     },
-    heartFill: { height: '100%', backgroundColor: Romance.accent },
+    heartFill: { width: '100%', height: '100%', backgroundColor: Romance.accent, transformOrigin: 'left' },
     heartNum: { fontFamily: Fonts.labelBold, fontSize: Type.scale.caption.size, color: Romance.accentStrong },
     // 这一句涨了多少（D-126）：小字，0 不显示
     heartGain: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.accent },

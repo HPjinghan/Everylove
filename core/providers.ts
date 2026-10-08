@@ -8,7 +8,7 @@
 
 import { CONFIG } from '@/core/config';
 import { createRegistry } from '@/core/registry';
-import { estimateTokens, GenerationBlockedError, generationBlocked, reportUsage } from '@/core/usage';
+import { estimateTokens, GenerationBlockedError, generationBlocked, reportUsage, type Billing } from '@/core/usage';
 import { t } from '@/lib/i18n';
 import { proxyAvailable, proxyReadySync } from '@/lib/proxy';
 
@@ -25,6 +25,13 @@ export interface ChatRequest {
   kind: 'reply' | 'task';
   /** 后台写的回话（TA 主动 / 召回 / 心跳，D-176）：长度与口吻同 reply，但供应商按 task 走便宜那家、流量记 task */
   background?: boolean;
+  /** 账单归属（D-210）；不写 = 后台 / task 算 house、回话算 user */
+  billing?: Billing;
+}
+
+/** 一次请求的账算给谁（D-210）：显式写了按写的；后台写的回话与工具调用平台出，回话玩家出 */
+export function billingOf(req: Pick<ChatRequest, 'kind' | 'background' | 'billing'>): Billing {
+  return req.billing ?? (req.background || req.kind === 'task' ? 'house' : 'user');
 }
 
 export type AiRoute = 'direct' | 'proxy' | 'none';
@@ -118,8 +125,9 @@ export async function completeChat(req: ChatRequest, providerId?: string): Promi
   const p = hasRoute(taskCheap) ? taskCheap : currentChatProvider(providerId);
   const route = await chatRoute(p);
   if (route === 'none') throw new AiUnavailableError();
-  // 生成闸门（D-133）：流量用完了就不花
-  const blocked = generationBlocked('chat');
+  // 生成闸门（D-133）：流量用完了就不花；平台出的看平台的保险丝（D-210）
+  const billing = billingOf(req);
+  const blocked = generationBlocked('chat', billing);
   if (blocked) throw new GenerationBlockedError(blocked);
   try {
     const r = await p.complete(req, route);
@@ -129,7 +137,7 @@ export async function completeChat(req: ChatRequest, providerId?: string): Promi
       inputTokens: estimateTokens(req.system + req.turns.map((x) => x.content).join('\n')),
       outputTokens: estimateTokens(result.text),
     };
-    reportUsage({ kind: 'chat', provider: p.id, reqKind: req.background ? 'task' : req.kind, estimated: !result.usage, ...usage });
+    reportUsage({ kind: 'chat', provider: p.id, reqKind: req.background ? 'task' : req.kind, billing, estimated: !result.usage, ...usage });
     return result.text;
   } catch (e) {
     console.warn(`[provider] ${p.id}${route === 'proxy' ? '（代理）' : ''} 调用失败：`, e);

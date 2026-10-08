@@ -6,6 +6,7 @@
  *   和「这一条写不写她」——按她在 TA 心里的分量掷硬币（lib/her-share.ts，D-099）。AI 不可用 / 失败 = 这次不写
  */
 
+import { backgroundAwake } from '@/lib/bond';
 import { buildHisNoteSystem, buildHisNoteUserPrompt, HIS_NOTE_USER } from '@/content/prompts';
 import { bondedContext } from '@/lib/chat';
 import { completeText, splitBubbles, stripStageDirections } from '@/lib/engine';
@@ -44,6 +45,8 @@ export async function deliverDueHisNotes(now = Date.now()): Promise<number> {
     const due = state.noteSchedule[character.id];
     const empty = !(bond.notes?.length);
     if (due && now < due && !empty) continue;
+    // 久别的不写（D-210）：钟留着，她回来时补一条
+    if (!empty && !backgroundAwake(bond, now)) continue;
     if (inflight.has(bond.id)) continue;
     // 先排下一次的钟：失败也不会每次回前台都重试轰炸
     useAppStore.getState().setNoteDue(character.id, now + noteIntervalMs(character));

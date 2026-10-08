@@ -13,7 +13,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { bondedPostsFor, CHARACTERS, scriptFor, seedCharactersFor, SQUARE_POSTS } from '@/content/characters';
 import { uid } from '@/lib/format';
 import { applyPaperTint } from '@/constants/theme';
-import { DEFAULT_LOVE_MODEL, EMPTY_TRAFFIC, type LoveModelId, type Traffic, trafficAfterUse } from '@/lib/traffic';
+import { DEFAULT_LOVE_MODEL, EMPTY_TRAFFIC, START_VOICE, type LoveModelId, type Traffic, trafficAfterUse, voiceAfterUse, type VoiceTime, type VoiceUse } from '@/lib/traffic';
 import { emptyHisWallet, ledgerEntry, pushLedger } from '@/lib/wallet';
 import { dedupeBonds, legacyBondLevel, levelLabelOf, levelOf, WARMTH_GAINS, WARMTH_START, warmthAfter, xpGain, type XpSource } from '@/lib/bond';
 import { setLang, type Lang } from '@/lib/i18n';
@@ -140,6 +140,8 @@ interface AppState {
   loveModel: LoveModelId;
   /** 流量流水（D-134，最近 200 笔） */
   trafficLog: TrafficEntry[];
+  /** 语音时长（D-210）：订阅每天的额度、买的分钟包、新用户送的通话 */
+  voice: VoiceTime;
 
   completeOnboarding: (pref: LovePref) => void;
   setLanguage: (l: Lang) => void;
@@ -186,6 +188,12 @@ interface AppState {
   addTraffic: (mb: number, grantAt?: number) => void;
   setLoveModel: (m: LoveModelId) => void;
   logTraffic: (e: Omit<TrafficEntry, 'id' | 'at'>) => void;
+  /** 扣语音时长（秒）：先今天的额度、电话再用送的、最后分钟包；返回实际扣了几秒 */
+  useVoice: (sec: number, use: VoiceUse) => number;
+  /** 买语音分钟包（分钟） */
+  addVoiceMinutes: (min: number) => void;
+  /** 「TA 发语音」开关（每段羁绊，D-210） */
+  setVoiceReplies: (bondId: string, on: boolean) => void;
   /** TA 的钱包进出；没有钱包先按起点建 */
   adjustHisWallet: (bondId: string, e: { amount: number; kind: LedgerKind; note: string }) => number;
   patchHisWallet: (bondId: string, patch: Partial<HisWallet>) => void;
@@ -327,6 +335,7 @@ const initialData = {
   traffic: EMPTY_TRAFFIC as Traffic,
   loveModel: DEFAULT_LOVE_MODEL as LoveModelId,
   trafficLog: [] as TrafficEntry[],
+  voice: START_VOICE as VoiceTime,
   quietHours: { from: 23, to: 8 },
 };
 
@@ -520,6 +529,16 @@ export const useAppStore = create<AppState>()(
       setLoveModel: (m) => set({ loveModel: m }),
 
       logTraffic: (e) => set({ trafficLog: [...get().trafficLog, { id: uid('tr'), at: Date.now(), ...e }].slice(-TRAFFIC_LOG_MAX) }),
+
+      useVoice: (sec, use) => {
+        const { voice, charged } = voiceAfterUse(get().voice, sec, get().plan, use);
+        set({ voice });
+        return charged;
+      },
+
+      addVoiceMinutes: (min) => set({ voice: { ...get().voice, packSec: get().voice.packSec + min * 60 } }),
+
+      setVoiceReplies: (bondId, on) => set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, voiceReplies: on } : b)) }),
 
       adjustHisWallet: (bondId, e) => {
         const b = get().bonds.find((x) => x.id === bondId);

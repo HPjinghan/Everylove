@@ -12,7 +12,7 @@
 import { buildReachOutUserLine } from '@/content/prompts';
 import { draftReply, landReply } from '@/core/turn';
 import { bondScope } from '@/lib/chat';
-import { bondLevel, DISTANT_MIN_INTERVAL_MS, WARMTH_REACH_MULT, warmthBand, warmthNow, type WarmthBand } from '@/lib/bond';
+import { bondLevel, DISTANT_MIN_INTERVAL_MS, REACH_PLAN_MULT, WARMTH_REACH_MULT, warmthBand, warmthNow, type WarmthBand } from '@/lib/bond';
 import { cancelScheduled, hasNotificationPermission, scheduleArrivalNotification } from '@/lib/notifications';
 import type { Bond, Character, ChatMessage, EngineReply } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
@@ -40,19 +40,20 @@ export const REWRITE_MIN_GAP_MS = 2 * 3600_000;
 /** 给模型看 TA 最近几条记事本 / 帖 */
 const RECENT = 3;
 
-/** 下一条的间隔：24h / 每日条数（强度 × MBTI × 等级 × 温度），±35% 抖动；疏远时每 3 天最多一条（D-126） */
+/** 下一条的间隔：24h / 每日条数（强度 × MBTI × 等级 × 温度 × 订阅档），±35% 抖动；疏远时每 3 天最多一条（D-126）；Free 减半（D-210） */
 export function reachIntervalMs(
   c: Pick<Character, 'initiative' | 'mbti'>,
   affinity: number,
   rand = Math.random(),
-  band: WarmthBand = 'plain'
+  band: WarmthBand = 'plain',
+  plan: 'free' | 'pro' | 'max' = 'pro'
 ): number {
   const perDay = REACH_PER_DAY[c.initiative ?? 'mid'];
   const axis = mbtiAxis(c.mbti);
   const mbti = axis ? REACH_MBTI[axis] : 1;
   const level = REACH_LEVEL[Math.min(REACH_LEVEL.length, bondLevel(affinity)) - 1] ?? 1;
   const warmth = WARMTH_REACH_MULT[band] || 1;
-  const jittered = jitteredIntervalMs(perDay * mbti * level * warmth, rand);
+  const jittered = jitteredIntervalMs(perDay * mbti * level * warmth * REACH_PLAN_MULT[plan], rand);
   return band === 'distant' ? Math.max(jittered, DISTANT_MIN_INTERVAL_MS) : jittered;
 }
 
@@ -72,7 +73,7 @@ export function outsideQuiet(at: number, rand = Math.random(), hours?: { from: n
 }
 
 export function nextReachAt(now: number, c: Pick<Character, 'initiative' | 'mbti'>, bond: Pick<Bond, 'affinity' | 'warmth' | 'warmthAt'>): number {
-  return outsideQuiet(now + reachIntervalMs(c, bond.affinity, Math.random(), warmthBand(warmthNow(bond, now))));
+  return outsideQuiet(now + reachIntervalMs(c, bond.affinity, Math.random(), warmthBand(warmthNow(bond, now)), useAppStore.getState().plan));
 }
 
 function lastFrom(msgs: ChatMessage[], from: ChatMessage['from']): ChatMessage | undefined {

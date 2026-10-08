@@ -13,6 +13,7 @@ import { createEmitHook, createWaterfallHook } from '@/core/hooks';
 import { replyMarkers } from '@/core/markers';
 import { modeOf, type ConversationMode, type TurnScope } from '@/core/modes';
 import { createRegistry } from '@/core/registry';
+import type { Billing } from '@/core/usage';
 import { describeAiError, generateReply, messageContextText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -51,6 +52,8 @@ export interface TurnInfo {
   ui: TurnUi;
   /** 她发起的回合（sendText / sendCard / 语音 / 照片）；TA 先开口的 respond 不算——流量只扣她发起的（D-132） */
   her: boolean;
+  /** 这一轮的账算给谁（D-210）：user 她 / house 平台（TA 自己发起的）/ included 含在通话分钟里 */
+  billing: Billing;
 }
 
 /** 回合闸门（D-132）：她要开口前逐个问一遍，返回一句原因 = 这回合发不出（顶部轻提示），null = 放行 */
@@ -118,6 +121,8 @@ export interface TurnMeta {
   msgId?: string;
   /** 她这条已在会话里、又作为本轮的话送进去（重发 / 合成的一轮）：历史里去掉它免得重复 */
   exclude?: boolean;
+  /** 账单归属（D-210）：TA 自己发起的一句（外卖送到、爽约）写 house；不写按模式、再按 user */
+  billing?: Billing;
 }
 
 /** 排队的一轮（D-169）：TA 在回的时候她又说的；land = 到点要落进会话的后台消息（D-177），等这轮落完再落 */
@@ -125,6 +130,7 @@ interface TurnJob {
   userText: string;
   ui: TurnUi;
   her: boolean;
+  billing?: Billing;
   msgIds: string[];
   resolve(r: TurnResult): void;
   land?: () => Promise<void>;
@@ -144,12 +150,12 @@ export async function runTurn(scope: TurnScope, userText: string, ui: TurnUi = {
   const msgIds = meta.msgId ? [meta.msgId] : [];
   const queue = running.get(key);
   if (queue) {
-    return new Promise<TurnResult>((resolve) => queue.push({ userText, ui, her: !!meta.her, msgIds, resolve }));
+    return new Promise<TurnResult>((resolve) => queue.push({ userText, ui, her: !!meta.her, billing: meta.billing, msgIds, resolve }));
   }
   const pending: TurnJob[] = [];
   running.set(key, pending);
   try {
-    const first = await runOne(scope, userText, ui, !!meta.her, msgIds, meta.exclude ? msgIds : []);
+    const first = await runOne(scope, userText, ui, !!meta.her, msgIds, meta.exclude ? msgIds : [], meta.billing);
     await drainPending(scope, pending);
     return first;
   } finally {
@@ -170,24 +176,33 @@ async function drainPending(scope: TurnScope, pending: TurnJob[]): Promise<void>
     const batch = [head];
     if (head.her) while (pending.length && pending[0].her && !pending[0].land) batch.push(pending.shift()!);
     const ids = batch.flatMap((j) => j.msgIds);
-    const r = await runOne(scope, batch.map((j) => j.userText).join('\n'), batch[batch.length - 1].ui, head.her, ids, ids);
+    const r = await runOne(scope, batch.map((j) => j.userText).join('\n'), batch[batch.length - 1].ui, head.her, ids, ids, head.billing);
     for (const j of batch) j.resolve(r);
   }
 }
 
 /** 只让 TA 回上一轮（不排队；由 runTurn 调） */
-async function runOne(scope: TurnScope, userText: string, ui: TurnUi, her: boolean, msgIds: string[], excludeIds: string[]): Promise<TurnResult> {
+async function runOne(
+  scope: TurnScope,
+  userText: string,
+  ui: TurnUi,
+  her: boolean,
+  msgIds: string[],
+  excludeIds: string[],
+  billingOverride?: Billing
+): Promise<TurnResult> {
   const mode = modeOf(scope);
   const ctx = mode.context(scope, userText);
   if (!ctx) return { reply: null };
   if (excludeIds.length) ctx.history = ctx.history.filter((m) => !excludeIds.includes(m.id));
   const pace = ui.pace ?? 'natural';
+  const billing: Billing = billingOverride ?? mode.billing ?? 'user';
 
   ui.typing?.(true);
   const startedAt = Date.now();
   let reply: EngineReply;
   try {
-    reply = await generateReply(ctx);
+    reply = await generateReply(ctx, undefined, { billing });
   } catch (e) {
     // 模型调用失败（D-169）：她那条标「没送到」可重发，轻提示只说没回上；原因记在消息上、开发者看 console（不写进会话，D-110）
     ui.typing?.(false);
@@ -198,7 +213,7 @@ async function runOne(scope: TurnScope, userText: string, ui: TurnUi, her: boole
     return { reply: null, error: e };
   }
 
-  const info: TurnInfo = { scope, ctx, mode, reply, darkSide: !!reply.darkSide, ui, her };
+  const info: TurnInfo = { scope, ctx, mode, reply, darkSide: !!reply.darkSide, ui, her, billing };
   // 模型已经花掉的时间从第一条的打字延迟里扣掉（D-200）：TA 不会「生成完了还在打字」
   await settle(info, { pace, elapsedMs: Date.now() - startedAt });
   return { reply };
@@ -223,7 +238,7 @@ async function settle(info: TurnInfo, opts: { pace: 'natural' | 'none'; at?: num
     const msg = await turnHooks.bubble.run(base, { ...info, index: i, total });
     mode.append(scope, [msg], { unreadDelta: ui.unread ? 1 : 0 });
   }
-  await applyMarkers(scope, reply, { ctx, unread: ui.unread });
+  await applyMarkers(scope, reply, { ctx, unread: ui.unread, billing: info.billing });
   await turnHooks.after.emit(info);
 }
 
@@ -250,7 +265,8 @@ export async function landReply(scope: TurnScope, reply: EngineReply, opts: { at
     const ctx = mode.context(scope, '');
     if (!ctx) return;
     const ui: TurnUi = { pace: 'none', unread: opts.unread, quiet: true };
-    const info: TurnInfo = { scope, ctx, mode, reply, darkSide: !!reply.darkSide, ui, her: false };
+    // 后台写好的（TA 主动 / 召回 / 心跳）平台出（D-210）：落状态时再花的钱（发图、语音）也不记她的账
+    const info: TurnInfo = { scope, ctx, mode, reply, darkSide: !!reply.darkSide, ui, her: false, billing: 'house' };
     await settle(info, { pace: 'none', at: opts.at, extra: opts.extra });
   };
   const key = scopeKey(scope);
@@ -270,14 +286,18 @@ export async function landReply(scope: TurnScope, reply: EngineReply, opts: { at
 }
 
 /** 按 flags 逐个落暗号；回合外（主动找她）也能用——ctx 不传就按 scope 现组 */
-export async function applyMarkers(scope: TurnScope, reply: EngineReply, opts: { ctx?: EngineContext; unread?: boolean } = {}): Promise<void> {
+export async function applyMarkers(
+  scope: TurnScope,
+  reply: EngineReply,
+  opts: { ctx?: EngineContext; unread?: boolean; billing?: Billing } = {}
+): Promise<void> {
   const mode = modeOf(scope);
   const ctx = opts.ctx ?? mode.context(scope, '');
   if (!ctx) return;
   for (const m of replyMarkers.list()) {
     if (!reply.flags?.[m.key]) continue;
     try {
-      await m.apply({ scope, ctx, mode, value: reply.values?.[m.key], unread: opts.unread });
+      await m.apply({ scope, ctx, mode, value: reply.values?.[m.key], unread: opts.unread, billing: opts.billing });
     } catch (e) {
       console.warn(`[marker:${m.key}] 落状态失败：`, e);
     }

@@ -263,6 +263,14 @@ export const DISTANT_MIN_INTERVAL_MS = 3 * DAY_MS;
 /** 召回：温度到 0 后第 7 / 14 / 30 天各一条，之后不再发 */
 export const RECALL_DAYS = [7, 14, 30];
 
+/**
+ * TA 自己的日子还在不在后台往前走（D-210）：温度到 0（久别）就停——发帖、记事本、日程补写都等她回来。
+ * 后台生成平台出、不扣她的流量，槽位又不限，冷掉的关系不该一直花钱；她打开 TA 的手机时照常补。
+ */
+export function backgroundAwake(b: WarmthSubject, now = Date.now()): boolean {
+  return warmthNow(b, now) > 0;
+}
+
 /** 今天是不是纪念日：一百天 / 换联系方式周年 / TA 生日 / 她生日（MM-DD） */
 export function anniversaryToday(
   b: { createdAt: number; hisBirthday?: string; herBirthday?: string },
@@ -278,21 +286,10 @@ export function anniversaryToday(
   return days >= 365 && cMmdd === mmdd;
 }
 
-/* ═══ 订阅与槽位（D-063 试装模拟）：free 1 / pro 5 / max 不限 ═══ */
+/* ═══ 订阅（D-210）：槽位不限；订阅管流量、语音分钟与「他在」的密度 ═══ */
 
-export const PLAN_SLOTS: Record<'free' | 'pro' | 'max', number> = {
-  free: 1,
-  pro: 5,
-  max: Infinity,
-};
-
-export function slotLimit(plan: 'free' | 'pro' | 'max'): number {
-  return PLAN_SLOTS[plan] ?? 1;
-}
-
-export function slotLimitLabel(plan: 'free' | 'pro' | 'max'): string {
-  return plan === 'max' ? '∞' : String(slotLimit(plan));
-}
+/** TA 主动找她的频率系数：Free 低一档（免费层故意不完整，也控后台成本） */
+export const REACH_PLAN_MULT: Record<'free' | 'pro' | 'max', number> = { free: 0.5, pro: 1, max: 1 };
 
 /* ═══ 好奇值（免费层试聊）：模型判 15–30，满 100 约 4–8 句（D-157） ═══ */
 

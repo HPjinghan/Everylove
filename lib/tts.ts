@@ -10,7 +10,7 @@
  */
 
 import * as FileSystem from 'expo-file-system/legacy';
-import { generationBlocked, reportUsage } from '@/core/usage';
+import { estimateSpeechSeconds, generationBlocked, reportUsage, type Billing } from '@/core/usage';
 
 import { pronounFor } from '@/content/prompts';
 import { CONFIG } from '@/core/config';
@@ -176,7 +176,7 @@ const inflight = new Map<string, Promise<string | undefined>>();
  * 合成核心：给定两条通道各自的音色，按取路合成并缓存。
  * 同一句话并发只打一次接口。
  */
-async function synthesize(text: string, voices: { fish: string; baidu: string }): Promise<string | undefined> {
+async function synthesize(text: string, voices: { fish: string; baidu: string }, billing: Billing): Promise<string | undefined> {
   if (!ttsReady() || !text.trim()) return undefined;
   const tex = text.trim().slice(0, MAX_CHARS);
   const route: 'fish' | 'baidu' | 'proxy' = fishConfigured() ? 'fish' : ENV_QIANFAN_KEY ? 'baidu' : 'proxy';
@@ -186,8 +186,8 @@ async function synthesize(text: string, voices: { fish: string; baidu: string })
 
   const cached = await FileSystem.getInfoAsync(local).catch(() => null);
   if (cached?.exists) return local;
-  // 生成闸门（D-133）：流量用完了不合成（缓存过的照放）
-  if (generationBlocked('tts')) return undefined;
+  // 生成闸门（D-133 → D-210）：她的语音时长用完了不合成（缓存过的照放）
+  if (generationBlocked('tts', billing)) return undefined;
   const pending = inflight.get(cacheKey);
   if (pending) return pending;
 
@@ -210,7 +210,7 @@ async function synthesize(text: string, voices: { fish: string; baidu: string })
       await FileSystem.writeAsStringAsync(local, b64, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      reportUsage({ kind: 'tts', provider: route, chars: tex.length });
+      reportUsage({ kind: 'tts', provider: route, chars: tex.length, seconds: estimateSpeechSeconds(tex), billing, estimated: true });
       return local;
     } catch (e) {
       console.warn('[tts] 语音合成失败：', e);
@@ -224,12 +224,13 @@ async function synthesize(text: string, voices: { fish: string; baidu: string })
 }
 
 /** 合成 TA 的一句话（音色按角色），返回本机音频 URI；不可用 / 失败返回 undefined（调用方显示占位） */
-export function synthesizeVoice(text: string, character: Character): Promise<string | undefined> {
-  return synthesize(text, { fish: voiceFor(character, 'fish'), baidu: voiceFor(character, 'baidu') });
+export function synthesizeVoice(text: string, character: Character, billing: Billing = 'user'): Promise<string | undefined> {
+  return synthesize(text, { fish: voiceFor(character, 'fish'), baidu: voiceFor(character, 'baidu') }, billing);
 }
 
 /** 试听一把音色（创造 ⑧）：指定 Fish 音色 id 合成一句；没配 Fish 时按人称回落百度 */
 export function previewVoice(text: string, voiceId: string, pronoun: '他' | '她' | 'TA'): Promise<string | undefined> {
   const baidu = ENV_PER || (pronoun === '他' ? '4193' : pronoun === '她' ? '4194' : '4115');
-  return synthesize(text, { fish: voiceId, baidu });
+  // 试听不计时（D-210）：选声音是创作，不该先付钱
+  return synthesize(text, { fish: voiceId, baidu }, 'house');
 }

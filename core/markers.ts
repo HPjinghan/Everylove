@@ -6,6 +6,7 @@
 
 import type { ConversationMode, TurnScope } from '@/core/modes';
 import { createRegistry } from '@/core/registry';
+import type { Billing } from '@/core/usage';
 import type { EngineContext, EngineReply } from '@/lib/types';
 
 export interface MarkerInfo {
@@ -16,6 +17,8 @@ export interface MarkerInfo {
   value?: string;
   /** 暗号落出来的消息要不要计未读（她不在这个会话页时，如 TA 主动那条带的外卖） */
   unread?: boolean;
+  /** 这一轮的账算给谁（D-210）：落状态时要再花钱的（TA 发图）跟着它记 */
+  billing?: Billing;
 }
 
 export interface ReplyMarker {

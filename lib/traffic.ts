@@ -1,11 +1,14 @@
 /**
- * 流量与模型档（D-132 → D-133，Harper：「不要按照回合，按照 token 消耗，因为还涉及到生图、生推特这些行为」）。
- * - 「流量」= 真实消耗的包装，MB 显示：**每一次花钱的调用都记**——她的回合、TA 主动 / 召回 / 记事本 / 发帖 / 身边的人 / 周薪这些后台生成、
- *   生图（立绘 / 外出拍照 / TA 发图）、语音合成、语音识别、看图。底座在 core/usage 报用量，这里换算成 MB（features/traffic.ts 扣账）。
- * - 换算：聊天按 token——全部文字调用走 Claude Haiku 5.5（D-205），1 MB / 千 token；千帆只剩开发者手动切换，同价；
- *   生图 15 MB / 张；语音合成 1 MB / 200 字；识别 1 MB / 60 秒；看图 3 MB / 张。供应商没返回 usage 就按字数估。
- * - 模型档玩家自己切（设置），存用户数据随云端走；来源：每天免费 100 MB（不累积）、订阅每月发（Pro 6000 / Max 不限）、流量包（唯一消耗型 SKU）。
- * - Coin（零钱）与流量永不打通。数值是试装默认；价格待 Harper（OPEN_QUESTIONS #30）。
+ * 流量、语音时长与后台保险丝（D-132 → D-133 → D-210）。
+ * - 「流量」= 真实消耗的包装，MB 显示：**只记她发起的**（D-210，Harper：「主动找我这些生成不扣流量，在其他的地方多做溢价」）——
+ *   她的回合（含 TA 回她的那句）、她按快门 / 生成立绘、她要看的照片、看图。TA 自己发起的（主动 / 召回 / 心跳 / 记事本 / 发帖 /
+ *   评论区 / 身边的人 / 日程 / 周薪 / 外卖送到 / 爽约后说一句 / 主动发图）和工具调用（记忆提取、描述导入、台词）平台出，不扣她，
+ *   只受每人每天的后台保险丝管（看不见，防失控）。底座在 core/usage 报用量并标账单归属，这里换算（features/traffic.ts 扣账）。
+ * - 换算：聊天按 token——全部文字调用走 Claude Haiku 5.5（D-205），1 MB / 千 token；生图 15 MB / 张；看图 3 MB / 张。供应商没返回 usage 就按字数估。
+ * - 流量来源：每天免费 100 MB（不累积）、订阅每月发（Pro 6000 / Max 不限）、流量包（不订阅也能买）。
+ * - **语音单独按分钟算**（D-210）：TA 的语音、她的语音识别、电话都不折流量。每天的额度 Free 0 / Pro 30 / Max 90 分钟（不累积）；
+ *   用完了订阅用户能买语音分钟包（不过期）；新用户送 5 分钟只能打电话（不过期，用完为止）。
+ * - Coin（零钱）与流量、语音永不打通。数值是试装默认；价格待 Harper（OPEN_QUESTIONS #30）。
  */
 
 import type { UsageEvent } from '@/core/usage';
@@ -32,16 +35,14 @@ export const LOVE_MODELS: Record<LoveModelId, LoveModel> = {
 export const DEFAULT_LOVE_MODEL: LoveModelId = 'v1';
 export const LOVE_MODEL_ORDER: LoveModelId[] = ['v1'];
 
-/** 聊天按供应商折算（没列的按 1）；其余按件 / 按字 / 按秒 */
+/** 聊天按供应商折算（没列的按 1）；生图 / 看图按件 */
 export const CHAT_MB_PER_KTOK: Record<string, number> = { qianfan: 1, anthropic: 1 };
 export const IMAGE_MB = 15;
 /** 生图模型按 token 计费时（返回 output_tokens）每千 token 折多少 MB */
 export const IMAGE_MB_PER_KTOK = 3;
-export const TTS_CHARS_PER_MB = 200;
-export const ASR_SECONDS_PER_MB = 60;
 export const VISION_MB = 3;
 
-/** 一笔用量折多少 MB */
+/** 一笔用量折多少 MB（语音按分钟另算，这里是 0，D-210） */
 export function mbForUsage(e: UsageEvent): number {
   switch (e.kind) {
     case 'chat': {
@@ -53,9 +54,8 @@ export function mbForUsage(e: UsageEvent): number {
       if (e.outputTokens && !e.images) return (e.outputTokens / 1000) * IMAGE_MB_PER_KTOK;
       return IMAGE_MB * (e.images ?? 1);
     case 'tts':
-      return Math.max(0.1, (e.chars ?? 0) / TTS_CHARS_PER_MB);
     case 'asr':
-      return Math.max(0.5, (e.seconds ?? 0) / ASR_SECONDS_PER_MB);
+      return 0;
     case 'vision':
       return VISION_MB;
   }
@@ -122,6 +122,108 @@ export function planGrantsDue(tr: Traffic, plan: 'free' | 'pro' | 'max', now = D
   const last = tr.planGrantAt ?? 0;
   if (!last) return 1;
   return Math.min(2, Math.floor((now - last) / PLAN_GRANT_PERIOD_MS));
+}
+
+/* ═══ 语音时长（D-210）：TA 的语音 + 她的语音识别 + 电话，按秒记、按分钟显示 ═══ */
+
+/** 订阅每天给几分钟（不累积，按自然日） */
+export const PLAN_VOICE_DAILY_MIN: Record<'free' | 'pro' | 'max', number> = { free: 0, pro: 30, max: 90 };
+/** 新用户送几分钟通话（只能打电话，不过期，用完为止） */
+export const NEW_USER_CALL_MIN = 5;
+/** 语音分钟包（订阅用户才能买，不过期；价格待 #30） */
+export const VOICE_PACKS: { id: string; min: number }[] = [
+  { id: 'voice-30', min: 30 },
+  { id: 'voice-60', min: 60 },
+  { id: 'voice-180', min: 180 },
+];
+/** 通话剩这么多秒时让 TA 收尾 */
+export const CALL_WRAP_UP_SEC = 60;
+
+/** 她的语音时长（store.voice） */
+export interface VoiceTime {
+  /** 今天的订阅额度用了多少秒 */
+  day: string;
+  usedSec: number;
+  /** 买来的分钟包（秒） */
+  packSec: number;
+  /** 新用户送的通话（秒，只能打电话） */
+  callBonusSec: number;
+}
+
+export const START_VOICE: VoiceTime = { day: '', usedSec: 0, packSec: 0, callBonusSec: NEW_USER_CALL_MIN * 60 };
+
+/** message = TA 的语音 / 她的语音消息；call = 电话（多一笔新用户送的） */
+export type VoiceUse = 'message' | 'call';
+
+/** 今天订阅额度还剩几秒 */
+export function voiceDailyLeft(v: VoiceTime, plan: 'free' | 'pro' | 'max', now = Date.now()): number {
+  const total = PLAN_VOICE_DAILY_MIN[plan] * 60;
+  return v.day === trafficDayKey(now) ? Math.max(0, total - v.usedSec) : total;
+}
+
+/** 这种用途一共还能用几秒 */
+export function voiceLeft(v: VoiceTime, plan: 'free' | 'pro' | 'max', use: VoiceUse, now = Date.now()): number {
+  return voiceDailyLeft(v, plan, now) + v.packSec + (use === 'call' ? v.callBonusSec : 0);
+}
+
+/** 扣一笔：先用今天的额度，电话再用送的，最后扣分钟包（扣到 0 为止）。返回扣完的状态与实际扣了几秒 */
+export function voiceAfterUse(
+  v: VoiceTime,
+  sec: number,
+  plan: 'free' | 'pro' | 'max',
+  use: VoiceUse,
+  now = Date.now()
+): { voice: VoiceTime; charged: number } {
+  if (sec <= 0) return { voice: v, charged: 0 };
+  const day = trafficDayKey(now);
+  const base: VoiceTime = v.day === day ? v : { ...v, day, usedSec: 0 };
+  let rest = sec;
+  const daily = Math.min(rest, voiceDailyLeft(base, plan, now));
+  rest -= daily;
+  const bonus = use === 'call' ? Math.min(rest, base.callBonusSec) : 0;
+  rest -= bonus;
+  const pack = Math.min(rest, base.packSec);
+  const round = (n: number) => Math.round(n * 10) / 10;
+  return {
+    voice: { ...base, usedSec: round(base.usedSec + daily), callBonusSec: round(base.callBonusSec - bonus), packSec: round(base.packSec - pack) },
+    charged: round(daily + bonus + pack),
+  };
+}
+
+/** 「TA 发语音」开关（每段羁绊一个）：没动过 = 订阅开、Free 关；Free 又没买分钟包的打不开 */
+export function voiceRepliesAllowed(plan: 'free' | 'pro' | 'max', v: VoiceTime): boolean {
+  return plan !== 'free' || v.packSec > 0;
+}
+export function voiceRepliesOn(bond: { voiceReplies?: boolean }, plan: 'free' | 'pro' | 'max', v: VoiceTime): boolean {
+  if (!voiceRepliesAllowed(plan, v)) return false;
+  return bond.voiceReplies ?? plan !== 'free';
+}
+
+/** 秒 → 整分钟（向下取整，显示用） */
+export function voiceMinutes(sec: number): number {
+  return Number.isFinite(sec) ? Math.floor(Math.max(0, sec) / 60) : Infinity;
+}
+
+/* ═══ 后台保险丝（D-210）：平台出的那些每人每天封顶，看不见；到顶这天的后台生成静默跳过 ═══ */
+
+export const HOUSE_DAILY_KTOK = 400;
+export const HOUSE_DAILY_IMAGES = 8;
+
+export interface HouseUsage {
+  day: string;
+  ktok: number;
+  images: number;
+}
+
+export function houseAfterUse(h: HouseUsage, add: { ktok?: number; images?: number }, now = Date.now()): HouseUsage {
+  const day = trafficDayKey(now);
+  const base = h.day === day ? h : { day, ktok: 0, images: 0 };
+  return { day, ktok: base.ktok + (add.ktok ?? 0), images: base.images + (add.images ?? 0) };
+}
+
+export function houseBlocked(h: HouseUsage, kind: 'chat' | 'image' | 'vision', now = Date.now()): boolean {
+  if (h.day !== trafficDayKey(now)) return false;
+  return kind === 'image' ? h.images >= HOUSE_DAILY_IMAGES : h.ktok >= HOUSE_DAILY_KTOK;
 }
 
 /** 「1,240 MB」（小数只在不足 10 MB 时露一位） */

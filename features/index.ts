@@ -14,6 +14,7 @@ import '@/features/red-packet';
 import '@/features/wallet';
 import '@/features/his-photo';
 import '@/features/traffic';
+import '@/features/call-meter';
 import '@/features/location';
 import '@/features/phone-peek';
 import '@/features/share';

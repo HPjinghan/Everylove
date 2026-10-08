@@ -26,8 +26,19 @@ import { ensurePortrait, imageKeyReady, portraitFor } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
 import { authConfigured, isSignedIn, onAuthChange, sessionLabel, signedInSession, signOut } from '@/lib/auth';
 import { t } from '@/lib/i18n';
-import { slotLimit, slotLimitLabel } from '@/lib/bond';
-import { freeLeft, LOVE_MODEL_ORDER, LOVE_MODELS, mb, TRAFFIC_PACKS } from '@/lib/traffic';
+import {
+  DAILY_FREE_MB,
+  freeLeft,
+  LOVE_MODEL_ORDER,
+  LOVE_MODELS,
+  mb,
+  PLAN_MONTHLY_MB,
+  PLAN_VOICE_DAILY_MIN,
+  TRAFFIC_PACKS,
+  VOICE_PACKS,
+  voiceDailyLeft,
+  voiceMinutes,
+} from '@/lib/traffic';
 import { deleteCloudData, restoreSnapshot, uploadSnapshot } from '@/lib/sync';
 import { useAppStore } from '@/store/app-store';
 
@@ -241,15 +252,20 @@ export default function MeScreen() {
   const language = useAppStore((s) => s.language);
   const traffic = useAppStore((s) => s.traffic);
   const loveModel = useAppStore((s) => s.loveModel);
+  const voice = useAppStore((s) => s.voice);
   // 流量（D-132）：今天免费的按进页面那一刻算；扣费后 traffic 变了会重算
   const [trafficNow] = useState(() => Date.now());
-  // 槽位超额（交互改动 9）：降级后已有的羁绊不消失，但不能再新增
-  const slotsOver = bonds.length > slotLimit(plan);
+  /** 订阅档说明（D-210：槽位不限，订阅管流量与语音分钟） */
+  const planBlurb = (p: 'free' | 'pro' | 'max') =>
+    t('{traffic} · 每天 {n} 分钟语音', {
+      traffic: p === 'max' ? t('流量不限') : t('每月 {n}', { n: mb(PLAN_MONTHLY_MB[p]) }),
+      n: PLAN_VOICE_DAILY_MIN[p],
+    });
 
   /** 模拟订阅（D-063）：点击即订/退，不扣费 */
   const subscribe = (p: 'free' | 'pro' | 'max') => {
     if (p === plan) return;
-    const label = p === 'max' ? t('Max：羁绊不限量') : p === 'pro' ? t('Pro：5 个羁绊槽') : t('Free：1 个羁绊槽');
+    const label = p === 'free' ? t('Free：每天 {n} 免费流量，没有语音', { n: mb(DAILY_FREE_MB) }) : `${p === 'max' ? 'Max' : 'Pro'}：${planBlurb(p)}`;
     showAlert(p === 'free' ? t('取消订阅') : t('订阅'), label, [
       { text: t('取消'), style: 'cancel' },
       { text: p === 'free' ? t('确认取消') : t('订阅'), onPress: () => useAppStore.getState().setPlan(p) },
@@ -378,23 +394,8 @@ export default function MeScreen() {
 
         <Section title={t('订阅计划')}>
           <Row label={t('当前计划')} value={plan === 'max' ? 'Max' : plan === 'pro' ? 'Pro' : 'Free'} />
-          <Row
-            label={t('羁绊槽位')}
-            value={`${bonds.length}/${slotLimitLabel(plan)}`}
-            numeric
-            tone={slotsOver ? 'accent' : undefined}
-            hint={slotsOver ? t('超出的羁绊不会消失，但不能再新增') : undefined}
-          />
-          <Row
-            label={plan === 'pro' ? t('已订阅 Pro ✓') : t('订阅 Pro')}
-            value={t('5 个羁绊槽')}
-            onPress={() => subscribe('pro')}
-          />
-          <Row
-            label={plan === 'max' ? t('已订阅 Max ✓') : t('订阅 Max')}
-            value={t('羁绊不限量')}
-            onPress={() => subscribe('max')}
-          />
+          <Row label={plan === 'pro' ? t('已订阅 Pro ✓') : t('订阅 Pro')} value={planBlurb('pro')} onPress={() => subscribe('pro')} />
+          <Row label={plan === 'max' ? t('已订阅 Max ✓') : t('订阅 Max')} value={planBlurb('max')} onPress={() => subscribe('max')} />
           {plan !== 'free' ? <Row label={t('取消订阅（回 Free）')} onPress={() => subscribe('free')} /> : null}
         </Section>
 
@@ -426,6 +427,32 @@ export default function MeScreen() {
           ))}
         </Section>
 
+        {/* 语音时长（D-210）：TA 的语音、她的语音、电话都按分钟算；Free 没有（新用户送的只能打电话） */}
+        <Section title={t('语音时长')}>
+          <Row
+            label={t('今天还剩')}
+            value={t('{n} 分钟', { n: voiceMinutes(voiceDailyLeft(voice, plan, trafficNow)) })}
+            hint={plan === 'free' ? t('订阅后每天都能发语音、打电话。') : t('每天的不累积。')}
+          />
+          {voice.callBonusSec > 0 ? (
+            <Row label={t('送你的通话')} value={t('{n} 分钟', { n: voiceMinutes(voice.callBonusSec) })} hint={t('只能打电话，用完为止。')} />
+          ) : null}
+          {voice.packSec > 0 ? <Row label={t('分钟包')} value={t('{n} 分钟', { n: voiceMinutes(voice.packSec) })} hint={t('不过期。')} /> : null}
+          {plan !== 'free'
+            ? VOICE_PACKS.map((p) => (
+                <Row
+                  key={p.id}
+                  label={t('语音分钟包 {n} 分钟', { n: p.min })}
+                  value={t('买')}
+                  onPress={() => {
+                    useAppStore.getState().addVoiceMinutes(p.min);
+                    showAlert(t('已到账'), t('{n} 分钟', { n: p.min }));
+                  }}
+                />
+              ))
+            : null}
+        </Section>
+
         <Section title={t('TA 主动找你')}>
           <View style={styles.quietRow}>
             <Text style={styles.quietLabel}>{t('勿扰时段')}</Text>
@@ -453,6 +480,11 @@ export default function MeScreen() {
             value={mb(traffic.balance)}
             numeric
             onPress={() => useAppStore.getState().addTraffic(1000)}
+          />
+          <Row
+            label={t('GM：加 30 分钟语音')}
+            value={t('{n} 分钟', { n: voiceMinutes(voice.packSec) })}
+            onPress={() => useAppStore.getState().addVoiceMinutes(30)}
           />
           <Row
             label={t('AI 引擎')}

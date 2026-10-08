@@ -19,6 +19,7 @@ import {
   parseReactionsJSON,
   type ReactionAuthor,
 } from '@/content/prompts';
+import { backgroundAwake } from '@/lib/bond';
 import { ensureCircle } from '@/lib/circle';
 import { completeText, splitBubbles, stripStageDirections } from '@/lib/engine';
 import { uid } from '@/lib/format';
@@ -62,6 +63,8 @@ export async function deliverDuePosts(now = Date.now()): Promise<number> {
       continue;
     }
     if (now < due) continue;
+    // 久别的不发（D-210）：钟留着，她回来时补一条
+    if (!backgroundAwake(bond, now)) continue;
     // 先排下一次的钟：生成失败也不会在每次回前台时反复重试轰炸
     useAppStore.getState().setPostDue(character.id, now + postIntervalMs(character));
     const text = await generatePostText(character, bond.id, new Date(due));

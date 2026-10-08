@@ -237,7 +237,7 @@ export async function checkMissedPlans(now = Date.now()): Promise<number> {
       `[节点] ${todayLine(new Date(plan.at))} 她爽约了：约好 ${atLabel} 在${place.name}见面，她没来`
     );
     // TA 主动说一句（走回合管线：不可用就沉默——记忆里已经记着了，下次聊到自然会提）
-    await respond(bondScope(bond.id), missedDateUserLine(place.name, atLabel), { pace: 'none', unread: true });
+    await respond(bondScope(bond.id), missedDateUserLine(place.name, atLabel), { pace: 'none', unread: true }, { billing: 'house' });
     n++;
   }
   return n;

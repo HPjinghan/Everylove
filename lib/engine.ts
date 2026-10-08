@@ -15,6 +15,7 @@ import { buildChatSystemPromptParts, messageContextText, OPENING_STAGE_LINE } fr
 import { joinPromptParts } from '@/core/prompt';
 import { stripReplyMarkers } from '@/core/markers';
 import { modes } from '@/core/modes';
+import type { Billing } from '@/core/usage';
 import {
   AiUnavailableError,
   chatProviderPreference,
@@ -340,7 +341,7 @@ export async function completeText(
  * 角色回一轮：暗面路由 → 装配系统 prompt → 供应商 → 拆气泡（条数与是否剥舞台提示由会话模式决定）→ 剥暗号。
  * 调用失败或没有取路时**抛错**，界面在会话里露出原因（D-069）。
  */
-export async function generateReply(ctx: EngineContext, providerId?: string, opts: { background?: boolean } = {}): Promise<EngineReply> {
+export async function generateReply(ctx: EngineContext, providerId?: string, opts: { background?: boolean; billing?: Billing } = {}): Promise<EngineReply> {
   const dark = darkSideCheck(ctx.userText);
   if (dark) return dark;
 
@@ -354,6 +355,8 @@ export async function generateReply(ctx: EngineContext, providerId?: string, opt
       kind: 'reply',
       // 后台写的（TA 主动 / 召回 / 心跳）走便宜那家（D-176）
       ...(opts.background ? { background: true } : {}),
+      // 账单归属（D-210）：TA 自己发起的（外卖送到、爽约后说一句）平台出，通话含在分钟里
+      ...(opts.billing ? { billing: opts.billing } : {}),
     },
     providerId
   );

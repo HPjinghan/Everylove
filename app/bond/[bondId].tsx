@@ -41,7 +41,9 @@ import { daysTogether } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { refreshSharedPool } from '@/lib/pool';
 import { chaptersForBond } from '@/lib/story';
+import { voiceRepliesAllowed, voiceRepliesOn } from '@/lib/traffic';
 import { showToast } from '@/components/toast';
+import { alertNoVoice, micGate } from '@/components/voice-gate';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
 /** Fredoka 只给数字与拉丁（D-100）：生日这类可能带中文的值回落系统字体 */
@@ -94,6 +96,9 @@ export default function BondScreen() {
 
   // 零钱余额（D-128）：红包面板看它；hooks 要在提前 return 之前
   const walletBalance = useAppStore((s) => s.wallet.balance);
+  // 「TA 发语音」开关看订阅档与语音分钟包（D-210）
+  const plan = useAppStore((s) => s.plan);
+  const voice = useAppStore((s) => s.voice);
   // 查手机的密码第一次需要时生成——effect 里写 store，渲染期只读（D-197）
   useEffect(() => {
     if (sheet === 'phone' && bond) useAppStore.getState().ensurePhoneCode(bond.id);
@@ -108,6 +113,8 @@ export default function BondScreen() {
   const lv = levelInfoFor(bond);
   const secretCount = characterSecrets(character).length;
   const anniversary = new Date(bond.createdAt);
+  const voiceAllowed = voiceRepliesAllowed(plan, voice);
+  const voiceOn = voiceRepliesOn(bond, plan, voice);
 
   const onSend = (text: string, replyTo?: ReplyRef) => void sendText(scope, text, { replyTo, ui });
   const onSendVoice = (uri: string, durationMs: number) => void sendVoice(scope, uri, durationMs, ui);
@@ -190,6 +197,20 @@ export default function BondScreen() {
       )}
     </InfoRow>
   );
+  // TA 发语音（D-210）：每段羁绊一个开关；没动过 = 订阅开、Free 关；Free 没买分钟包的开不了
+  infoRows.push(
+    <InfoRow key="voice" label={t('TA 发语音')}>
+      {voiceAllowed ? (
+        <Pressable hitSlop={8} onPress={() => useAppStore.getState().setVoiceReplies(bond.id, !voiceOn)}>
+          <Text style={styles.infoLink}>{voiceOn ? t('开着') : t('关着')}</Text>
+        </Pressable>
+      ) : (
+        <Pressable hitSlop={8} onPress={alertNoVoice}>
+          <Text style={styles.infoValueDim}>{t('订阅后可开')}</Text>
+        </Pressable>
+      )}
+    </InfoRow>
+  );
   // 传记与相册（D-181）：有供给才给入口，没有就只说没有（无供给不摆）
   const chapterCount = chaptersForBond(bond, { customCharacters, sharedPool }).length;
   const shotCount = album.filter((s) => s.characterId === character.id).length;
@@ -249,6 +270,7 @@ export default function BondScreen() {
         onSend={onSend}
         onSendImage={onSendImage}
         onSendVoice={onSendVoice}
+        micGate={micGate}
         onResend={onResend}
         onRecall={(m) => useAppStore.getState().recallMessage({ bondId: bond.id }, m.id)}
         onDelete={(m) => useAppStore.getState().deleteMessage({ bondId: bond.id }, m.id)}

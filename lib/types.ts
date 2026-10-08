@@ -354,6 +354,8 @@ export interface Bond {
   wallet?: HisWallet;
   /** TA 主动的额外动作（D-130）上一次触发时 TA 已说了几条（10 条冷却，lib/extras.ts） */
   extraFired?: { count: number; at: number };
+  /** 「TA 发语音」开关（D-210）：没动过 = 订阅开、Free 关（lib/traffic voiceRepliesOn） */
+  voiceReplies?: boolean;
 }
 
 /** 零钱账本（D-128 / D-138）：她的钱包与 TA 的钱包共用；wheel = 幸运签的转盘（净额一笔） */

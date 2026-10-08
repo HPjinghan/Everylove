@@ -1,9 +1,9 @@
 /**
  * 领养流：缔结关系的仪式（交友配对 = 交换联系方式；自创角色 = 确定关系，D-052；D-100 纸面）。
- * 槽位判定 → 给 TA 起名 → 迁移仪式动画 → 直接开聊（开门/推送步已随 D-046 下线；称呼与生日不再问，D-088：
+ * 开场 → 给 TA 起名 → 迁移仪式动画 → 直接开聊（开门/推送步已随 D-046 下线；称呼与生日不再问，D-088：
  * TA 叫她的名字 = 她的昵称，生日在「我的身份」里）。
- * 首个羁绊免费，加槽付费（试装不开付费）——商业承重墙；自创角色同样占槽（D-052 修订 D-047）。
- * 纸面：paper 底 + 菱格；居中头像 84、标题 22、槽位卡 = 白卡描边（数字 Fredoka）、主按钮 Button、「再想想」13 muted；无阴影。
+ * 槽位不限（D-210）：缔结不再判定槽位，订阅管流量、语音分钟与「他在」的密度。
+ * 纸面：paper 底 + 菱格；居中头像 84、标题 22、主按钮 Button、「再想想」13 muted；无阴影。
  */
 
 import * as Haptics from 'expo-haptics';
@@ -23,14 +23,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
-import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { Input } from '@/components/input';
 import { DiamondBackground } from '@/components/paper-bg';
 import { showToast } from '@/components/toast';
-import { Fonts, Romance, themed } from '@/constants/theme';
+import { Romance, themed } from '@/constants/theme';
 import { authConfigured, signedInSession } from '@/lib/auth';
-import { slotLimit, slotLimitLabel } from '@/lib/bond';
 import { generateCharacterLines } from '@/lib/character-lines';
 import { t } from '@/lib/i18n';
 import { requestNotificationPermission } from '@/lib/notifications';
@@ -44,8 +42,6 @@ export default function AdoptScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const character = findCharacter(characterId);
-  const bonds = useAppStore((s) => s.bonds);
-  const plan = useAppStore((s) => s.plan);
 
   const [step, setStep] = useState<Step>('slot');
   const [hisName, setHisName] = useState(character?.name ?? '');
@@ -54,8 +50,6 @@ export default function AdoptScreen() {
 
   if (!character) return <Redirect href="/" />;
 
-  // 缔结即占槽（D-052）；槽位上限随订阅计划（D-063）：free 1 / pro 5 / max 不限
-  const slotFree = bonds.length < slotLimit(plan);
   // TA 叫她的名字 = 她在这个角色眼中的昵称（D-088）
   const finalNickname = meForCharacter(character.id)?.nickname?.trim() || '你';
 
@@ -114,48 +108,8 @@ export default function AdoptScreen() {
                   ? t('和{name}确定关系', { name: character.name })
                   : t('和{name}交换联系方式', { name: character.name })}
               </Text>
-              {slotFree ? (
-                <>
-                  <Card style={styles.slotCard}>
-                    <Text style={styles.slotFree}>
-                      {bonds.length === 0 ? (
-                        t('首个羁绊 · 免费')
-                      ) : (
-                        <>
-                          {t('羁绊槽位')}{' '}
-                          <Text style={styles.slotNum}>
-                            {bonds.length + 1}/{slotLimitLabel(plan)}
-                          </Text>
-                        </>
-                      )}
-                    </Text>
-                  </Card>
-                  <Button label={t('开始缔结')} onPress={() => setStep('names')} style={styles.primaryBtn} />
-                </>
-              ) : (
-                <>
-                  <Card style={styles.slotCard}>
-                    <Text style={styles.slotFull}>
-                      {t('羁绊槽位已满')} ·{' '}
-                      <Text style={styles.slotNumMuted}>
-                        {bonds.length}/{slotLimitLabel(plan)}
-                      </Text>
-                    </Text>
-                    <Text style={styles.slotDesc}>{t('开通 Pro 或 Max，增加羁绊槽位')}</Text>
-                  </Card>
-                  <Button
-                    label={t('去看订阅')}
-                    onPress={() => router.push('/apps/settings')}
-                    style={styles.primaryBtn}
-                  />
-                  <Button
-                    label={t('先回去聊聊')}
-                    variant="secondary"
-                    onPress={() => router.back()}
-                    style={styles.secondaryBtn}
-                  />
-                </>
-              )}
+              {/* 槽位不限（D-210）：不再判定、不再显示 n/上限 */}
+              <Button label={t('开始缔结')} onPress={() => setStep('names')} style={styles.primaryBtn} />
               <Pressable onPress={() => router.back()} style={styles.cancelLink} hitSlop={8}>
                 <Text style={styles.cancelLinkText}>{t('再想想')}</Text>
               </Pressable>
@@ -283,19 +237,6 @@ const styles = themed(() =>
     content: { paddingHorizontal: 28, flexGrow: 1, justifyContent: 'center' },
     center: { alignItems: 'center' },
     h1: { fontSize: Type.scale.xxl.size, fontWeight: '600', color: Romance.ink, marginTop: 20, textAlign: 'center' },
-    // 槽位卡：白卡描边，居中一行；数字 Fredoka
-    slotCard: {
-      alignSelf: 'stretch',
-      alignItems: 'center',
-      marginTop: 18,
-      paddingVertical: 16,
-      paddingHorizontal: 22,
-    },
-    slotFree: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.accentStrong, textAlign: 'center' },
-    slotNum: { fontFamily: Fonts.labelBold, fontSize: Type.scale.body.size, color: Romance.accentStrong },
-    slotFull: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.sub, textAlign: 'center' },
-    slotNumMuted: { fontFamily: Fonts.labelBold, fontSize: Type.scale.body.size, color: Romance.sub },
-    slotDesc: { fontSize: Type.scale.label.size, lineHeight: 20, color: Romance.sub, marginTop: 8, textAlign: 'center' },
     nameInput: { marginTop: 10 },
     primaryBtn: { marginTop: 28, alignSelf: 'center', paddingHorizontal: 40 },
     secondaryBtn: { marginTop: 14, alignSelf: 'center', paddingHorizontal: 32 },

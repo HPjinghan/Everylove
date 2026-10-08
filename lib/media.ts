@@ -10,7 +10,7 @@
  */
 
 import { AudioQuality, IOSOutputFormat, RecordingPresets, type RecordingOptions } from 'expo-audio';
-import { GenerationBlockedError, generationBlocked, reportUsage } from '@/core/usage';
+import { GenerationBlockedError, generationBlocked, reportUsage, type Billing } from '@/core/usage';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 
@@ -128,9 +128,10 @@ type AsrResponse = { err_no?: number; err_msg?: string; result?: string[] };
  * 语音 → 文字（D-139 按语言分流）：中 / 英 → 百度（直连或代理）；日 / 韩 → Whisper 通道（本地直连，或代理侧配了才有）。
  * 百度不会的语言、Whisper 又没接上 → 直接说「这门语言的语音识别还没接上」，不假装听到了。空结果也算失败。
  */
-export async function transcribeVoice(uri: string): Promise<string> {
+export async function transcribeVoice(uri: string, billing: Billing = 'user'): Promise<string> {
   const lang = getLang();
-  const blocked = generationBlocked('asr');
+  // 语音时长用完了不识别（D-210）；通话里的含在通话分钟里
+  const blocked = generationBlocked('asr', billing);
   if (blocked) throw new GenerationBlockedError(blocked);
   const route = await aiRoute('qianfan');
   // 代理侧的 Whisper 通道要试过才知道有没有：先乐观放行，503 再回落
@@ -145,7 +146,7 @@ export async function transcribeVoice(uri: string): Promise<string> {
   if (!len) throw new Error(t('录音文件是空的'));
   if (channel === 'multi' && asrConfigured()) {
     const text = ASR_PROVIDER === 'fish' ? await transcribeFishDirect(uri, lang) : await transcribeWhisperDirect(uri, lang);
-    reportUsage({ kind: 'asr', provider: ASR_PROVIDER, seconds: len / 32000, estimated: true });
+    reportUsage({ kind: 'asr', provider: ASR_PROVIDER, seconds: len / 32000, billing, estimated: true });
     return text;
   }
   if (route === 'none') throw new AiUnavailableError();
@@ -155,7 +156,7 @@ export async function transcribeVoice(uri: string): Promise<string> {
   if (channel === 'multi') {
     try {
       const text = ASR_PROVIDER === 'fish' ? await transcribeFishProxy(speech, lang) : await transcribeWhisperProxy(speech, lang);
-      reportUsage({ kind: 'asr', provider: ASR_PROVIDER, seconds: len / 32000, estimated: true });
+      reportUsage({ kind: 'asr', provider: ASR_PROVIDER, seconds: len / 32000, billing, estimated: true });
       return text;
     } catch (e) {
       if (!UNCONFIGURED.some((m) => String(e).includes(m))) throw e;
@@ -181,7 +182,7 @@ export async function transcribeVoice(uri: string): Promise<string> {
   const text = (data.result ?? []).join('').trim();
   if (!text) throw new Error(t('没听清这段语音（识别结果为空）'));
   // 16 kHz 16 bit ≈ 32 KB / 秒
-  reportUsage({ kind: 'asr', provider: 'baidu', seconds: len / 32000, estimated: true });
+  reportUsage({ kind: 'asr', provider: 'baidu', seconds: len / 32000, billing, estimated: true });
   return text;
 }
 

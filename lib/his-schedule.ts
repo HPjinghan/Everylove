@@ -5,6 +5,7 @@
  * - AI 不可用 / 失败 = 这次不写；每段羁绊每 6 小时最多试一次（别每次回前台都撞模型）
  */
 
+import { backgroundAwake } from '@/lib/bond';
 import { dateKey } from '@/content/calendar';
 import { buildHisScheduleSystem, buildHisScheduleUserPrompt, HIS_SCHEDULE_MIN, parseHisScheduleJSON } from '@/content/prompts';
 import { completeText } from '@/lib/engine';
@@ -27,6 +28,8 @@ export function upcomingHisEvents(events: HisEvent[] | undefined, today = dateKe
 export async function deliverDueHisSchedules(now = Date.now()): Promise<number> {
   let n = 0;
   for (const bond of useAppStore.getState().bonds) {
+    // 久别的不补（D-210）；她打开 TA 的手机时 screen:phone 照常补
+    if (!backgroundAwake(bond, now)) continue;
     if (await ensureHisSchedule(bond.id, now)) n++;
   }
   return n;

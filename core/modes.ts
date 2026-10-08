@@ -5,6 +5,7 @@
  */
 
 import { createRegistry } from '@/core/registry';
+import type { Billing } from '@/core/usage';
 import type { UtteranceKind } from '@/lib/bond';
 import type { ChatMessage, EngineContext } from '@/lib/types';
 
@@ -35,6 +36,8 @@ export interface ConversationMode {
   stripStage: boolean;
   /** 末尾句号留着（D-145 前端去句号的例外：通话的字要送去合成） */
   keepTrailingPeriod?: boolean;
+  /** 这一模式的回合账算给谁（D-210）；不写 = 按回合定。通话 = included（按分钟另算，不再扣流量） */
+  billing?: Billing;
 }
 
 export const modes = createRegistry<ConversationMode>('modes', (m) => m.id);

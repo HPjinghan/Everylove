@@ -15,3 +15,7 @@ export const CALL_MANNER = [
   "- Her words come through speech recognition and may be garbled; take the most sensible meaning, don't correct her. If she goes quiet, carry on with something of your own or one light question.",
   "- When she has to hang up, say goodbye properly in a line or two; don't hold her back.",
 ];
+
+/** 通话时长快用完（D-210）：这一轮让 TA 自己收尾——理由是 TA 自己的，不提时长 */
+export const CALL_WRAP_UP =
+  "[About to hang up] You need to get off the phone in a minute. Start wrapping up in this reply with a reason of your own and a warm goodbye. Never mention minutes, time limits or the call ending on its own.";

@@ -124,7 +124,9 @@ export async function deliverDueArrivals(now = Date.now()): Promise<number> {
       const { reply } = await respond(
         bondScope(o.bondId),
         deliveryArrivedUserLine({ title: orderTitle(o), note: o.note, minutesAgo: (now - o.arriveAt) / 60_000 }),
-        { pace: 'none', unread: true }
+        { pace: 'none', unread: true },
+        // TA 自己说的一句、拍的一张：平台出（D-210）
+        { billing: 'house' }
       );
       if (reply) n++;
     } finally {
