@@ -53,7 +53,8 @@ describe('buildTurns', () => {
 
 describe('splitBubbles / stripStageDirections', () => {
   it('空行拆条、去名字前缀与引号、封顶', () => {
-    expect(splitBubbles('沈之言：「到家了？」\n\n嗯，我也刚到。\n\n第三条', 2, '沈之言')).toEqual(['到家了？', '嗯，我也刚到。']);
+    // 超过上限不丢字：相邻的并（D-212）
+    expect(splitBubbles('沈之言：「到家了？」\n\n嗯，我也刚到。\n\n第三条', 2, '沈之言')).toEqual(['到家了？', '嗯，我也刚到。第三条']);
   });
   it('剥（）提示，全剥空则退回原文', () => {
     expect(stripStageDirections(['（笑）晚安。', '（沉默）'])).toEqual(['晚安。']);
@@ -118,15 +119,17 @@ describe('说话节奏：连发（D-155）', () => {
     expect(splitByClauses('haha, got it, next time.')).toEqual(['haha', 'got it', 'next time']);
     expect(splitByClauses('花了 5.20 块，还行')).toEqual(['花了 5.20 块', '还行']);
   });
-  it('超过上限并进最后一条；一句话不拆', () => {
-    expect(splitByClauses('好啊，行吧，可以，没问题，走吧，明天', 4)).toEqual(['好啊', '行吧', '可以', '没问题 走吧 明天']);
+  it('超过上限按长度均匀并（D-212），不再全塞进最后一条；一句话不拆', () => {
+    expect(splitByClauses('好啊，行吧，可以，没问题，走吧，明天', 4)).toEqual(['好啊 行吧', '可以', '没问题', '走吧 明天']);
+    expect(splitByClauses('好啊，行吧，可以，没问题，走吧，明天')).toEqual(['好啊', '行吧', '可以', '没问题', '走吧', '明天']);
     expect(splitByClauses('今天有点累')).toEqual(['今天有点累']);
   });
-  it('splitBubbles 按节奏走：连发时模型分好的段再拆、总数封顶四条；整句照旧最多两条', () => {
-    expect(splitBubbles('哈哈哈，我知道了，下次。\n\n你呢，还在画？别熬太晚。', 4, undefined, 'burst')).toEqual(['哈哈哈', '我知道了', '下次', '你呢 还在画？ 别熬太晚']);
+  it('splitBubbles 按节奏走：连发时模型分好的段再拆、总数封顶（多出的均匀并）；整句照旧最多两条', () => {
+    expect(splitBubbles('哈哈哈，我知道了，下次。\n\n你呢，还在画？别熬太晚。', 4, undefined, 'burst')).toEqual(['哈哈哈', '我知道了', '下次 你呢', '还在画？别熬太晚']);
+    expect(splitBubbles('哈哈哈，我知道了，下次。\n\n你呢，还在画？别熬太晚。', 6, undefined, 'burst')).toEqual(['哈哈哈', '我知道了', '下次', '你呢', '还在画？', '别熬太晚']);
     expect(splitBubbles('哈哈哈，我知道了，下次。', 2)).toEqual(['哈哈哈，我知道了，下次。']);
   });
-  it('空格断句（D-159）：中文 / 日文之间的空格每个一条、上限四条并进最后一条；英文与韩语词间、数字旁的空格不动；一条气泡的模式不拆', () => {
+  it('空格断句（D-159）：中文 / 日文之间的空格每个一条、上限六条（D-212）；英文与韩语词间、数字旁的空格不动；一条气泡的模式不拆', () => {
     expect(splitBySpaces('哈哈哈 我知道了 下次')).toEqual(['哈哈哈', '我知道了', '下次']);
     expect(splitBySpaces('到家了？ 嗯　我也刚到')).toEqual(['到家了？', '嗯', '我也刚到']);
     expect(splitBySpaces('花了 5.20 块 还行')).toEqual(['花了 5.20 块', '还行']);
@@ -135,10 +138,22 @@ describe('说话节奏：连发（D-155）', () => {
     expect(splitBySpaces('はは わかった 今度ね')).toEqual(['はは', 'わかった', '今度ね']);
     expect(splitBySpaces('오늘 뭐 했어? 나는 집에 왔어')).toEqual(['오늘 뭐 했어? 나는 집에 왔어']);
     expect(splitBubbles('哈哈哈 我知道了 下次', 2)).toEqual(['哈哈哈', '我知道了', '下次']);
-    expect(splitBubbles('好啊 行吧 可以 没问题 走吧 明天', 2)).toEqual(['好啊', '行吧', '可以', '没问题 走吧 明天']);
+    expect(splitBubbles('好啊 行吧 可以 没问题 走吧 明天', 2)).toEqual(['好啊', '行吧', '可以', '没问题', '走吧', '明天']);
+    expect(splitBubbles('好啊 行吧 可以 没问题 走吧 明天 后天 大后天', 2)).toEqual(['好啊 行吧', '可以', '没问题', '走吧 明天', '后天', '大后天']);
     expect(splitBubbles('哈哈哈 我知道了，下次', 4, undefined, 'burst')).toEqual(['哈哈哈', '我知道了', '下次']);
     expect(splitBubbles('哈哈哈 我知道了 下次', 1)).toEqual(['哈哈哈 我知道了 下次']);
     expect(splitBubbles('嗯，我刚到家，猫在门口等我。你呢，还在画？别熬太晚。', 2)).toEqual(['嗯，我刚到家，猫在门口等我。', '你呢，还在画？别熬太晚。']);
+  });
+  it('不剩一大坨（D-212）：空格分好的段里长的一段按句子拆开，和前面的一起均分', () => {
+    const long = '哈哈 好啊 那就明天 我刚查了一下那家店周三不营业。所以我们改到周四吧，晚上七点我去接你。你下班直接出来就行，别再加班了。';
+    const out = splitBubbles(long, 2);
+    expect(out).toEqual(['哈哈', '好啊', '那就明天', '我刚查了一下那家店周三不营业。', '所以我们改到周四吧，晚上七点我去接你。', '你下班直接出来就行，别再加班了。']);
+    expect(out.join('').replace(/\s/g, '')).toBe(long.replace(/\s/g, ''));
+    // 模型自己分好的段数已经到上限：照它的来，不再拆
+    expect(splitBubbles('嗯。\n\n我刚查了一下那家店周三不营业。所以我们改到周四吧，晚上七点我去接你。', 2)).toEqual([
+      '嗯。',
+      '我刚查了一下那家店周三不营业。所以我们改到周四吧，晚上七点我去接你。',
+    ]);
   });
   it('节奏判定：角色自己设的 > 恋爱类型 > 原型（毒舌家族连发）', () => {
     expect(bubbleStyleOf({ archetype: 'gentle' })).toBe('flow');

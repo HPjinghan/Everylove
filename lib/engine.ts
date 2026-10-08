@@ -157,6 +157,8 @@ export function buildTurns(history: ChatMessage[], userText: string): ChatTurn[]
  * 1. 先按空行拆（模型自己分好的照用）；1.5 中文之间的空格也当它自己分好的段（D-159「哈哈哈 我知道了 下次」→ 三条，上限放到连发的四条）；
  * 2. 还没拆到 max 条就按句子拆——两句以上的回复在句末标点处断开，长度尽量均衡；
  * 初识 / 外出 / 通话 max = 1 不拆。顺手去掉模型偶尔加的名字前缀（「沈之言：」）与包裹引号。
+ * 超过上限时（D-212）不再把剩下的全塞进最后一条，而是把相邻的几段按长度均匀并成 max 条（packBalanced）；
+ * 整句的人用了空行 / 空格分段时，其中长的一段（≥ LONG_PIECE 字、两句以上）先按句子拆开再一起均分——不会剩一大坨。
  */
 export function splitBubbles(text: string, max: number, name?: string, style: 'flow' | 'burst' = 'flow'): string[] {
   let cap = Math.max(1, max);
@@ -166,26 +168,57 @@ export function splitBubbles(text: string, max: number, name?: string, style: 'f
     .map((t) => (name && t.startsWith(name) ? t.replace(/^[^：:]*[：:]\s*/, '') : t))
     .map((t) => t.replace(/^[「"“]([\s\S]*)[」"”]$/, '$1').trim())
     .filter(Boolean);
-  if (cap > 1) {
-    const spaced = parts.flatMap(splitBySpaces);
-    if (spaced.length > parts.length) {
-      // 模型用空格断的句：每个空格一条，多出上限的并进最后一条（不丢字）
-      cap = Math.max(cap, BURST_MAX_BUBBLES);
-      parts = spaced.length <= cap ? spaced : [...spaced.slice(0, cap - 1), spaced.slice(cap - 1).join(' ')];
-    }
+  if (cap === 1) return parts.slice(0, 1);
+  const spaced = parts.flatMap(splitBySpaces);
+  if (spaced.length > parts.length) {
+    // 模型用空格断的句：每个空格一条，上限放到连发的条数
+    cap = Math.max(cap, BURST_MAX_BUBBLES);
+    parts = spaced;
   }
-  parts = parts.slice(0, cap);
-  // 连发（D-155）：模型分好的每段再按标点拆，总数封顶
-  if (style === 'burst' && cap > 1) {
-    const all = parts.flatMap((p) => splitByClauses(p, cap));
-    return all.length <= cap ? all : [...all.slice(0, cap - 1), all.slice(cap - 1).join(' ')];
-  }
-  if (parts.length >= cap || parts.length !== 1) return parts;
-  return splitBySentences(parts[0], cap);
+  // 连发（D-155）：模型分好的每段再按标点拆
+  if (style === 'burst') return packBalanced(parts.flatMap((p) => splitByClauses(p, Infinity)), cap);
+  if (parts.length === 1) return splitBySentences(parts[0], cap);
+  // 还有空位才拆长段（模型自己分好的段数已经到上限就照它的来，只均分不再拆）
+  const pieces = parts.length < cap ? parts.flatMap((p) => (p.length >= LONG_PIECE ? splitBySentences(p, Infinity) : [p])) : parts;
+  return packBalanced(pieces, cap);
 }
 
-/** 连发最多几条（D-155）；空格断句也封顶在这 */
-export const BURST_MAX_BUBBLES = 4;
+/** 连发 / 空格断句最多几条（D-155 → D-212 从 4 放到 6） */
+export const BURST_MAX_BUBBLES = 6;
+/** 整句的人分好的段里，这么长（且两句以上）的再按句子拆开 */
+const LONG_PIECE = 36;
+
+/** 两段并成一条时的接缝：前一段以中日句末标点收尾、后一段不是拉丁字 / 数字开头 → 直接接；否则隔一个空格 */
+function joinPieces(a: string, b: string): string {
+  return /[。！？…～」』）]$/.test(a) && !/^[A-Za-z0-9]/.test(b) ? a + b : `${a} ${b}`;
+}
+
+/**
+ * 多出上限时把相邻的段按长度均匀并成 n 条（D-212）：逐条凑，下一段加进来离平均长度更近就加，否则收口；后面每条至少留一段。
+ * 不丢字、不改顺序；不超上限原样返回。
+ */
+export function packBalanced(pieces: string[], n: number): string[] {
+  const items = pieces.map((p) => p.trim()).filter(Boolean);
+  if (items.length <= n) return items;
+  const lens = items.map((p) => p.length);
+  const target = lens.reduce((a, b) => a + b, 0) / n;
+  const out: string[] = [];
+  let i = 0;
+  for (let k = 0; k < n - 1; k++) {
+    let cur = items[i];
+    let len = lens[i];
+    i++;
+    const mustLeave = n - 1 - k;
+    while (i < items.length - mustLeave && Math.abs(len + lens[i] - target) <= Math.abs(len - target)) {
+      cur = joinPieces(cur, items[i]);
+      len += lens[i];
+      i++;
+    }
+    out.push(cur);
+  }
+  out.push(items.slice(i).reduce(joinPieces));
+  return out;
+}
 
 /** 中文与日文（汉字 / 假名、半角假名）——韩文不在内：韩语本来就靠空格分词，不能按空格断 */
 const CJ_RE = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uff66-\uff9f]/;
@@ -238,7 +271,7 @@ const CLAUSE_RE = /[^。！？!?…，,、；;\n]+?(?:[。！？!?…]+|[，、�
 
 /**
  * 连发（D-155）：每个标点都断开成一条，去掉条末的逗号 / 顿号 / 分号 / 句号（问号感叹号省略号留着）；
- * 超过 max 条时后面的并进最后一条；一个字的碎片并回前一条（「哈哈哈，嗯」不拆出单独的「嗯」）。
+ * 超过 max 条时相邻的按长度均匀并（D-212）；一个字的碎片并回前一条（「哈哈哈，嗯」不拆出单独的「嗯」）。
  */
 export function splitByClauses(text: string, max = BURST_MAX_BUBBLES): string[] {
   const t = text.trim();
@@ -252,8 +285,7 @@ export function splitByClauses(text: string, max = BURST_MAX_BUBBLES): string[] 
     if (clean.length <= 1 && pieces.length) pieces[pieces.length - 1] += clean;
     else pieces.push(clean);
   }
-  if (pieces.length <= max) return pieces;
-  return [...pieces.slice(0, max - 1), pieces.slice(max - 1).join(' ')];
+  return packBalanced(pieces, max);
 }
 
 /** 句子：到句末标点（中英日韩）为止，带上后面的引号 / 括号；单换行也算一句的边界 */
