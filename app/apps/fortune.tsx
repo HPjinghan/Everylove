@@ -4,8 +4,10 @@
  * - 转盘：投一笔零钱（50 / 100 / 200 / 500），转到几倍拿几倍（×0.5 / ×1.2 / ×2 / ×5，十格等概率，lib/wallet.ts WHEEL_SLICES）。
  * 余额只在顶上看一眼；流水在钱包 App。
  * 纸面：白卡 + accentSoft 水晶球 / 转盘格（无渐变无阴影），中文走系统字体、数字 Fredoka。
+ * 签纸（D-206）：抽到的运势落成一张御神签式的签纸——签号 / 大字运势 / 签文 / 斜盖的金额印章，从水晶球下面滑出来。
  */
 
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, useAnimatedValue, View } from 'react-native';
@@ -69,6 +71,8 @@ function SignTab() {
   const [today, setToday] = useState(() => fortuneDayKey(Date.now()));
   const scale = useAnimatedValue(1);
   const glow = useAnimatedValue(0);
+  // 签纸滑出：进页时已抽过 = 直接停在 1；当场抽的从 0 滑到 1
+  const slip = useAnimatedValue(fortune?.day === today ? 1 : 0);
 
   // 今天抽过没：进页面时算一次，抽完再算一次（渲染期不读 Date.now()）
   const drawn = fortune?.day === today;
@@ -97,6 +101,8 @@ function SignTab() {
       store.creditWallet({ amount, kind: 'fortune', note: t('日签 · {luck}', { luck: t(FORTUNES[luck].label) }) });
       setToday(day);
       setRevealing(false);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Animated.spring(slip, { toValue: 1, friction: 7, tension: 60, useNativeDriver: true }).start();
     });
   };
 
@@ -105,24 +111,41 @@ function SignTab() {
       <Pressable onPress={look} disabled={revealing || drawn}>
         <Animated.View style={[styles.ball, { transform: [{ scale }] }]}>
           <Animated.View style={[styles.glow, { opacity: glow }]} />
-          {drawn && fortune && luckMeta ? (
-            <View style={styles.result}>
-              <Text style={styles.luck}>{t(luckMeta.label)}</Text>
-              <Text style={styles.amount}>+{money(fortune.amount)}</Text>
-              <Text style={styles.sign}>{t(fortune.text)}</Text>
-            </View>
-          ) : (
-            <View style={styles.result}>
-              <MingCute name="sparkles" size={44} color={Romance.accent} />
-              <Text style={styles.hint}>{revealing ? t('…') : t('今天的运势')}</Text>
-            </View>
-          )}
+          <View style={styles.result}>
+            <MingCute name="sparkles" size={44} color={drawn ? Romance.faint : Romance.accent} />
+            <Text style={styles.hint}>{revealing ? t('…') : drawn ? t('明天再来') : t('今天的运势')}</Text>
+          </View>
         </Animated.View>
       </Pressable>
 
-      <Button label={drawn ? t('明天再来') : revealing ? t('…') : t('看一眼')} disabled={revealing || drawn} onPress={look} style={styles.actionBtn} />
+      {drawn && fortune && luckMeta ? (
+        <Animated.View
+          style={{
+            opacity: slip,
+            transform: [{ translateY: slip.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) }],
+          }}>
+          <Card style={styles.slip}>
+            <Text style={styles.slipNo}>No. {slipNumber(fortune.day)}</Text>
+            <Text style={styles.luck}>{t(luckMeta.label)}</Text>
+            <View style={styles.slipRule} />
+            <Text style={styles.sign}>{t(fortune.text)}</Text>
+            <View style={styles.stamp}>
+              <Text style={styles.amount}>+{money(fortune.amount)}</Text>
+            </View>
+          </Card>
+        </Animated.View>
+      ) : null}
+
+      {drawn ? null : <Button label={revealing ? t('…') : t('看一眼')} disabled={revealing} onPress={look} style={styles.actionBtn} />}
     </>
   );
+}
+
+/** 签号：按那天的日子稳定取 1–100（同一天的签纸号不变） */
+function slipNumber(day: string): string {
+  let h = 0;
+  for (const ch of day) h = (h * 31 + ch.charCodeAt(0)) % 9973;
+  return String((h % 100) + 1).padStart(3, '0');
 }
 
 /* ═══ 转盘 ═══ */
@@ -173,6 +196,7 @@ function WheelTab({ balance }: { balance: number }) {
       angleRef.current = target;
       useAppStore.getState().creditWallet({ amount: r.net, kind: 'wheel', note: t('转盘 · {mult}', { mult: multLabel(r.mult) }) });
       setLast({ mult: r.mult, net: r.net });
+      void Haptics.notificationAsync(r.net > 0 ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning).catch(() => {});
       setSpinning(false);
       lockRef.current = false;
     });
@@ -241,9 +265,23 @@ const styles = themed(() =>
     glow: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: withAlpha('#FFFFFF', 0.7) },
     result: { alignItems: 'center', paddingHorizontal: 24, gap: 6 },
     hint: { fontSize: Type.scale.sub.size, color: Romance.sub, marginTop: 4 },
-    luck: { fontSize: Type.scale.display.size, fontWeight: '700', color: Romance.ink },
-    amount: { fontFamily: Fonts.labelBold, fontSize: Type.scale.xl.size, color: Romance.accentStrong },
-    sign: { fontSize: Type.scale.label.size, color: Romance.sub, textAlign: 'center', lineHeight: 19 },
+    // 签纸：白卡窄一点居中，签号 Fredoka、运势大字、分隔线、签文，右下斜盖金额印章
+    slip: { alignSelf: 'center', width: 240, alignItems: 'center', paddingVertical: 20, paddingHorizontal: 22, gap: 8 },
+    slipNo: { fontFamily: Fonts.label, fontSize: Type.scale.caption.size, letterSpacing: 1, color: Romance.sub },
+    slipRule: { alignSelf: 'stretch', height: Shape.stroke, backgroundColor: Romance.stroke, marginVertical: 4 },
+    luck: { fontSize: Type.scale.display.size, fontWeight: '700', color: Romance.ink, letterSpacing: 4 },
+    sign: { fontSize: Type.scale.sub.size, color: Romance.ink, textAlign: 'center', lineHeight: 21 },
+    stamp: {
+      alignSelf: 'flex-end',
+      marginTop: 6,
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+      borderRadius: Shape.radiusInner,
+      borderWidth: Shape.stroke,
+      borderColor: Romance.accentStrong,
+      transform: [{ rotate: '-8deg' }],
+    },
+    amount: { fontFamily: Fonts.labelBold, fontSize: Type.scale.md.size, color: Romance.accentStrong },
     actionBtn: { alignSelf: 'center', minWidth: 160 },
     wheelWrap: { alignSelf: 'center', alignItems: 'center', paddingTop: 6 },
     pointer: {

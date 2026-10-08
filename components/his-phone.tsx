@@ -6,6 +6,8 @@
  * 通讯录里有他们、Message 里有和他们的对话；她的那一格是真实的羁绊会话（TA 视角：TA 的话在右边）。
  * 记事本 = TA 自己的日子（米色纸 NOTE_PAPER）+ 锁着的页（隐藏设定）；日历 = 约定 + TA 的生日；相册 = 立绘 + 这个 TA 的照片。
  * 打开即触发一次记事本补写（lib/his-notes.ts），第一次进来不会是空本子。
+ * 像一部真的手机（D-206）：底部 Dock 放 Message / 通讯录（不带标签，同主页 D-044）；Message 与通讯录是白色通栏列表（同她的 Message）；
+ * 钱包是一张角色色的卡面。
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -41,6 +43,9 @@ const TILE = 60;
 const HER = 'her';
 
 type PhoneApp = 'messages' | 'contacts' | 'notes' | 'calendar' | 'album' | 'wallet';
+
+/** Dock 里的两个（其余摆网格） */
+const DOCK_APPS: PhoneApp[] = ['messages', 'contacts'];
 
 const APPS: { id: PhoneApp; label: string; icon: MingCuteName }[] = [
   { id: 'messages', label: 'Message', icon: 'chat' },
@@ -197,10 +202,20 @@ export function PhoneSheet({
           <Text style={styles.clock}>{clockTime(now)}</Text>
           <Text style={styles.clockDate}>{dateLine(new Date(now))}</Text>
           <View style={styles.grid}>
-            {APPS.map((a) => {
+            {APPS.filter((a) => !DOCK_APPS.includes(a.id)).map((a) => (
+              <Pressable key={a.id} style={styles.tileWrap} onPress={() => setApp(a.id)}>
+                <View style={styles.tile}>
+                  <MingCute name={a.icon} size={Space.iconTile} color={Romance.ink} />
+                </View>
+                <Text style={styles.tileLabel}>{t(a.label)}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={[styles.dock, { marginBottom: insets.bottom + 12 }]}>
+            {APPS.filter((a) => DOCK_APPS.includes(a.id)).map((a) => {
               const badge = a.id === 'messages' ? conversations.filter((c) => c.lines.length).length : 0;
               return (
-                <Pressable key={a.id} style={styles.tileWrap} onPress={() => setApp(a.id)}>
+                <Pressable key={a.id} onPress={() => setApp(a.id)} accessibilityLabel={a.label === 'Message' ? 'Message' : t(a.label)}>
                   <View style={styles.tile}>
                     <MingCute name={a.icon} size={Space.iconTile} color={Romance.ink} />
                     {badge > 0 ? (
@@ -209,7 +224,6 @@ export function PhoneSheet({
                       </View>
                     ) : null}
                   </View>
-                  <Text style={[styles.tileLabel, a.label === 'Message' && styles.tileLabelLatin]}>{a.label === 'Message' ? 'Message' : t(a.label)}</Text>
                 </Pressable>
               );
             })}
@@ -232,12 +246,12 @@ export function PhoneSheet({
           </View>
 
           {app === 'messages' && !thread ? (
-            <ScrollView contentContainerStyle={styles.listBody}>
-              {conversations.map((c) => {
+            <ScrollView style={styles.plainList} contentContainerStyle={styles.plainBody}>
+              {conversations.map((c, i) => {
                 const last = c.lines.at(-1);
                 return (
                   <Pressable key={c.id} onPress={() => setThread(c.id)}>
-                    <Card style={styles.convRow}>
+                    <View style={[styles.convRow, i > 0 && styles.convLine]}>
                       {c.id === HER ? (
                         <View style={styles.herAvatar}>
                           <Text style={styles.herAvatarText}>{c.name.slice(0, 1)}</Text>
@@ -256,7 +270,7 @@ export function PhoneSheet({
                           {last ? `${last.from === 'him' ? t('我') : c.name}：${last.text}` : t('…')}
                         </Text>
                       </View>
-                    </Card>
+                    </View>
                   </Pressable>
                 );
               })}
@@ -282,8 +296,8 @@ export function PhoneSheet({
           ) : null}
 
           {app === 'contacts' ? (
-            <ScrollView contentContainerStyle={styles.listBody}>
-              <Card style={styles.convRow}>
+            <ScrollView style={styles.plainList} contentContainerStyle={styles.plainBody}>
+              <View style={styles.convRow}>
                 <View style={styles.herAvatar}>
                   <Text style={styles.herAvatarText}>{bond.nickname.slice(0, 1)}</Text>
                 </View>
@@ -291,9 +305,9 @@ export function PhoneSheet({
                   <Text style={styles.convName}>{bond.nickname}</Text>
                   <Text style={styles.convPreview}>{t('恋人')}</Text>
                 </View>
-              </Card>
+              </View>
               {circle.map((p) => (
-                <Card key={p.id} style={styles.convRow}>
+                <View key={p.id} style={[styles.convRow, styles.convLine]}>
                   <InitialAvatar name={p.name} />
                   <View style={styles.convText}>
                     <Text style={styles.convName}>
@@ -306,7 +320,7 @@ export function PhoneSheet({
                       </Text>
                     ) : null}
                   </View>
-                </Card>
+                </View>
               ))}
               {!circleReady ? <Text style={styles.empty}>{t('…')}</Text> : null}
             </ScrollView>
@@ -369,11 +383,22 @@ export function PhoneSheet({
 
           {app === 'wallet' ? (
             <ScrollView contentContainerStyle={styles.listBody}>
-              <Card style={styles.walletCard}>
+              <View style={[styles.walletCard, { backgroundColor: character.color }]}>
+                <DiamondBackground color="#FFFFFF" alpha={0.08} />
+                <View style={styles.walletCardTop}>
+                  <Text style={styles.walletOwner} numberOfLines={1}>
+                    {bond.name}
+                  </Text>
+                  <MingCute name="wallet" size={20} color="#FFFFFF" />
+                </View>
                 <Text style={styles.walletLabel}>{t('零钱')}</Text>
                 <Text style={styles.walletBalance}>{money(bond.wallet?.balance ?? 0)}</Text>
-                {bond.wallet?.job ? <Text style={styles.walletJob}>{bond.wallet.job}</Text> : null}
-              </Card>
+                {bond.wallet?.job ? (
+                  <Text style={styles.walletJob} numberOfLines={1}>
+                    {bond.wallet.job}
+                  </Text>
+                ) : null}
+              </View>
               <Card style={styles.walletLedger}>
                 {(bond.wallet?.ledger ?? []).length ? (
                   [...(bond.wallet?.ledger ?? [])].reverse().map((e, i) => (
@@ -422,11 +447,20 @@ const styles = themed(() =>
     homeOwnerName: { fontSize: Type.scale.label.size, fontWeight: '600', color: '#FFFFFF' },
     clock: { fontFamily: Fonts.labelBold, fontSize: 64, lineHeight: 64, color: '#FFFFFF', textAlign: 'center', marginTop: 18 },
     clockDate: { fontSize: Type.scale.label.size, color: withAlpha('#FFFFFF', 0.85), textAlign: 'center', marginTop: 4 },
-    grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: Space.screen, marginTop: 36, rowGap: 22 },
+    grid: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignContent: 'flex-start', paddingHorizontal: Space.screen, marginTop: 36, rowGap: 22 },
+    // Dock：白 14% 的一块板，图块不带标签（同主页 D-044）
+    dock: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: Space.tileGapLoose,
+      marginHorizontal: 12,
+      paddingVertical: 18,
+      borderRadius: Shape.radius,
+      backgroundColor: withAlpha('#FFFFFF', 0.14),
+    },
     tileWrap: { width: '25%', alignItems: 'center' },
     tile: { width: TILE, height: TILE, borderRadius: Shape.radius, backgroundColor: Romance.card, alignItems: 'center', justifyContent: 'center' },
     tileLabel: { fontSize: Type.scale.caption.size, fontWeight: '500', color: '#FFFFFF', marginTop: 6 },
-    tileLabelLatin: { fontFamily: Fonts.label },
     badge: {
       position: 'absolute',
       top: -6,
@@ -441,10 +475,20 @@ const styles = themed(() =>
     },
     badgeText: { fontFamily: Fonts.labelBold, fontSize: Type.scale.caption.size, color: '#FFFFFF' },
     // 钱包（D-128）
-    walletCard: { alignItems: 'center', paddingVertical: 22 },
-    walletLabel: { fontSize: Type.scale.caption.size, color: Romance.sub },
-    walletBalance: { fontFamily: Fonts.labelBold, fontSize: Type.scale.display.size, color: Romance.ink, marginTop: 4 },
-    walletJob: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 6 },
+    // 卡面：角色色底 + 白 8% 菱格（同 TA 的桌面），描边同卡片，白字
+    walletCard: {
+      borderRadius: Shape.radius,
+      borderWidth: Shape.stroke,
+      borderColor: Romance.stroke,
+      padding: 18,
+      minHeight: 168,
+      overflow: 'hidden',
+    },
+    walletCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 26 },
+    walletOwner: { flex: 1, fontSize: Type.scale.cardTitle.size, fontWeight: '600', color: '#FFFFFF' },
+    walletLabel: { fontSize: Type.scale.caption.size, color: withAlpha('#FFFFFF', 0.75) },
+    walletBalance: { fontFamily: Fonts.labelBold, fontSize: Type.scale.display.size, color: '#FFFFFF', marginTop: 4 },
+    walletJob: { fontSize: Type.scale.caption.size, color: withAlpha('#FFFFFF', 0.75), marginTop: 10 },
     walletLedger: { paddingVertical: 4, marginTop: 10 },
     walletRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 12 },
     walletRowLine: { borderTopWidth: Shape.stroke, borderTopColor: Romance.stroke },
@@ -470,7 +514,11 @@ const styles = themed(() =>
     titleLatin: { fontFamily: Fonts.labelBold, fontWeight: '400' },
     right: { width: Space.topBarSlot, alignItems: 'flex-end' },
     listBody: { padding: Space.screen, gap: Space.inline, paddingBottom: 40 },
-    convRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose },
+    // Message / 通讯录：白色通栏、行间 1px line（同她的 Message）
+    plainList: { backgroundColor: Romance.card },
+    plainBody: { paddingBottom: 40 },
+    convRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose, paddingVertical: 10, paddingHorizontal: Space.screen },
+    convLine: { borderTopWidth: 1, borderTopColor: Romance.line },
     convText: { flex: 1, minWidth: 0 },
     convHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Space.inline },
     convName: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, flexShrink: 1 },

@@ -7,8 +7,11 @@ import { DiamondBackground } from '@/components/paper-bg';
 import { useGuardedPress } from '@/components/press-guard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space, Type } from '@/constants/design';
-import { Romance, themed } from '@/constants/theme';
+import { Fonts, Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
+
+/** 纯拉丁的 App 名（Message / X）走 Fredoka——设计系统「数字与拉丁标签」那一档（D-206） */
+const LATIN = /^[A-Za-z0-9 .]+$/;
 
 /**
  * 手机壳内 App 的通用外框（D-021；D-100 纸面）：顶栏透底、居中中文标题 17/600、左「‹ 桌面」14/500、
@@ -46,7 +49,7 @@ export function AppScreen({
           <IconSymbol name="chevron.left" size={16} color={Romance.ink} />
           <Text style={styles.backText}>{t('桌面')}</Text>
         </Pressable>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={[styles.title, LATIN.test(title) && styles.titleLatin]} numberOfLines={1}>
           {title}
         </Text>
         <View style={styles.right}>{right}</View>
@@ -95,6 +98,7 @@ const styles = themed(() =>
     back: { flexDirection: 'row', alignItems: 'center', width: Space.topBarSlot, gap: 2 },
     backText: { fontSize: Type.scale.sub.size, fontWeight: '500', color: Romance.ink },
     title: { flex: 1, textAlign: 'center', fontSize: Type.scale.screenTitle.size, fontWeight: '600', color: Romance.ink },
+    titleLatin: { fontFamily: Fonts.labelBold, fontWeight: '400', fontSize: Type.scale.lg.size },
     right: { width: Space.topBarSlot, alignItems: 'flex-end' },
     action: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.accent },
     actionDisabled: { color: Romance.sub },

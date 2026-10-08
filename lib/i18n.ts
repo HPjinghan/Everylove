@@ -900,6 +900,12 @@ const en: Record<string, string> = {
   '发送': 'Send',
   '选照片': 'Choose a photo',
   '评论': 'Comment',
+  '分钟': 'min',
+  '约 {lo}–{hi} 分钟送达': 'Arrives in about {lo}–{hi} min',
+  '接单': 'Accepted',
+  '取餐': 'Pickup',
+  '配送': 'On the way',
+  '送达': 'Delivered',
   // __EN_END__
 };
 
@@ -1772,6 +1778,12 @@ const ja: Record<string, string> = {
   '发送': '送信',
   '选照片': '写真を選ぶ',
   '评论': 'コメント',
+  '分钟': '分',
+  '约 {lo}–{hi} 分钟送达': '約 {lo}〜{hi} 分でお届け',
+  '接单': '受付',
+  '取餐': '受取',
+  '配送': '配達中',
+  '送达': 'お届け',
   // __JA_END__
 };
 
@@ -2647,6 +2659,12 @@ const ko: Record<string, string> = {
   '发送': '보내기',
   '选照片': '사진 선택',
   '评论': '댓글',
+  '分钟': '분',
+  '约 {lo}–{hi} 分钟送达': '약 {lo}~{hi}분 후 도착',
+  '接单': '접수',
+  '取餐': '픽업',
+  '配送': '배달 중',
+  '送达': '도착',
   // __KO_END__
 };
 

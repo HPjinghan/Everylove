@@ -14,6 +14,20 @@ export function timeAgo(at: number, now = Date.now()): string {
   return new Date(at).toLocaleDateString(locale, { month: 'numeric', day: 'numeric' });
 }
 
+/** X 时间线的紧凑时间（D-206）：12s / 5m / 3h / 2d，一周外 = 月/日——只有数字与拉丁字母，走 Fredoka */
+export function compactAgo(at: number, now = Date.now()): string {
+  const s = Math.max(1, Math.floor((now - at) / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d`;
+  const date = new Date(at);
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
 export function clockTime(at: number): string {
   const d = new Date(at);
   const hh = d.getHours().toString().padStart(2, '0');

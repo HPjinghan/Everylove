@@ -21,7 +21,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { sendText } from '@/lib/chat';
-import { timeAgo } from '@/lib/format';
+import { compactAgo } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import type { Character, Post } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -44,6 +44,8 @@ function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: 
   const displayName = bond?.name ?? character.name;
   const canComment = !!post.bondId;
   const myName = me?.nickname || t('你');
+  // 推文串（D-206）：帖子下有回复时，头像下垂一条串线连到最后一条回复
+  const threaded = post.comments.length > 0 || replying || commentOpen;
 
   // 回帖走 post 模式（D-178）：她的评论落评论线 + 记账 → TA 回一句；失败同会话口径（轻提示）
   const submitComment = () => {
@@ -55,17 +57,21 @@ function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: 
 
   return (
     <View style={styles.row}>
-      <Pressable onPress={() => onOpenCharacter(character.id)} hitSlop={6}>
-        <CharAvatar name={displayName} color={character.color} size={40} characterId={character.id} />
-      </Pressable>
+      <View style={styles.avatarCol}>
+        <Pressable onPress={() => onOpenCharacter(character.id)} hitSlop={6}>
+          <CharAvatar name={displayName} color={character.color} size={40} characterId={character.id} />
+        </Pressable>
+        {threaded ? <View style={styles.threadLine} /> : null}
+      </View>
       <View style={styles.rowBody}>
         <View style={styles.headLine}>
           <Text style={styles.name} numberOfLines={1}>
             {displayName}
           </Text>
           <Text style={styles.handle} numberOfLines={1}>
-            {handleFor(character)} · {timeAgo(post.at)}
+            {handleFor(character)}
           </Text>
+          <Text style={styles.ago}>· {compactAgo(post.at)}</Text>
         </View>
         {!post.bondId ? <Text style={styles.lockedMeta}>{met ? t('在广场见过 · 加好友前的帖子') : t('加好友前的帖子')}</Text> : null}
         <Text style={styles.body}>{post.text}</Text>
@@ -211,10 +217,14 @@ const styles = themed(() =>
       paddingHorizontal: Space.screen,
       paddingVertical: 12,
     },
+    avatarCol: { alignItems: 'center' },
+    // 推文串线：line 色 2px，从头像下沿垂到这条帖子的最后一条回复
+    threadLine: { flex: 1, width: 2, borderRadius: 1, backgroundColor: Romance.line, marginTop: 6 },
     rowBody: { flex: 1, minWidth: 0 },
-    headLine: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+    headLine: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
     name: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, flexShrink: 1 },
     handle: { fontSize: Type.scale.label.size, color: Romance.sub, flexShrink: 1 },
+    ago: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.sub },
     lockedMeta: { fontSize: Type.scale.timestamp.size, color: Romance.faint, marginTop: 1 },
     body: { fontSize: Type.scale.body.size, lineHeight: 21, color: Romance.ink, marginTop: 3 },
     actions: { flexDirection: 'row', gap: 46, marginTop: 10 },
