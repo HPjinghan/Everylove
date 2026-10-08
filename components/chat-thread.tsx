@@ -354,6 +354,7 @@ export function ChatThread({
   onSend,
   onSendImage,
   onSendVoice,
+  micGate,
   onResend,
   onRecall,
   onDelete,
@@ -375,6 +376,8 @@ export function ChatThread({
   onSendImage?: (uri: string) => void;
   /** 录音发送（不传则隐藏麦克风按钮） */
   onSendVoice?: (uri: string, durationMs: number) => void;
+  /** 开始录音前先问一声（D-210：语音时长用完 / Free 没有语音）；返回 false 就不录，提示由它自己给 */
+  micGate?: () => boolean;
   /** 她那条 TA 没回上时点「重发」（D-169） */
   onResend?: (msg: ChatMessage) => void;
   /** 撤回（不传则长按菜单不出现撤回项） */
@@ -508,6 +511,7 @@ export function ChatThread({
   const toggleRecord = async () => {
     if (!onSendVoice || inputDisabled) return;
     if (!recording) {
+      if (micGate && !micGate()) return;
       const perm = await AudioModule.requestRecordingPermissionsAsync();
       if (!perm.granted) {
         showAlert(t('需要麦克风权限'), t('在系统设置里允许录音后再试。'));
