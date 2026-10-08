@@ -2,7 +2,7 @@
  * 流量与模型档（D-132 → D-133，Harper：「不要按照回合，按照 token 消耗，因为还涉及到生图、生推特这些行为」）。
  * - 「流量」= 真实消耗的包装，MB 显示：**每一次花钱的调用都记**——她的回合、TA 主动 / 召回 / 记事本 / 发帖 / 身边的人 / 周薪这些后台生成、
  *   生图（立绘 / 外出拍照 / TA 发图）、语音合成、语音识别、看图。底座在 core/usage 报用量，这里换算成 MB（features/traffic.ts 扣账）。
- * - 换算：聊天按 token——love-v1（千帆 deepseek-v4-pro）1 MB / 千 token，love-v2（Claude sonnet-5）5 MB / 千 token（价差约 5 倍）；
+ * - 换算：聊天按 token——全部文字调用走 Claude Haiku 5.5（D-205），1 MB / 千 token；千帆只剩开发者手动切换，同价；
  *   生图 15 MB / 张；语音合成 1 MB / 200 字；识别 1 MB / 60 秒；看图 3 MB / 张。供应商没返回 usage 就按字数估。
  * - 模型档玩家自己切（设置），存用户数据随云端走；来源：每天免费 100 MB（不累积）、订阅每月发（Pro 6000 / Max 不限）、流量包（唯一消耗型 SKU）。
  * - Coin（零钱）与流量永不打通。数值是试装默认；价格待 Harper（OPEN_QUESTIONS #30）。
@@ -24,15 +24,16 @@ export interface LoveModel {
   mbPerKTok: number;
 }
 
+/** D-205：两档都是 Claude Haiku 5.5，设置里不再给选（LOVE_MODEL_ORDER 只剩一档 → 不显示）；老存档里的 v2 照样能用 */
 export const LOVE_MODELS: Record<LoveModelId, LoveModel> = {
-  v1: { id: 'v1', label: 'love-v1', blurb: '轻快，省流量', provider: 'qianfan', mbPerKTok: 1 },
-  v2: { id: 'v2', label: 'love-v2', blurb: '更细腻，更懂你', provider: 'anthropic', mbPerKTok: 5 },
+  v1: { id: 'v1', label: 'love-v1', blurb: '轻快，省流量', provider: 'anthropic', mbPerKTok: 1 },
+  v2: { id: 'v2', label: 'love-v2', blurb: '更细腻，更懂你', provider: 'anthropic', mbPerKTok: 1 },
 };
 export const DEFAULT_LOVE_MODEL: LoveModelId = 'v1';
-export const LOVE_MODEL_ORDER: LoveModelId[] = ['v1', 'v2'];
+export const LOVE_MODEL_ORDER: LoveModelId[] = ['v1'];
 
 /** 聊天按供应商折算（没列的按 1）；其余按件 / 按字 / 按秒 */
-export const CHAT_MB_PER_KTOK: Record<string, number> = { qianfan: 1, anthropic: 5 };
+export const CHAT_MB_PER_KTOK: Record<string, number> = { qianfan: 1, anthropic: 1 };
 export const IMAGE_MB = 15;
 /** 生图模型按 token 计费时（返回 output_tokens）每千 token 折多少 MB */
 export const IMAGE_MB_PER_KTOK = 3;

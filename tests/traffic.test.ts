@@ -44,7 +44,7 @@ const noPace = { pace: 'none' as const };
 describe('换算', () => {
   it('聊天按 token × 供应商倍率；生图按张；合成按字；识别按秒；看图固定', () => {
     expect(mbForUsage({ kind: 'chat', provider: 'qianfan', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(3.08);
-    expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(15.4);
+    expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(3.08);
     expect(mbForUsage({ kind: 'chat', provider: 'fake', inputTokens: 1000 })).toBe(1);
     expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 1 })).toBe(IMAGE_MB);
     expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 2 })).toBe(IMAGE_MB * 2);
@@ -53,7 +53,7 @@ describe('换算', () => {
     expect(mbForUsage({ kind: 'asr', provider: 'baidu', seconds: 30 })).toBe(0.5);
     expect(mbForUsage({ kind: 'vision', provider: 'x' })).toBe(3);
     expect(LOVE_MODELS.v1.mbPerKTok).toBe(1);
-    expect(LOVE_MODELS.v2.mbPerKTok).toBe(5);
+    expect(LOVE_MODELS.v2.mbPerKTok).toBe(1);
     expect(estimateTokens('今天好累啊')).toBe(5);
     expect(estimateTokens('hello world')).toBe(3);
   });

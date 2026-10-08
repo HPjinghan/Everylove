@@ -8,11 +8,11 @@ import { CONFIG } from '@/core/config';
 import { chatProviders, type ChatProvider, type ChatRequest, type ChatTurn } from '@/core/providers';
 import { postJsonWithTimeout, proxyJson, TIMEOUTS } from '@/lib/proxy';
 
-type AnthropicJson = { content: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
+type AnthropicJson = { content: { type: string; text?: string }[]; stop_reason?: string; usage?: { input_tokens?: number; output_tokens?: number } };
 type OpenAIJson = { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
 
-/** 默认就开着思考的 Claude 家族（Opus 5 / Fable）：思考 token 也算进 max_tokens，角色回话的 300 预算会被吃光 → 加余量、压低 effort（D-108） */
-const THINKING_ON_BY_DEFAULT = /^claude-(opus-5|fable|mythos)/;
+/** 默认就开着思考的 Claude 家族（Opus 5 / Fable / Sonnet 5.5 / Haiku 5.5）：思考 token 也算进 max_tokens，角色回话的 300 预算会被吃光 → 加余量、压低 effort（D-108 / D-205） */
+const THINKING_ON_BY_DEFAULT = /^claude-(opus-5|fable|mythos|sonnet-5-5|haiku-5)/;
 const THINKING_HEADROOM = 2048;
 
 type Block = { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } };
@@ -39,7 +39,8 @@ function cachedTurns(req: ChatRequest): (ChatTurn | { role: ChatTurn['role']; co
 
 const anthropic: ChatProvider = {
   id: 'anthropic',
-  tier: 'premium',
+  // 全部文字调用都走 Claude Haiku 5.5（D-205）：后台任务、没配 key 时走代理的默认也是它
+  tier: 'cheap',
   label: `Claude · ${CONFIG.anthropicModel}`,
   localKey: () => CONFIG.anthropicKey,
   async complete(req, route) {
@@ -65,6 +66,8 @@ const anthropic: ChatProvider = {
     } else {
       data = await proxyJson<AnthropicJson>('anthropic.messages', body);
     }
+    // 安全分类器拒答（HTTP 200）：当失败处理，她那条标「没送到 · 重发」（D-169）
+    if (data.stop_reason === 'refusal') throw new Error('Anthropic refusal');
     const text = data.content
       .filter((b) => b.type === 'text' && b.text)
       .map((b) => b.text)
@@ -77,8 +80,8 @@ const anthropic: ChatProvider = {
 
 const qianfan: ChatProvider = {
   id: 'qianfan',
-  // 便宜那家（D-179）：后台任务、没配 key 时走代理的默认
-  tier: 'cheap',
+  // 文字调用不再默认走千帆（D-205）：只留作开发者手动切换的备选；生图 / 看图 / 语音另走 lib/media、lib/imagegen
+  tier: 'premium',
   label: `千帆 · ${CONFIG.qianfanModel}`,
   localKey: () => CONFIG.qianfanKey,
   async complete(req, route) {
@@ -106,6 +109,6 @@ const qianfan: ChatProvider = {
   },
 };
 
-// 注册顺序即「没指定引擎时谁优先」：有 Claude key 用 Claude，否则千帆（core/providers.currentChatProvider）
+// 注册顺序即「没指定引擎时谁优先」：有 Claude key 用 Claude；都没 key 走代理时用标 cheap 的那家 = Claude（core/providers.currentChatProvider）
 chatProviders.register(anthropic);
 chatProviders.register(qianfan);

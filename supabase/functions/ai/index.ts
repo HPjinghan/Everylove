@@ -34,7 +34,7 @@ const list = (name: string, fallback: string) =>
     .map((s) => s.trim())
     .filter(Boolean);
 /** 模型白名单：默认与客户端 core/config.ts 的默认值一致；换模型两边一起改 */
-const ANTHROPIC_MODELS = list('ANTHROPIC_MODELS', 'claude-sonnet-5,claude-opus-5');
+const ANTHROPIC_MODELS = list('ANTHROPIC_MODELS', 'claude-haiku-5-5,claude-sonnet-5-5,claude-sonnet-5,claude-opus-5');
 const QIANFAN_CHAT_MODELS = list('QIANFAN_CHAT_MODELS', 'deepseek-v4-pro,qwen3.5-397b-a17b');
 const QIANFAN_IMAGE_MODELS = list('QIANFAN_IMAGE_MODELS', 'qwen-image,musesteamer-air-image');
 

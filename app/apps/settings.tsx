@@ -400,7 +400,8 @@ export default function MeScreen() {
 
         <Section title={t('流量')}>
           <Row label={t('剩余流量')} value={plan === 'max' ? '∞' : mb(traffic.balance)} numeric hint={plan === 'max' ? t('Max 不限流量') : t('今天免费的还剩 {n}', { n: mb(freeLeft(traffic, trafficNow)) })} />
-          {LOVE_MODEL_ORDER.map((id) => {
+          {/* 只剩一档时不给选（D-205） */}
+          {LOVE_MODEL_ORDER.length > 1 && LOVE_MODEL_ORDER.map((id) => {
             const m = LOVE_MODELS[id];
             return (
               <Row
