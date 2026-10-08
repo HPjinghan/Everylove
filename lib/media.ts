@@ -130,7 +130,7 @@ type AsrResponse = { err_no?: number; err_msg?: string; result?: string[] };
  */
 export async function transcribeVoice(uri: string, billing: Billing = 'user'): Promise<string> {
   const lang = getLang();
-  // 语音时长用完了不识别（D-210）；通话里的含在通话分钟里
+  // 流量用完了不识别（D-211：她的语音跟打字一样走流量）；通话里的含在通话分钟里
   const blocked = generationBlocked('asr', billing);
   if (blocked) throw new GenerationBlockedError(blocked);
   const route = await aiRoute('qianfan');

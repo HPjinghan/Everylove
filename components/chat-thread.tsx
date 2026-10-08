@@ -392,7 +392,7 @@ export function ChatThread({
   onSendImage?: (uri: string) => void;
   /** 录音发送（不传则隐藏麦克风按钮） */
   onSendVoice?: (uri: string, durationMs: number) => void;
-  /** 开始录音前先问一声（D-210：语音时长用完 / Free 没有语音）；返回 false 就不录，提示由它自己给 */
+  /** 开始录音前先问一声（D-211：流量用完了就不录）；返回 false 就不录，提示由它自己给 */
   micGate?: () => boolean;
   /** 她那条 TA 没回上时点「重发」（D-169） */
   onResend?: (msg: ChatMessage) => void;

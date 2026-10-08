@@ -1,7 +1,8 @@
 /**
  * 流量与模型档（D-132 / D-133）：按真实用量折 MB（聊天按 token × 供应商倍率、生图按张）、先扣免费再扣余额、Max 不扣、
  * 用完她发不出、订阅每月发流量、模型档 → 供应商的选路。
- * D-210：只扣她发起的（TA 自己发起的、工具调用平台出，受后台保险丝管）；通话含在分钟里；语音按秒扣语音时长（今天的额度 → 送的通话 → 分钟包）。
+ * D-210：只扣她发起的（TA 自己发起的、工具调用平台出，受后台保险丝管）；通话含在分钟里；TA 的语音按秒扣语音时长（今天的额度 → 送的通话 → 分钟包）。
+ * D-211：她的语音识别跟打字一样走流量（1 MB / 60 秒），麦克风人人可用。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -63,7 +64,7 @@ const NOW = new Date(2026, 8, 15, 12).getTime();
 const noPace = { pace: 'none' as const };
 
 describe('换算', () => {
-  it('聊天按 token × 供应商倍率；生图按张；看图固定；语音不折流量（D-210）', () => {
+  it('聊天按 token × 供应商倍率；生图按张；看图固定；TA 的语音不折流量（D-210）、她的语音识别按秒（D-211）', () => {
     expect(mbForUsage({ kind: 'chat', provider: 'qianfan', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(3.08);
     expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(3.08);
     expect(mbForUsage({ kind: 'chat', provider: 'fake', inputTokens: 1000 })).toBe(1);
@@ -71,7 +72,7 @@ describe('换算', () => {
     expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 2 })).toBe(IMAGE_MB * 2);
     expect(mbForUsage({ kind: 'image', provider: 'musesteamer', outputTokens: 2000 })).toBe(6);
     expect(mbForUsage({ kind: 'tts', provider: 'baidu', chars: 400 })).toBe(0);
-    expect(mbForUsage({ kind: 'asr', provider: 'baidu', seconds: 30 })).toBe(0);
+    expect(mbForUsage({ kind: 'asr', provider: 'baidu', seconds: 30 })).toBe(0.5);
     expect(mbForUsage({ kind: 'vision', provider: 'x' })).toBe(3);
     expect(LOVE_MODELS.v1.mbPerKTok).toBe(1);
     expect(LOVE_MODELS.v2.mbPerKTok).toBe(1);
@@ -192,15 +193,21 @@ describe('D-210：只扣她发起的、语音按分钟、后台保险丝', () =>
     expect(estimateSpeechSeconds('今天好累啊，想你了')).toBe(2);
   });
 
-  it('她这一轮里的语音扣她的时长；TA 自己发起的、试听不扣', () => {
+  it('她这一轮里 TA 的语音扣她的时长；TA 自己发起的、试听、通话里的不扣；她的语音识别扣流量（D-211）', () => {
     const s = () => useAppStore.getState();
     s().setPlan('pro');
     reportUsage({ kind: 'tts', provider: 'fish', seconds: 12, billing: 'user' });
-    reportUsage({ kind: 'asr', provider: 'baidu', seconds: 8 });
     reportUsage({ kind: 'tts', provider: 'fish', seconds: 30, billing: 'house' });
     reportUsage({ kind: 'tts', provider: 'fish', seconds: 30, billing: 'included' });
-    expect(s().voice.usedSec).toBe(20);
+    reportUsage({ kind: 'asr', provider: 'baidu', seconds: 30, billing: 'included' });
+    expect(s().voice.usedSec).toBe(12);
     expect(s().traffic.freeUsed).toBe(0);
+    // Free 也能说话：识别按秒折流量，不碰语音时长
+    s().setPlan('free');
+    reportUsage({ kind: 'asr', provider: 'baidu', seconds: 30 });
+    expect(s().traffic.freeUsed).toBe(0.5);
+    expect(s().voice.usedSec).toBe(12);
+    expect(s().trafficLog.at(-1)).toMatchObject({ kind: 'asr', mb: 0.5 });
   });
 
   it('「TA 发语音」开关：没动过 = 订阅开、Free 关；Free 买了分钟包才能开', () => {

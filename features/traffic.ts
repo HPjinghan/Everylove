@@ -1,6 +1,6 @@
 /**
  * 流量与语音计量（D-132 / D-133 → D-210）：core/usage 报上来的每一笔按账单归属分流——
- * - user（她发起的）：聊天 / 生图 / 看图折成 MB 扣流量；TA 的语音、她的语音识别按秒扣语音时长；
+ * - user（她发起的）：聊天 / 生图 / 看图 / 她的语音识别折成 MB 扣流量（识别 D-211）；TA 的语音按秒扣语音时长；
  * - house（TA 自己发起的、工具调用）：不扣她，记进后台保险丝（每人每天封顶，到顶静默跳过）；
  * - included（通话）：通话页按挂机时长扣语音分钟，这里不再记。
  * 一个玩法一个文件：回合闸门（她要开口先看还有没有）+ 生成闸门（真要花钱前再问一声）+ 用量 → 扣账 + 模型档 → 供应商同步
@@ -26,12 +26,17 @@ import {
 } from '@/lib/traffic';
 import { useAppStore } from '@/store/app-store';
 
+/** 她还能花的流量（今天免费的 + 余额；Max 不限） */
+export function trafficLeft(): number {
+  return left();
+}
+
 function left(): number {
   const s = useAppStore.getState();
   return available(s.traffic, s.plan);
 }
 
-/** 她的语音消息还剩几秒（TA 的语音、她的语音识别共用） */
+/** TA 的语音还剩几秒（她这一轮里的；D-211 起她的语音识别改走流量） */
 export function voiceMessageLeft(): number {
   const s = useAppStore.getState();
   return voiceLeft(s.voice, s.plan, 'message');
@@ -49,8 +54,8 @@ turnGates.register({
 /* ── 生成闸门：真要花钱前再问一声（用完 = 这次不做，各自静默跳过） ── */
 setGenerationGate((kind, billing) => {
   if (billing === 'included') return null;
-  if (kind === 'tts' || kind === 'asr') return billing === 'house' || voiceMessageLeft() > 0 ? null : t('语音时长用完了');
-  if (billing === 'house') return houseBlocked(house, kind) ? t('今天的后台生成到顶了') : null;
+  if (kind === 'tts') return billing === 'house' || voiceMessageLeft() > 0 ? null : t('语音时长用完了');
+  if (billing === 'house') return kind !== 'asr' && houseBlocked(house, kind) ? t('今天的后台生成到顶了') : null;
   return left() > 0 ? null : t('流量用完了');
 });
 
@@ -60,12 +65,13 @@ usageHooks.on((e) => {
   const billing = e.billing ?? 'user';
   if (billing === 'included') return;
   const tokens = (e.inputTokens ?? 0) + (e.outputTokens ?? 0);
-  if (e.kind === 'tts' || e.kind === 'asr') {
+  // TA 的语音扣语音时长；她的语音识别（asr）跟聊天一样折流量（D-211）
+  if (e.kind === 'tts') {
     if (billing === 'user') s.useVoice(e.seconds ?? 0, 'message');
     return;
   }
   if (billing === 'house') {
-    house = houseAfterUse(house, e.kind === 'image' ? { images: e.images ?? 1 } : { ktok: tokens / 1000 });
+    if (e.kind !== 'asr') house = houseAfterUse(house, e.kind === 'image' ? { images: e.images ?? 1 } : { ktok: tokens / 1000 });
     return;
   }
   const cost = mbForUsage(e);

@@ -1,12 +1,12 @@
 /**
  * 流量、语音时长与后台保险丝（D-132 → D-133 → D-210）。
  * - 「流量」= 真实消耗的包装，MB 显示：**只记她发起的**（D-210，Harper：「主动找我这些生成不扣流量，在其他的地方多做溢价」）——
- *   她的回合（含 TA 回她的那句）、她按快门 / 生成立绘、她要看的照片、看图。TA 自己发起的（主动 / 召回 / 心跳 / 记事本 / 发帖 /
+ *   她的回合（含 TA 回她的那句）、她按快门 / 生成立绘、她要看的照片、看图、她的语音识别（D-211：1 MB / 60 秒，麦克风人人可用）。TA 自己发起的（主动 / 召回 / 心跳 / 记事本 / 发帖 /
  *   评论区 / 身边的人 / 日程 / 周薪 / 外卖送到 / 爽约后说一句 / 主动发图）和工具调用（记忆提取、描述导入、台词）平台出，不扣她，
  *   只受每人每天的后台保险丝管（看不见，防失控）。底座在 core/usage 报用量并标账单归属，这里换算（features/traffic.ts 扣账）。
  * - 换算：聊天按 token——全部文字调用走 Claude Haiku 5.5（D-205），1 MB / 千 token；生图 15 MB / 张；看图 3 MB / 张。供应商没返回 usage 就按字数估。
  * - 流量来源：每天免费 100 MB（不累积）、订阅每月发（Pro 6000 / Max 不限）、流量包（不订阅也能买）。
- * - **语音单独按分钟算**（D-210）：TA 的语音、她的语音识别、电话都不折流量。每天的额度 Free 0 / Pro 30 / Max 90 分钟（不累积）；
+ * - **TA 的声音单独按分钟算**（D-210）：TA 的语音、电话都不折流量。每天的额度 Free 0 / Pro 30 / Max 90 分钟（不累积）；
  *   用完了订阅用户能买语音分钟包（不过期）；新用户送 5 分钟只能打电话（不过期，用完为止）。
  * - Coin（零钱）与流量、语音永不打通。数值是试装默认；价格待 Harper（OPEN_QUESTIONS #30）。
  */
@@ -41,8 +41,10 @@ export const IMAGE_MB = 15;
 /** 生图模型按 token 计费时（返回 output_tokens）每千 token 折多少 MB */
 export const IMAGE_MB_PER_KTOK = 3;
 export const VISION_MB = 3;
+/** 她的语音识别（D-211）：跟打字一样是她开口，按录音时长折流量 */
+export const ASR_SECONDS_PER_MB = 60;
 
-/** 一笔用量折多少 MB（语音按分钟另算，这里是 0，D-210） */
+/** 一笔用量折多少 MB（TA 的语音按分钟另算，这里是 0，D-210） */
 export function mbForUsage(e: UsageEvent): number {
   switch (e.kind) {
     case 'chat': {
@@ -54,8 +56,9 @@ export function mbForUsage(e: UsageEvent): number {
       if (e.outputTokens && !e.images) return (e.outputTokens / 1000) * IMAGE_MB_PER_KTOK;
       return IMAGE_MB * (e.images ?? 1);
     case 'tts':
-    case 'asr':
       return 0;
+    case 'asr':
+      return Math.max(0.1, (e.seconds ?? 0) / ASR_SECONDS_PER_MB);
     case 'vision':
       return VISION_MB;
   }
@@ -124,7 +127,7 @@ export function planGrantsDue(tr: Traffic, plan: 'free' | 'pro' | 'max', now = D
   return Math.min(2, Math.floor((now - last) / PLAN_GRANT_PERIOD_MS));
 }
 
-/* ═══ 语音时长（D-210）：TA 的语音 + 她的语音识别 + 电话，按秒记、按分钟显示 ═══ */
+/* ═══ 语音时长（D-210）：TA 的语音 + 电话，按秒记、按分钟显示（她的语音识别 D-211 起走流量） ═══ */
 
 /** 订阅每天给几分钟（不累积，按自然日） */
 export const PLAN_VOICE_DAILY_MIN: Record<'free' | 'pro' | 'max', number> = { free: 0, pro: 30, max: 90 };
@@ -152,7 +155,7 @@ export interface VoiceTime {
 
 export const START_VOICE: VoiceTime = { day: '', usedSec: 0, packSec: 0, callBonusSec: NEW_USER_CALL_MIN * 60 };
 
-/** message = TA 的语音 / 她的语音消息；call = 电话（多一笔新用户送的） */
+/** message = TA 的语音；call = 电话（多一笔新用户送的） */
 export type VoiceUse = 'message' | 'call';
 
 /** 今天订阅额度还剩几秒 */

@@ -432,7 +432,7 @@ export default function MeScreen() {
           <Row
             label={t('今天还剩')}
             value={t('{n} 分钟', { n: voiceMinutes(voiceDailyLeft(voice, plan, trafficNow)) })}
-            hint={plan === 'free' ? t('订阅后每天都能发语音、打电话。') : t('每天的不累积。')}
+            hint={plan === 'free' ? t('订阅后每天都能听到 TA 的语音、打电话。') : t('每天的不累积。')}
           />
           {voice.callBonusSec > 0 ? (
             <Row label={t('送你的通话')} value={t('{n} 分钟', { n: voiceMinutes(voice.callBonusSec) })} hint={t('只能打电话，用完为止。')} />
