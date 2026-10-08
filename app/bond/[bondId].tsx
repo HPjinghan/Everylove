@@ -4,6 +4,7 @@
  * LV1 首次进入插一条「+」面板预告（白底 accent 字，只一次，bond.hintPlusSeen）。
  * 「TA 的主页」= 原 profile Modal 扩展：统计卡 + 信息卡（Card + Divider 分区）；三个动作图块已下线（D-147：与顶栏电话、「+」面板重复）。
  * 开门/离席已下线（D-046）：加好友即在线，TA 一直会回消息。
+ * 升级时刻（D-208）：她正看着这段会话时羁绊升级 → components/level-up 全屏浮出立绘与新等级。
  * 回合走底座管线（D-086）：这里只管界面——她说的话交给 lib/chat，卡片交给各玩法的 send 函数；
  * 记忆 / 约定识别 / 偶尔发语音 / 回复暗号都是管线上的钩子，不在这个文件里。
  */
@@ -20,6 +21,7 @@ import { CharAvatar } from '@/components/char-avatar';
 import { InviteSheet, RedPacketSheet, type ExtraSheet } from '@/components/chat-extras';
 import { ChatThread, type ReplyRef } from '@/components/chat-thread';
 import { PhoneSheet } from '@/components/his-phone';
+import { LevelUpMoment } from '@/components/level-up';
 import { LocationPicker } from '@/components/location-picker';
 import { MingCute } from '@/components/mingcute';
 import { PhoneLock } from '@/components/phone-lock';
@@ -260,6 +262,9 @@ export default function BondScreen() {
           <MingCute name="phoneSimple" size={22} color={Romance.ink} />
         </Pressable>
       </View>
+
+      {/* 升级时刻（D-208）：她正看着时升级才演 */}
+      <LevelUpMoment bondId={bond.id} name={bond.name} color={character.color} characterId={character.id} />
 
       <ChatThread
         messages={bond.messages}

@@ -11,6 +11,7 @@ import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Easing,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -33,7 +34,7 @@ import { generateCharacterLines } from '@/lib/character-lines';
 import { t } from '@/lib/i18n';
 import { requestNotificationPermission } from '@/lib/notifications';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
-import { Type } from '@/constants/design';
+import { Shape, Type } from '@/constants/design';
 
 type Step = 'slot' | 'names' | 'ceremony';
 
@@ -153,7 +154,8 @@ export default function AdoptScreen() {
   );
 }
 
-/** 迁移仪式：三行文字依次显影 + 心跳（自创角色有自己的仪式文案，D-052） */
+/** 迁移仪式：三行文字依次显影 + 心跳（自创角色有自己的仪式文案，D-052）。
+ * D-208：TA 的立绘放大到 168，开场盖着一层墨色相纸、跟着三行字慢慢褪掉——TA 像一张拍立得一样显影出来，褪尽时 success 震动 + 心跳 */
 function Ceremony({
   hisName,
   nickname,
@@ -186,13 +188,18 @@ function Ceremony({
   const fade2 = useAnimatedValue(0);
   const fades = [fade0, fade1, fade2];
   const heart = useAnimatedValue(0);
+  // 盖在立绘上的墨色相纸：1 → 0，和三行字一起走完
+  const film = useAnimatedValue(1);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
     const anims = fades.map((f, i) =>
       Animated.timing(f, { toValue: 1, duration: 600, delay: i * 900, useNativeDriver: true })
     );
-    Animated.parallel(anims).start(() => {
+    Animated.parallel([
+      ...anims,
+      Animated.timing(film, { toValue: 0, duration: 2400, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+    ]).start(() => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Animated.timing(heart, { toValue: 1, duration: 500, useNativeDriver: true }).start(() =>
         setDone(true)
@@ -207,7 +214,10 @@ function Ceremony({
 
   return (
     <View style={styles.center}>
-      <CharAvatar name={hisName} color={color} size={84} characterId={characterId} />
+      <View style={styles.reveal}>
+        <CharAvatar name={hisName} color={color} size={REVEAL} characterId={characterId} />
+        <Animated.View pointerEvents="none" style={[styles.revealFilm, { opacity: film }]} />
+      </View>
       <View style={styles.ceremonyLines}>
         {lines.map((l, i) => (
           <Animated.Text key={i} style={[styles.ceremonyLine, { opacity: fades[i] }]}>
@@ -230,6 +240,9 @@ function Ceremony({
   );
 }
 
+/** 仪式里立绘的边长 */
+const REVEAL = 168;
+
 const styles = themed(() =>
   StyleSheet.create({
     flex: { flex: 1 },
@@ -242,6 +255,23 @@ const styles = themed(() =>
     secondaryBtn: { marginTop: 14, alignSelf: 'center', paddingHorizontal: 32 },
     cancelLink: { marginTop: 18, alignSelf: 'center' },
     cancelLinkText: { fontSize: Type.scale.label.size, color: Romance.sub },
+    // 显影框：立绘外一圈白框 + 描边（同拍立得），相纸盖在立绘上
+    reveal: {
+      padding: 6,
+      backgroundColor: Romance.card,
+      borderWidth: Shape.stroke,
+      borderColor: Romance.stroke,
+      borderRadius: Shape.radius,
+    },
+    revealFilm: {
+      position: 'absolute',
+      top: 6,
+      left: 6,
+      width: REVEAL,
+      height: REVEAL,
+      borderRadius: Shape.radius,
+      backgroundColor: Romance.ink,
+    },
     ceremonyLines: { marginTop: 30, gap: 14, alignItems: 'center' },
     ceremonyLine: { fontSize: Type.scale.md.size, color: Romance.ink, textAlign: 'center' },
     ceremonyHeart: { fontSize: 34, color: Romance.accent, marginTop: 22 },

@@ -939,6 +939,7 @@ const en: Record<string, string> = {
   '在描轮廓…': 'Sketching the outline…',
   '在上色…': 'Adding color…',
   '在调光线…': 'Adjusting the light…',
+  '羁绊升级': 'Your bond grew',
   // __EN_END__
 };
 
@@ -1850,6 +1851,7 @@ const ja: Record<string, string> = {
   '在描轮廓…': '輪郭を描いてる…',
   '在上色…': '色を塗ってる…',
   '在调光线…': '光を整えてる…',
+  '羁绊升级': '絆が深まった',
   // __JA_END__
 };
 
@@ -2764,6 +2766,7 @@ const ko: Record<string, string> = {
   '在描轮廓…': '윤곽을 그리는 중…',
   '在上色…': '색을 입히는 중…',
   '在调光线…': '빛을 다듬는 중…',
+  '羁绊升级': '인연이 깊어졌어요',
   // __KO_END__
 };
 
