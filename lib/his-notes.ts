@@ -24,8 +24,6 @@ export const MBTI_NOTES_PER_DAY: Record<string, number> = {
   ESFJ: 1, ENTJ: 0.7, ESTP: 0.6, ESTJ: 0.5,
 };
 export const DEFAULT_NOTES_PER_DAY = 1;
-/** 记事本最多留多少条 */
-export const HIS_NOTES_MAX = 30;
 /** 写新的一条时给模型看最近几条（接上自己的生活，不重复） */
 export const HIS_NOTE_RECENT = 6;
 

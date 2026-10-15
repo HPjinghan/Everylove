@@ -185,7 +185,3 @@ export function circleBlock(circle: CirclePerson[] | undefined): string[] {
   ];
 }
 
-/** 一段和身边人的聊天进上下文时的排版 */
-export function circleChatTranscript(hisName: string, person: CirclePerson, lines: CircleLine[]): string {
-  return lines.map((l) => `${l.from === 'him' ? hisName : person.name}：${l.text}`).join('\n');
-}

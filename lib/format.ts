@@ -1,4 +1,3 @@
-import { stageName } from '@/lib/bond';
 import { getLang, localeOf, t } from '@/lib/i18n';
 
 export function timeAgo(at: number, now = Date.now()): string {
@@ -48,11 +47,6 @@ export function heatLabel(n: number): string {
 export function voiceDuration(text: string): string {
   const sec = Math.min(59, Math.max(2, Math.round(text.length / 4)));
   return `0:${sec.toString().padStart(2, '0')}`;
-}
-
-/** 亲密度阶段名（现由羁绊等级成长曲线推导，D-029；prompt 与界面共用） */
-export function affinityStage(affinity: number): string {
-  return stageName(affinity);
 }
 
 export function daysTogether(createdAt: number, now = Date.now()): number {

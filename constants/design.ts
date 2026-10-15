@@ -106,45 +106,6 @@ export const Pattern = {
   chatWallpaper: { tile: 120, line: 1.4, alpha: 0.16 },
 } as const;
 
-/** 组件规格摘要 */
-export const Component = {
-  buttonPrimary: { height: 66, stroke: true },
-  buttonSecondary: { height: 54, stroke: false },
-  bubbleHim: { radius: [6, 6, 6, 2], stroke: false },
-  bubbleMe: { radius: [6, 6, 2, 6], stroke: false },
-  /** 卡片内分区用同样的 1.5px 描边线分隔，不用阴影或灰底；图块内的插图区用 paper 色圆 / 块做底 */
-  card: { stroke: true, radius: 6 },
-} as const;
-
-/** 原则 DO / DON'T（改界面前先过一遍） */
-export const PRINCIPLES = {
-  do: [
-    '层级靠三层表面：paper 底 → 白色图块 → 描边卡片',
-    '彩色只用 primary 与 accent；其余全是 ink / muted / white',
-    '图案只做背景暗纹，透明度 ≤ 16%',
-    '数字和标签统一 Fredoka，中文正文统一系统字体',
-    '圆角统一 6，嵌套内层降到 4',
-  ],
-  dont: [
-    '不加任何投影或硬偏移阴影',
-    '不给顶栏、分段控件、图标图块、气泡加描边',
-    '不用棋盘格 / 点阵作装饰，不在内容区放图案',
-    '不用渐变（仅允许卡片内 paper 色的纯色圆形底）',
-    '不引入第三种彩色；角色头像色只出现在头像上',
-  ],
-} as const;
-
-/** 角色头像色：每个角色固定的低饱和深色，配 Noto Serif SC 姓氏单字（设计稿给了三位种子角色） */
-export const AVATAR_COLORS: Record<string, string> = {
-  沈: '#3E5C6B',
-  胡: '#A8354D',
-  苏: '#7A4257',
-  // 纸面全屏设计稿新增（D-100）
-  江: '#2F6B5E',
-  烛: '#8A4B2B',
-  洛: '#6B5B8E',
-};
-
 /** TA 的手机里的记事本卡（D-100）：唯一的米色纸面，只用在这一处 */
 export const NOTE_PAPER = { bg: '#FFFBEA', ink: '#5B4A2E' } as const;
 

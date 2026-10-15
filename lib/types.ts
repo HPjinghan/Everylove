@@ -76,7 +76,7 @@ export interface Character {
   voiceId?: string;
   /** 说话节奏（D-155）：flow = 整句一条（句末标点断、最多两条）；burst = 连发（每个标点都断、最多四条）。缺省按恋爱类型 / 原型推（lib/engine bubbleStyleOf） */
   bubbleStyle?: 'flow' | 'burst';
-  /** 聊几句后 TA 会想确定关系（默认 4，见 lib/engine ADOPTION_OFFER_AFTER_TURNS） */
+  /** 聊几句后 TA 会想确定关系（默认 4，见 lib/bond heartPaceOf） */
   offerAfterTurns?: number;
   tags: string[];
   adoptedCount: number;
@@ -318,7 +318,7 @@ export interface Bond {
   phoneCode?: string;
   /** 查手机（D-082）：她已经拿到密码（聊天里 TA 答应了，或她猜对了）；之后随时能看 */
   phoneUnlocked?: boolean;
-  /** TA 的记事本（D-085）：lib/his-notes.ts 按 MBTI 频率写，最多 HIS_NOTES_MAX 条 */
+  /** TA 的记事本（D-085）：lib/his-notes.ts 按 MBTI 频率写，最多 30 条（store HIS_NOTES_MAX） */
   notes: HisNote[];
   /** LV1 首次进会话时的「+」面板预告已插过（D-100，只出现一次） */
   hintPlusSeen?: boolean;

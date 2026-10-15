@@ -23,11 +23,6 @@ const STORE_KEY = 'everylove-store';
 /** 同步元数据（本机）：上次成功同步时间 + 是否有未上传的改动 */
 const META_KEY = 'everylove-sync-meta';
 
-let lastSyncAt: number | null = null;
-export function lastSyncTime(): number | null {
-  return lastSyncAt;
-}
-
 interface SyncMeta {
   lastSyncedAt: number;
   dirty: boolean;
@@ -49,7 +44,6 @@ async function loadMeta(): Promise<void> {
     if (raw) meta = { ...meta, ...JSON.parse(raw) };
   } catch {}
   metaLoaded = true;
-  lastSyncAt = meta.lastSyncedAt || null;
 }
 
 function saveMeta(): void {
@@ -110,8 +104,7 @@ async function doUpload(): Promise<'ok' | 'no-session' | 'fail'> {
         rev = cloudRev + 1;
       }
     }
-    lastSyncAt = Date.now();
-    meta.lastSyncedAt = lastSyncAt;
+    meta.lastSyncedAt = Date.now();
     meta.dirty = false;
     meta.userId = uid;
     meta.rev = rev;
@@ -164,8 +157,7 @@ export async function restoreSnapshot(): Promise<boolean> {
       restoring = false;
     }, 500);
   }
-  lastSyncAt = Date.now();
-  meta.lastSyncedAt = lastSyncAt;
+  meta.lastSyncedAt = Date.now();
   meta.dirty = false;
   meta.userId = session.user.id;
   meta.rev = Number(data.rev) || 0;
@@ -183,7 +175,6 @@ export async function deleteCloudData(): Promise<boolean> {
     console.warn('[sync] 删除云端数据失败：', error);
     return false;
   }
-  lastSyncAt = null;
   return true;
 }
 

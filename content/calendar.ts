@@ -32,12 +32,6 @@ const BY_YEAR: Record<number, Record<string, string>> = {
   2035: { '02-07': '除夕', '02-08': '春节', '04-05': '清明', '06-10': '端午', '08-10': '七夕', '09-16': '中秋' },
 };
 
-/** 兼容旧引用：2026 全表 */
-export const CN_HOLIDAYS_2026: Record<string, string> = Object.fromEntries([
-  ...Object.entries(FIXED).map(([md, name]) => [`2026-${md}`, name]),
-  ...Object.entries(BY_YEAR[2026]).map(([md, name]) => [`2026-${md}`, name]),
-]);
-
 export function holidayFor(dateKey: string): string | undefined {
   const [y, md] = [Number(dateKey.slice(0, 4)), dateKey.slice(5)];
   const lunar = BY_YEAR[y]?.[md];

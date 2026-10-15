@@ -53,6 +53,8 @@ import type {
 /** 到点前写好的主动消息（D-114） */
 /** 外卖订单最多留几单（D-129） */
 const ORDERS_MAX = 50;
+/** TA 的记事本最多留多少条 */
+const HIS_NOTES_MAX = 30;
 /** 流量流水最多留几笔（D-134） */
 const TRAFFIC_LOG_MAX = 200;
 
@@ -974,7 +976,7 @@ export const useAppStore = create<AppState>()(
         set({
           bonds: get().bonds.map((b) =>
             b.id === bondId
-              ? { ...b, notes: [...(b.notes ?? []), { id: uid('hn'), text, at: at ?? Date.now() }].slice(-30) }
+              ? { ...b, notes: [...(b.notes ?? []), { id: uid('hn'), text, at: at ?? Date.now() }].slice(-HIS_NOTES_MAX) }
               : b
           ),
         }),
@@ -1229,16 +1231,9 @@ export function findCharacter(id: string): Character | undefined {
   );
 }
 
-export function findBond(bondId: string): Bond | undefined {
-  return useAppStore.getState().bonds.find((b) => b.id === bondId);
-}
-
 /** 某角色眼中的「我」（D-035）：定制身份优先，其次默认身份 */
 export function meForCharacter(characterId: string): UserProfile | undefined {
   const s = useAppStore.getState();
   return s.meByCharacter[characterId] ?? s.me;
 }
 
-/** 亲密度阶段标签 */
-// 亲密度阶段名已移到 lib/format.ts（content/prompts 也要用，避免循环引用）；这里保留导出兼容旧 import
-export { affinityStage } from '@/lib/format';

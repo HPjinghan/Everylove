@@ -32,7 +32,6 @@ core/          底座：不含任何具体玩法，只有插槽与管线（改�
   cards.ts       卡片消息种类：进上下文的一句 + 气泡怎么画
   jobs.ts        后台任务：启动 / 回前台
   turn.ts        回合管线：runTurn / sendText / sendCard / respond / draftReply / landReply + turnHooks；轻提示经 setTurnNotifier 注入（D-179）
-  index.ts       总览与 re-export
 features/      玩法：往插槽里注册；只 import core / lib / store / content / components
   index.ts       启动清单（app/_layout.tsx 顶部 import 一次）
   notify.ts      轻提示接线：core/turn 的 notify → showToast（D-179）

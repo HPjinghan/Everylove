@@ -289,9 +289,6 @@ export function CHAT_HARD_RULES_OF(lang: Lang = getLang()): string[] {
   return [...CHAT_HARD_RULES_HEAD, crisisLine(lang), CHAT_LANG_LINE[lang]];
 }
 
-/** 兼容旧引用：中文版 */
-export const CHAT_HARD_RULES = [...CHAT_HARD_RULES_HEAD, crisisLine('zh')];
-
 /**
  * 【像个人一样说话】（D-141 骨架 + D-151 活人感，D-152 压成六条）：四种对话模式共用——TA 是一个在跟她说话的人，不是助理。
  * 一条规则只在这里说一次（短回复 / 跟着她的劲儿 / 只回这条与最多一个问句 / 有看法 / 句式与小瑕疵 / 不用助理腔）；

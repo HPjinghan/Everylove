@@ -20,8 +20,6 @@ export type OrderStatus = 'accepted' | 'pickup' | 'riding' | 'delivered';
 
 /** 下单后第几分钟进入下一段：前 2 分钟商家接单、到第 5 分钟骑手取到餐、之后在路上直到送达 */
 export const ORDER_STAGE_MIN = { accepted: 2, pickup: 5 } as const;
-/** 订单最多留几单 */
-export const ORDERS_MAX = 50;
 
 export function orderStatus(o: Pick<Order, 'at' | 'arriveAt'>, now = Date.now()): OrderStatus {
   if (now >= o.arriveAt) return 'delivered';
@@ -29,15 +27,6 @@ export function orderStatus(o: Pick<Order, 'at' | 'arriveAt'>, now = Date.now())
   if (min < ORDER_STAGE_MIN.accepted) return 'accepted';
   if (min < ORDER_STAGE_MIN.pickup) return 'pickup';
   return 'riding';
-}
-
-/** 状态一句话（界面与卡片共用） */
-export function orderStatusLabel(o: Pick<Order, 'at' | 'arriveAt'>, now = Date.now()): string {
-  const s = orderStatus(o, now);
-  if (s === 'delivered') return t('已送达');
-  if (s === 'accepted') return t('商家已接单');
-  if (s === 'pickup') return t('骑手取餐中');
-  return t('骑手在路上 · 约 {n} 分钟', { n: Math.max(1, Math.ceil((o.arriveAt - now) / 60_000)) });
 }
 
 /** 「珍珠奶茶 ×2、饭团」 */

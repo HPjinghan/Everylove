@@ -166,9 +166,6 @@ const OUTING_OPENERS_BY_LANG: Record<Lang, Record<OutingOpenerKind, string[]>> =
   },
 };
 
-/** 兼容旧引用：中文模板 */
-export const OUTING_OPENERS = OUTING_OPENERS_BY_LANG.zh;
-
 export function outingOpeners(lang: Lang = getLang()): Record<OutingOpenerKind, string[]> {
   return OUTING_OPENERS_BY_LANG[lang];
 }

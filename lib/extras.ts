@@ -12,7 +12,6 @@ import { levelOf, warmthBand, warmthNow, type LevelSubject, type WarmthSubject }
 import type { Character, ChatMessage } from '@/lib/types';
 
 export type ExtraKind = 'redpacket' | 'delivery' | 'photo';
-export const EXTRA_KINDS: ExtraKind[] = ['redpacket', 'delivery', 'photo'];
 
 /** 等级门 */
 export const EXTRA_MIN_LEVEL: Record<ExtraKind, number> = { redpacket: 2, delivery: 3, photo: 2 };

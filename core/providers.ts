@@ -77,9 +77,6 @@ let userChoice = '';
 export function setUserProviderChoice(id: string): void {
   userChoice = chatProviders.get(id) ? id : '';
 }
-export function userProviderChoice(): string {
-  return userChoice;
-}
 function hasRoute(p: ChatProvider | undefined): p is ChatProvider {
   return !!p && chatRouteSync(p) !== 'none';
 }
