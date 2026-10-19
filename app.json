@@ -9,7 +9,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.kotoko.everylove",
+      "bundleIdentifier": "com.biibit.ringring",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -68,7 +68,7 @@
             "NSExtensionActivationSupportsWebPageWithMaxCount": 1,
             "NSExtensionActivationSupportsImageWithMaxCount": 1
           },
-          "iosAppGroupIdentifier": "group.com.kotoko.everylove"
+          "iosAppGroupIdentifier": "group.com.biibit.ringring"
         }
       ],
       "expo-secure-store"

@@ -23,18 +23,21 @@
   ```
 
   （语音音色 `EXPO_PUBLIC_SPEECH_TTS_VOICE_*`、`EXPO_PUBLIC_BAIDU_TTS_PER` 等按需同法添加。`.env.local` 不会被上传。）
-- **Supabase → Authentication → Providers → Apple → Client IDs** 追加 `com.kotoko.everylove`（逗号分隔，保留 `host.exp.Exponent` 给 Expo Go）。不加的话正式包里 Apple 登录会报 audience 不匹配。
+- **Supabase → Authentication → Providers → Apple → Client IDs** 含 `com.biibit.ringring`（逗号分隔，保留 `host.exp.Exponent` 给 Expo Go）。不加的话正式包里 Apple 登录会报 audience 不匹配。
 
-## 0.5 已完成的一次性配置（2026-09-04 首次发包记录）
+## 0.5 已完成的一次性配置（2026-10-19 迁到 BIIBIT LIMITED，D-214）
 
-- **Apple Team = 公司的第二个组织账号**（同事的 App 所在的那个；第一个组织账号里 Admin 也看不到它，因为不是同一个 Team）。第一次 build 误用了第一个 Team，App ID 已从那边删除、在第二个 Team 重新登记；EAS 里第一个 Team 的旧证书未删（无害）。
-- EAS 已存：第二个 Team 的 Distribution Certificate + Provisioning Profile、**App Store Connect API Key**（以后 submit 不再登录 Apple）。推送密钥**没有生成**（本机通知用不着，做远程推送时 `eas credentials` 补，不用重新 build）。
-- App Store Connect 的 App 记录是**手动建的**（名称待改为 `ringring: pocket lover`（D-156，现为「全自动恋爱」）、SKU `everylove`），**用户访问权限 = 限制访问**——只有名单里的人和 管理/财务/报告 职能能看到。
-- EAS production 环境变量：`EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY`；Supabase Apple provider 的 Client IDs 已加 `com.kotoko.everylove`。
+- **Apple Team = BIIBIT LIMITED**（Team ID `VBX2VT55M4`，已写进 `eas.json` 的 `appleTeamId`；账户持有人 Yunjia Guo）。之前在 Kotoko 的组织账号下（`com.kotoko.everylove` / ascAppId `6808620565`，构建号 8 为止），那条记录不再用。
+- **开发者后台已手动建好**：App Group `group.com.biibit.ringring`；App ID `com.biibit.ringring`（App Groups → 上面那个组、Push Notifications、Sign in with Apple）；App ID `com.biibit.ringring.share-extension`（App Groups → 同一个组）。能力先在网页上开好，EAS 只需要做证书和描述文件。
+- **App Store Connect 记录**：编号 `6824664796`（已写进 `eas.json`），名称暂为 `ringring: pocket lover AI`（`ringring: pocket lover` 被 Kotoko 那条占着，Apple 比较名字忽略空格和标点；旧记录改名 / 删掉后在「App 信息」里改回），主要语言英语（美国），SKU `everylove`，**有限访问权限**，公司名称 BIIBIT LIMITED。
+- **App Store Connect API Key 还没有**：要账户持有人先在「用户和访问 → 集成 → App Store Connect API」点「请求访问」，开通后管理员才能生成 Key。在那之前 build / submit 走交互式 Apple 登录（2FA）。有了 Key 存进 EAS（`eas credentials` → App Store Connect API Key），之后就能无人值守。
+- 推送密钥**没有生成**（本机通知用不着，做远程推送时 `eas credentials` 补，不用重新 build）。
+- EAS production 环境变量：`EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY`（Expo 项目没换，原样可用）；Supabase Apple provider 的 Client IDs 要含 `com.biibit.ringring`。
 - Supabase Auth 已开 **Anonymous sign-ins**（D-088）：分发包没本地 key，游客靠匿名会话走服务端代理；关掉它 = 没登录的人聊不了。
 - 出口合规已在 app.json 预答（`ITSAppUsesNonExemptEncryption=false`），TestFlight 里不会再弹「缺少合规证明」。
+- **迁主体的代价**：Sign in with Apple 给的用户 ID 按 Team 分——老测试员在新包里用 Apple 登录会变成 Supabase 里的新用户，旧存档还挂在旧账号下（要接回就在 Supabase 后台把 `snapshots` 的 user_id 改过去）；邮箱验证码登录不受影响。新旧两个包是两个 App，能同时装，本机存档不互通。
 
-- App Store Connect 的 App 编号 `6808620565`（ascAppId）已写进 `eas.json` 的 submit 档——从此**一条命令从构建到上传**、无人值守：
+- 有了 API Key 之后，**一条命令从构建到上传**、无人值守：
 
   ```powershell
   npx eas-cli@latest build -p ios --profile production --non-interactive --auto-submit
@@ -61,7 +64,7 @@ npx eas-cli build -p ios --profile production
 npx eas-cli submit -p ios --latest --profile production
 ```
 
-首次会问 Apple 登录并**代建 App Store Connect 的 App 记录**（名字用 `ringring: pocket lover`（D-156）；bundle id 必须是 `com.kotoko.everylove`）。想一步到位可在 build 时加 `--auto-submit`。
+App Store Connect 的 App 记录已经手动建好（`6824664796`，见 §0.5），submit 直接传到它下面。想一步到位可在 build 时加 `--auto-submit`。
 
 上传后 App Store Connect → **TestFlight** 等处理（10~30 分钟）：
 - **内部测试**：App Store Connect 团队成员（最多 100 人）加进内部群组即可装，不用审核；
@@ -94,7 +97,7 @@ npx eas-cli submit -p ios --latest --profile production
 Expo Go 跑不了的原生能力（分享扩展、之后的实时语音 / 远程推送）在 dev build 里调。它是**开发者自己装的包，不是分发通道**：`eas.json` 的 `development` 档 = dev client + ad-hoc internal 分发，只能装到注册过 UDID 的 iPhone；Windows 上没有 iOS 模拟器，只能真机。
 
 - **账号**：`npx eas-cli whoami` 的 Accounts 里要有 `harperzs-team`；不在组织里就先接受邀请，或在 PowerShell 里 `$env:EXPO_TOKEN = '<token>'` 再跑（eas-cli 只读环境变量，不读 `.env.local`；用 token 跑的操作以 token 主人的身份记录）。
-- **注册设备（每台新机一次）**：`npx eas-cli device:create` → 选公司第二个 Apple Team → 选「Website」出一个链接 / 二维码 → 用 iPhone 打开、装描述文件，UDID 即注册。
+- **注册设备（每台新机一次）**：`npx eas-cli device:create` → 选 BIIBIT LIMITED 的 Team → 选「Website」出一个链接 / 二维码 → 用 iPhone 打开、装描述文件，UDID 即注册。
 - **打包**：`npx eas-cli build --profile development --platform ios`。第一次交互式跑：Apple 登录（2FA）→ 让 EAS 生成 ad-hoc 描述文件（已注册的设备会写进去）→ 分享扩展的描述文件同样生成（App Groups，见 §1 的 2026-09-11 记录）。**之后每注册一台新设备都要重新打包**，描述文件里才有它。
 - **安装**：构建页的二维码 / 链接在 iPhone 上打开即装。bundle id 与正式包相同，和 TestFlight 装的那个不能共存：先删旧的再装，本机存档会丢，登录后从云端恢复。
 - **跑起来**：项目目录 `npx expo start`（默认就是 dev build 模式，Metro 读 `.env.local`）→ 相机扫码在 dev build 里打开；局域网不通加 `--tunnel`。改 JS 热重载；**动了原生依赖 / app.json 插件要重新打 dev build**。
