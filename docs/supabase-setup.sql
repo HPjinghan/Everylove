@@ -1,4 +1,5 @@
 -- 云备份建表（D-054）：在 Supabase Dashboard → SQL Editor 里跑一次。
+-- 流量 / 语音时长 / 订阅的服务器账（D-217）另在 supabase/wallet.sql（同样幂等，再跑一次即可）。
 -- 另外在 Dashboard → Authentication → Providers 里：
 --   1. 开启 Email（勾选 Email OTP / 关闭 "Confirm email" 也可，OTP 即验证）
 --   2. 开启 Apple（Services ID 用 Expo Go 时填 host.exp.Exponent；正式 dev build 换自己的 bundle id）

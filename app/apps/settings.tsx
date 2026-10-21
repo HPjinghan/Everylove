@@ -21,6 +21,7 @@ import { WALLPAPERS } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, THEMES, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
+import { buyTrafficPack, buyVoicePack, choosePlan, gmGrant } from '@/features/traffic';
 import { aiRouteSync, engineLabel, engineOptions, enginePreference, setEnginePreference } from '@/lib/engine';
 import { ensurePortrait, imageKeyReady, portraitFor } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
@@ -262,13 +263,24 @@ export default function MeScreen() {
       n: PLAN_VOICE_DAILY_MIN[p],
     });
 
-  /** 模拟订阅（D-063）：点击即订/退，不扣费 */
+  /** 钱包的事都经服务器（D-217）：成功了 store 已经是服务器的数，失败只说稍后再试 */
+  const viaServer = async (run: () => Promise<unknown>, done?: string) => {
+    try {
+      await run();
+      if (done) showAlert(t('已到账'), done);
+    } catch (e) {
+      console.warn('[settings] 钱包操作失败：', e);
+      showAlert(t('稍后再试。'));
+    }
+  };
+
+  /** 模拟订阅（D-063）：收费开关打开前点击即订 / 退，不扣费（服务器记档位，D-217） */
   const subscribe = (p: 'free' | 'pro' | 'max') => {
     if (p === plan) return;
     const label = p === 'free' ? t('Free：每天 {n} 免费流量，没有语音', { n: mb(DAILY_FREE_MB) }) : `${p === 'max' ? 'Max' : 'Pro'}：${planBlurb(p)}`;
     showAlert(p === 'free' ? t('取消订阅') : t('订阅'), label, [
       { text: t('取消'), style: 'cancel' },
-      { text: p === 'free' ? t('确认取消') : t('订阅'), onPress: () => useAppStore.getState().setPlan(p) },
+      { text: p === 'free' ? t('确认取消') : t('订阅'), onPress: () => void viaServer(() => choosePlan(p)) },
     ]);
   };
 
@@ -419,10 +431,7 @@ export default function MeScreen() {
               key={p.id}
               label={t('流量包 {n}', { n: mb(p.mb) })}
               value={t('买')}
-              onPress={() => {
-                useAppStore.getState().addTraffic(p.mb);
-                showAlert(t('已到账'), mb(p.mb));
-              }}
+              onPress={() => void viaServer(() => buyTrafficPack(p.id), mb(p.mb))}
             />
           ))}
         </Section>
@@ -444,10 +453,7 @@ export default function MeScreen() {
                   key={p.id}
                   label={t('语音分钟包 {n} 分钟', { n: p.min })}
                   value={t('买')}
-                  onPress={() => {
-                    useAppStore.getState().addVoiceMinutes(p.min);
-                    showAlert(t('已到账'), t('{n} 分钟', { n: p.min }));
-                  }}
+                  onPress={() => void viaServer(() => buyVoicePack(p.id), t('{n} 分钟', { n: p.min }))}
                 />
               ))
             : null}
@@ -479,12 +485,12 @@ export default function MeScreen() {
             label={t('GM：加 1000 MB')}
             value={mb(traffic.balance)}
             numeric
-            onPress={() => useAppStore.getState().addTraffic(1000)}
+            onPress={() => void viaServer(() => gmGrant('traffic'))}
           />
           <Row
             label={t('GM：加 30 分钟语音')}
             value={t('{n} 分钟', { n: voiceMinutes(voice.packSec) })}
-            onPress={() => useAppStore.getState().addVoiceMinutes(30)}
+            onPress={() => void viaServer(() => gmGrant('voice'))}
           />
           <Row
             label={t('AI 引擎')}

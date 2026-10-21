@@ -137,8 +137,8 @@ async function fishDirect(text: string, voiceId: string): Promise<string> {
 }
 
 /** 通道 3a：Fish 走代理（服务端 FISH_API_KEY 没配会抛 fish not configured） */
-async function fishProxy(text: string, voiceId: string): Promise<string> {
-  const data = await proxyJson<{ audio_base64?: string; error?: string }>('fish.tts', fishBody(text, voiceId));
+async function fishProxy(text: string, voiceId: string, billing: Billing): Promise<string> {
+  const data = await proxyJson<{ audio_base64?: string; error?: string }>('fish.tts', fishBody(text, voiceId), { billing });
   if (!data.audio_base64) throw new Error(`Fish TTS: ${data.error ?? 'no audio'}`);
   return data.audio_base64;
 }
@@ -159,11 +159,8 @@ async function baiduDirect(tex: string, per: string): Promise<string> {
 }
 
 /** 通道 3b：百度走代理（代理把二进制包成 audio_base64） */
-async function baiduProxy(tex: string, per: string): Promise<string> {
-  const data = await proxyJson<{ audio_base64?: string; err_no?: number; err_msg?: string }>(
-    'baidu.tts',
-    baiduParams(tex, per)
-  );
+async function baiduProxy(tex: string, per: string, billing: Billing): Promise<string> {
+  const data = await proxyJson<{ audio_base64?: string; err_no?: number; err_msg?: string }>('baidu.tts', baiduParams(tex, per), { billing });
   if (!data.audio_base64) {
     throw new Error(`Baidu TTS ${data.err_no ?? '?'}: ${data.err_msg ?? 'no audio'}`);
   }
@@ -201,16 +198,16 @@ async function synthesize(text: string, voices: { fish: string; baidu: string },
         b64 = await baiduDirect(tex, voices.baidu);
       } else {
         try {
-          b64 = await fishProxy(tex, voices.fish);
+          b64 = await fishProxy(tex, voices.fish, billing);
         } catch (e) {
           if (!String(e).includes(FISH_UNCONFIGURED)) throw e;
-          b64 = await baiduProxy(tex, voices.baidu);
+          b64 = await baiduProxy(tex, voices.baidu, billing);
         }
       }
       await FileSystem.writeAsStringAsync(local, b64, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      reportUsage({ kind: 'tts', provider: route, chars: tex.length, seconds: estimateSpeechSeconds(tex), billing, estimated: true });
+      reportUsage({ kind: 'tts', provider: route, chars: tex.length, seconds: estimateSpeechSeconds(tex), billing, estimated: true, metered: route === 'proxy' });
       return local;
     } catch (e) {
       console.warn('[tts] 语音合成失败：', e);

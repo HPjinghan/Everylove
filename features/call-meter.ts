@@ -6,6 +6,7 @@
 
 import { CALL_WRAP_UP } from '@/content/prompts';
 import { ORDER, promptSections } from '@/core/prompt';
+import { proxyJson, proxyReadySync } from '@/lib/proxy';
 import { CALL_WRAP_UP_SEC, voiceLeft } from '@/lib/traffic';
 import { useAppStore } from '@/store/app-store';
 
@@ -18,15 +19,39 @@ export function callSecondsLeft(): number {
   return voiceLeft(s.voice, s.plan, 'call');
 }
 
+/**
+ * 有服务器时通话按服务器时钟计（D-217）：接通、每 10 秒、挂断各报一声，服务器按两声之间的真实时长扣
+ * （客户端报的秒数不作数）；最新钱包随响应写回 store（features/traffic.ts 的监听）。没有服务器才在本机扣。
+ */
+let ticks: Promise<unknown> = Promise.resolve();
+function tick(end: boolean): Promise<unknown> {
+  // 排队发：挂断那一声一定在最后到，服务器才不会把这通电话当成还在打
+  ticks = ticks.then(() => proxyJson('wallet.call', { end })).catch((e) => console.warn('[call] 通话计时失败：', e));
+  return ticks;
+}
+
+/** 开始计时：TA 接起来说第一句之前就要报到，那一句才算在通话里 */
+export async function startCallMeter(): Promise<void> {
+  if (proxyReadySync()) await tick(false);
+}
+
 /** 扣掉这段时长（秒）；返回扣完还剩几秒。剩得不多就让 TA 收尾 */
 export function chargeCall(characterId: string, sec: number): number {
-  if (sec > 0) useAppStore.getState().useVoice(sec, 'call');
-  const left = callSecondsLeft();
+  let left: number;
+  if (proxyReadySync()) {
+    tick(false);
+    // 服务器的回话下一拍才到：先按本机缓存预估
+    left = Math.max(0, callSecondsLeft() - Math.max(0, sec));
+  } else {
+    if (sec > 0) useAppStore.getState().useVoice(sec, 'call');
+    left = callSecondsLeft();
+  }
   if (left <= CALL_WRAP_UP_SEC) wrappingUp = characterId;
   return left;
 }
 
 export function endCallMeter(): void {
+  if (proxyReadySync()) tick(true);
   wrappingUp = null;
 }
 

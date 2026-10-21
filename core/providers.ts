@@ -134,7 +134,7 @@ export async function completeChat(req: ChatRequest, providerId?: string): Promi
       inputTokens: estimateTokens(req.system + req.turns.map((x) => x.content).join('\n')),
       outputTokens: estimateTokens(result.text),
     };
-    reportUsage({ kind: 'chat', provider: p.id, reqKind: req.background ? 'task' : req.kind, billing, estimated: !result.usage, ...usage });
+    reportUsage({ kind: 'chat', provider: p.id, reqKind: req.background ? 'task' : req.kind, billing, estimated: !result.usage, metered: route === 'proxy', ...usage });
     return result.text;
   } catch (e) {
     console.warn(`[provider] ${p.id}${route === 'proxy' ? '（代理）' : ''} 调用失败：`, e);

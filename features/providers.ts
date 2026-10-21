@@ -5,7 +5,7 @@
  */
 
 import { CONFIG } from '@/core/config';
-import { chatProviders, type ChatProvider, type ChatRequest, type ChatTurn } from '@/core/providers';
+import { billingOf, chatProviders, type ChatProvider, type ChatRequest, type ChatTurn } from '@/core/providers';
 import { postJsonWithTimeout, proxyJson, TIMEOUTS } from '@/lib/proxy';
 
 type AnthropicJson = { content: { type: string; text?: string }[]; stop_reason?: string; usage?: { input_tokens?: number; output_tokens?: number } };
@@ -67,7 +67,7 @@ const anthropic: ChatProvider = {
       if (!res.ok) throw new Error(`LLM Gateway ${res.status}`);
       data = JSON.parse(res.text) as AnthropicJson;
     } else {
-      data = await proxyJson<AnthropicJson>('anthropic.messages', body);
+      data = await proxyJson<AnthropicJson>('anthropic.messages', body, { billing: billingOf(req) });
     }
     // 安全分类器拒答（HTTP 200）：当失败处理，她那条标「没送到 · 重发」（D-169）
     if (data.stop_reason === 'refusal') throw new Error('Anthropic refusal');
@@ -105,7 +105,7 @@ const qianfan: ChatProvider = {
       if (!res.ok) throw new Error(`Qianfan API ${res.status}`);
       data = JSON.parse(res.text) as OpenAIJson;
     } else {
-      data = await proxyJson<OpenAIJson>('qianfan.chat', body);
+      data = await proxyJson<OpenAIJson>('qianfan.chat', body, { billing: billingOf(req) });
     }
     const text = (data.choices?.[0]?.message?.content ?? '').trim();
     return data.usage ? { text, usage: { inputTokens: data.usage.prompt_tokens ?? 0, outputTokens: data.usage.completion_tokens ?? 0 } } : text;

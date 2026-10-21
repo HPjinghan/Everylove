@@ -80,8 +80,8 @@ async function transcribeFishDirect(uri: string, language: string): Promise<stri
 }
 
 /** Fish 走代理：key 在服务端，客户端传 base64（supabase/functions/ai：fish.asr） */
-async function transcribeFishProxy(audioBase64: string, language: string): Promise<string> {
-  const data = await proxyJson<WhisperJson>('fish.asr', { audio_base64: audioBase64, filename: 'voice.wav', mime: 'audio/wav', language });
+async function transcribeFishProxy(audioBase64: string, language: string, billing: Billing): Promise<string> {
+  const data = await proxyJson<WhisperJson>('fish.asr', { audio_base64: audioBase64, filename: 'voice.wav', mime: 'audio/wav', language }, { billing });
   const text = (data.text ?? '').trim();
   if (!text) throw new Error(t('没听清这段语音（识别结果为空）'));
   return text;
@@ -104,13 +104,17 @@ async function transcribeWhisperDirect(uri: string, language: string): Promise<s
 }
 
 /** Whisper 协议走代理：key 在服务端，客户端传 base64（supabase/functions/ai：asr.transcribe） */
-async function transcribeWhisperProxy(audioBase64: string, language: string): Promise<string> {
-  const data = await proxyJson<WhisperJson>('asr.transcribe', {
-    audio_base64: audioBase64,
-    filename: 'voice.wav',
-    mime: 'audio/wav',
-    language,
-  });
+async function transcribeWhisperProxy(audioBase64: string, language: string, billing: Billing): Promise<string> {
+  const data = await proxyJson<WhisperJson>(
+    'asr.transcribe',
+    {
+      audio_base64: audioBase64,
+      filename: 'voice.wav',
+      mime: 'audio/wav',
+      language,
+    },
+    { billing }
+  );
   const text = (data.text ?? '').trim();
   if (!text) throw new Error(t('没听清这段语音（识别结果为空）'));
   return text;
@@ -155,8 +159,8 @@ export async function transcribeVoice(uri: string, billing: Billing = 'user'): P
   });
   if (channel === 'multi') {
     try {
-      const text = ASR_PROVIDER === 'fish' ? await transcribeFishProxy(speech, lang) : await transcribeWhisperProxy(speech, lang);
-      reportUsage({ kind: 'asr', provider: ASR_PROVIDER, seconds: len / 32000, billing, estimated: true });
+      const text = ASR_PROVIDER === 'fish' ? await transcribeFishProxy(speech, lang, billing) : await transcribeWhisperProxy(speech, lang, billing);
+      reportUsage({ kind: 'asr', provider: ASR_PROVIDER, seconds: len / 32000, billing, estimated: true, metered: true });
       return text;
     } catch (e) {
       if (!UNCONFIGURED.some((m) => String(e).includes(m))) throw e;
@@ -174,7 +178,7 @@ export async function transcribeVoice(uri: string, billing: Billing = 'user'): P
     if (!res.ok) throw new Error(`Baidu ASR ${res.status}`);
     data = JSON.parse(res.text) as AsrResponse;
   } else {
-    data = await proxyJson<AsrResponse>(pro ? 'baidu.asr_pro' : 'baidu.asr', body);
+    data = await proxyJson<AsrResponse>(pro ? 'baidu.asr_pro' : 'baidu.asr', body, { billing });
   }
   if (data.err_no !== 0) {
     throw new Error(`Baidu ASR ${data.err_no ?? '?'}: ${data.err_msg ?? ''}`.trim());
@@ -182,7 +186,7 @@ export async function transcribeVoice(uri: string, billing: Billing = 'user'): P
   const text = (data.result ?? []).join('').trim();
   if (!text) throw new Error(t('没听清这段语音（识别结果为空）'));
   // 16 kHz 16 bit ≈ 32 KB / 秒
-  reportUsage({ kind: 'asr', provider: 'baidu', seconds: len / 32000, billing, estimated: true });
+  reportUsage({ kind: 'asr', provider: 'baidu', seconds: len / 32000, billing, estimated: true, metered: route !== 'direct' });
   return text;
 }
 
@@ -220,10 +224,10 @@ export async function describeImage(uri: string): Promise<string> {
     if (!res.ok) throw new Error(`Qianfan VL ${res.status}`);
     data = JSON.parse(res.text) as ChatJson;
   } else {
-    data = await proxyJson<ChatJson>('qianfan.chat', body);
+    data = await proxyJson<ChatJson>('qianfan.chat', body, { billing: 'user' });
   }
   const caption = data.choices?.[0]?.message?.content?.trim();
   if (!caption) throw new Error('empty caption');
-  reportUsage({ kind: 'vision', provider: QIANFAN_VISION_MODEL });
+  reportUsage({ kind: 'vision', provider: QIANFAN_VISION_MODEL, metered: route !== 'direct' });
   return caption.replace(/\s+/g, ' ').slice(0, 400);
 }

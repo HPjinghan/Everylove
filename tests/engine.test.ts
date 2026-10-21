@@ -14,6 +14,7 @@ import { history, NOW } from './fixtures';
 vi.mock('@/lib/proxy', () => ({
   proxyAvailable: async () => false,
   proxyReadySync: () => false,
+  onServerWallet: () => {},
   proxyJson: async () => {
     throw new Error('no proxy in tests');
   },

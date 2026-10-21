@@ -40,7 +40,7 @@
 
 ### E4 · 接入顺序（在原手册 §5 上加的）
 
-0. 先把余额搬上服务器、扣账挪进代理（E2-2），这一步不碰 RevenueCat，单独可验：试装的「点即到账」改成调服务器的 GM 接口，流水页读服务器。
+0. ~~先把余额搬上服务器、扣账挪进代理（E2-2）~~：**已做（D-217，2026-10-21）**——`public.wallets` / `wallet_ledger`（`supabase/wallet.sql`）、代理按账单归属拦与扣、`wallet.sim` 在 `BILLING_LIVE` 打开前点即到账。接 RevenueCat 时入账直接调 `wallet_grant`（或照 §5 步骤 1 另建交易表经 converge 落到钱包），打开 `BILLING_LIVE`。
 1–8. 照原手册 §5。订阅部分在步骤 1 的表里加「订阅状态」（档位、到期时间、最近一次发放月份），事件类型照原手册 §10 去读 RevenueCat 的 event-types-and-fields 原文再写。
 
 ---

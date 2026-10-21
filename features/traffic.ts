@@ -5,6 +5,8 @@
  * - included（通话）：通话页按挂机时长扣语音分钟，这里不再记。
  * 一个玩法一个文件：回合闸门（她要开口先看还有没有）+ 生成闸门（真要花钱前再问一声）+ 用量 → 扣账 + 模型档 → 供应商同步
  * + 订阅每月发流量（启动 / 回前台任务）。
+ * **余额以服务器为准（D-217）**：走代理的调用由服务器扣账（UsageEvent.metered），这里只记流水；代理每次响应带回最新钱包写进 store。
+ * 订阅 / 流量包 / 分钟包 / GM 都经服务器（wallet.*）；本机扣账与本机发放只在没有服务器时用（开发直连 / 测试）。
  */
 
 import { jobs } from '@/core/jobs';
@@ -12,9 +14,11 @@ import { setUserProviderChoice } from '@/core/providers';
 import { turnGates } from '@/core/turn';
 import { setGenerationGate, usageHooks } from '@/core/usage';
 import { t } from '@/lib/i18n';
+import { onServerWallet, proxyAvailable, proxyJson } from '@/lib/proxy';
 import {
   available,
   DEFAULT_LOVE_MODEL,
+  fromServerWallet,
   houseAfterUse,
   houseBlocked,
   LOVE_MODELS,
@@ -23,6 +27,7 @@ import {
   planGrantsDue,
   voiceLeft,
   type HouseUsage,
+  type WalletView,
 } from '@/lib/traffic';
 import { useAppStore } from '@/store/app-store';
 
@@ -65,17 +70,17 @@ usageHooks.on((e) => {
   const billing = e.billing ?? 'user';
   if (billing === 'included') return;
   const tokens = (e.inputTokens ?? 0) + (e.outputTokens ?? 0);
-  // TA 的语音扣语音时长；她的语音识别（asr）跟聊天一样折流量（D-211）
+  // TA 的语音扣语音时长；她的语音识别（asr）跟聊天一样折流量（D-211）；服务器记过的这里不再扣（D-217）
   if (e.kind === 'tts') {
-    if (billing === 'user') s.useVoice(e.seconds ?? 0, 'message');
+    if (billing === 'user' && !e.metered) s.useVoice(e.seconds ?? 0, 'message');
     return;
   }
   if (billing === 'house') {
-    if (e.kind !== 'asr') house = houseAfterUse(house, e.kind === 'image' ? { images: e.images ?? 1 } : { ktok: tokens / 1000 });
+    if (e.kind !== 'asr' && !e.metered) house = houseAfterUse(house, e.kind === 'image' ? { images: e.images ?? 1 } : { ktok: tokens / 1000 });
     return;
   }
   const cost = mbForUsage(e);
-  s.useTraffic(cost);
+  if (!e.metered) s.useTraffic(cost);
   s.logTraffic({
     kind: e.kind === 'chat' ? (e.reqKind === 'task' ? 'task' : 'reply') : e.kind,
     provider: e.provider,
@@ -98,7 +103,40 @@ useAppStore.subscribe((s) => {
   }
 });
 
-/* ── 订阅每月发一笔（Pro 6000 MB；Max 不限不发；Free 不发） ── */
+/* ── 服务器钱包（D-217）：代理每次响应、wallet.* 的返回都写进 store ── */
+function applyWallet(v: WalletView): void {
+  useAppStore.getState().setServerWallet(fromServerWallet(v));
+}
+onServerWallet(applyWallet);
+
+async function wallet(service: string, body: Record<string, unknown> = {}): Promise<WalletView> {
+  const v = await proxyJson<WalletView>(service, body);
+  applyWallet(v);
+  return v;
+}
+
+/** 读一次服务器钱包；收费开关打开前顺手把手机上试装攒下的余额搬上去（服务器只认第一次） */
+export function refreshWallet(): Promise<WalletView> {
+  const s = useAppStore.getState();
+  return wallet('wallet.get', { import: { plan: s.plan, mb: s.traffic.balance, packSec: s.voice.packSec, bonusSec: s.voice.callBonusSec } });
+}
+
+/** 换订阅档（收费开关打开前点即生效；之后走 RevenueCat，docs/revenuecat.md） */
+export function choosePlan(plan: 'free' | 'pro' | 'max'): Promise<WalletView> {
+  return wallet('wallet.sim', { plan });
+}
+export function buyTrafficPack(id: string): Promise<WalletView> {
+  return wallet('wallet.sim', { traffic_pack: id });
+}
+export function buyVoicePack(id: string): Promise<WalletView> {
+  return wallet('wallet.sim', { voice_pack: id });
+}
+/** 开发者 GM：加 1000 MB / 加 30 分钟语音（服务器在收费开关打开后拒绝） */
+export function gmGrant(what: 'traffic' | 'voice'): Promise<WalletView> {
+  return wallet('wallet.sim', { gm: what });
+}
+
+/* ── 订阅每月发一笔（Pro 6000 MB；Max 不限不发；Free 不发）——没有服务器时本机发；有服务器由它发 ── */
 export function grantPlanTraffic(now = Date.now()): number {
   const s = useAppStore.getState();
   const n = planGrantsDue(s.traffic, s.plan, now);
@@ -106,7 +144,14 @@ export function grantPlanTraffic(now = Date.now()): number {
   s.addTraffic(n * PLAN_MONTHLY_MB[s.plan], now);
   return n;
 }
-jobs.register({ id: 'traffic-grant', on: ['launch', 'foreground'], run: (now) => grantPlanTraffic(now) });
+jobs.register({
+  id: 'traffic-grant',
+  on: ['launch', 'foreground'],
+  run: async (now) => {
+    if (!(await proxyAvailable())) return grantPlanTraffic(now);
+    await refreshWallet().catch((e) => console.warn('[traffic] 读服务器钱包失败：', e));
+  },
+});
 
 /** 测试用：清掉保险丝的当天记账 */
 export function resetHouseUsage(): void {

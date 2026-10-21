@@ -29,6 +29,8 @@ export interface UsageEvent {
   estimated?: boolean;
   /** chat：reply = 角色回话；task = 后台任务 */
   reqKind?: 'reply' | 'task';
+  /** 走了服务端代理、服务器已经记过账（D-217）：本机只记流水不再扣 */
+  metered?: boolean;
 }
 
 export const usageHooks = createEmitHook<[UsageEvent]>('usage');
@@ -38,19 +40,8 @@ export function reportUsage(e: UsageEvent): void {
   void usageHooks.emit(e);
 }
 
-/** 粗估 token：中日韩文一字约 1 token，其余约 3.5 字符 1 token */
-export function estimateTokens(text: string): number {
-  let cjk = 0;
-  for (const ch of text) if ((ch >= '　' && ch <= '鿿') || (ch >= '가' && ch <= '힯') || (ch >= '＀' && ch <= '￯')) cjk++;
-  return Math.round(cjk + (text.length - cjk) / 3.5);
-}
-
-/** 一段话念出来大约几秒：中日韩文约 4.5 字 / 秒，其余约 14 字符 / 秒（语音分钟按它记，D-210） */
-export function estimateSpeechSeconds(text: string): number {
-  let cjk = 0;
-  for (const ch of text) if ((ch >= '　' && ch <= '鿿') || (ch >= '가' && ch <= '힯') || (ch >= '＀' && ch <= '￯')) cjk++;
-  return Math.max(1, Math.round((cjk / 4.5 + (text.length - cjk) / 14) * 10) / 10);
-}
+/** 粗估 token 与念出来几秒（语音分钟按它记，D-210）：与服务端代理同一份（D-217） */
+export { estimateSpeechSeconds, estimateTokens } from '@/supabase/functions/_shared/economy';
 
 /** 生成闸门：返回一句原因 = 这次不能花（调用方抛 GenerationBlockedError）；null = 放行 */
 type Gate = (kind: UsageKind, billing: Billing) => string | null;

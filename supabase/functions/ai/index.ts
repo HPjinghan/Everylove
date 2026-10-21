@@ -3,7 +3,7 @@
  * 职责：LLM / 生图 / 语音的 API key 收在服务端（Supabase Secrets），客户端只带登录态调用；
  *      按用户限每日次数（`ai_usage` 表，防盗刷）；每个 service 只放行已知字段、模型只认白名单、长度与 token 封顶。
  *
- * 客户端协议：POST { service, body }，service ∈
+ * 客户端协议：POST { service, body, billing?, tz? }，service ∈
  *   qianfan.chat / qianfan.images / qianfan.musesteamer / anthropic.messages（JSON；Claude 经 LLM Gateway，D-216。Secrets：LLMGATEWAY_API_KEY）
  *   baidu.asr / baidu.asr_pro（百度语音识别，JSON；D-073）
  *   baidu.tts（百度短文本语音合成 tsn.baidu.com/text2audio，body 为表单字段对象；D-073）
@@ -17,10 +17,29 @@
  * 用 service role 调（客户端对 ai_usage 表没有任何权限，改不了自己的计数）；匿名游客与真账号各一档：AI_GUEST_DAILY_LIMIT（默认 100）/ AI_DAILY_LIMIT（默认 500）。
  * 白名单（D-166）：模型只认 ANTHROPIC_MODELS / QIANFAN_CHAT_MODELS / QIANFAN_IMAGE_MODELS（逗号分隔，Secrets 可改，默认 = 客户端 core/config.ts 的默认值）；
  * max_tokens 封顶 AI_MAX_TOKENS（默认 8192）；生图 n 固定 1、size 只认 1024x1024；合成文本 ≤ 1000 字；识别音频 base64 ≤ 8 MB；请求体 ≤ 4 MB。
- * 建表与函数：docs/supabase-setup.sql。部署：supabase functions deploy ai（verify_jwt 开启——平台先验 JWT，函数内再取 user 限流）。
+ * 记账（D-217）：余额只在服务器（public.wallets，supabase/wallet.sql）。每次生成前按 billing（user 她发起的 / house 平台出的 / included 通话里的；
+ * 不写 = house，老包只受后台保险丝管）问 gateReason，不够回 402 { error: 'blocked', reason }；上游成功后按真实用量 wallet_charge，
+ * 最新钱包放在响应头 x-wallet（WalletView JSON）。数值与算法在 _shared/economy.ts（客户端同一份）。
+ *   wallet.get（可带一次性 import）/ wallet.call（通话计时，服务器时钟）/ wallet.sim（收费开关 BILLING_LIVE 打开前：订阅 / 流量包 / 分钟包 / GM 点即到账）
+ * 建表与函数：docs/supabase-setup.sql、supabase/wallet.sql。部署：supabase functions deploy ai（verify_jwt 开启——平台先验 JWT，函数内再取 user 限流）。
  */
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import {
+  callAlive,
+  estimateSpeechSeconds,
+  estimateTokens,
+  gateReason,
+  mbFor,
+  sqlEconomy,
+  TRAFFIC_PACKS,
+  VOICE_PACKS,
+  walletView,
+  type Billing,
+  type MeterKind,
+  type WalletRow,
+  type WalletView,
+} from '../_shared/economy.ts';
 
 const QIANFAN_KEY = Deno.env.get('QIANFAN_API_KEY') ?? '';
 /** Claude 统一走 LLM Gateway（D-216）：服务名仍叫 anthropic.messages（老包照旧能用），上游换成它的 Anthropic 兼容接口，不直连 Anthropic */
@@ -28,6 +47,8 @@ const LLMGATEWAY_KEY = Deno.env.get('LLMGATEWAY_API_KEY') ?? '';
 const DAILY_LIMIT = Number(Deno.env.get('AI_DAILY_LIMIT') ?? '500');
 const GUEST_DAILY_LIMIT = Number(Deno.env.get('AI_GUEST_DAILY_LIMIT') ?? '100');
 const MAX_TOKENS_CAP = Number(Deno.env.get('AI_MAX_TOKENS') ?? '8192');
+/** 真收费开关（D-217）：打开后订阅 / 流量包 / 分钟包只能经 RevenueCat 入账，wallet.sim 拒绝 */
+const BILLING_LIVE = Deno.env.get('BILLING_LIVE') === '1';
 
 const list = (name: string, fallback: string) =>
   (Deno.env.get(name) ?? fallback)
@@ -47,8 +68,8 @@ const MESSAGES_MAX = 80;
 
 const JSON_HEADERS = { 'content-type': 'application/json' };
 
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
+function json(body: unknown, status = 200, wallet?: WalletView | null): Response {
+  return new Response(JSON.stringify(body), { status, headers: wallet ? { ...JSON_HEADERS, 'x-wallet': JSON.stringify(wallet) } : JSON_HEADERS });
 }
 
 /** 客户端参数不合规：400 + 一句话（是客户端的 bug，不是用户的错） */
@@ -170,22 +191,34 @@ function audioUpload(b: Rec): { bytes: Uint8Array<ArrayBuffer>; mime: string; fi
 
 /* ── 上游响应：成功原样透传；失败只带一句话（D-166：不透传上游原文）── */
 
-async function relayJson(r: Response): Promise<Response> {
+async function relayJson(r: Response, meter?: Meter): Promise<Response> {
   const text = await r.text();
-  if (r.ok) return new Response(text, { status: r.status, headers: JSON_HEADERS });
-  return json({ error: 'upstream', status: r.status, message: upstreamMessage(text) }, r.status);
+  if (!r.ok) return json({ error: 'upstream', status: r.status, message: upstreamMessage(text) }, r.status);
+  const headers: Record<string, string> = { ...JSON_HEADERS };
+  if (meter) {
+    let data: unknown = null;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      /* 不是 JSON：按估算记 */
+    }
+    const view = await chargeAfter(meter, data);
+    if (view) headers['x-wallet'] = JSON.stringify(view);
+  }
+  return new Response(text, { status: r.status, headers });
 }
 
 /** 上游是 JSON 就透传；是二进制音频就包成 { audio_base64 }（客户端统一处理） */
-async function audioOrJson(r: Response): Promise<Response> {
+async function audioOrJson(r: Response, meter?: Meter): Promise<Response> {
   const contentType = r.headers.get('content-type') ?? '';
-  if (!r.ok || contentType.includes('application/json')) return relayJson(r);
+  if (!r.ok || contentType.includes('application/json')) return relayJson(r, meter);
   const buf = new Uint8Array(await r.arrayBuffer());
   let bin = '';
   for (let i = 0; i < buf.length; i += 8192) {
     bin += String.fromCharCode(...buf.subarray(i, i + 8192));
   }
-  return json({ audio_base64: btoa(bin) }, r.status);
+  const view = meter ? await chargeAfter(meter, null) : null;
+  return json({ audio_base64: btoa(bin) }, r.status, view);
 }
 
 function upstreamMessage(text: string): string {
@@ -201,16 +234,193 @@ function upstreamMessage(text: string): string {
 
 /* ── 限流（D-166）：service role + 原子自增；客户端对 ai_usage 没有任何权限 ── */
 
+const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+  auth: { persistSession: false },
+});
+
 async function underLimit(userId: string, guest: boolean): Promise<{ ok: true } | { ok: false; limit: number }> {
   const limit = guest ? GUEST_DAILY_LIMIT : DAILY_LIMIT;
-  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
-    auth: { persistSession: false },
-  });
   const day = new Date().toISOString().slice(0, 10);
   const { data, error } = await admin.rpc('increment_ai_usage', { p_user: userId, p_day: day, p_limit: limit });
   if (error) throw new Error(`ai_usage rpc: ${error.message}`);
   // 函数在 count >= limit 时不更新、返回 null
   return data === null || data === undefined ? { ok: false, limit } : { ok: true };
+}
+
+/* ── 记账（D-217）：余额只在服务器；SQL 管存取与原子扣减，算法在 _shared/economy.ts ── */
+
+const ECONOMY = sqlEconomy();
+
+async function walletRpc(fn: string, args: Rec): Promise<WalletRow> {
+  const { data, error } = await admin.rpc(fn, args);
+  if (error) throw new Error(`${fn}: ${error.message}`);
+  return (Array.isArray(data) ? data[0] : data) as WalletRow;
+}
+
+/** 一次生成的计量上下文：闸门处定下，上游成功后照它记账 */
+interface Meter {
+  user: string;
+  tz: string | null;
+  kind: MeterKind;
+  billing: Billing;
+  service: string;
+  body: Rec;
+}
+
+/** 这个服务记哪种账；不花钱的返回 null */
+function meterKindOf(service: string, body: Rec): MeterKind | null {
+  switch (service) {
+    case 'anthropic.messages':
+      return 'chat';
+    case 'qianfan.chat':
+      // 看图走同一个聊天接口：消息里带图就按看图记
+      return JSON.stringify(body.messages ?? '').includes('"image_url"') ? 'vision' : 'chat';
+    case 'qianfan.images':
+    case 'qianfan.musesteamer':
+      return 'image';
+    case 'baidu.asr':
+    case 'baidu.asr_pro':
+    case 'asr.transcribe':
+    case 'fish.asr':
+      return 'asr';
+    case 'fish.tts':
+    case 'baidu.tts':
+      return 'tts';
+    default:
+      return null;
+  }
+}
+
+type Usage = {
+  input_tokens?: number;
+  output_tokens?: number;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  generated_images?: number;
+  total_tokens?: number;
+};
+
+/** 上游成功之后按真实用量记账，返回最新钱包；记账失败只记日志，不拦已经生成好的东西 */
+async function chargeAfter(m: Meter, data: unknown): Promise<WalletView | null> {
+  try {
+    const usage = (data as { usage?: Usage } | null)?.usage;
+    const u = usage ?? {};
+    let mb = 0;
+    let voiceSec = 0;
+    let houseKtok = 0;
+    let houseImages = 0;
+    let houseTts = 0;
+    let tokens: number | undefined;
+    let estimated = false;
+    if (m.kind === 'chat' || m.kind === 'vision') {
+      const real = (u.input_tokens ?? u.prompt_tokens ?? 0) + (u.output_tokens ?? u.completion_tokens ?? 0);
+      if (real > 0) tokens = real;
+      else {
+        // 供应商没返回 usage：按字数估
+        estimated = true;
+        const d = data as Rec | null;
+        tokens = estimateTokens(JSON.stringify(m.body.system ?? '') + JSON.stringify(m.body.messages ?? '')) + estimateTokens(JSON.stringify(d?.content ?? d?.choices ?? ''));
+      }
+      if (m.billing === 'user') mb = mbFor({ kind: m.kind, tokens });
+      else if (m.billing === 'house') houseKtok = tokens / 1000;
+    } else if (m.kind === 'image') {
+      const images = u.generated_images && u.generated_images > 0 ? u.generated_images : u.output_tokens || u.total_tokens ? undefined : 1;
+      estimated = !usage;
+      if (m.billing === 'user') mb = mbFor({ kind: 'image', images, outputTokens: u.output_tokens ?? u.total_tokens });
+      else if (m.billing === 'house') houseImages = images ?? 1;
+    } else if (m.kind === 'asr') {
+      // 16 kHz 16 bit 单声道 ≈ 32 KB / 秒；百度带 len（字节），其余按 base64 长度折
+      const bytes = typeof m.body.len === 'number' ? m.body.len : (String(m.body.speech ?? m.body.audio_base64 ?? '').length * 3) / 4;
+      estimated = true;
+      if (m.billing === 'user') mb = mbFor({ kind: 'asr', seconds: bytes / 32000 });
+    } else if (m.kind === 'tts') {
+      const sec = estimateSpeechSeconds(String(m.body.text ?? m.body.tex ?? ''));
+      if (m.billing === 'user') voiceSec = sec;
+      else if (m.billing === 'house') houseTts = sec;
+    }
+    const w = await walletRpc('wallet_charge', {
+      p_user: m.user,
+      p_tz: m.tz,
+      p_c: ECONOMY,
+      p_mb: mb,
+      p_voice_sec: voiceSec,
+      p_voice_use: 'message',
+      p_house_ktok: houseKtok,
+      p_house_images: houseImages,
+      p_house_tts: houseTts,
+      p_entry: mb > 0 ? { kind: m.kind, tokens, provider: m.service, estimated } : null,
+    });
+    return walletView(w, BILLING_LIVE);
+  } catch (e) {
+    console.error('[ai] 记账失败：', e);
+    return null;
+  }
+}
+
+/** 生成前：定账单归属、问还能不能花。返回计量上下文；不花钱的服务返回 null；不够花返回 402 */
+async function gate(user: string, tz: string | null, service: string, body: Rec, billingIn: unknown): Promise<Meter | Response | null> {
+  const kind = meterKindOf(service, body);
+  if (!kind) return null;
+  // 不写 = 老包：按平台出的算，只受后台保险丝管
+  let billing: Billing = billingIn === 'user' || billingIn === 'included' || billingIn === 'house' ? billingIn : 'house';
+  let w = await walletRpc('wallet_open', { p_user: user, p_tz: tz, p_c: ECONOMY });
+  if (billing === 'included') {
+    // 通话里的：电话真在打才算含在通话分钟里（顺手按服务器时钟计一段）；否则按她发起的记
+    if (callAlive(w, Date.now())) w = await walletRpc('wallet_call_tick', { p_user: user, p_tz: tz, p_c: ECONOMY, p_end: false });
+    else billing = 'user';
+  }
+  const view = walletView(w, BILLING_LIVE);
+  const reason = gateReason(w, view, kind, billing);
+  if (reason) return json({ error: 'blocked', reason }, 402, view);
+  return { user, tz, kind, billing, service, body };
+}
+
+/** wallet.*：读钱包（可带一次性搬家）、通话计时、收费开关打开前的模拟到账 */
+async function walletService(user: string, tz: string | null, service: string, body: Rec): Promise<Response> {
+  const base = { p_user: user, p_tz: tz, p_c: ECONOMY };
+  const grant = (mb: number | null, sec: number | null, plan: string | null, kind: string) =>
+    walletRpc('wallet_grant', { ...base, p_mb: mb, p_voice_sec: sec, p_plan: plan, p_kind: kind });
+  let w: WalletRow;
+  if (service === 'wallet.get') {
+    const imp = isRec(body.import) && !BILLING_LIVE ? body.import : null;
+    w = imp
+      ? await walletRpc('wallet_import', {
+          ...base,
+          p_plan: typeof imp.plan === 'string' ? imp.plan : null,
+          p_mb: typeof imp.mb === 'number' ? imp.mb : 0,
+          p_pack_sec: typeof imp.packSec === 'number' ? imp.packSec : 0,
+          p_bonus_sec: typeof imp.bonusSec === 'number' ? imp.bonusSec : null,
+        })
+      : await walletRpc('wallet_open', base);
+  } else if (service === 'wallet.call') {
+    w = await walletRpc('wallet_call_tick', { ...base, p_end: body.end === true });
+  } else if (service === 'wallet.sim') {
+    if (BILLING_LIVE) return json({ error: 'billing live' }, 403);
+    if (body.plan !== undefined) {
+      w = await grant(null, null, oneOf(body.plan, ['free', 'pro', 'max'], 'plan'), 'plan');
+    } else if (body.traffic_pack !== undefined) {
+      const p = TRAFFIC_PACKS.find((x) => x.id === body.traffic_pack);
+      if (!p) throw new BadRequest('traffic_pack not allowed');
+      w = await grant(p.mb, null, null, 'pack');
+    } else if (body.voice_pack !== undefined) {
+      const p = VOICE_PACKS.find((x) => x.id === body.voice_pack);
+      if (!p) throw new BadRequest('voice_pack not allowed');
+      // 分钟包只卖给订阅用户（D-210）
+      const cur = await walletRpc('wallet_open', base);
+      if (cur.plan === 'free') return json({ error: 'subscribers only' }, 403, walletView(cur, BILLING_LIVE));
+      w = await grant(null, p.min * 60, null, 'voice-pack');
+    } else if (body.gm === 'traffic') {
+      w = await grant(1000, null, null, 'gm');
+    } else if (body.gm === 'voice') {
+      w = await grant(null, 30 * 60, null, 'gm');
+    } else {
+      throw new BadRequest('nothing to grant');
+    }
+  } else {
+    return json({ error: 'unknown service' }, 400);
+  }
+  const view = walletView(w, BILLING_LIVE);
+  return json(view, 200, view);
 }
 
 Deno.serve(async (req) => {
@@ -228,13 +438,22 @@ Deno.serve(async (req) => {
 
     const raw = await req.text();
     if (raw.length > BODY_MAX_BYTES) return json({ error: 'payload too large' }, 413);
-    const parsed = JSON.parse(raw) as { service?: unknown; body?: unknown };
+    const parsed = JSON.parse(raw) as { service?: unknown; body?: unknown; billing?: unknown; tz?: unknown };
     const service = typeof parsed.service === 'string' ? parsed.service : '';
     const body = isRec(parsed.body) ? parsed.body : null;
     if (!service || !body) return json({ error: 'bad request' }, 400);
+    const tz = typeof parsed.tz === 'string' && parsed.tz.length <= 64 ? parsed.tz : null;
 
-    const gate = await underLimit(user.id, Boolean(user.is_anonymous));
-    if (!gate.ok) return json({ error: 'rate_limited', limit: gate.limit }, 429);
+    // 钱包服务不占 AI 次数
+    if (service.startsWith('wallet.')) return await walletService(user.id, tz, service, body);
+
+    const limit = await underLimit(user.id, Boolean(user.is_anonymous));
+    if (!limit.ok) return json({ error: 'rate_limited', limit: limit.limit }, 429);
+
+    // 记账闸门（D-217）：不够花回 402；放行的带着计量上下文去调上游
+    const gated = await gate(user.id, tz, service, body, parsed.billing);
+    if (gated instanceof Response) return gated;
+    const meter = gated ?? undefined;
 
     if (service === 'anthropic.messages') {
       if (!LLMGATEWAY_KEY) return json({ error: 'llmgateway key not configured' }, 503);
@@ -243,7 +462,7 @@ Deno.serve(async (req) => {
         headers: { 'content-type': 'application/json', authorization: `Bearer ${LLMGATEWAY_KEY}`, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify(anthropicBody(body)),
       });
-      return relayJson(r);
+      return relayJson(r, meter);
     }
 
     // Whisper 协议识别（D-139）：key 只在 Secrets
@@ -258,7 +477,7 @@ Deno.serve(async (req) => {
       if (a.language) form.append('language', a.language);
       form.append('response_format', 'json');
       const r = await fetch(`${base}/audio/transcriptions`, { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: form });
-      return relayJson(r);
+      return relayJson(r, meter);
     }
 
     // Fish transcribe-1 识别（D-139）：multipart 字段叫 audio
@@ -270,7 +489,7 @@ Deno.serve(async (req) => {
       form.append('audio', new Blob([a.bytes], { type: a.mime }), a.filename);
       if (a.language) form.append('language', a.language);
       const r = await fetch('https://api.fish.audio/v1/asr', { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: form });
-      return relayJson(r);
+      return relayJson(r, meter);
     }
 
     // Fish Audio 合成（D-139）：text / reference_id 放行，format / latency 固定，模型走 header
@@ -282,7 +501,7 @@ Deno.serve(async (req) => {
         headers: { 'content-type': 'application/json', authorization: `Bearer ${key}`, model: Deno.env.get('FISH_MODEL') || 's2.1-pro' },
         body: JSON.stringify(fishTtsBody(body)),
       });
-      return await audioOrJson(r);
+      return await audioOrJson(r, meter);
     }
 
     // 千帆 v2 与百度语音同一把 bce-v3 key
@@ -299,18 +518,18 @@ Deno.serve(async (req) => {
 
     switch (service) {
       case 'qianfan.chat':
-        return relayJson(await qianfan('https://qianfan.baidubce.com/v2/chat/completions', qianfanChatBody(body)));
+        return relayJson(await qianfan('https://qianfan.baidubce.com/v2/chat/completions', qianfanChatBody(body)), meter);
       case 'qianfan.images':
-        return relayJson(await qianfan('https://qianfan.baidubce.com/v2/images/generations', qianfanImageBody(body, false)));
+        return relayJson(await qianfan('https://qianfan.baidubce.com/v2/images/generations', qianfanImageBody(body, false)), meter);
       // 百度蒸汽机 Air-Image 专用端点（D-071 / D-076：动漫画风走它；通用端点对它不回）
       case 'qianfan.musesteamer':
-        return relayJson(await qianfan('https://qianfan.baidubce.com/v2/musesteamer/images/generations', qianfanImageBody(body, true)));
+        return relayJson(await qianfan('https://qianfan.baidubce.com/v2/musesteamer/images/generations', qianfanImageBody(body, true)), meter);
       case 'baidu.asr':
-        return relayJson(await qianfan('https://vop.baidu.com/server_api', baiduAsrBody(body)));
+        return relayJson(await qianfan('https://vop.baidu.com/server_api', baiduAsrBody(body)), meter);
       case 'baidu.asr_pro':
-        return relayJson(await qianfan('https://vop.baidu.com/pro_api', baiduAsrBody(body)));
+        return relayJson(await qianfan('https://vop.baidu.com/pro_api', baiduAsrBody(body)), meter);
       case 'baidu.tts':
-        return await audioOrJson(await qianfan('https://tsn.baidu.com/text2audio', baiduTtsForm(body), true));
+        return await audioOrJson(await qianfan('https://tsn.baidu.com/text2audio', baiduTtsForm(body), true), meter);
       default:
         return json({ error: 'unknown service' }, 400);
     }

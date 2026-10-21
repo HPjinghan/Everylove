@@ -9,9 +9,45 @@
  * - **TA 的声音单独按分钟算**（D-210）：TA 的语音、电话都不折流量。每天的额度 Free 0 / Pro 30 / Max 90 分钟（不累积）；
  *   用完了订阅用户能买语音分钟包（不过期）；新用户送 5 分钟只能打电话（不过期，用完为止）。
  * - Coin（零钱）与流量、语音永不打通。数值是试装默认；价格待 Harper（OPEN_QUESTIONS #30）。
+ * - **余额以服务器为准（D-217）**：数值与算法的唯一来源是 supabase/functions/_shared/economy.ts（代理按它扣账），这里 re-export；
+ *   本机 store.traffic / voice / plan 只是服务器钱包的显示缓存（fromServerWallet），下面的本机扣账函数只在没有服务器的时候用（开发直连 / 测试）。
  */
 
 import type { UsageEvent } from '@/core/usage';
+import {
+  ASR_SECONDS_PER_MB,
+  CHAT_MB_PER_KTOK as MB_PER_KTOK,
+  DAILY_FREE_MB,
+  HOUSE_DAILY_IMAGES,
+  HOUSE_DAILY_KTOK,
+  IMAGE_MB,
+  IMAGE_MB_PER_KTOK,
+  mbFor,
+  NEW_USER_CALL_MIN,
+  PLAN_GRANT_PERIOD_DAYS,
+  PLAN_MONTHLY_MB,
+  PLAN_VOICE_DAILY_MIN,
+  TRAFFIC_PACKS,
+  VISION_MB,
+  VOICE_PACKS,
+  type WalletView,
+} from '@/supabase/functions/_shared/economy';
+
+export {
+  ASR_SECONDS_PER_MB,
+  DAILY_FREE_MB,
+  HOUSE_DAILY_IMAGES,
+  HOUSE_DAILY_KTOK,
+  IMAGE_MB,
+  IMAGE_MB_PER_KTOK,
+  NEW_USER_CALL_MIN,
+  PLAN_MONTHLY_MB,
+  PLAN_VOICE_DAILY_MIN,
+  TRAFFIC_PACKS,
+  VISION_MB,
+  VOICE_PACKS,
+};
+export type { WalletView };
 
 export type LoveModelId = 'v1' | 'v2';
 
@@ -35,46 +71,21 @@ export const LOVE_MODELS: Record<LoveModelId, LoveModel> = {
 export const DEFAULT_LOVE_MODEL: LoveModelId = 'v1';
 export const LOVE_MODEL_ORDER: LoveModelId[] = ['v1'];
 
-/** 聊天按供应商折算（没列的按 1）；生图 / 看图按件 */
-export const CHAT_MB_PER_KTOK: Record<string, number> = { qianfan: 1, anthropic: 1 };
-export const IMAGE_MB = 15;
-/** 生图模型按 token 计费时（返回 output_tokens）每千 token 折多少 MB */
-export const IMAGE_MB_PER_KTOK = 3;
-export const VISION_MB = 3;
-/** 她的语音识别（D-211）：跟打字一样是她开口，按录音时长折流量 */
-export const ASR_SECONDS_PER_MB = 60;
+/** 聊天按供应商折算（D-205 起都是 1 MB / 千 token）；生图 / 看图按件 */
+export const CHAT_MB_PER_KTOK: Record<string, number> = { qianfan: MB_PER_KTOK, anthropic: MB_PER_KTOK };
 
-/** 一笔用量折多少 MB（TA 的语音按分钟另算，这里是 0，D-210） */
+/** 一笔用量折多少 MB（TA 的语音按分钟另算，这里是 0，D-210）——与服务端同一个 mbFor */
 export function mbForUsage(e: UsageEvent): number {
-  switch (e.kind) {
-    case 'chat': {
-      const rate = CHAT_MB_PER_KTOK[e.provider] ?? 1;
-      return (((e.inputTokens ?? 0) + (e.outputTokens ?? 0)) / 1000) * rate;
-    }
-    case 'image':
-      // 千帆按张计费：API 返回几张就记几张；返回的是 token（部分模型）就按 token 折
-      if (e.outputTokens && !e.images) return (e.outputTokens / 1000) * IMAGE_MB_PER_KTOK;
-      return IMAGE_MB * (e.images ?? 1);
-    case 'tts':
-      return 0;
-    case 'asr':
-      return Math.max(0.1, (e.seconds ?? 0) / ASR_SECONDS_PER_MB);
-    case 'vision':
-      return VISION_MB;
-  }
+  return mbFor({
+    kind: e.kind,
+    tokens: (e.inputTokens ?? 0) + (e.outputTokens ?? 0),
+    images: e.images,
+    outputTokens: e.outputTokens,
+    seconds: e.seconds,
+  });
 }
 
-/** 每天免费多少 MB（不累积，按自然日） */
-export const DAILY_FREE_MB = 100;
-/** 订阅每月发多少 MB；Max 不限（Infinity） */
-export const PLAN_MONTHLY_MB: Record<'free' | 'pro' | 'max', number> = { free: 0, pro: 6000, max: Infinity };
-export const PLAN_GRANT_PERIOD_MS = 30 * 24 * 3600_000;
-/** 流量包（试装模拟，点即到账；价格待 #30） */
-export const TRAFFIC_PACKS: { id: string; mb: number }[] = [
-  { id: 'pack-1000', mb: 1000 },
-  { id: 'pack-3000', mb: 3000 },
-  { id: 'pack-10000', mb: 10000 },
-];
+export const PLAN_GRANT_PERIOD_MS = PLAN_GRANT_PERIOD_DAYS * 24 * 3600_000;
 
 /** 她的流量（store.traffic） */
 export interface Traffic {
@@ -129,16 +140,6 @@ export function planGrantsDue(tr: Traffic, plan: 'free' | 'pro' | 'max', now = D
 
 /* ═══ 语音时长（D-210）：TA 的语音 + 电话，按秒记、按分钟显示（她的语音识别 D-211 起走流量） ═══ */
 
-/** 订阅每天给几分钟（不累积，按自然日） */
-export const PLAN_VOICE_DAILY_MIN: Record<'free' | 'pro' | 'max', number> = { free: 0, pro: 30, max: 90 };
-/** 新用户送几分钟通话（只能打电话，不过期，用完为止） */
-export const NEW_USER_CALL_MIN = 5;
-/** 语音分钟包（订阅用户才能买，不过期；价格待 #30） */
-export const VOICE_PACKS: { id: string; min: number }[] = [
-  { id: 'voice-30', min: 30 },
-  { id: 'voice-60', min: 60 },
-  { id: 'voice-180', min: 180 },
-];
 /** 通话剩这么多秒时让 TA 收尾 */
 export const CALL_WRAP_UP_SEC = 60;
 
@@ -209,9 +210,6 @@ export function voiceMinutes(sec: number): number {
 
 /* ═══ 后台保险丝（D-210）：平台出的那些每人每天封顶，看不见；到顶这天的后台生成静默跳过 ═══ */
 
-export const HOUSE_DAILY_KTOK = 400;
-export const HOUSE_DAILY_IMAGES = 8;
-
 export interface HouseUsage {
   day: string;
   ktok: number;
@@ -227,6 +225,24 @@ export function houseAfterUse(h: HouseUsage, add: { ktok?: number; images?: numb
 export function houseBlocked(h: HouseUsage, kind: 'chat' | 'image' | 'vision', now = Date.now()): boolean {
   if (h.day !== trafficDayKey(now)) return false;
   return kind === 'image' ? h.images >= HOUSE_DAILY_IMAGES : h.ktok >= HOUSE_DAILY_KTOK;
+}
+
+/**
+ * 服务器钱包 → 本机显示缓存（D-217）：代理每次响应头 x-wallet、wallet.* 的返回都走这里，
+ * 换成 store 现有的形状（今天免费的用了多少 = 100 − 还剩多少），界面与本机闸门照旧读 store。
+ */
+export function fromServerWallet(v: WalletView, now = Date.now()): { plan: 'free' | 'pro' | 'max'; traffic: Traffic; voice: VoiceTime } {
+  const day = trafficDayKey(now);
+  return {
+    plan: v.plan,
+    traffic: { balance: v.balance, freeDay: day, freeUsed: Math.max(0, DAILY_FREE_MB - v.freeLeft) },
+    voice: {
+      day,
+      usedSec: Math.max(0, PLAN_VOICE_DAILY_MIN[v.plan] * 60 - v.voiceDailyLeft),
+      packSec: v.packSec,
+      callBonusSec: v.callBonusSec,
+    },
+  };
 }
 
 /** 「1,240 MB」（小数只在不足 10 MB 时露一位） */

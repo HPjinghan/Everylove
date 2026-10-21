@@ -194,6 +194,8 @@ interface AppState {
   useVoice: (sec: number, use: VoiceUse) => number;
   /** 买语音分钟包（分钟） */
   addVoiceMinutes: (min: number) => void;
+  /** 服务器钱包落到本机显示缓存（D-217：余额以服务器为准，features/traffic.ts 调） */
+  setServerWallet: (w: { plan: 'free' | 'pro' | 'max'; traffic: Traffic; voice: VoiceTime }) => void;
   /** 「TA 发语音」开关（每段羁绊，D-210） */
   setVoiceReplies: (bondId: string, on: boolean) => void;
   /** TA 的钱包进出；没有钱包先按起点建 */
@@ -539,6 +541,8 @@ export const useAppStore = create<AppState>()(
       },
 
       addVoiceMinutes: (min) => set({ voice: { ...get().voice, packSec: get().voice.packSec + min * 60 } }),
+
+      setServerWallet: (w) => set({ plan: w.plan, traffic: { ...w.traffic, planGrantAt: get().traffic.planGrantAt }, voice: w.voice }),
 
       setVoiceReplies: (bondId, on) => set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, voiceReplies: on } : b)) }),
 

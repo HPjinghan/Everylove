@@ -4,6 +4,9 @@
  * 协议见 supabase/functions/ai/index.ts。
  */
 
+import { GenerationBlockedError, type Billing } from '@/core/usage';
+import { t } from '@/lib/i18n';
+import type { WalletView } from '@/supabase/functions/_shared/economy';
 import {
   authConfigured,
   currentSession,
@@ -37,6 +40,8 @@ export interface TimedResponse {
   contentType: string;
   /** binary 时的响应体 */
   buffer?: ArrayBuffer;
+  /** 请求时点名要的响应头（小写名 → 值） */
+  headers?: Record<string, string>;
 }
 
 export interface TimedRequest {
@@ -49,6 +54,8 @@ export interface TimedRequest {
   binary?: boolean;
   /** 取消：调用方 `AbortController.abort()` */
   signal?: AbortSignal;
+  /** 要读回来的响应头（代理的 x-wallet，D-217） */
+  responseHeaders?: string[];
 }
 
 /** 各类直连请求的超时（D-171）：聊天 / 看图与代理一致 90 s（思考模型慢）、识别 60 s、合成 30 s、天气 / 地图 15 s；生图在 lib/imagegen 自己 180 s */
@@ -76,6 +83,9 @@ export function requestWithTimeout(url: string, req: TimedRequest): Promise<Time
         text: req.binary ? '' : xhr.responseText,
         contentType: xhr.getResponseHeader('content-type') ?? '',
         buffer: req.binary ? (xhr.response as ArrayBuffer) : undefined,
+        headers: req.responseHeaders
+          ? Object.fromEntries(req.responseHeaders.map((h) => [h.toLowerCase(), xhr.getResponseHeader(h) ?? '']))
+          : undefined,
       });
     };
     xhr.onerror = () => {
@@ -111,20 +121,60 @@ export async function getJsonWithTimeout<T>(url: string, timeoutMs: number, head
 /** 默认 90 秒；生图这类慢请求调用方自己传更长的 */
 const PROXY_TIMEOUT_MS = 90_000;
 
-/** 调一次代理，返回上游 JSON；失败抛错（调用方决定回落） */
-export async function proxyJson<T = unknown>(service: string, body: unknown, timeoutMs = PROXY_TIMEOUT_MS): Promise<T> {
+export interface ProxyOptions {
+  timeoutMs?: number;
+  /** 这笔账算给谁（D-217：服务器按它扣账；不写服务器按平台出的算） */
+  billing?: Billing;
+}
+
+/** 服务器钱包的监听者（D-217）：每次代理响应带回最新钱包（响应头 x-wallet），features/traffic.ts 写进 store */
+let walletListener: ((v: WalletView) => void) | null = null;
+export function onServerWallet(fn: ((v: WalletView) => void) | null): void {
+  walletListener = fn;
+}
+
+/** 她所在的时区：服务器按它算「今天」（每天免费的、每天的语音额度） */
+function timeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return undefined;
+  }
+}
+
+/** 服务器拦下的原因 → 一句话（与本机闸门同一套文案） */
+const BLOCKED: Record<string, string> = { traffic: '流量用完了', voice: '语音时长用完了', house: '今天的后台生成到顶了' };
+
+/** 调一次代理，返回上游 JSON；失败抛错（调用方决定回落）；余额不够抛 GenerationBlockedError */
+export async function proxyJson<T = unknown>(service: string, body: unknown, opts: number | ProxyOptions = {}): Promise<T> {
+  const { timeoutMs = PROXY_TIMEOUT_MS, billing } = typeof opts === 'number' ? { timeoutMs: opts } : opts;
   const session = (await currentSession()) ?? (await ensureGuestSession());
   if (!session) throw new Error('没有登录态、也建不了游客身份，无法走服务端代理');
-  const res = await postJsonWithTimeout(
-    `${SUPABASE_URL}/functions/v1/ai`,
-    {
+  const res = await requestWithTimeout(`${SUPABASE_URL}/functions/v1/ai`, {
+    headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${session.access_token}`,
       apikey: SUPABASE_ANON_KEY,
     },
-    { service, body },
-    timeoutMs
-  );
+    body: JSON.stringify({ service, body, billing, tz: timeZone() }),
+    timeoutMs,
+    responseHeaders: ['x-wallet'],
+  });
+  const wallet = res.headers?.['x-wallet'];
+  if (wallet && walletListener) {
+    try {
+      walletListener(JSON.parse(wallet) as WalletView);
+    } catch {
+      /* 头坏了就当没有 */
+    }
+  }
+  if (res.status === 402) {
+    let reason = '';
+    try {
+      reason = (JSON.parse(res.text) as { reason?: string }).reason ?? '';
+    } catch {}
+    throw new GenerationBlockedError(t(BLOCKED[reason] ?? '流量用完了'));
+  }
   if (!res.ok) throw new Error(`proxy ${res.status}: ${res.text.slice(0, 160)}`);
   return JSON.parse(res.text) as T;
 }

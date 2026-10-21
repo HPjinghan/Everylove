@@ -13,6 +13,7 @@ import { useAppStore } from '@/store/app-store';
 vi.mock('@/lib/proxy', () => ({
   proxyAvailable: async () => false,
   proxyReadySync: () => false,
+  onServerWallet: () => {},
   proxyJson: async () => {
     throw new Error('no proxy in tests');
   },

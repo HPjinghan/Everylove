@@ -28,7 +28,7 @@ import { MingCute } from '@/components/mingcute';
 import { Shape, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { VAD, callPickupLine, callReply, formatCallDuration, logCall } from '@/lib/call';
-import { callSecondsLeft, chargeCall, endCallMeter } from '@/features/call-meter';
+import { callSecondsLeft, chargeCall, endCallMeter, startCallMeter } from '@/features/call-meter';
 import { describeAiError } from '@/lib/chat';
 import { t } from '@/lib/i18n';
 import { ASR_RECORDING, transcribeVoice } from '@/lib/media';
@@ -224,6 +224,7 @@ export default function CallScreen() {
       if (cancelled) return;
       setPhaseSafe('connecting');
       try {
+        await startCallMeter();
         const line = await callPickupLine(bond.id);
         if (cancelled) return;
         connectedAt.current = Date.now();
