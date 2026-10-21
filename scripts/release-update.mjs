@@ -3,7 +3,7 @@
  * 热更（D-183）：`npm run update:production -- "message"` / `npm run update:preview -- "message"`
  * 1. 工作区必须干净（expo export 打的是磁盘，不是 HEAD；脏了到 worktree 里发，见 docs/RELEASE.md）；
  * 2. 只带 Supabase 公开配置导出（EXPO_NO_DOTENV=1，其余 EXPO_PUBLIC_* 一律不进环境）；
- * 3. 扫 dist 里有没有 .env.local 的任何一个 key 值、或 sk-ant- / bce-v3 这类前缀——有就中止，不发；
+ * 3. 扫 dist 里有没有 .env.local 的任何一个 key 值、或 sk-ant- / bce-v3 / sk_（RevenueCat secret，D-215）这类前缀——有就中止，不发；
  * 4. eas update --skip-bundler 发这份 dist。
  * 传 --dirty 跳过第 1 步（自担风险）。
  */
@@ -41,7 +41,7 @@ for (const k of KEEP) if (kv[k]) env[k] = kv[k];
 const secrets = Object.entries(kv)
   .filter(([k, v]) => !KEEP.includes(k) && v.length >= 12)
   .map(([k, v]) => ({ name: k, value: v }));
-const PATTERNS = [/sk-ant-[A-Za-z0-9_-]{8,}/, /bce-v3\/[A-Za-z0-9_\/-]{8,}/];
+const PATTERNS = [/sk-ant-[A-Za-z0-9_-]{8,}/, /bce-v3\/[A-Za-z0-9_\/-]{8,}/, /\bsk_[A-Za-z0-9]{20,}/];
 
 /* 3. 导出 */
 sh('npx expo export --platform ios --max-workers 4', env);

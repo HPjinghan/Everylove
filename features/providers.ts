@@ -1,5 +1,5 @@
 /**
- * 聊天供应商（D-086）：anthropic（Claude）与 qianfan（百度千帆 v2，OpenAI 兼容格式）。
+ * 聊天供应商（D-086）：anthropic（Claude，经 LLM Gateway 的 Anthropic 兼容接口，D-216）与 qianfan（百度千帆 v2，OpenAI 兼容格式）。
  * 每家 = 一个 ChatProvider：本地 key 直连怎么发、走代理时叫哪个服务、怎么从响应里取文本。
  * 再接一家（OpenAI / DeepSeek 官方 / 硅基流动）= 在这里加一个对象并 register；代理侧同名服务见 supabase/functions/ai。
  */
@@ -14,6 +14,9 @@ type OpenAIJson = { choices?: { message?: { content?: string } }[]; usage?: { pr
 /** 默认就开着思考的 Claude 家族（Opus 5 / Fable / Sonnet 5.5 / Haiku 5.5）：思考 token 也算进 max_tokens，角色回话的 300 预算会被吃光 → 加余量、压低 effort（D-108 / D-205） */
 const THINKING_ON_BY_DEFAULT = /^claude-(opus-5|fable|mythos|sonnet-5-5|haiku-5)/;
 const THINKING_HEADROOM = 2048;
+
+/** Claude 统一走 LLM Gateway（D-216）：Anthropic Messages 原格式，cache_control 原样转给上游；不直连 api.anthropic.com（并发额度低） */
+const LLMGATEWAY_MESSAGES = 'https://api.llmgateway.io/v1/messages';
 
 type Block = { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } };
 const EPHEMERAL = { type: 'ephemeral' as const };
@@ -41,8 +44,8 @@ const anthropic: ChatProvider = {
   id: 'anthropic',
   // 全部文字调用都走 Claude Haiku 5.5（D-205）：后台任务、没配 key 时走代理的默认也是它
   tier: 'cheap',
-  label: `Claude · ${CONFIG.anthropicModel}`,
-  localKey: () => CONFIG.anthropicKey,
+  label: `Claude · ${CONFIG.anthropicModel} · LLM Gateway`,
+  localKey: () => CONFIG.llmgatewayKey,
   async complete(req, route) {
     const thinks = THINKING_ON_BY_DEFAULT.test(CONFIG.anthropicModel);
     const body = {
@@ -56,12 +59,12 @@ const anthropic: ChatProvider = {
     let data: AnthropicJson;
     if (route === 'direct') {
       const res = await postJsonWithTimeout(
-        'https://api.anthropic.com/v1/messages',
-        { 'x-api-key': CONFIG.anthropicKey, 'anthropic-version': '2023-06-01' },
+        LLMGATEWAY_MESSAGES,
+        { authorization: `Bearer ${CONFIG.llmgatewayKey}`, 'anthropic-version': '2023-06-01' },
         body,
         TIMEOUTS.chat
       );
-      if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+      if (!res.ok) throw new Error(`LLM Gateway ${res.status}`);
       data = JSON.parse(res.text) as AnthropicJson;
     } else {
       data = await proxyJson<AnthropicJson>('anthropic.messages', body);
@@ -109,6 +112,6 @@ const qianfan: ChatProvider = {
   },
 };
 
-// 注册顺序即「没指定引擎时谁优先」：有 Claude key 用 Claude；都没 key 走代理时用标 cheap 的那家 = Claude（core/providers.currentChatProvider）
+// 注册顺序即「没指定引擎时谁优先」：有 LLM Gateway key 用 Claude；都没 key 走代理时用标 cheap 的那家 = Claude（core/providers.currentChatProvider）
 chatProviders.register(anthropic);
 chatProviders.register(qianfan);

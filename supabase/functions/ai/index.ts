@@ -4,7 +4,7 @@
  *      按用户限每日次数（`ai_usage` 表，防盗刷）；每个 service 只放行已知字段、模型只认白名单、长度与 token 封顶。
  *
  * 客户端协议：POST { service, body }，service ∈
- *   qianfan.chat / qianfan.images / qianfan.musesteamer / anthropic.messages（JSON）
+ *   qianfan.chat / qianfan.images / qianfan.musesteamer / anthropic.messages（JSON；Claude 经 LLM Gateway，D-216。Secrets：LLMGATEWAY_API_KEY）
  *   baidu.asr / baidu.asr_pro（百度语音识别，JSON；D-073）
  *   baidu.tts（百度短文本语音合成 tsn.baidu.com/text2audio，body 为表单字段对象；D-073）
  *   asr.transcribe（Whisper 协议识别，日 / 韩用；D-139。Secrets：ASR_BASE_URL / ASR_API_KEY / ASR_MODEL；没配返回 503「asr not configured」，客户端回落百度）
@@ -23,7 +23,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const QIANFAN_KEY = Deno.env.get('QIANFAN_API_KEY') ?? '';
-const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
+/** Claude 统一走 LLM Gateway（D-216）：服务名仍叫 anthropic.messages（老包照旧能用），上游换成它的 Anthropic 兼容接口，不直连 Anthropic */
+const LLMGATEWAY_KEY = Deno.env.get('LLMGATEWAY_API_KEY') ?? '';
 const DAILY_LIMIT = Number(Deno.env.get('AI_DAILY_LIMIT') ?? '500');
 const GUEST_DAILY_LIMIT = Number(Deno.env.get('AI_GUEST_DAILY_LIMIT') ?? '100');
 const MAX_TOKENS_CAP = Number(Deno.env.get('AI_MAX_TOKENS') ?? '8192');
@@ -236,10 +237,10 @@ Deno.serve(async (req) => {
     if (!gate.ok) return json({ error: 'rate_limited', limit: gate.limit }, 429);
 
     if (service === 'anthropic.messages') {
-      if (!ANTHROPIC_KEY) return json({ error: 'anthropic key not configured' }, 503);
-      const r = await fetch('https://api.anthropic.com/v1/messages', {
+      if (!LLMGATEWAY_KEY) return json({ error: 'llmgateway key not configured' }, 503);
+      const r = await fetch('https://api.llmgateway.io/v1/messages', {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${LLMGATEWAY_KEY}`, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify(anthropicBody(body)),
       });
       return relayJson(r);

@@ -11,7 +11,8 @@ const devOnly = (v: string | undefined): string => (typeof __DEV__ === 'boolean'
 
 export const CONFIG = {
   /* ── 聊天引擎（D-069：引擎与 key 只从工程配置读） ── */
-  anthropicKey: devOnly(process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY),
+  /** LLM Gateway 的 key（D-216）：Claude 统一经 LLM Gateway 调，不直连 Anthropic（直连的并发额度低） */
+  llmgatewayKey: devOnly(process.env.EXPO_PUBLIC_LLMGATEWAY_API_KEY),
   /** Claude 模型 ID（D-108 → D-205）：默认 Haiku 5.5，全部文字调用都走它；可换 claude-sonnet-5-5 / claude-opus-5-5（默认开思考的家族供应商侧自行加余量） */
   anthropicModel: process.env.EXPO_PUBLIC_ANTHROPIC_MODEL || 'claude-haiku-5-5',
   qianfanKey: devOnly(process.env.EXPO_PUBLIC_QIANFAN_API_KEY),
