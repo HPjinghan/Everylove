@@ -104,8 +104,14 @@ useAppStore.subscribe((s) => {
 });
 
 /* ── 服务器钱包（D-217）：代理每次响应、wallet.* 的返回都写进 store ── */
+let live = false;
 function applyWallet(v: WalletView): void {
+  live = v.live;
   useAppStore.getState().setServerWallet(fromServerWallet(v));
+}
+/** 真收费开关（服务器 BILLING_LIVE）：开了以后试装的「点即到账」不再有 */
+export function billingLive(): boolean {
+  return live;
 }
 onServerWallet(applyWallet);
 

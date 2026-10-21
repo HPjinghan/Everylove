@@ -7,9 +7,9 @@
 
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
-import { Children, Fragment, isValidElement, useEffect, useState, type ReactNode } from 'react';
+import { Children, Fragment, isValidElement, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
 import { showAlert } from '@/components/action-sheet';
@@ -21,7 +21,8 @@ import { WALLPAPERS } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, THEMES, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
-import { buyTrafficPack, buyVoicePack, choosePlan, gmGrant } from '@/features/traffic';
+import { buy as buyIap, iapState, iapVersion, restore as restoreIap, subscribeIap, type BuyOutcome } from '@/features/iap';
+import { billingLive, buyTrafficPack, buyVoicePack, choosePlan, gmGrant } from '@/features/traffic';
 import { aiRouteSync, engineLabel, engineOptions, enginePreference, setEnginePreference } from '@/lib/engine';
 import { ensurePortrait, imageKeyReady, portraitFor } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
@@ -284,6 +285,32 @@ export default function MeScreen() {
     ]);
   };
 
+  /*
+   * 买东西（D-218）：这个包能真买（RevenueCat）就走苹果面板；不能真买时，收费开关打开前照旧点即到账（试装），打开后说「下个版本开放」。
+   * 能真买但没登录：先登录（匿名游客不连 RevenueCat）。
+   */
+  useSyncExternalStore(subscribeIap, iapVersion);
+  const iap = iapState();
+  const storeMode: 'real' | 'sign-in' | 'sim' | 'soon' = iap.supported ? (iap.ready ? 'real' : 'sign-in') : billingLive() ? 'soon' : 'sim';
+  const priceOf = (id: string, price: string) => (iap.buying === id ? '…' : price);
+
+  /** 购买的结果只说实话：付款之后的错误都可能已经扣款，永远不说「购买失败」（docs/revenuecat.md 第 23 条）；到账的轻提示在 features/iap */
+  const BUY_REPLY: Partial<Record<BuyOutcome, [string, string?]>> = {
+    confirming: [t('还在确认中'), t('到账时会通知你。')],
+    'maybe-paid': [t('购买没有完成'), t('如果已经付款，会自动到账，到账时会通知你。')],
+    'pending-approval': [t('等待批准'), t('批准后会自动到账。')],
+    'not-allowed': [t('这台手机关闭了 App 内购买。')],
+    'before-payment': [t('没能打开购买'), t('稍后再试。')],
+    unavailable: [t('稍后再试。')],
+  };
+  const buyNow = async (productId: string) => {
+    const reply = BUY_REPLY[await buyIap(productId)];
+    if (reply) showAlert(reply[0], reply[1]);
+  };
+  const doRestorePurchases = async () => {
+    showAlert((await restoreIap()) ? t('已恢复') : t('稍后再试。'));
+  };
+
   /* ── 账号 · 云端（D-054/D-062）：登录在独立界面 /auth，这里只做入口与管理 ── */
   const [session, setSession] = useState<Session | null>(null);
 
@@ -406,9 +433,35 @@ export default function MeScreen() {
 
         <Section title={t('订阅计划')}>
           <Row label={t('当前计划')} value={plan === 'max' ? 'Max' : plan === 'pro' ? 'Pro' : 'Free'} />
-          <Row label={plan === 'pro' ? t('已订阅 Pro ✓') : t('订阅 Pro')} value={planBlurb('pro')} onPress={() => subscribe('pro')} />
-          <Row label={plan === 'max' ? t('已订阅 Max ✓') : t('订阅 Max')} value={planBlurb('max')} onPress={() => subscribe('max')} />
-          {plan !== 'free' ? <Row label={t('取消订阅（回 Free）')} onPress={() => subscribe('free')} /> : null}
+          {storeMode === 'sim' ? (
+            <>
+              <Row label={plan === 'pro' ? t('已订阅 Pro ✓') : t('订阅 Pro')} value={planBlurb('pro')} onPress={() => subscribe('pro')} />
+              <Row label={plan === 'max' ? t('已订阅 Max ✓') : t('订阅 Max')} value={planBlurb('max')} onPress={() => subscribe('max')} />
+              {plan !== 'free' ? <Row label={t('取消订阅（回 Free）')} onPress={() => subscribe('free')} /> : null}
+            </>
+          ) : null}
+          {storeMode === 'real' ? (
+            <>
+              {iap.items
+                .filter((i) => i.kind === 'plan' && i.plan)
+                .map((i) => {
+                  const p = i.plan === 'max' ? 'max' : 'pro';
+                  const on = plan === p;
+                  return (
+                    <Row
+                      key={i.productId}
+                      label={p === 'max' ? (on ? t('已订阅 Max ✓') : t('订阅 Max')) : on ? t('已订阅 Pro ✓') : t('订阅 Pro')}
+                      value={priceOf(i.productId, `${i.priceString} · ${planBlurb(p)}`)}
+                      onPress={on ? undefined : () => void buyNow(i.productId)}
+                    />
+                  );
+                })}
+              {plan !== 'free' ? <Row label={t('管理订阅')} onPress={() => void Linking.openURL('https://apps.apple.com/account/subscriptions')} /> : null}
+              <Row label={t('恢复购买')} onPress={() => void doRestorePurchases()} />
+            </>
+          ) : null}
+          {storeMode === 'sign-in' && !session ? <Row label={t('登录后可以购买')} onPress={() => router.push('/auth')} /> : null}
+          {storeMode === 'soon' ? <Row label={t('下个版本开放')} /> : null}
         </Section>
 
         <Section title={t('流量')}>
@@ -426,14 +479,23 @@ export default function MeScreen() {
             );
           })}
           <Row label={t('流水')} onPress={() => router.push('/apps/traffic-log' as never)} />
-          {TRAFFIC_PACKS.map((p) => (
-            <Row
-              key={p.id}
-              label={t('流量包 {n}', { n: mb(p.mb) })}
-              value={t('买')}
-              onPress={() => void viaServer(() => buyTrafficPack(p.id), mb(p.mb))}
-            />
-          ))}
+          {storeMode === 'sim'
+            ? TRAFFIC_PACKS.map((p) => (
+                <Row
+                  key={p.id}
+                  label={t('流量包 {n}', { n: mb(p.mb) })}
+                  value={t('买')}
+                  onPress={() => void viaServer(() => buyTrafficPack(p.id), mb(p.mb))}
+                />
+              ))
+            : null}
+          {storeMode === 'real'
+            ? iap.items
+                .filter((i) => i.kind === 'traffic')
+                .map((i) => (
+                  <Row key={i.productId} label={t('流量包 {n}', { n: mb(i.mb) })} value={priceOf(i.productId, i.priceString)} onPress={() => void buyNow(i.productId)} />
+                ))
+            : null}
         </Section>
 
         {/* 语音时长（D-210）：TA 的语音、她的语音、电话都按分钟算；Free 没有（新用户送的只能打电话） */}
@@ -447,7 +509,19 @@ export default function MeScreen() {
             <Row label={t('送你的通话')} value={t('{n} 分钟', { n: voiceMinutes(voice.callBonusSec) })} hint={t('只能打电话，用完为止。')} />
           ) : null}
           {voice.packSec > 0 ? <Row label={t('分钟包')} value={t('{n} 分钟', { n: voiceMinutes(voice.packSec) })} hint={t('不过期。')} /> : null}
-          {plan !== 'free'
+          {plan !== 'free' && storeMode === 'real'
+            ? iap.items
+                .filter((i) => i.kind === 'voice')
+                .map((i) => (
+                  <Row
+                    key={i.productId}
+                    label={t('语音分钟包 {n} 分钟', { n: Math.round(i.voiceSec / 60) })}
+                    value={priceOf(i.productId, i.priceString)}
+                    onPress={() => void buyNow(i.productId)}
+                  />
+                ))
+            : null}
+          {plan !== 'free' && storeMode === 'sim'
             ? VOICE_PACKS.map((p) => (
                 <Row
                   key={p.id}

@@ -145,18 +145,20 @@ function timeZone(): string | undefined {
 /** 服务器拦下的原因 → 一句话（与本机闸门同一套文案） */
 const BLOCKED: Record<string, string> = { traffic: '流量用完了', voice: '语音时长用完了', house: '今天的后台生成到顶了' };
 
-/** 调一次代理，返回上游 JSON；失败抛错（调用方决定回落）；余额不够抛 GenerationBlockedError */
-export async function proxyJson<T = unknown>(service: string, body: unknown, opts: number | ProxyOptions = {}): Promise<T> {
-  const { timeoutMs = PROXY_TIMEOUT_MS, billing } = typeof opts === 'number' ? { timeoutMs: opts } : opts;
+/**
+ * 调一个自有 Edge Function（带登录态；没有就建游客身份）：原样返回响应，带回来的最新钱包（x-wallet）交给监听者。
+ * body 里自动带上她的时区。
+ */
+export async function callFunction(name: string, body: Record<string, unknown>, timeoutMs = PROXY_TIMEOUT_MS): Promise<TimedResponse> {
   const session = (await currentSession()) ?? (await ensureGuestSession());
   if (!session) throw new Error('没有登录态、也建不了游客身份，无法走服务端代理');
-  const res = await requestWithTimeout(`${SUPABASE_URL}/functions/v1/ai`, {
+  const res = await requestWithTimeout(`${SUPABASE_URL}/functions/v1/${name}`, {
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${session.access_token}`,
       apikey: SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ service, body, billing, tz: timeZone() }),
+    body: JSON.stringify({ ...body, tz: timeZone() }),
     timeoutMs,
     responseHeaders: ['x-wallet'],
   });
@@ -168,6 +170,13 @@ export async function proxyJson<T = unknown>(service: string, body: unknown, opt
       /* 头坏了就当没有 */
     }
   }
+  return res;
+}
+
+/** 调一次代理，返回上游 JSON；失败抛错（调用方决定回落）；余额不够抛 GenerationBlockedError */
+export async function proxyJson<T = unknown>(service: string, body: unknown, opts: number | ProxyOptions = {}): Promise<T> {
+  const { timeoutMs = PROXY_TIMEOUT_MS, billing } = typeof opts === 'number' ? { timeoutMs: opts } : opts;
+  const res = await callFunction('ai', { service, body, billing }, timeoutMs);
   if (res.status === 402) {
     let reason = '';
     try {

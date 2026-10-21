@@ -39,10 +39,19 @@ vi.mock('react-native', () =>
   stubModule({
     Platform: { OS: 'ios', select: (o: Record<string, unknown>) => o.ios ?? o.default },
     AppState: { addEventListener: () => ({ remove() {} }) },
+    NativeModules: {},
     StyleSheet: { create: (s: unknown) => s, hairlineWidth: 1, absoluteFill: {} },
   })
 );
 vi.mock('react-native-maps', () => stubModule({ default: () => null }));
+// 内购（D-218）：测试里没有原生模块 → purchasesSupported() 为假
+vi.mock('react-native-purchases', () => stubModule({ default: stubModule({}) }));
+vi.mock('expo-constants', () =>
+  stubModule({
+    default: { expoConfig: { ios: { bundleIdentifier: 'com.biibit.ringring' } }, executionEnvironment: 'bare' },
+    ExecutionEnvironment: { Bare: 'bare', Standalone: 'standalone', StoreClient: 'storeClient' },
+  })
+);
 vi.mock('react-native-url-polyfill/auto', () => ({}));
 vi.mock('expo-file-system/legacy', () => stubModule({ documentDirectory: '/tmp/', EncodingType: { Base64: 'base64' } }));
 vi.mock('expo-audio', () =>

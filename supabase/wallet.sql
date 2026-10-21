@@ -7,6 +7,9 @@ create table if not exists public.wallets (
   user_id uuid primary key,
   plan text not null default 'free' check (plan in ('free', 'pro', 'max')),
   plan_grant_at timestamptz,
+  -- 档位从哪来（D-218）：sim = 收费开关打开前的模拟；iap = RevenueCat 的订阅权益，到期自动回 Free
+  plan_source text not null default 'sim' check (plan_source in ('sim', 'iap')),
+  plan_expires_at timestamptz,
   balance_mb numeric not null default 0 check (balance_mb >= 0),
   -- 退款扣不够记的欠账（接 RevenueCat 后用）
   debt_mb numeric not null default 0 check (debt_mb >= 0),
@@ -42,6 +45,10 @@ create table if not exists public.wallet_ledger (
   provider text,
   estimated boolean not null default false
 );
+alter table public.wallets add column if not exists plan_source text not null default 'sim' check (plan_source in ('sim', 'iap'));
+alter table public.wallets add column if not exists plan_expires_at timestamptz;
+-- 内购入账 / 退款扣回 / 撤销退款各自的幂等键（D-218：iap:<商店>:<交易号>[:refund:n | :reinstate:n]）
+alter table public.wallet_ledger add column if not exists idem text unique;
 create index if not exists wallet_ledger_user_at on public.wallet_ledger (user_id, at desc);
 
 alter table public.wallets enable row level security;
@@ -57,7 +64,7 @@ revoke insert, update, delete on table public.wallet_ledger from anon, authentic
 create or replace function public._wallet_save(w public.wallets)
 returns void language sql security definer set search_path = public as $$
   update public.wallets set
-    plan = w.plan, plan_grant_at = w.plan_grant_at, balance_mb = w.balance_mb, debt_mb = w.debt_mb,
+    plan = w.plan, plan_grant_at = w.plan_grant_at, plan_source = w.plan_source, plan_expires_at = w.plan_expires_at, balance_mb = w.balance_mb, debt_mb = w.debt_mb,
     day = w.day, free_used_mb = w.free_used_mb, voice_used_sec = w.voice_used_sec,
     house_ktok = w.house_ktok, house_images = w.house_images, house_tts_sec = w.house_tts_sec,
     voice_pack_sec = w.voice_pack_sec, call_bonus_sec = w.call_bonus_sec, call_tick_at = w.call_tick_at,
@@ -84,6 +91,10 @@ begin
      and exists (select 1 from pg_timezone_names where name = p_tz) then
     w.tz := p_tz;
     w.tz_changed_at := now();
+  end if;
+  -- 真订阅到期（D-218）：过了到期时间 10 分钟还没续上就回 Free；续订事件到了会再升回来
+  if w.plan_source = 'iap' and w.plan <> 'free' and w.plan_expires_at is not null and w.plan_expires_at < now() - interval '10 minutes' then
+    w.plan := 'free';
   end if;
   today := (now() at time zone w.tz)::date;
   if w.day is distinct from today then
@@ -185,6 +196,17 @@ begin
 end $$;
 
 -- 到账：流量包 / 语音分钟包 / 换订阅档 / GM（收费开关打开前点即到账；之后只给 RevenueCat 的入账用）
+-- 换档位时这个月发没发过（D-218）：30 天内发过的不再发（来回切档白拿不了），更早的作废、换上去当场发一笔
+create or replace function public._wallet_switch_plan(w public.wallets, p_plan text, p_c jsonb)
+returns public.wallets language plpgsql immutable as $$
+begin
+  if w.plan_grant_at is not null and w.plan_grant_at <= now() - make_interval(days => (p_c ->> 'grant_period_days')::int) then
+    w.plan_grant_at := null;
+  end if;
+  w.plan := p_plan;
+  return w;
+end $$;
+
 create or replace function public.wallet_grant(p_user uuid, p_tz text, p_c jsonb, p_mb numeric, p_voice_sec numeric, p_plan text, p_kind text)
 returns public.wallets language plpgsql security definer set search_path = public as $$
 declare
@@ -192,8 +214,9 @@ declare
   changed boolean := p_plan is not null and p_plan <> w.plan;
 begin
   if changed then
-    w.plan := p_plan;
-    w.plan_grant_at := null;
+    w := public._wallet_switch_plan(w, p_plan, p_c);
+    w.plan_source := 'sim';
+    w.plan_expires_at := null;
   end if;
   w.balance_mb := w.balance_mb + coalesce(p_mb, 0);
   w.voice_pack_sec := w.voice_pack_sec + coalesce(p_voice_sec, 0);
@@ -216,7 +239,7 @@ begin
     return w;
   end if;
   w.imported := true;
-  if p_plan in ('free', 'pro', 'max') then
+  if p_plan in ('free', 'pro', 'max') and w.plan_source = 'sim' then
     w.plan := p_plan;
     -- 这个月的手机上已经发过了
     w.plan_grant_at := case when p_plan = 'pro' then now() else null end;
@@ -236,6 +259,7 @@ begin
     'public._wallet_save(public.wallets)',
     'public.wallet_open(uuid, text, jsonb)',
     'public._wallet_voice(public.wallets, numeric, text, jsonb)',
+    'public._wallet_switch_plan(public.wallets, text, jsonb)',
     'public.wallet_charge(uuid, text, jsonb, numeric, numeric, text, numeric, integer, numeric, jsonb)',
     'public.wallet_call_tick(uuid, text, jsonb, boolean)',
     'public.wallet_grant(uuid, text, jsonb, numeric, numeric, text, text)',

@@ -1,0 +1,9 @@
+# Supabase CLI 的函数配置（D-218）。只写这里要改的；其余用默认。
+# webhook 与定时任务不带用户登录态：签名 / 密钥就是唯一的钥匙，所以不让平台验 JWT（写在这里而不是只靠部署参数，换一种部署方式也不会又要 JWT）。
+project_id = "ehdqdibvvzxcnzekqhmq"
+
+[functions.iap-webhook]
+verify_jwt = false
+
+[functions.iap-cron]
+verify_jwt = false

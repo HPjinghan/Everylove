@@ -33,7 +33,7 @@
 ### E3 · 动手前还要开发者 / Harper 给的
 
 - 价格与额度（OPEN_QUESTIONS #30，已在）：Pro / Max 月费、流量包与语音分钟包单价、溢价落在哪。
-- **商品 ID 命名**（原手册第 18 条，一旦提交就改不了）：ID 里不写数量（如 `ringring.traffic.small` / `.medium` / `.large`、`ringring.voice.30`），入账数只写在服务器商品表里。
+- **商品 ID**（原手册第 18 条，一旦提交就改不了；**已定 D-218**）：`ringring.pro.monthly`、`ringring.max.monthly`（自动续期订阅，放同一个订阅群组，升降级由苹果处理）、`ringring.traffic.s` / `.m` / `.l`、`ringring.voice.s` / `.m` / `.l`（消耗型）。ID 里不写数量，入账数只写在服务器商品表 `iap_products`。
 - **创作者分成要不要按买家实付分**（OPEN_QUESTIONS #38）：要的话原手册 §9 的店面 / 当地价格要在第一笔正式购买之前开始存。
 - 上架市场：日本 + 中文先行之外，欧盟上不上（上的话先申报 DSA 交易者身份）。
 - 后台清单（原手册 §6）：付费 App 协议与税务银行、小企业计划、两把苹果密钥、App Store 服务器通知 V2 指向 RevenueCat、RevenueCat 恢复行为保持默认、Refund Control 先选不回应——这些只有账户持有人能点。
@@ -41,7 +41,22 @@
 ### E4 · 接入顺序（在原手册 §5 上加的）
 
 0. ~~先把余额搬上服务器、扣账挪进代理（E2-2）~~：**已做（D-217，2026-10-21）**——`public.wallets` / `wallet_ledger`（`supabase/wallet.sql`）、代理按账单归属拦与扣、`wallet.sim` 在 `BILLING_LIVE` 打开前点即到账。接 RevenueCat 时入账直接调 `wallet_grant`（或照 §5 步骤 1 另建交易表经 converge 落到钱包），打开 `BILLING_LIVE`。
-1–8. 照原手册 §5。订阅部分在步骤 1 的表里加「订阅状态」（档位、到期时间、最近一次发放月份），事件类型照原手册 §10 去读 RevenueCat 的 event-types-and-fields 原文再写。
+1–5. **代码已写完（D-218，2026-10-21）**：
+   - 服务器：`supabase/iap.sql`（商品表 / App User ID / 交易 / 收件箱 + `iap_apply` 一个函数管入账、退款、撤销退款、欠账 + `iap_set_plan` 权益定档位 + pg_cron 每 10 分钟调 `iap-cron`）；
+     `supabase/functions/iap`（app 上报：`id` 发 App User ID、`sync` 按交易号核实 / 读权益 / 全量读）、`iap-webhook`（验签 → 收件箱 → 处理）、`iap-cron`（重试失败事件 + 对账 + 报警日志）、共用 `_shared/revenuecat.ts`。
+     订阅不记交易：任何订阅类事件、TRANSFER、app 的 subscription 上报都去读 RevenueCat 的 active entitlements（lookup key `pro` / `max`，max 优先）定 `wallets.plan`（`plan_source = 'iap'`、`plan_expires_at`，过期 10 分钟没续上回 Free；换档 30 天内不重复发 Pro 的流量）。
+   - 客户端：`lib/purchases.ts`（唯一碰 SDK）、`lib/iap-rules.ts`（纯规则）、`features/iap.ts`（身份 / 商品 / 购买 / 确认 / 补交），设置页按 `purchasesSupported()` 切真买 / 试装模拟 / 「下个版本开放」；`tests/iap.test.ts` 守卫。
+   - 已验：SQL 场景（入账 / 重复 / 退款记欠账 / 旧的撤销被忽略 / 撤销先还欠账 / API 观察不推翻撤销 / 退款先到）、签名 webhook 全套（无签名 / 错签名 / 过期 401，TEST ignored，重送原样答复，同一笔不同事件只入一次，退款 / 撤销，不认识的人 ignored，不认识的商品 failed → 补上商品后 cron 重试入账），6 路并发同一笔只入一次。
+6–8. 沙盒真机、TRANSFER、上线：等 E5 配好之后照原手册 §7.3 / §8.5。
+
+### E5 · 上线前要配的（D-218 代码已就位，缺这些就是「下个版本开放」）
+
+1. **App Store Connect**（账户持有人）：付费 App 协议 + 税务银行；建上面 8 个商品（两个订阅放同一个订阅群组；每个要审核截图）；小企业计划；生成 In-App Purchase 密钥（.p8）与 App Store Connect API 密钥；App Store 服务器通知 V2 正式 / 沙盒都填 RevenueCat 给的地址。
+2. **RevenueCat**：建项目 → 加 App Store app（bundle id `com.biibit.ringring`）→ 填两把苹果密钥 → 导入 8 个商品 → 建两个 entitlement，**lookup key 必须是 `pro` 和 `max`**（Pro 订阅挂 pro、Max 订阅挂 max）→ 建一个 offering 设为 current，8 个商品各挂一个 package。恢复行为保持默认「转给新的 App User ID」；「Track new purchases from server-to-server notifications」保持关；Refund Control 先选不回应。
+3. **把这些交给我**（经密码管理器，不走聊天）：公开 iOS key（`appl_`，写进 `lib/purchases.ts` 的 `IOS_KEYS`）；v2 secret key（权限：Customer information 的 Purchases 读、Customers 读写，Project configuration 的 Products 读、Entitlements 读）+ 项目 id → Supabase Secrets `RC_SECRET_KEY` / `RC_PROJECT_ID`；webhook 签名密钥 → `RC_WEBHOOK_SECRETS`。
+4. **Webhook 集成**：地址 `https://ehdqdibvvzxcnzekqhmq.supabase.co/functions/v1/iap-webhook`，正式和沙盒都发（审核与 TestFlight 是沙盒），开签名，事件过滤不开。
+5. **重新 build**（react-native-purchases 是原生模块；`runtimeVersion` 是 sdkVersion 策略，带它的 JS 热更到旧包上会自动降级成「下个版本开放」不会崩）。
+6. 沙盒真机验第一笔「恰好入账一次」、TRANSFER（原手册 §7.3）；全过之后 Supabase Secrets 设 `BILLING_LIVE=1`（试装的点即到账随之关闭）。
 
 ---
 
