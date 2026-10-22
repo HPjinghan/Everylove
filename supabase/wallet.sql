@@ -50,6 +50,9 @@ alter table public.wallets add column if not exists plan_expires_at timestamptz;
 -- 她发起的用量今天累计（D-219：只拿来管 Max 的合理使用，所有档都记）
 alter table public.wallets add column if not exists fair_ktok numeric not null default 0;
 alter table public.wallets add column if not exists fair_images integer not null default 0;
+-- Max 过线降速的两条车道（D-220）：下一个号最早什么时候能用；只由 wallet_slow_slot 写，_wallet_save 不碰
+alter table public.wallets add column if not exists slow_chat_at timestamptz;
+alter table public.wallets add column if not exists slow_image_at timestamptz;
 -- 内购入账 / 退款扣回 / 撤销退款各自的幂等键（D-218：iap:<商店>:<交易号>[:refund:n | :reinstate:n]）
 alter table public.wallet_ledger add column if not exists idem text unique;
 create index if not exists wallet_ledger_user_at on public.wallet_ledger (user_id, at desc);
@@ -263,6 +266,29 @@ begin
   return w;
 end $$;
 
+-- 领一个慢车道的号（D-220）：返回要等几秒；要等的超过 p_max_wait 返回 -1 且不占号。同一行加锁，并发的请求依次排开
+create or replace function public.wallet_slow_slot(p_user uuid, p_lane text, p_gap numeric, p_max_wait numeric)
+returns numeric language plpgsql security definer set search_path = public as $$
+declare
+  v_at timestamptz;
+  v_next timestamptz;
+  v_wait numeric;
+begin
+  select case when p_lane = 'image' then slow_image_at else slow_chat_at end into v_at
+  from public.wallets where user_id = p_user for update;
+  v_next := greatest(now(), coalesce(v_at, now()));
+  v_wait := extract(epoch from v_next - now());
+  if v_wait > p_max_wait then
+    return -1;
+  end if;
+  if p_lane = 'image' then
+    update public.wallets set slow_image_at = v_next + make_interval(secs => p_gap) where user_id = p_user;
+  else
+    update public.wallets set slow_chat_at = v_next + make_interval(secs => p_gap) where user_id = p_user;
+  end if;
+  return round(v_wait, 1);
+end $$;
+
 do $$
 declare f text;
 begin
@@ -274,7 +300,8 @@ begin
     'public.wallet_charge(uuid, text, jsonb, numeric, numeric, text, numeric, integer, numeric, jsonb, numeric, integer)',
     'public.wallet_call_tick(uuid, text, jsonb, boolean)',
     'public.wallet_grant(uuid, text, jsonb, numeric, numeric, text, text)',
-    'public.wallet_import(uuid, text, jsonb, text, numeric, numeric, numeric)'
+    'public.wallet_import(uuid, text, jsonb, text, numeric, numeric, numeric)',
+    'public.wallet_slow_slot(uuid, text, numeric, numeric)'
   ] loop
     execute format('revoke all on function %s from public, anon, authenticated', f);
     execute format('grant execute on function %s to service_role', f);

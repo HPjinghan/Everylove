@@ -51,10 +51,21 @@ export const HOUSE_DAILY_IMAGES: Record<Plan, number> = { free: 1, pro: 4, max: 
 /** TA 自己发起的语音（主动消息里的语音、音色试听）每天封顶几秒（D-217） */
 export const HOUSE_DAILY_TTS_SEC = 600;
 
-/* ── Max 的合理使用（D-219）：「不限」也有一道看不见的每天上限，正常人碰不到，防脚本刷 ── */
+/*
+ * ── Max 的合理使用（D-219 → D-220）：「不限」过了一道看不见的线以后降速，不拦——
+ * 聊天：当天她发起的过 3000 千 token 两条至少隔 15 秒、过 6000 隔 60 秒（服务器先等够再生成，她只觉得 TA 回得慢）；
+ * 生图：第 31 张起每 5 分钟一张（要等的不超过 45 秒就并进显影里，再久让她过会儿再拍），第 61 张起当天停（一张是真钱）。
+ */
 
-export const MAX_FAIR_DAILY_KTOK = 3000;
-export const MAX_FAIR_DAILY_IMAGES = 30;
+export const MAX_SLOW_LANES: { ktok: number; gapSec: number }[] = [
+  { ktok: 3000, gapSec: 15 },
+  { ktok: 6000, gapSec: 60 },
+];
+export const MAX_SLOW_IMAGES = 30;
+export const MAX_IMAGE_GAP_SEC = 300;
+export const MAX_DAILY_IMAGES = 60;
+/** 降速时服务器最多替她等几秒（聊天受客户端 90 秒超时管、生图还要留出生成的时间；Edge Function 一次最长约 150 秒） */
+export const SLOW_MAX_WAIT_SEC: Record<'chat' | 'image', number> = { chat: 65, image: 45 };
 
 /* ── 通话按服务器时钟计（D-217）── */
 
@@ -110,7 +121,7 @@ export interface WalletRow {
   house_ktok: number;
   house_images: number;
   house_tts_sec: number;
-  /** 她发起的用量今天累计（所有档都记，只拿来管 Max 的合理使用） */
+  /** 她发起的用量今天累计（所有档都记，只拿来管 Max 的合理使用：降速与生图封顶） */
   fair_ktok: number;
   fair_images: number;
   /** 上一次通话计时（ISO）；null = 没在打电话 */
@@ -162,7 +173,9 @@ export function trafficLeftOf(v: WalletView): number {
 }
 
 /** 生成前问一声（服务端照这个拦）：返回原因 = 不能花；null = 放行。included 由调用方先确认通话还在 */
-export function gateReason(w: WalletRow, v: WalletView, kind: MeterKind, billing: Billing): 'traffic' | 'voice' | 'house' | 'fair' | null {
+export type BlockReason = 'traffic' | 'voice' | 'house' | 'fair' | 'slow' | 'busy';
+
+export function gateReason(w: WalletRow, v: WalletView, kind: MeterKind, billing: Billing): BlockReason | null {
   if (billing === 'included') return voiceLeftOf(v, 'call') > 0 ? null : 'voice';
   if (billing === 'house') {
     if (kind === 'image') return Number(w.house_images) >= HOUSE_DAILY_IMAGES[w.plan] ? 'house' : null;
@@ -171,12 +184,21 @@ export function gateReason(w: WalletRow, v: WalletView, kind: MeterKind, billing
     return Number(w.house_ktok) >= HOUSE_DAILY_KTOK ? 'house' : null;
   }
   if (kind === 'tts') return voiceLeftOf(v, 'message') > 0 ? null : 'voice';
-  if (w.plan === 'max') {
-    if (kind === 'image') return Number(w.fair_images ?? 0) >= MAX_FAIR_DAILY_IMAGES ? 'fair' : null;
-    if (kind === 'chat' || kind === 'vision') return Number(w.fair_ktok ?? 0) >= MAX_FAIR_DAILY_KTOK ? 'fair' : null;
-    return null;
-  }
+  if (w.plan === 'max') return kind === 'image' && Number(w.fair_images ?? 0) >= MAX_DAILY_IMAGES ? 'fair' : null;
   return trafficLeftOf(v) > 0 ? null : 'traffic';
+}
+
+/** Max 过线以后走哪条慢车道（D-220）；null = 不降速。车道各自排队：等照片不耽误聊天 */
+export function slowLaneOf(w: WalletRow, kind: MeterKind, billing: Billing): { lane: 'chat' | 'image'; gapSec: number; maxWaitSec: number } | null {
+  if (billing !== 'user' || w.plan !== 'max') return null;
+  if (kind === 'image') {
+    return Number(w.fair_images ?? 0) >= MAX_SLOW_IMAGES ? { lane: 'image', gapSec: MAX_IMAGE_GAP_SEC, maxWaitSec: SLOW_MAX_WAIT_SEC.image } : null;
+  }
+  if (kind !== 'chat' && kind !== 'vision') return null;
+  const ktok = Number(w.fair_ktok ?? 0);
+  let gapSec = 0;
+  for (const l of MAX_SLOW_LANES) if (ktok >= l.ktok) gapSec = l.gapSec;
+  return gapSec > 0 ? { lane: 'chat', gapSec, maxWaitSec: SLOW_MAX_WAIT_SEC.chat } : null;
 }
 
 /** 订阅档说明里的数字：Pro / Max 每月给多少 MB（Max = Infinity） */

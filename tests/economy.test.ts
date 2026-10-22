@@ -13,9 +13,11 @@ import {
   HOUSE_DAILY_IMAGES,
   HOUSE_DAILY_KTOK,
   HOUSE_DAILY_TTS_SEC,
-  MAX_FAIR_DAILY_IMAGES,
-  MAX_FAIR_DAILY_KTOK,
+  MAX_DAILY_IMAGES,
+  MAX_IMAGE_GAP_SEC,
+  MAX_SLOW_IMAGES,
   mbFor,
+  slowLaneOf,
   sqlEconomy,
   walletView,
   type WalletRow,
@@ -57,14 +59,21 @@ describe('生成前的闸门（服务器照它拦）', () => {
     expect(gate(row({ plan: 'max', free_used_mb: 100 }), 'vision', 'user')).toBeNull();
   });
 
-  it('Max 的合理使用（D-219）：每天聊天 3000 千 token、生图 30 张，到顶回 fair；别的档不看这两个数', () => {
-    expect(gate(row({ plan: 'max', fair_ktok: MAX_FAIR_DAILY_KTOK - 1 }), 'chat', 'user')).toBeNull();
-    expect(gate(row({ plan: 'max', fair_ktok: MAX_FAIR_DAILY_KTOK }), 'chat', 'user')).toBe('fair');
-    expect(gate(row({ plan: 'max', fair_ktok: MAX_FAIR_DAILY_KTOK }), 'vision', 'user')).toBe('fair');
-    expect(gate(row({ plan: 'max', fair_ktok: MAX_FAIR_DAILY_KTOK }), 'image', 'user')).toBeNull();
-    expect(gate(row({ plan: 'max', fair_images: MAX_FAIR_DAILY_IMAGES }), 'image', 'user')).toBe('fair');
-    expect(gate(row({ plan: 'max', fair_images: MAX_FAIR_DAILY_IMAGES }), 'asr', 'user')).toBeNull();
-    expect(gate(row({ plan: 'pro', balance_mb: 50, fair_images: 99, fair_ktok: 9999 }), 'image', 'user')).toBeNull();
+  it('Max 过线降速不拦（D-220）：聊天 3000 千 token 起隔 15 秒、6000 起隔 60 秒；生图 31 张起 5 分钟一张、61 张起当天停', () => {
+    const max = (over: Partial<WalletRow>) => row({ plan: 'max', ...over });
+    expect(gate(max({ fair_ktok: 99999 }), 'chat', 'user')).toBeNull();
+    expect(slowLaneOf(max({ fair_ktok: 2999 }), 'chat', 'user')).toBeNull();
+    expect(slowLaneOf(max({ fair_ktok: 3000 }), 'chat', 'user')).toMatchObject({ lane: 'chat', gapSec: 15 });
+    expect(slowLaneOf(max({ fair_ktok: 6000 }), 'vision', 'user')).toMatchObject({ lane: 'chat', gapSec: 60 });
+    expect(slowLaneOf(max({ fair_images: MAX_SLOW_IMAGES - 1 }), 'image', 'user')).toBeNull();
+    expect(slowLaneOf(max({ fair_images: MAX_SLOW_IMAGES }), 'image', 'user')).toMatchObject({ lane: 'image', gapSec: MAX_IMAGE_GAP_SEC });
+    expect(gate(max({ fair_images: MAX_DAILY_IMAGES - 1 }), 'image', 'user')).toBeNull();
+    expect(gate(max({ fair_images: MAX_DAILY_IMAGES }), 'image', 'user')).toBe('fair');
+    // 只管 Max 她发起的：平台出的、别的档、识别与 TA 的声音都不降速
+    expect(slowLaneOf(max({ fair_ktok: 9999 }), 'chat', 'house')).toBeNull();
+    expect(slowLaneOf(max({ fair_ktok: 9999 }), 'asr', 'user')).toBeNull();
+    expect(slowLaneOf(row({ plan: 'pro', balance_mb: 50, fair_ktok: 9999, fair_images: 99 }), 'image', 'user')).toBeNull();
+    expect(gate(row({ plan: 'pro', balance_mb: 50, fair_images: 99 }), 'image', 'user')).toBeNull();
   });
 
   it('TA 的语音看语音时长：Free 没有，送的通话只能打电话', () => {

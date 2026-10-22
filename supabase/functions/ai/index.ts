@@ -30,6 +30,7 @@ import {
   estimateSpeechSeconds,
   estimateTokens,
   gateReason,
+  slowLaneOf,
   mbFor,
   sqlEconomy,
   TRAFFIC_PACKS,
@@ -381,6 +382,15 @@ async function gate(user: string, tz: string | null, service: string, body: Rec,
   const view = walletView(w, BILLING_LIVE);
   const reason = gateReason(w, view, kind, billing);
   if (reason) return json({ error: 'blocked', reason }, 402, view);
+  // Max 过线降速（D-220）：领一个号，没轮到就先等；要等太久的不等，让她过会儿再来
+  const lane = slowLaneOf(w, kind, billing);
+  if (lane) {
+    const { data, error } = await admin.rpc('wallet_slow_slot', { p_user: user, p_lane: lane.lane, p_gap: lane.gapSec, p_max_wait: lane.maxWaitSec });
+    if (error) throw new Error(`wallet_slow_slot: ${error.message}`);
+    const wait = Number(data);
+    if (wait < 0) return json({ error: 'blocked', reason: lane.lane === 'image' ? 'slow' : 'busy' }, 402, view);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait * 1000));
+  }
   return { user, tz, kind, billing, service, body };
 }
 

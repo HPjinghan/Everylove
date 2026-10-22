@@ -907,6 +907,8 @@ const en: Record<string, string> = {
   '登录后可以购买': 'Sign in to purchase',
   '下个版本开放': 'Coming in the next version',
   '今天先到这里，明天再来': 'That\'s enough for today. Come back tomorrow',
+  '照片还在冲洗，过几分钟再拍': 'Still developing. Try again in a few minutes',
+  'TA 这会儿忙，等一下再说': 'Busy right now. Try again in a moment',
   // __EN_END__
 };
 
@@ -1786,6 +1788,8 @@ const ja: Record<string, string> = {
   '登录后可以购买': 'ログインすると購入できます',
   '下个版本开放': '次のバージョンで対応',
   '今天先到这里，明天再来': '今日はここまで。また明日',
+  '照片还在冲洗，过几分钟再拍': 'まだ現像中。数分後にもう一度どうぞ',
+  'TA 这会儿忙，等一下再说': '今ちょっと手が離せないみたい。少し待ってね',
   // __JA_END__
 };
 
@@ -2659,6 +2663,8 @@ const ko: Record<string, string> = {
   '登录后可以购买': '로그인하면 구매할 수 있어요',
   '下个版本开放': '다음 버전에서 열려요',
   '今天先到这里，明天再来': '오늘은 여기까지, 내일 또 와요',
+  '照片还在冲洗，过几分钟再拍': '아직 인화 중이에요. 몇 분 뒤에 다시 찍어요',
+  'TA 这会儿忙，等一下再说': '지금 좀 바쁜가 봐요. 잠시 후에 다시 말해요',
   // __KO_END__
 };
 
