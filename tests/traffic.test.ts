@@ -71,7 +71,7 @@ describe('换算', () => {
     expect(mbForUsage({ kind: 'chat', provider: 'fake', inputTokens: 1000 })).toBe(1);
     expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 1 })).toBe(IMAGE_MB);
     expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 2 })).toBe(IMAGE_MB * 2);
-    expect(mbForUsage({ kind: 'image', provider: 'musesteamer', outputTokens: 2000 })).toBe(6);
+    expect(mbForUsage({ kind: 'image', provider: 'musesteamer', outputTokens: 2000 })).toBe(IMAGE_MB);
     expect(mbForUsage({ kind: 'tts', provider: 'baidu', chars: 400 })).toBe(0);
     expect(mbForUsage({ kind: 'asr', provider: 'baidu', seconds: 30 })).toBe(0.5);
     expect(mbForUsage({ kind: 'vision', provider: 'x' })).toBe(3);
@@ -93,8 +93,8 @@ describe('换算', () => {
     expect(available({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 100 }, 'max', NOW)).toBe(Infinity);
     expect(trafficAfterUse({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 100 }, 5, 'max', NOW).charged).toBe(0);
     expect(freeLeft({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 100 }, NOW + DAY)).toBe(DAILY_FREE_MB);
-    expect(mb(1240)).toBe('1,240 MB');
-    expect(mb(3.08)).toBe('3.1 MB');
+    expect(mb(1240)).toBe('1,240 RB');
+    expect(mb(3.08)).toBe('3.1 RB');
     expect(mb(Infinity)).toBe('∞');
   });
 

@@ -399,7 +399,7 @@ export interface DailyFortune {
   text: string;
 }
 
-/** 流量流水（D-134）：每一笔用量折了多少 MB */
+/** 流量流水（D-134）：每一笔用量折了多少 RB（字段名沿用 mb，D-219） */
 export interface TrafficEntry {
   id: string;
   at: number;

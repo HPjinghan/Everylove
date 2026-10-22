@@ -310,6 +310,8 @@ async function chargeAfter(m: Meter, data: unknown): Promise<WalletView | null> 
     let houseKtok = 0;
     let houseImages = 0;
     let houseTts = 0;
+    let fairKtok = 0;
+    let fairImages = 0;
     let tokens: number | undefined;
     let estimated = false;
     if (m.kind === 'chat' || m.kind === 'vision') {
@@ -321,13 +323,18 @@ async function chargeAfter(m: Meter, data: unknown): Promise<WalletView | null> 
         const d = data as Rec | null;
         tokens = estimateTokens(JSON.stringify(m.body.system ?? '') + JSON.stringify(m.body.messages ?? '')) + estimateTokens(JSON.stringify(d?.content ?? d?.choices ?? ''));
       }
-      if (m.billing === 'user') mb = mbFor({ kind: m.kind, tokens });
-      else if (m.billing === 'house') houseKtok = tokens / 1000;
+      if (m.billing === 'user') {
+        mb = mbFor({ kind: m.kind, tokens });
+        fairKtok = tokens / 1000;
+      } else if (m.billing === 'house') houseKtok = tokens / 1000;
     } else if (m.kind === 'image') {
-      const images = u.generated_images && u.generated_images > 0 ? u.generated_images : u.output_tokens || u.total_tokens ? undefined : 1;
+      // D-219：一律按张（n 固定 1；上游报了张数就用它）
+      const images = u.generated_images && u.generated_images > 0 ? u.generated_images : 1;
       estimated = !usage;
-      if (m.billing === 'user') mb = mbFor({ kind: 'image', images, outputTokens: u.output_tokens ?? u.total_tokens });
-      else if (m.billing === 'house') houseImages = images ?? 1;
+      if (m.billing === 'user') {
+        mb = mbFor({ kind: 'image', images });
+        fairImages = images;
+      } else if (m.billing === 'house') houseImages = images;
     } else if (m.kind === 'asr') {
       // 16 kHz 16 bit 单声道 ≈ 32 KB / 秒；百度带 len（字节），其余按 base64 长度折
       const bytes = typeof m.body.len === 'number' ? m.body.len : (String(m.body.speech ?? m.body.audio_base64 ?? '').length * 3) / 4;
@@ -348,6 +355,8 @@ async function chargeAfter(m: Meter, data: unknown): Promise<WalletView | null> 
       p_house_ktok: houseKtok,
       p_house_images: houseImages,
       p_house_tts: houseTts,
+      p_fair_ktok: fairKtok,
+      p_fair_images: fairImages,
       p_entry: mb > 0 ? { kind: m.kind, tokens, provider: m.service, estimated } : null,
     });
     return walletView(w, BILLING_LIVE);

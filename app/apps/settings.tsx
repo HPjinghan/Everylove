@@ -556,7 +556,7 @@ export default function MeScreen() {
         {__DEV__ ? (
           <Section title="开发者">
           <Row
-            label={t('GM：加 1000 MB')}
+            label={t('GM：加 1000 RB')}
             value={mb(traffic.balance)}
             numeric
             onPress={() => void viaServer(() => gmGrant('traffic'))}

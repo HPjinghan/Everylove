@@ -2,13 +2,14 @@
  * 流量 / 语音时长 / 订阅的数值与算法（D-132 → D-210 → D-217）——**唯一来源**：
  * 服务端代理（supabase/functions/ai）按它扣账，客户端（lib/traffic.ts）按它显示与预判，两边 import 同一个文件。
  * 纯函数、零依赖（Deno 与 Metro 都能直接 import）；改数值只改这里，tests/economy.test.ts 锁住。
+ * 界面上的单位是 RingBit（缩写 RB，D-219）；代码与表里的字段仍叫 mb，1 mb = 1 RB。
  */
 
 export type Plan = 'free' | 'pro' | 'max';
 export type Billing = 'user' | 'house' | 'included';
 export type MeterKind = 'chat' | 'image' | 'vision' | 'asr' | 'tts';
 
-/* ── 流量（MB）── */
+/* ── 流量（RB；字段名沿用 mb）── */
 
 /** 每天免费多少 MB（不累积，按她所在时区的自然日） */
 export const DAILY_FREE_MB = 100;
@@ -17,9 +18,8 @@ export const PLAN_MONTHLY_MB: Record<Plan, number> = { free: 0, pro: 6000, max: 
 export const PLAN_GRANT_PERIOD_DAYS = 30;
 /** 聊天每千 token 折几 MB（D-205：全部文字调用都是 Claude Haiku 5.5） */
 export const CHAT_MB_PER_KTOK = 1;
-export const IMAGE_MB = 15;
-/** 生图模型按 token 计费时（只返回 output_tokens）每千 token 折多少 MB */
-export const IMAGE_MB_PER_KTOK = 3;
+/** 生图一张（D-219：不分画风、不看供应商怎么计费，一律按张） */
+export const IMAGE_MB = 20;
 export const VISION_MB = 3;
 /** 她的语音识别（D-211）：按录音时长折流量 */
 export const ASR_SECONDS_PER_MB = 60;
@@ -46,9 +46,15 @@ export const VOICE_PACKS: { id: string; min: number }[] = [
 /* ── 后台保险丝（平台出的那些每人每天封顶，看不见）── */
 
 export const HOUSE_DAILY_KTOK = 400;
-export const HOUSE_DAILY_IMAGES = 8;
+/** TA 主动发图每天几张（D-219：按订阅档，后台成本里最大的一块） */
+export const HOUSE_DAILY_IMAGES: Record<Plan, number> = { free: 1, pro: 4, max: 8 };
 /** TA 自己发起的语音（主动消息里的语音、音色试听）每天封顶几秒（D-217） */
 export const HOUSE_DAILY_TTS_SEC = 600;
+
+/* ── Max 的合理使用（D-219）：「不限」也有一道看不见的每天上限，正常人碰不到，防脚本刷 ── */
+
+export const MAX_FAIR_DAILY_KTOK = 3000;
+export const MAX_FAIR_DAILY_IMAGES = 30;
 
 /* ── 通话按服务器时钟计（D-217）── */
 
@@ -78,12 +84,11 @@ function isCjk(ch: string): boolean {
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** 一笔用量折多少 MB（TA 的语音按分钟另算，这里是 0） */
-export function mbFor(u: { kind: MeterKind; tokens?: number; images?: number; outputTokens?: number; seconds?: number }): number {
+export function mbFor(u: { kind: MeterKind; tokens?: number; images?: number; seconds?: number }): number {
   switch (u.kind) {
     case 'chat':
       return round2(((u.tokens ?? 0) / 1000) * CHAT_MB_PER_KTOK);
     case 'image':
-      if (u.outputTokens && !u.images) return round2((u.outputTokens / 1000) * IMAGE_MB_PER_KTOK);
       return IMAGE_MB * (u.images ?? 1);
     case 'vision':
       return VISION_MB;
@@ -105,6 +110,9 @@ export interface WalletRow {
   house_ktok: number;
   house_images: number;
   house_tts_sec: number;
+  /** 她发起的用量今天累计（所有档都记，只拿来管 Max 的合理使用） */
+  fair_ktok: number;
+  fair_images: number;
   /** 上一次通话计时（ISO）；null = 没在打电话 */
   call_tick_at: string | null;
 }
@@ -154,15 +162,20 @@ export function trafficLeftOf(v: WalletView): number {
 }
 
 /** 生成前问一声（服务端照这个拦）：返回原因 = 不能花；null = 放行。included 由调用方先确认通话还在 */
-export function gateReason(w: WalletRow, v: WalletView, kind: MeterKind, billing: Billing): 'traffic' | 'voice' | 'house' | null {
+export function gateReason(w: WalletRow, v: WalletView, kind: MeterKind, billing: Billing): 'traffic' | 'voice' | 'house' | 'fair' | null {
   if (billing === 'included') return voiceLeftOf(v, 'call') > 0 ? null : 'voice';
   if (billing === 'house') {
-    if (kind === 'image') return Number(w.house_images) >= HOUSE_DAILY_IMAGES ? 'house' : null;
+    if (kind === 'image') return Number(w.house_images) >= HOUSE_DAILY_IMAGES[w.plan] ? 'house' : null;
     if (kind === 'tts') return Number(w.house_tts_sec) >= HOUSE_DAILY_TTS_SEC ? 'house' : null;
     if (kind === 'asr') return null;
     return Number(w.house_ktok) >= HOUSE_DAILY_KTOK ? 'house' : null;
   }
   if (kind === 'tts') return voiceLeftOf(v, 'message') > 0 ? null : 'voice';
+  if (w.plan === 'max') {
+    if (kind === 'image') return Number(w.fair_images ?? 0) >= MAX_FAIR_DAILY_IMAGES ? 'fair' : null;
+    if (kind === 'chat' || kind === 'vision') return Number(w.fair_ktok ?? 0) >= MAX_FAIR_DAILY_KTOK ? 'fair' : null;
+    return null;
+  }
   return trafficLeftOf(v) > 0 ? null : 'traffic';
 }
 

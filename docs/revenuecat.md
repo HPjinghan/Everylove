@@ -33,7 +33,7 @@
 ### E3 · 动手前还要开发者 / Harper 给的
 
 - 价格与额度（OPEN_QUESTIONS #30，已在）：Pro / Max 月费、流量包与语音分钟包单价、溢价落在哪。
-- **商品 ID**（原手册第 18 条，一旦提交就改不了；**已定 D-218**）：`ringring.pro.monthly`、`ringring.max.monthly`（自动续期订阅，放同一个订阅群组，升降级由苹果处理）、`ringring.traffic.s` / `.m` / `.l`、`ringring.voice.s` / `.m` / `.l`（消耗型）。ID 里不写数量，入账数只写在服务器商品表 `iap_products`。
+- **商品 ID**（原手册第 18 条，一旦提交就改不了；**已定 D-218**）：`ringring.pro.monthly`、`ringring.max.monthly`（自动续期订阅，放同一个订阅群组，升降级由苹果处理）、`ringring.traffic.s` / `.m` / `.l`、`ringring.voice.s` / `.m` / `.l`（消耗型）。ID 里不写数量，入账数只写在服务器商品表 `iap_products`。App Store Connect 里的显示名用 RingBit 的单位（如「流量 1000 RB」，D-219），不写 MB。
 - **创作者分成要不要按买家实付分**（OPEN_QUESTIONS #38）：要的话原手册 §9 的店面 / 当地价格要在第一笔正式购买之前开始存。
 - 上架市场：日本 + 中文先行之外，欧盟上不上（上的话先申报 DSA 交易者身份）。
 - 后台清单（原手册 §6）：付费 App 协议与税务银行、小企业计划、两把苹果密钥、App Store 服务器通知 V2 指向 RevenueCat、RevenueCat 恢复行为保持默认、Refund Control 先选不回应——这些只有账户持有人能点。

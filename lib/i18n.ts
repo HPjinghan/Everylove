@@ -756,7 +756,7 @@ const en: Record<string, string> = {
   '语音合成': 'Speech',
   '语音识别': 'Transcription',
   '看图': 'Vision',
-  'GM：加 1000 MB': 'GM: +1000 MB',
+  'GM：加 1000 RB': 'GM: +1000 RB',
   // 幸运签 / 钱包（D-138）
   '幸运签': 'Lucky',
   '转盘': 'Wheel',
@@ -906,6 +906,7 @@ const en: Record<string, string> = {
   '恢复购买': 'Restore purchases',
   '登录后可以购买': 'Sign in to purchase',
   '下个版本开放': 'Coming in the next version',
+  '今天先到这里，明天再来': 'That\'s enough for today. Come back tomorrow',
   // __EN_END__
 };
 
@@ -1634,7 +1635,7 @@ const ja: Record<string, string> = {
   '语音合成': '音声合成',
   '语音识别': '音声認識',
   '看图': '画像認識',
-  'GM：加 1000 MB': 'GM：+1000 MB',
+  'GM：加 1000 RB': 'GM：+1000 RB',
   // 幸运签 / 钱包（D-138）
   '幸运签': 'おみくじ',
   '转盘': 'ルーレット',
@@ -1784,6 +1785,7 @@ const ja: Record<string, string> = {
   '恢复购买': '購入を復元',
   '登录后可以购买': 'ログインすると購入できます',
   '下个版本开放': '次のバージョンで対応',
+  '今天先到这里，明天再来': '今日はここまで。また明日',
   // __JA_END__
 };
 
@@ -2506,7 +2508,7 @@ const ko: Record<string, string> = {
   '语音合成': '음성 합성',
   '语音识别': '음성 인식',
   '看图': '이미지 인식',
-  'GM：加 1000 MB': 'GM: +1000 MB',
+  'GM：加 1000 RB': 'GM: +1000 RB',
   // 幸运签 / 钱包（D-138）
   '幸运签': '행운 뽑기',
   '转盘': '룰렛',
@@ -2656,6 +2658,7 @@ const ko: Record<string, string> = {
   '恢复购买': '구매 복원',
   '登录后可以购买': '로그인하면 구매할 수 있어요',
   '下个版本开放': '다음 버전에서 열려요',
+  '今天先到这里，明天再来': '오늘은 여기까지, 내일 또 와요',
   // __KO_END__
 };
 

@@ -13,6 +13,8 @@ import {
   HOUSE_DAILY_IMAGES,
   HOUSE_DAILY_KTOK,
   HOUSE_DAILY_TTS_SEC,
+  MAX_FAIR_DAILY_IMAGES,
+  MAX_FAIR_DAILY_KTOK,
   mbFor,
   sqlEconomy,
   walletView,
@@ -31,6 +33,8 @@ const row = (over: Partial<WalletRow> = {}): WalletRow => ({
   house_ktok: 0,
   house_images: 0,
   house_tts_sec: 0,
+  fair_ktok: 0,
+  fair_images: 0,
   call_tick_at: null,
   ...over,
 });
@@ -53,6 +57,16 @@ describe('生成前的闸门（服务器照它拦）', () => {
     expect(gate(row({ plan: 'max', free_used_mb: 100 }), 'vision', 'user')).toBeNull();
   });
 
+  it('Max 的合理使用（D-219）：每天聊天 3000 千 token、生图 30 张，到顶回 fair；别的档不看这两个数', () => {
+    expect(gate(row({ plan: 'max', fair_ktok: MAX_FAIR_DAILY_KTOK - 1 }), 'chat', 'user')).toBeNull();
+    expect(gate(row({ plan: 'max', fair_ktok: MAX_FAIR_DAILY_KTOK }), 'chat', 'user')).toBe('fair');
+    expect(gate(row({ plan: 'max', fair_ktok: MAX_FAIR_DAILY_KTOK }), 'vision', 'user')).toBe('fair');
+    expect(gate(row({ plan: 'max', fair_ktok: MAX_FAIR_DAILY_KTOK }), 'image', 'user')).toBeNull();
+    expect(gate(row({ plan: 'max', fair_images: MAX_FAIR_DAILY_IMAGES }), 'image', 'user')).toBe('fair');
+    expect(gate(row({ plan: 'max', fair_images: MAX_FAIR_DAILY_IMAGES }), 'asr', 'user')).toBeNull();
+    expect(gate(row({ plan: 'pro', balance_mb: 50, fair_images: 99, fair_ktok: 9999 }), 'image', 'user')).toBeNull();
+  });
+
   it('TA 的语音看语音时长：Free 没有，送的通话只能打电话', () => {
     expect(gate(row(), 'tts', 'user')).toBe('voice');
     expect(gate(row({ voice_pack_sec: 60 }), 'tts', 'user')).toBeNull();
@@ -64,7 +78,12 @@ describe('生成前的闸门（服务器照它拦）', () => {
   it('平台出的只受保险丝管', () => {
     expect(gate(row({ free_used_mb: 100 }), 'chat', 'house')).toBeNull();
     expect(gate(row({ house_ktok: HOUSE_DAILY_KTOK }), 'chat', 'house')).toBe('house');
-    expect(gate(row({ house_images: HOUSE_DAILY_IMAGES }), 'image', 'house')).toBe('house');
+    expect(gate(row({ house_images: HOUSE_DAILY_IMAGES.free }), 'image', 'house')).toBe('house');
+    // TA 主动发图按档位（D-219）：Free 1 / Pro 4 / Max 8
+    expect(gate(row({ plan: 'pro', house_images: 1 }), 'image', 'house')).toBeNull();
+    expect(gate(row({ plan: 'pro', house_images: 4 }), 'image', 'house')).toBe('house');
+    expect(gate(row({ plan: 'max', house_images: 7 }), 'image', 'house')).toBeNull();
+    expect(gate(row({ plan: 'max', house_images: 8 }), 'image', 'house')).toBe('house');
     expect(gate(row({ house_tts_sec: HOUSE_DAILY_TTS_SEC }), 'tts', 'house')).toBe('house');
     expect(gate(row({ house_ktok: HOUSE_DAILY_KTOK }), 'asr', 'house')).toBeNull();
   });
@@ -77,11 +96,11 @@ describe('生成前的闸门（服务器照它拦）', () => {
 });
 
 describe('换算：客户端与服务端同一个 mbFor', () => {
-  it('聊天按 token、生图按张或 token、看图按件、识别按秒、TA 的语音不折流量', () => {
+  it('聊天按 token、生图一律按张（20）、看图按件、识别按秒、TA 的语音不折流量', () => {
     expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 1500, outputTokens: 500 })).toBe(mbFor({ kind: 'chat', tokens: 2000 }));
     expect(mbFor({ kind: 'chat', tokens: 2000 })).toBe(2);
-    expect(mbFor({ kind: 'image', images: 2 })).toBe(30);
-    expect(mbFor({ kind: 'image', outputTokens: 4000 })).toBe(12);
+    expect(mbFor({ kind: 'image', images: 2 })).toBe(40);
+    expect(mbFor({ kind: 'image' })).toBe(20);
     expect(mbFor({ kind: 'vision' })).toBe(3);
     expect(mbFor({ kind: 'asr', seconds: 1 })).toBe(0.1);
     expect(mbFor({ kind: 'asr', seconds: 90 })).toBe(1.5);

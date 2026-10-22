@@ -77,10 +77,10 @@ async function generateImage(prompt: string, subdir = 'portraits', model: string
   }
   const url = data.data?.[0]?.url;
   if (!url) throw new Error('no image url');
-  // 真实用量（D-134）：API 返回了张数 / token 就按它，否则按 1 张
+  // 一律按张（D-219）：API 报了张数就用它，否则 1 张
   const u = data.usage;
-  const images = u?.generated_images && u.generated_images > 0 ? u.generated_images : u?.output_tokens || u?.total_tokens ? undefined : 1;
-  reportUsage({ kind: 'image', provider: model, images, outputTokens: u?.output_tokens ?? u?.total_tokens, billing, estimated: !u, metered: !key });
+  const images = u?.generated_images && u.generated_images > 0 ? u.generated_images : 1;
+  reportUsage({ kind: 'image', provider: model, images, billing, estimated: !u, metered: !key });
   return downloadTo(url, subdir, uid('img'));
 }
 

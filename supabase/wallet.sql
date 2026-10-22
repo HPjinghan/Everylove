@@ -47,6 +47,9 @@ create table if not exists public.wallet_ledger (
 );
 alter table public.wallets add column if not exists plan_source text not null default 'sim' check (plan_source in ('sim', 'iap'));
 alter table public.wallets add column if not exists plan_expires_at timestamptz;
+-- 她发起的用量今天累计（D-219：只拿来管 Max 的合理使用，所有档都记）
+alter table public.wallets add column if not exists fair_ktok numeric not null default 0;
+alter table public.wallets add column if not exists fair_images integer not null default 0;
 -- 内购入账 / 退款扣回 / 撤销退款各自的幂等键（D-218：iap:<商店>:<交易号>[:refund:n | :reinstate:n]）
 alter table public.wallet_ledger add column if not exists idem text unique;
 create index if not exists wallet_ledger_user_at on public.wallet_ledger (user_id, at desc);
@@ -67,6 +70,7 @@ returns void language sql security definer set search_path = public as $$
     plan = w.plan, plan_grant_at = w.plan_grant_at, plan_source = w.plan_source, plan_expires_at = w.plan_expires_at, balance_mb = w.balance_mb, debt_mb = w.debt_mb,
     day = w.day, free_used_mb = w.free_used_mb, voice_used_sec = w.voice_used_sec,
     house_ktok = w.house_ktok, house_images = w.house_images, house_tts_sec = w.house_tts_sec,
+    fair_ktok = w.fair_ktok, fair_images = w.fair_images,
     voice_pack_sec = w.voice_pack_sec, call_bonus_sec = w.call_bonus_sec, call_tick_at = w.call_tick_at,
     tz = w.tz, tz_changed_at = w.tz_changed_at, imported = w.imported, updated_at = now()
   where user_id = w.user_id;
@@ -104,6 +108,8 @@ begin
     w.house_ktok := 0;
     w.house_images := 0;
     w.house_tts_sec := 0;
+    w.fair_ktok := 0;
+    w.fair_images := 0;
   end if;
   -- Pro 每 30 天发一笔（最多补 2 笔）；Max 不限不发；Free 不发
   if w.plan = 'pro' and monthly > 0 then
@@ -145,12 +151,15 @@ begin
   return w;
 end $$;
 
--- 一次生成之后记账：她的流量（先今天免费的、再余额，Max 不扣）/ TA 的语音秒数 / 后台保险丝；p_entry 有就记一行流水
+-- 一次生成之后记账：她的流量（先今天免费的、再余额，Max 不扣）/ TA 的语音秒数 / 后台保险丝 / 合理使用计数；p_entry 有就记一行流水
+-- D-219 加了两个带默认值的参数：先删旧签名再建（同一次执行里），没升级的代理按名字传参照样能调
+drop function if exists public.wallet_charge(uuid, text, jsonb, numeric, numeric, text, numeric, integer, numeric, jsonb);
 create or replace function public.wallet_charge(
   p_user uuid, p_tz text, p_c jsonb,
   p_mb numeric, p_voice_sec numeric, p_voice_use text,
   p_house_ktok numeric, p_house_images integer, p_house_tts numeric,
-  p_entry jsonb
+  p_entry jsonb,
+  p_fair_ktok numeric default 0, p_fair_images integer default 0
 ) returns public.wallets language plpgsql security definer set search_path = public as $$
 declare
   w public.wallets := public.wallet_open(p_user, p_tz, p_c);
@@ -169,6 +178,8 @@ begin
   w.house_ktok := w.house_ktok + coalesce(p_house_ktok, 0);
   w.house_images := w.house_images + coalesce(p_house_images, 0);
   w.house_tts_sec := w.house_tts_sec + coalesce(p_house_tts, 0);
+  w.fair_ktok := w.fair_ktok + coalesce(p_fair_ktok, 0);
+  w.fair_images := w.fair_images + coalesce(p_fair_images, 0);
   perform public._wallet_save(w);
   if p_entry is not null then
     insert into public.wallet_ledger (user_id, kind, mb, charged_mb, tokens, provider, estimated)
@@ -260,7 +271,7 @@ begin
     'public.wallet_open(uuid, text, jsonb)',
     'public._wallet_voice(public.wallets, numeric, text, jsonb)',
     'public._wallet_switch_plan(public.wallets, text, jsonb)',
-    'public.wallet_charge(uuid, text, jsonb, numeric, numeric, text, numeric, integer, numeric, jsonb)',
+    'public.wallet_charge(uuid, text, jsonb, numeric, numeric, text, numeric, integer, numeric, jsonb, numeric, integer)',
     'public.wallet_call_tick(uuid, text, jsonb, boolean)',
     'public.wallet_grant(uuid, text, jsonb, numeric, numeric, text, text)',
     'public.wallet_import(uuid, text, jsonb, text, numeric, numeric, numeric)'
