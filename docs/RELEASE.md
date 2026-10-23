@@ -30,7 +30,7 @@
 - **Apple Team = BIIBIT LIMITED**（Team ID `VBX2VT55M4`，已写进 `eas.json` 的 `appleTeamId`；账户持有人 Yunjia Guo）。之前在 Kotoko 的组织账号下（`com.kotoko.everylove` / ascAppId `6808620565`，构建号 8 为止），那条记录不再用。
 - **开发者后台已手动建好**：App Group `group.com.biibit.ringring`；App ID `com.biibit.ringring`（App Groups → 上面那个组、Push Notifications、Sign in with Apple）；App ID `com.biibit.ringring.share-extension`（App Groups → 同一个组）。能力先在网页上开好，EAS 只需要做证书和描述文件。
 - **App Store Connect 记录**：编号 `6824664796`（已写进 `eas.json`），名称暂为 `ringring: pocket lover AI`（`ringring: pocket lover` 被 Kotoko 那条占着，Apple 比较名字忽略空格和标点；旧记录改名 / 删掉后在「App 信息」里改回），主要语言英语（美国），SKU `everylove`，**有限访问权限**，公司名称 BIIBIT LIMITED。
-- **App Store Connect API Key 还没有**：要账户持有人先在「用户和访问 → 集成 → App Store Connect API」点「请求访问」，开通后管理员才能生成 Key。在那之前 build / submit 走交互式 Apple 登录（2FA）。有了 Key 存进 EAS（`eas credentials` → App Store Connect API Key），之后就能无人值守。
+- **App Store Connect API Key 还没有**：要账户持有人先在「用户和访问 → 集成 → App Store Connect API」点「请求访问」，开通后管理员才能生成 Key。在那之前 build 走交互式 Apple 登录（2FA）；**submit 要用 App 专用密码**：Expo 账号里存着一把 Kotoko 团队的 Key，不设的话 submit 会拿它去传、报「app 6824664796 was not found」。做法是在 account.apple.com →「登录与安全 → App 专用密码」生成一个，然后在同一个终端里先设 `$env:EXPO_APPLE_ID` 和 `$env:EXPO_APPLE_APP_SPECIFIC_PASSWORD` 再 submit（2026-10-23 构建号 1 这样传成功）。有了 Key 存进 EAS（`eas credentials` → App Store Connect API Key），之后就能无人值守。
 - 推送密钥**没有生成**（本机通知用不着，做远程推送时 `eas credentials` 补，不用重新 build）。
 - EAS production 环境变量：`EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY`（Expo 项目没换，原样可用）；Supabase Apple provider 的 Client IDs 要含 `com.biibit.ringring`。
 - Supabase Auth 已开 **Anonymous sign-ins**（D-088）：分发包没本地 key，游客靠匿名会话走服务端代理；关掉它 = 没登录的人聊不了。
