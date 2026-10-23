@@ -15,7 +15,7 @@ import { sendCard, type TurnUi } from '@/core/turn';
 import { BONDED_CHAT } from '@/features/prompts';
 import { ClaimRedPacket } from '@/features/wallet';
 import { money } from '@/lib/format';
-import { t } from '@/lib/i18n';
+import { getLang, t } from '@/lib/i18n';
 import { useAppStore } from '@/store/app-store';
 
 /* ── prompt：常驻一条红包规则（之前没拆的聊到了也能拆） ── */
@@ -50,7 +50,8 @@ cardKinds.register({
       : `(She sent you a red packet of ${c.title}${c.subtitle ? `, with the note "${c.subtitle}"` : ''}${c.claimed ? '; you opened it' : c.declined ? "; you didn't open it" : ''})`,
   render: (c) => (
     <View style={styles.red}>
-      <Text style={styles.kicker}>🧧 {t('红包')}</Text>
+      {/* 外语界面叫「转账」（D-223），🧧 只留给中文 */}
+      <Text style={styles.kicker}>{getLang() === 'zh' ? '🧧 ' : ''}{t('红包')}</Text>
       <Text style={styles.amount}>{c.title}</Text>
       {c.subtitle ? <Text style={styles.note}>{c.subtitle}</Text> : null}
       {c.fromHim && c.msgId && c.bondId ? (

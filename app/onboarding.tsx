@@ -38,11 +38,12 @@ const LANGS: { key: Lang; label: string }[] = [
   { key: 'ko', label: '한국어' },
 ];
 
+/** 口味选项：「偏好::」语境键（D-223）——中文与性别选项同字，外语另译（Men / Women 而不是 Male / Female） */
 const PREFS: { key: LovePref; label: string }[] = [
-  { key: 'male', label: '男生' },
-  { key: 'female', label: '女生' },
-  { key: 'any', label: '都可以' },
-  { key: 'nonhuman', label: '非人类' },
+  { key: 'male', label: '偏好::男生' },
+  { key: 'female', label: '偏好::女生' },
+  { key: 'any', label: '偏好::都可以' },
+  { key: 'nonhuman', label: '偏好::非人类' },
 ];
 
 const GENDERS: { key: NonNullable<UserProfile['gender']>; label: string }[] = [
@@ -67,7 +68,7 @@ export default function OnboardingScreen() {
   if (step === 'lang') {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 80, paddingBottom: insets.bottom }]}>
-        <Text style={styles.title}>选择语言{'\n'}Language · 言語</Text>
+        <Text style={styles.title}>Language · 言語 · 언어</Text>
         <View style={styles.options}>
           {LANGS.map((l) => (
             <Button

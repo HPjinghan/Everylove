@@ -5,6 +5,7 @@
  */
 
 import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
@@ -23,12 +24,17 @@ const LATIN = /^[\x20-\x7E]*$/;
 function preview(b: Bond): string {
   const last = b.messages[b.messages.length - 1];
   if (!last) return '……';
-  if (last.recalled) return last.from === 'me' ? t('你撤回了一条消息') : t('对方撤回了一条消息');
+  // 和会话里的撤回占位同一句（D-223）
+  if (last.recalled) return last.from === 'me' ? t('你撤回了一条消息') : t('{name} 撤回了一条消息', { name: b.name });
   if (last.kind === 'voice') return t('▶ 语音消息');
   if (last.kind === 'image') return t('[照片]');
   if (last.kind === 'card') return (last.from === 'me' ? t('你：') : '') + (last.card?.title ?? '');
   if (last.kind === 'system') return last.text;
   return (last.from === 'me' ? t('你：') : '') + last.text;
+}
+
+function lastAt(b: Bond): number {
+  return b.messages[b.messages.length - 1]?.at ?? b.createdAt;
 }
 
 function timeLabel(b: Bond): string {
@@ -41,9 +47,11 @@ function timeLabel(b: Bond): string {
 export default function MessagesScreen() {
   const router = useRouter();
   const bonds = useAppStore((s) => s.bonds);
+  // 最近有消息的在最上面（D-223）；没消息的按缔结时间
+  const sorted = useMemo(() => [...bonds].sort((a, b) => lastAt(b) - lastAt(a)), [bonds]);
 
   return (
-    <AppScreen title="Message">
+    <AppScreen title="Messages">
       {bonds.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyHeart}>♡</Text>
@@ -52,7 +60,7 @@ export default function MessagesScreen() {
         </View>
       ) : (
         <FlatList
-          data={bonds}
+          data={sorted}
           keyExtractor={(b) => b.id}
           style={styles.list}
           ItemSeparatorComponent={() => <View style={styles.sep} />}

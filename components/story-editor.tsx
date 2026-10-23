@@ -223,7 +223,7 @@ function ChapterEditor({
       <View style={styles.addRow}>
         <Button label={t('加一段文字')} variant="secondary" size="sm" onPress={() => setBlocks((bs) => [...bs, { type: 'text', text: '' }])} />
         <Button label={t('上传图片')} variant="secondary" size="sm" onPress={upload} />
-        <Button label={t('生图')} variant="secondary" size="sm" onPress={() => setDrawOpen((v) => !v)} />
+        <Button label={t('生成图片')} variant="secondary" size="sm" onPress={() => setDrawOpen((v) => !v)} />
       </View>
       {drawOpen ? (
         <View style={styles.drawBox}>

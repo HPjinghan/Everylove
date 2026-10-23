@@ -1,6 +1,6 @@
 /**
  * 领养流：缔结关系的仪式（交友配对 = 交换联系方式；自创角色 = 确定关系，D-052；D-100 纸面）。
- * 开场 → 给 TA 起名 → 迁移仪式动画 → 直接开聊（开门/推送步已随 D-046 下线；称呼与生日不再问，D-088：
+ * 给 TA 起名（兼确认，D-223 并掉了只有一个按钮的开场）→ 迁移仪式动画 → 直接开聊（开门/推送步已随 D-046 下线；称呼与生日不再问，D-088：
  * TA 叫她的名字 = 她的昵称，生日在「我的身份」里）。
  * 槽位不限（D-210）：缔结不再判定槽位，订阅管流量、语音分钟与「他在」的密度。
  * 纸面：paper 底 + 菱格；居中头像 84、标题 22、主按钮 Button、「再想想」13 muted；无阴影。
@@ -27,7 +27,6 @@ import { Button } from '@/components/button';
 import { CharAvatar } from '@/components/char-avatar';
 import { Input } from '@/components/input';
 import { DiamondBackground } from '@/components/paper-bg';
-import { showToast } from '@/components/toast';
 import { Romance, themed } from '@/constants/theme';
 import { authConfigured, signedInSession } from '@/lib/auth';
 import { generateCharacterLines } from '@/lib/character-lines';
@@ -36,7 +35,8 @@ import { requestNotificationPermission } from '@/lib/notifications';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 import { Shape, Type } from '@/constants/design';
 
-type Step = 'slot' | 'names' | 'ceremony';
+/** 两步（D-223）：起名（兼确认）→ 仪式。原「开始缔结」那一步只剩标题 + 按钮（槽位 D-210 起不限），已并掉 */
+type Step = 'names' | 'ceremony';
 
 export default function AdoptScreen() {
   const { characterId } = useLocalSearchParams<{ characterId: string }>();
@@ -44,7 +44,7 @@ export default function AdoptScreen() {
   const router = useRouter();
   const character = findCharacter(characterId);
 
-  const [step, setStep] = useState<Step>('slot');
+  const [step, setStep] = useState<Step>('names');
   const [hisName, setHisName] = useState(character?.name ?? '');
   // 缔结去重（D-122）：写台词要等网络几秒，这期间连点「去看看你们的手机」曾造出同一 TA 的十段羁绊——ref 同步上锁，进行中直接返回
   const finishing = useRef(false);
@@ -66,8 +66,8 @@ export default function AdoptScreen() {
 
   const finishInner = async () => {
     // 打招呼台词走生成（D-094 / D-116）：创建时已写在角色上；当时没写成的，缔结前再写一次，写不成才用原型兜底
+    // 不提示「在写台词」（D-223）：TA 以真人自居，生成是幕后的事；按钮已同步上锁，等这几秒不会重复缔结
     if (character.custom && !character.lines) {
-      showToast(t('正在给 TA 写台词…'));
       const written = await generateCharacterLines(character);
       if (written) useAppStore.getState().updateCustomCharacter({ ...character, lines: written });
     }
@@ -101,24 +101,11 @@ export default function AdoptScreen() {
             { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 60 },
           ]}
           keyboardShouldPersistTaps="handled">
-          {step === 'slot' && (
-            <View style={styles.center}>
-              <CharAvatar name={character.name} color={character.color} size={84} characterId={character.id} />
-              <Text style={styles.h1}>
-                {character.custom
-                  ? t('和{name}确定关系', { name: character.name })
-                  : t('和{name}交换联系方式', { name: character.name })}
-              </Text>
-              {/* 槽位不限（D-210）：不再判定、不再显示 n/上限 */}
-              <Button label={t('开始缔结')} onPress={() => setStep('names')} style={styles.primaryBtn} />
-              <Pressable onPress={() => router.back()} style={styles.cancelLink} hitSlop={8}>
-                <Text style={styles.cancelLinkText}>{t('再想想')}</Text>
-              </Pressable>
-            </View>
-          )}
-
           {step === 'names' && (
             <View>
+              <View style={styles.center}>
+                <CharAvatar name={character.name} color={character.color} size={84} characterId={character.id} />
+              </View>
               <Text style={styles.h1}>{t('在你的通讯录里，TA 叫——')}</Text>
               <Input
                 style={styles.nameInput}
@@ -127,14 +114,18 @@ export default function AdoptScreen() {
                 placeholder={character.name}
                 maxLength={12}
               />
+              {/* 按钮跟着这条路走：交友配对 = 交换联系方式；自创 = 确定关系（D-052） */}
               <Button
-                label={t('交换')}
+                label={character.custom ? t('确定关系') : t('交换联系方式')}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   setStep('ceremony');
                 }}
                 style={styles.primaryBtn}
               />
+              <Pressable onPress={() => router.back()} style={styles.cancelLink} hitSlop={8}>
+                <Text style={styles.cancelLinkText}>{t('再想想')}</Text>
+              </Pressable>
             </View>
           )}
 

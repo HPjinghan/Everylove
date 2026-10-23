@@ -1,6 +1,8 @@
 /**
  * 我的身份（D-035；D-100 纸面）：TA 眼中的你。
- * - 默认身份：onboarding 时建立的那份，在这里补充完整（头像/昵称/性别/称呼/职业/取向/签名/生日/完整设定）。
+ * - 默认身份：onboarding 时建立的那份，在这里补充完整（头像/昵称/性别/称呼/职业/偏好/签名/生日/完整设定）。
+ *   偏好 = onboarding 那道「更倾向于和什么样的人建立关系？」（store.lovePref，全局、不分角色）；旧的自由文本「情感取向」不再显示，已填的照旧进 prompt。
+ *   各字段占位写举例，不写「可不填」。
  * - 按角色身份：带 characterId 参数进来 = 为这个 TA 定制一份独立身份（初值抄默认），可随时恢复默认。
  * 全部字段除昵称外可空；没填的不进 prompt（content/prompts/shared.ts 的 userProfileBlock）。
  * 界面：头像 84 r6 白底 + accent 首字 30/600（衬线）、「更换头像」12/600 primary；字段同 onboarding（Field + Input + Chip）。
@@ -34,7 +36,7 @@ import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { t } from '@/lib/i18n';
-import type { UserProfile } from '@/lib/types';
+import type { LovePref, UserProfile } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
 const GENDERS: { key: NonNullable<UserProfile['gender']>; label: string }[] = [
@@ -44,10 +46,19 @@ const GENDERS: { key: NonNullable<UserProfile['gender']>; label: string }[] = [
   { key: 'unspecified', label: '不想说' },
 ];
 
-/** 文本字段：Field + Input；numeric = 值是数字（生日）时用 Fredoka */
+/** 和 onboarding「更倾向于和什么样的人建立关系？」同一份选项、同一个值（store.lovePref，也是交友的口味过滤） */
+const PREFS: { key: LovePref; label: string }[] = [
+  { key: 'male', label: '男生' },
+  { key: 'female', label: '女生' },
+  { key: 'any', label: '都可以' },
+  { key: 'nonhuman', label: '非人类' },
+];
+
+/** 文本字段：Field + Input；占位写举例，不写「可不填」；numeric = 值是数字（生日）时用 Fredoka */
 function TextField({
   label,
   hint,
+  required,
   value,
   onChange,
   multiline,
@@ -57,6 +68,7 @@ function TextField({
 }: {
   label: string;
   hint?: string;
+  required?: boolean;
   value: string;
   onChange: (t: string) => void;
   multiline?: boolean;
@@ -65,11 +77,11 @@ function TextField({
   style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <Field label={label} hint={hint} style={style}>
+    <Field label={label} hint={hint} required={required} style={style}>
       <Input
         value={value}
         onChangeText={onChange}
-        placeholder={placeholder ?? t('可不填')}
+        placeholder={placeholder}
         multiline={multiline}
         style={numeric && value ? styles.inputNumeric : undefined}
       />
@@ -90,6 +102,8 @@ export default function IdentityScreen() {
     (characterId ? meByCharacter[characterId] : undefined) ?? me ?? { nickname: '' };
   const [draft, setDraft] = useState<UserProfile>({ ...base });
   const patch = (p: Partial<UserProfile>) => setDraft((d) => ({ ...d, ...p }));
+  // 偏好是全局的（不分角色）：只在默认身份里改，保存时一起写回
+  const [pref, setPref] = useState<LovePref>(() => useAppStore.getState().lovePref ?? 'any');
 
   const pickAvatar = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -113,8 +127,9 @@ export default function IdentityScreen() {
       useAppStore.getState().setMeForCharacter(characterId, clean);
     } else {
       useAppStore.getState().setMe(clean);
+      useAppStore.getState().setLovePref(pref);
     }
-    showAlert(t('已保存'), characterId ? t('{name}眼中的你已更新。', { name: forCharacter?.name ?? 'TA' }) : t('TA 们眼中的你已更新。'));
+    showAlert(t('已保存'), forCharacter ? t('{name}眼中的你已更新。', { name: forCharacter.name }) : t('TA 们眼中的你已更新。'));
     router.back();
   };
 
@@ -139,12 +154,6 @@ export default function IdentityScreen() {
     <AppScreen title={forCharacter ? t('对{name}的身份', { name: forCharacter.name }) : t('我的身份')}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {forCharacter ? (
-            <Text style={styles.scopeHint}>
-              {t('只对{name}生效。', { name: forCharacter.name })}
-            </Text>
-          ) : null}
-
           <Pressable style={styles.avatarWrap} onPress={pickAvatar}>
             {draft.avatarUri ? (
               <Image source={{ uri: draft.avatarUri }} style={styles.avatar} contentFit="cover" />
@@ -157,11 +166,11 @@ export default function IdentityScreen() {
           </Pressable>
 
           <TextField
-            label={t('昵称 *')}
+            label={t('昵称')}
+            required
             hint={t('角色看到的名字')}
             value={draft.nickname}
             onChange={(v) => patch({ nickname: v })}
-            placeholder={t('必填')}
           />
 
           <Field label={t('性别')}>
@@ -189,15 +198,19 @@ export default function IdentityScreen() {
             value={draft.occupation ?? ''}
             onChange={(v) => patch({ occupation: v })}
           />
-          <TextField
-            label={t('情感取向')}
-            hint={t('例如：喜欢女生')}
-            value={draft.orientation ?? ''}
-            onChange={(v) => patch({ orientation: v })}
-          />
+          {/* 取向 = onboarding 那道必选题（同一个值），不再另开一格自由文本；偏好不分角色，单角色身份里不出现 */}
+          {characterId ? null : (
+            <Field label={t('更倾向于和什么样的人建立关系？')}>
+              <View style={styles.chips}>
+                {PREFS.map((p) => (
+                  <Chip key={p.key} label={t(p.label)} selected={pref === p.key} onPress={() => setPref(p.key)} />
+                ))}
+              </View>
+            </Field>
+          )}
           <TextField
             label={t('个性签名')}
-            hint={t('一句现在的状态')}
+            placeholder={t('一句现在的状态')}
             value={draft.signature ?? ''}
             onChange={(v) => patch({ signature: v })}
           />
@@ -208,7 +221,7 @@ export default function IdentityScreen() {
           <Text style={styles.sectionTitle}>{t('完整设定')}</Text>
           <TextField
             label={t('背景')}
-            hint={t('成长背景、家庭或当前生活背景等稳定事实')}
+            placeholder={t('成长背景、家庭或当前生活背景等稳定事实')}
             value={draft.background ?? ''}
             onChange={(v) => patch({ background: v })}
             multiline
@@ -216,14 +229,14 @@ export default function IdentityScreen() {
           />
           <TextField
             label={t('关于我')}
-            hint={t('身份、经历、性格、兴趣……')}
+            placeholder={t('身份、经历、性格、兴趣……')}
             value={draft.about ?? ''}
             onChange={(v) => patch({ about: v })}
             multiline
           />
           <TextField
             label={t('我的边界')}
-            hint={t('不希望角色替你决定、猜测或触碰的内容')}
+            placeholder={t('不希望角色替你决定、猜测或触碰的内容')}
             value={draft.boundaries ?? ''}
             onChange={(v) => patch({ boundaries: v })}
             multiline
@@ -279,16 +292,6 @@ const styles = themed(() =>
     screen: { flex: 1, backgroundColor: Romance.bg },
     // 表单类页面左右留白按设计稿 18
     content: { padding: 18, paddingBottom: 60 },
-    scopeHint: {
-      fontSize: Type.scale.caption.size,
-      color: Romance.accent,
-      backgroundColor: Romance.accentSoft,
-      borderRadius: Shape.radius,
-      paddingHorizontal: Space.cardX,
-      paddingVertical: Space.inline,
-      marginBottom: Space.screen,
-      overflow: 'hidden',
-    },
     avatarWrap: { alignItems: 'center' },
     avatar: { width: 84, height: 84, borderRadius: Shape.radius },
     avatarEmpty: {

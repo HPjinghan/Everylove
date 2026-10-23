@@ -1,5 +1,5 @@
 /**
- * 流量流水（D-134）：每一笔用量——聊天 / 后台生成 / 生图 / 语音合成 / 识别 / 看图——折了多少 MB、哪家、真实还是估算。设置 → 流量 → 流水。
+ * 流量流水（D-134）：每一笔用量——聊天 / 后台生成 / 生图 / 语音合成 / 识别 / 看图——折了多少 RB、真实还是估算。设置 → 流量 → 流水。
  */
 
 import { useRouter } from 'expo-router';
@@ -10,14 +10,16 @@ import { Card } from '@/components/card';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
-import { LOVE_MODELS, mb } from '@/lib/traffic';
+import { mb } from '@/lib/traffic';
 import type { TrafficEntry } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 import { shortDateTime } from '@/lib/format';
 
+/** 只说是哪种用量；供应商 / 模型名 / token 数一律不露（D-198；模型档只剩一档，档名也不显示） */
 const KIND_LABEL: Record<TrafficEntry['kind'], string> = {
   reply: '聊天',
-  task: '后台',
+  // 回合管线里的非即时回合（让 TA 看手机、转给 TA 等）也是她发起的聊天
+  task: '聊天',
   image: '生图',
   tts: '语音合成',
   asr: '语音识别',
@@ -25,12 +27,6 @@ const KIND_LABEL: Record<TrafficEntry['kind'], string> = {
 };
 
 const timeLabel = shortDateTime;
-
-/** 供应商在界面上叫模型档的名字（love-v1 / love-v2），不露千帆 / Anthropic 这类字（D-198）；生图 / 语音的走原名 */
-function providerLabel(id: string): string {
-  const m = Object.values(LOVE_MODELS).find((x) => x.provider === id);
-  return m ? m.label : id;
-}
 
 export default function TrafficLogScreen() {
   const router = useRouter();
@@ -51,12 +47,9 @@ export default function TrafficLogScreen() {
             rows.map((e, i) => (
               <View key={e.id} style={[styles.row, i > 0 && styles.rowLine]}>
                 <View style={styles.rowBody}>
-                  <Text style={styles.rowTitle}>
-                    {t(KIND_LABEL[e.kind])} · {providerLabel(e.provider)}
-                  </Text>
+                  <Text style={styles.rowTitle}>{t(KIND_LABEL[e.kind])}</Text>
                   <Text style={styles.rowSub}>
                     {timeLabel(e.at)}
-                    {e.tokens ? ` · ${e.tokens.toLocaleString('en-US')} tok` : ''}
                     {e.estimated ? ` · ${t('估算')}` : ''}
                   </Text>
                 </View>

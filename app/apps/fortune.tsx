@@ -22,7 +22,7 @@ import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { FORTUNE_TEXTS } from '@/content/fortunes';
 import { money } from '@/lib/format';
 import { haptic } from '@/lib/haptics';
-import { t } from '@/lib/i18n';
+import { getLang, t } from '@/lib/i18n';
 import { drawFortune, fortuneDayKey, FORTUNES, spinWheel, WHEEL_BETS, WHEEL_SLICES } from '@/lib/wallet';
 import { useAppStore } from '@/store/app-store';
 
@@ -46,7 +46,8 @@ export default function FortuneScreen() {
       <ScrollView contentContainerStyle={styles.body}>
         <Card style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>{t('零钱')}</Text>
-          <Text style={styles.balance}>{money(wallet.balance)}</Text>
+          {/* 标签已经叫「零钱」（Coins），这里只写数 */}
+          <Text style={styles.balance}>{Math.round(wallet.balance)}</Text>
         </Card>
         <Segmented<Tab>
           options={[
@@ -98,7 +99,8 @@ function SignTab() {
       const { luck, amount, textIndex } = drawFortune(Math.random(), Math.random(), Math.random(), FORTUNE_TEXTS.great.length);
       const store = useAppStore.getState();
       store.setFortune({ day, luck, amount, text: FORTUNE_TEXTS[luck][textIndex] });
-      store.creditWallet({ amount, kind: 'fortune', note: t('日签 · {luck}', { luck: t(FORTUNES[luck].label) }) });
+      // 账单只存运势键，钱包按当前语言拼标题（app/apps/wallet.tsx entryTitle）
+      store.creditWallet({ amount, kind: 'fortune', note: FORTUNES[luck].label });
       setToday(day);
       setRevealing(false);
       haptic.success();
@@ -126,7 +128,10 @@ function SignTab() {
           }}>
           <Card style={styles.slip}>
             <Text style={styles.slipNo}>No. {slipNumber(fortune.day)}</Text>
-            <Text style={styles.luck}>{t(luckMeta.label)}</Text>
+            {/* 字距只给方块字（大吉 / 大吉 / 대길）；拉丁字母拉开字距会撑破签纸 */}
+            <Text style={[styles.luck, getLang() !== 'en' && styles.luckSpaced]} numberOfLines={1} adjustsFontSizeToFit>
+              {t(luckMeta.label)}
+            </Text>
             <View style={styles.slipRule} />
             <Text style={styles.sign}>{t(fortune.text)}</Text>
             <View style={styles.stamp}>
@@ -194,7 +199,7 @@ function WheelTab({ balance }: { balance: number }) {
     const target = angleRef.current + SPIN_TURNS * 360 + delta + jitter;
     Animated.timing(angle, { toValue: target, duration: SPIN_MS, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(() => {
       angleRef.current = target;
-      useAppStore.getState().creditWallet({ amount: r.net, kind: 'wheel', note: t('转盘 · {mult}', { mult: multLabel(r.mult) }) });
+      useAppStore.getState().creditWallet({ amount: r.net, kind: 'wheel', note: multLabel(r.mult) });
       setLast({ mult: r.mult, net: r.net });
       if (r.net > 0) haptic.success();
       else haptic.warn();
@@ -270,7 +275,8 @@ const styles = themed(() =>
     slip: { alignSelf: 'center', width: 240, alignItems: 'center', paddingVertical: 20, paddingHorizontal: 22, gap: 8 },
     slipNo: { fontFamily: Fonts.label, fontSize: Type.scale.caption.size, letterSpacing: 1, color: Romance.sub },
     slipRule: { alignSelf: 'stretch', height: Shape.stroke, backgroundColor: Romance.stroke, marginVertical: 4 },
-    luck: { fontSize: Type.scale.display.size, fontWeight: '700', color: Romance.ink, letterSpacing: 4 },
+    luck: { fontSize: Type.scale.display.size, fontWeight: '700', color: Romance.ink },
+    luckSpaced: { letterSpacing: 4 },
     sign: { fontSize: Type.scale.sub.size, color: Romance.ink, textAlign: 'center', lineHeight: 21 },
     stamp: {
       alignSelf: 'flex-end',

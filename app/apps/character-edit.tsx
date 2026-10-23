@@ -19,7 +19,6 @@ import { memo, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -27,10 +26,12 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { showAlert } from '@/components/action-sheet';
 import { alertAiUnavailable } from '@/components/ai-unavailable';
 import { AppScreen } from '@/components/app-screen';
+import { BirthdayPicker } from '@/components/birthday-picker';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
@@ -62,7 +63,7 @@ type Tab = 'basic' | 'look' | 'settings' | 'lines' | 'story';
 const TABS: { key: Tab; label: string }[] = [
   { key: 'basic', label: '基础' },
   { key: 'look', label: '形象' },
-  { key: 'settings', label: '设定' },
+  { key: 'settings', label: '细节' },
   { key: 'lines', label: '台词' },
   { key: 'story', label: '传记' },
 ];
@@ -146,9 +147,32 @@ const BUBBLE_STYLES = [
   { key: 'burst', label: '连发', hint: '哈哈哈 · 我知道了 · 下次' },
 ] as const;
 
-/** 生日下拉用：某月的天数（2 月给到 29） */
+/** 解析生日用：某月的天数（2 月给到 29） */
 const daysInMonth = (m: number) => (m === 2 ? 29 : [4, 6, 9, 11].includes(m) ? 30 : 31);
-const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+/** 生日统一成 'MM-DD'（BirthdayPicker 的值格式）；不合法给空串 */
+function normBirthday(s: string | undefined): string {
+  const m = s ? /^(\d{1,2})-(\d{1,2})$/.exec(s) : null;
+  if (!m) return '';
+  const mm = Number(m[1]);
+  const dd = Number(m[2]);
+  if (mm < 1 || mm > 12 || dd < 1 || dd > daysInMonth(mm)) return '';
+  return `${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+}
+
+/**
+ * 身份行（列表 / 交友卡 / 会话顶栏只给一行）：中日文照旧取前 18 字；
+ * 有空格分词的语言（英 / 韩）取第一句、在词边界截断，不截在单词中间。
+ */
+function identityFrom(src: string): string {
+  if (!/\s/.test(src)) return src.slice(0, 18);
+  const first = (src.split(/[.!?。！？\n]/)[0] || src).trim();
+  const max = /[가-힯]/.test(first) ? 20 : 40;
+  if (first.length <= max) return first;
+  const cut = first.slice(0, max);
+  const sp = cut.lastIndexOf(' ');
+  return (sp > max / 3 ? cut.slice(0, sp) : cut).replace(/[\s,;:，、；：—-]+$/, '');
+}
 
 const LOVE_STYLE_LABELS = LOVE_STYLES.map((l) => l.label);
 const MBTI_LIST = [
@@ -168,7 +192,6 @@ type FormInit = {
   editing: Character | null;
   name: string;
   gender: Gender;
-  ageStatus: 'adult' | 'minor';
   visibility: 'private' | 'public';
   look: string;
   story: string;
@@ -181,8 +204,8 @@ type FormInit = {
   chapters: StoryChapter[];
   race: string;
   raceCustom: string;
-  birthMonth: number | null;
-  birthDay: number | null;
+  /** 'MM-DD' 或空串 */
+  birthday: string;
   catchphrase: string;
   likes: string;
   dislikes: string;
@@ -203,7 +226,6 @@ const BLANK_FORM: FormInit = {
   editing: null,
   name: '',
   gender: 'male',
-  ageStatus: 'adult',
   visibility: 'private',
   look: '',
   story: '',
@@ -214,8 +236,7 @@ const BLANK_FORM: FormInit = {
   chapters: [],
   race: '人类',
   raceCustom: '',
-  birthMonth: null,
-  birthDay: null,
+  birthday: '',
   catchphrase: '',
   likes: '',
   dislikes: '',
@@ -240,13 +261,10 @@ function formFor(c: Character): FormInit {
     : RACES.includes(c.race)
       ? { race: c.race, raceCustom: '' }
       : { race: '其他', raceCustom: c.race };
-  const [bm, bd] =
-    c.birthday && /^\d{1,2}-\d{1,2}$/.test(c.birthday) ? c.birthday.split('-').map(Number) : [null, null];
   return {
     editing: c,
     name: c.name,
     gender: c.gender ?? (c.loveTag === 'female' ? 'female' : c.loveTag === 'nonbinary' ? 'nonbinary' : 'male'),
-    ageStatus: 'adult', // 已发布的都确认过成年
     visibility: c.visibility ?? 'private',
     look: c.look ?? '',
     story: c.story ?? '',
@@ -256,8 +274,7 @@ function formFor(c: Character): FormInit {
     voiceId: c.voiceId,
     chapters: c.chapters ?? [],
     ...race,
-    birthMonth: bm,
-    birthDay: bd,
+    birthday: normBirthday(c.birthday),
     catchphrase: c.catchphrase ?? '',
     likes: c.likes ?? '',
     dislikes: c.dislikes ?? '',
@@ -283,13 +300,23 @@ function initialForm(edit?: string): FormInit {
 }
 
 /** 一组台词：一行一条（D-094） */
-function LinesField({ label, value, onChange }: { label: string; value: string[]; onChange: (v: string[]) => void }) {
+function LinesField({
+  label,
+  placeholder,
+  value,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  value: string[];
+  onChange: (v: string[]) => void;
+}) {
   return (
     <Field label={label}>
       <Input
         value={value.join('\n')}
         onChangeText={(text) => onChange(text.split('\n'))}
-        placeholder={t('可不填')}
+        placeholder={placeholder}
         multiline
         maxLength={400}
       />
@@ -349,6 +376,7 @@ export default function CharacterEditScreen() {
 
 function CreateForm({ edit }: { edit?: string }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   // 表单初始值只算一次：新建为空白，edit 进来即回填
   const [init] = useState(() => initialForm(edit));
 
@@ -362,8 +390,7 @@ function CreateForm({ edit }: { edit?: string }) {
   // ── 基础 ──
   const [name, setName] = useState(init.name);
   const [gender, setGender] = useState<Gender>(init.gender);
-  // 年龄状态（D-045）：发布必须确认成年；未成年走加强审查（试装不放行）
-  const [ageStatus, setAgeStatus] = useState<'adult' | 'minor'>(init.ageStatus);
+  // 年龄（D-045 → D-223）：不再给「未成年」选项，发布即确认成年（基础页一行声明），存 adultConfirmed
   // 可见性（D-060）：公开 = 进共享角色池，别人也能滑到；默认私密
   const [visibility, setVisibility] = useState<'private' | 'public'>(init.visibility);
   const [look, setLook] = useState(init.look);
@@ -390,10 +417,8 @@ function CreateForm({ edit }: { edit?: string }) {
   // ── 设定（原「高级」，D-149 起是自己的页签） ──
   const [race, setRace] = useState(init.race);
   const [raceCustom, setRaceCustom] = useState(init.raceCustom);
-  // 生日下拉（D-045）：月 / 日 两级选单
-  const [birthMonth, setBirthMonth] = useState<number | null>(init.birthMonth);
-  const [birthDay, setBirthDay] = useState<number | null>(init.birthDay);
-  const [pickerOpen, setPickerOpen] = useState<null | 'month' | 'day'>(null);
+  // 生日（D-223）：和「我的身份」同一个 BirthdayPicker，值 'MM-DD'
+  const [birthday, setBirthday] = useState(init.birthday);
   const [catchphrase, setCatchphrase] = useState(init.catchphrase);
   const [likes, setLikes] = useState(init.likes);
   const [dislikes, setDislikes] = useState(init.dislikes);
@@ -408,12 +433,15 @@ function CreateForm({ edit }: { edit?: string }) {
   const [secrets, setSecrets] = useState(init.secrets);
   const [chatNotes, setChatNotes] = useState(init.chatNotes);
   const [schedule, setSchedule] = useState(init.schedule);
+  // 细节页签后半段（D-223）：默认收起；编辑时这些项有内容就展开
+  const [moreOpen, setMoreOpen] = useState(
+    () =>
+      init.initiative !== 'mid' ||
+      !!init.bubbleStyle ||
+      !!(init.presetMemories || init.taboos || init.secrets || init.chatNotes || init.schedule)
+  );
 
   const finalRace = race === '其他' ? raceCustom.trim() : race;
-  const birthday =
-    birthMonth && birthDay
-      ? `${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
-      : '';
   const style = loveStyleByLabel(loveStyle);
   // 音色推荐的线索（D-198）：只在这几项变了才换引用，VoicePicker 才不每次击键重画
   const voiceHints = useMemo(() => [loveStyle, race === '其他' ? raceCustom : race], [loveStyle, race, raceCustom]);
@@ -439,13 +467,8 @@ function CreateForm({ edit }: { edit?: string }) {
       else { setRace('其他'); setRaceCustom(r); }
       n++;
     }
-    const bd = s(p.birthday).replace(/[月./]/g, '-').replace(/日/g, '');
-    if (/^\d{1,2}-\d{1,2}$/.test(bd)) {
-      const [bm, bday] = bd.split('-').map(Number);
-      if (bm >= 1 && bm <= 12 && bday >= 1 && bday <= daysInMonth(bm)) {
-        setBirthMonth(bm); setBirthDay(bday); n++;
-      }
-    }
+    const bd = normBirthday(s(p.birthday).replace(/[月./]/g, '-').replace(/日/g, ''));
+    if (bd) { setBirthday(bd); n++; }
     if (s(p.catchphrase)) { setCatchphrase(s(p.catchphrase).slice(0, 20)); n++; }
     if (s(p.likes)) { setLikes(s(p.likes).slice(0, 40)); n++; }
     if (s(p.dislikes)) { setDislikes(s(p.dislikes).slice(0, 40)); n++; }
@@ -460,6 +483,10 @@ function CreateForm({ edit }: { edit?: string }) {
     if (s(p.taboos)) { setTaboos(s(p.taboos).slice(0, 120)); n++; }
     if (s(p.presetMemories)) { setPresetMemories(s(p.presetMemories).slice(0, 200)); n++; }
     if (s(p.secrets)) { setSecrets(s(p.secrets).slice(0, 300)); n++; }
+    // 收起区里的项被填上了就展开，免得填了看不见
+    if (s(p.chatNotes) || s(p.schedule) || s(p.taboos) || s(p.presetMemories) || s(p.secrets) || (init && init !== 'mid')) {
+      setMoreOpen(true);
+    }
     return n;
   };
 
@@ -484,9 +511,10 @@ function CreateForm({ edit }: { edit?: string }) {
     const n = applyParsed(parsed ?? heuristicParse(text));
     setParsing(false);
     const body = n ? t('填好了 {n} 项。往下检查一下，每一项都还能改。', { n }) : t('已把描述放进背景故事，其他项可以手动补。');
+    // 失败原因只在开发构建露出（文案纪律 #6）
     showAlert(
-      aiError ? t('模型解析失败，已用规则解析') : n ? t('解析好了') : t('没读出结构化的字段'),
-      aiError ? `${body}\n\n${t('原因：{reason}', { reason: aiError })}` : body
+      aiError ? t('先按格式读了一遍') : n ? t('解析好了') : t('没读出结构化的字段'),
+      aiError && __DEV__ ? `${body}\n\n${t('原因：{reason}', { reason: aiError })}` : body
     );
   };
 
@@ -505,7 +533,7 @@ function CreateForm({ edit }: { edit?: string }) {
       loveTag: gender === 'nonbinary' ? 'nonbinary' : gender,
       gender,
       styleLabel: style?.label ?? t('自创'),
-      identity: identitySrc ? identitySrc.slice(0, 18) : t('你亲手捏出来的 TA'),
+      identity: identitySrc ? identityFrom(identitySrc) : t('你亲手捏出来的 TA'),
       look: look.trim() || undefined,
       pronoun: g.pronoun,
       story: story.trim() || undefined,
@@ -518,7 +546,7 @@ function CreateForm({ edit }: { edit?: string }) {
       mbti,
       chatNotes: chatNotes.trim() || undefined,
       schedule: schedule.trim() || undefined,
-      adultConfirmed: ageStatus === 'adult' ? true : undefined,
+      adultConfirmed: true,
       visibility,
       initiative,
       bubbleStyle,
@@ -530,7 +558,8 @@ function CreateForm({ edit }: { edit?: string }) {
       // 传记（D-149）：空章节不落字段
       chapters: chapters.length ? chapters : undefined,
       offerAfterTurns: offerTurns,
-      hook: style ? style.desc.split('；')[0] : t('TA 在等一个点开 TA 的人。'),
+      // 一句钩子（交友卡 / 资料页）：取恋爱类型说明的第一分句，按创建时的界面语言存（D-223）
+      hook: style ? t(style.desc).split(/[；;]/)[0].trim() : t('TA 在等一个点开 TA 的人。'),
       intro: t('……你捏出来的 TA，正在看你。'),
       tags: [t('自创'), ...(style ? [style.label] : []), ...(finalRace && finalRace !== '人类' ? [finalRace] : [])].slice(0, 3),
       adoptedCount: 0,
@@ -574,9 +603,12 @@ function CreateForm({ edit }: { edit?: string }) {
       setPortraitUri(await generatePortraitFor(draft));
     } catch (e) {
       console.warn('[create] 立绘生成失败：', e);
+      // 形象必选、没有「跳过」这条路；原因只在开发构建露出
       showAlert(
         t('立绘没画出来'),
-        `${t('网络或生图服务出了点问题，可以再试一次，或先跳过（醒来后会在后台补画）。')}\n\n${t('原因：{reason}', { reason: describeAiError(e) })}`
+        __DEV__
+          ? `${t('生图服务出了点问题，可以再试一次。')}\n\n${t('原因：{reason}', { reason: describeAiError(e) })}`
+          : t('生图服务出了点问题，可以再试一次。')
       );
     } finally {
       setGenerating(false);
@@ -662,11 +694,11 @@ function CreateForm({ edit }: { edit?: string }) {
 
   const resetForm = () => {
     setDesc(''); setName(''); setLook(''); setStory(''); setPortraitUri(undefined); setArtStyle(DEFAULT_PORTRAIT_STYLE);
-    setAgeStatus('adult'); setVisibility('private'); setRace('人类'); setRaceCustom('');
-    setBirthMonth(null); setBirthDay(null); setCatchphrase('');
+    setVisibility('private'); setRace('人类'); setRaceCustom('');
+    setBirthday(''); setCatchphrase('');
     setLikes(''); setDislikes(''); setOfferTurns(4); setLoveStyle(undefined);
-    setMbti(undefined); setInitiative('mid'); setPresetMemories(''); setTaboos(''); setSecrets('');
-    setChatNotes(''); setSchedule(''); setLines(null); setChapters([]); setTab('basic');
+    setMbti(undefined); setInitiative('mid'); setBubbleStyle(undefined); setPresetMemories(''); setTaboos(''); setSecrets('');
+    setChatNotes(''); setSchedule(''); setLines(null); setChapters([]); setMoreOpen(false); setTab('basic');
   };
 
   /** 编辑时让 TA 按当前表单重写一遍台词（D-094）；写不成保留原来的 */
@@ -685,13 +717,11 @@ function CreateForm({ edit }: { edit?: string }) {
     ? editing
       ? t('保存中…')
       : t('正在给 TA 写台词…')
-    : ageStatus === 'minor'
-      ? t('未成年角色暂不能发布')
-      : !portraitUri
-        ? t('先给 TA 一个形象')
-        : editing
-          ? t('保存修改')
-          : t('让 TA 醒来');
+    : !portraitUri
+      ? t('先给 TA 一个形象')
+      : editing
+        ? t('保存修改')
+        : t('让 TA 醒来');
 
   // 台词页签只在编辑已创建的角色时出现（D-094：发布时模型才写第一版）
   const tabs = TABS.filter((x) => x.key !== 'lines' || editing).map((x) => ({ key: x.key, label: t(x.label) }));
@@ -710,8 +740,6 @@ function CreateForm({ edit }: { edit?: string }) {
           keyboardShouldPersistTaps="handled">
           {tab === 'basic' ? (
           <View>
-          <Text style={styles.subtitle}>{editing ? t('改完点底部保存') : t('创造一个只属于你的 TA')}</Text>
-
           {/* ───────── 描述导入（D-043） ───────── */}
           <Field
             label={t('用一段话描述 TA（可选）')}
@@ -740,33 +768,21 @@ function CreateForm({ edit }: { edit?: string }) {
           </View>
 
           {/* ───────── 基础 ───────── */}
-          <Field label={t('① TA 叫什么')}>
+          <Field label={t('TA 叫什么')}>
             <Input value={name} onChangeText={setName} placeholder={t('给 TA 一个名字')} maxLength={12} />
           </Field>
 
-          <Field label={t('② TA 的性别')}>
+          <Field label={t('TA 的性别')}>
             <View style={styles.chipRow}>
               {GENDERS.map((g) => (
                 <OptionChip key={g.key} label={g.label} active={gender === g.key} onPress={() => setGender(g.key)} />
               ))}
             </View>
           </Field>
+          {/* 年龄（D-223）：不给「未成年」选项，只留一行声明 */}
+          <Text style={styles.afterHint}>{t('发布即确认 TA 是成年人。')}</Text>
 
-          <Field label={t('③ 年龄状态')}>
-            <View style={styles.chipRow}>
-              <OptionChip label={t('确认成年')} active={ageStatus === 'adult'} onPress={() => setAgeStatus('adult')} />
-              <OptionChip label={t('未成年')} active={ageStatus === 'minor'} onPress={() => setAgeStatus('minor')} />
-            </View>
-          </Field>
-          {ageStatus === 'minor' ? (
-            <Text style={styles.minorNotice}>
-              {t('未成年角色不开放恋爱互动，暂时不能发布。')}
-            </Text>
-          ) : (
-            <Text style={styles.afterHint}>{t('发布即确认 TA 是成年人。')}</Text>
-          )}
-
-          <Field label={t('④ 谁能遇到 TA')}>
+          <Field label={t('谁能遇到 TA')}>
             <View style={styles.chipRow}>
               <OptionChip label={t('私密')} active={visibility === 'private'} onPress={() => setVisibility('private')} />
               <OptionChip label={t('公开')} active={visibility === 'public'} onPress={() => setVisibility('public')} />
@@ -783,7 +799,7 @@ function CreateForm({ edit }: { edit?: string }) {
 
           {tab === 'look' ? (
           <View>
-          <Field label={t('⑤ TA 长什么样')}>
+          <Field label={t('TA 长什么样')}>
             <Input
               value={look}
               onChangeText={setLook}
@@ -806,7 +822,7 @@ function CreateForm({ edit }: { edit?: string }) {
             ))}
           </View>
 
-          <Field label={t('⑥ TA 的背景故事')}>
+          <Field label={t('TA 的背景故事')}>
             <Input
               value={story}
               onChangeText={setStory}
@@ -816,18 +832,13 @@ function CreateForm({ edit }: { edit?: string }) {
             />
           </Field>
 
-          <Field label={t('⑦ TA 的形象 *')} hint={t('上传一张图，或生成立绘。不能上传真人照片。')}>
+          <Field label={t('立绘 *')} hint={t('上传一张图，或生成立绘。不能上传真人照片。')}>
             <Text style={styles.subLabel}>{t('画风：')}</Text>
             <View style={styles.chipRow}>
               {PORTRAIT_STYLES.map((s) => (
                 <OptionChip key={s.id} label={t(s.label)} active={artStyle === s.id} onPress={() => setArtStyle(s.id)} />
               ))}
             </View>
-            <Text style={styles.afterHint}>
-              {artStyle === 'anime'
-                ? t('出图约 10 秒。')
-                : t('出图约 1 分钟。')}
-            </Text>
             {generating ? (
               <PortraitDeveloping />
             ) : portraitUri ? (
@@ -835,14 +846,14 @@ function CreateForm({ edit }: { edit?: string }) {
             ) : null}
             <View style={styles.portraitBtnRow}>
               <Button
-                label={portraitUri ? t('换一张') : t('上传头像')}
+                label={portraitUri ? t('换一张') : t('上传图片')}
                 variant="secondary"
                 size="md"
                 style={styles.portraitBtn}
                 onPress={uploadAvatar}
               />
               <Button
-                label={generating ? t('生成中…') : imageKeyReady() ? t('生成立绘') : t('生成立绘（AI 不可用）')}
+                label={generating ? t('生成中…') : t('生成立绘')}
                 variant="outline"
                 size="md"
                 style={styles.portraitBtn}
@@ -885,31 +896,7 @@ function CreateForm({ edit }: { edit?: string }) {
               </Field>
 
               <Field label={t('TA 的生日')}>
-                <View style={styles.chipRow}>
-                  <Pressable style={styles.ddBtn} onPress={() => setPickerOpen('month')}>
-                    <Text style={[styles.ddText, !birthMonth && styles.ddTextEmpty]}>
-                      {birthMonth ? t('{n} 月', { n: birthMonth }) : t('月份 ▾')}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.ddBtn, !birthMonth && styles.btnDisabled]}
-                    disabled={!birthMonth}
-                    onPress={() => setPickerOpen('day')}>
-                    <Text style={[styles.ddText, !birthDay && styles.ddTextEmpty]}>
-                      {birthDay ? t('{n} 日', { n: birthDay }) : t('日期 ▾')}
-                    </Text>
-                  </Pressable>
-                  {birthMonth ? (
-                    <Pressable
-                      style={styles.ddClear}
-                      onPress={() => {
-                        setBirthMonth(null);
-                        setBirthDay(null);
-                      }}>
-                      <Text style={styles.ddClearText}>{t('清除')}</Text>
-                    </Pressable>
-                  ) : null}
-                </View>
+                <BirthdayPicker value={birthday} onChange={setBirthday} />
               </Field>
 
               <Field label={t('口癖')} hint={t('TA 挂在嘴边的话。')}>
@@ -939,6 +926,11 @@ function CreateForm({ edit }: { edit?: string }) {
                 />
               </Field>
 
+              <Field label={t('TA 在恋爱中的类型')}>
+                <ChipGroup options={LOVE_STYLE_LABELS} value={loveStyle} onChange={setLoveStyle} />
+                {style ? <Text style={styles.styleDesc}>{t(style.desc)}</Text> : null}
+              </Field>
+
               <Field label={t('确定关系的节奏')}>
                 <View style={styles.chipRow}>
                   {OFFER_PACES.map((p) => (
@@ -953,15 +945,20 @@ function CreateForm({ edit }: { edit?: string }) {
                 </View>
               </Field>
 
-              <Field label={t('TA 在恋爱中的类型')}>
-                <ChipGroup options={LOVE_STYLE_LABELS} value={loveStyle} onChange={setLoveStyle} />
-                {style ? <Text style={styles.styleDesc}>{style.desc}</Text> : null}
-              </Field>
-
               <Field label="MBTI">
                 <ChipGroup options={MBTI_LIST} value={mbti} onChange={setMbti} />
               </Field>
 
+              {/* 后半段默认收起（D-223）：第一次捏人只看到上面这些 */}
+              <Button
+                label={moreOpen ? t('收起') : t('更多设定')}
+                variant="secondary"
+                size="md"
+                style={styles.moreBtn}
+                onPress={() => setMoreOpen((v) => !v)}
+              />
+              {moreOpen ? (
+              <View>
               <Field label={t('主动联系强度')}>
                 <View style={styles.chipRow}>
                   {INITIATIVES.map((it) => (
@@ -1024,7 +1021,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 <Input
                   value={chatNotes}
                   onChangeText={setChatNotes}
-                  placeholder={t('如：会用一点方言；不主动发语音；叫我「小朋友」……')}
+                  placeholder={t('如：会用一点方言；叫我「小朋友」……')}
                   multiline
                   maxLength={120}
                 />
@@ -1039,6 +1036,8 @@ function CreateForm({ edit }: { edit?: string }) {
                   maxLength={120}
                 />
               </Field>
+              </View>
+              ) : null}
             </View>
           ) : null}
 
@@ -1048,16 +1047,19 @@ function CreateForm({ edit }: { edit?: string }) {
               <Text style={styles.sectionHint}>{t('每行一条')}</Text>
               <LinesField
                 label={t('开场白')}
+                placeholder={t('你也还没睡？\n刚好，我也在想要不要先开口')}
                 value={lines?.opening ?? []}
                 onChange={(v) => setLines({ ...(lines ?? EMPTY_LINES), opening: v })}
               />
               <LinesField
                 label={t('想确定关系时')}
+                placeholder={t('……我想以后每天都能找到你')}
                 value={lines?.offer ?? []}
                 onChange={(v) => setLines({ ...(lines ?? EMPTY_LINES), offer: v })}
               />
               <LinesField
                 label={t('确定关系后的第一句')}
+                placeholder={t('是我。号码存好了吗')}
                 value={lines?.arrival ?? []}
                 onChange={(v) => setLines({ ...(lines ?? EMPTY_LINES), arrival: v })}
               />
@@ -1065,7 +1067,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 <Input
                   value={lines?.persona ?? ''}
                   onChangeText={(v) => setLines({ ...(lines ?? EMPTY_LINES), persona: v })}
-                  placeholder={t('可不填')}
+                  placeholder={t('嘴硬心软的外科医生，只为你破例')}
                   multiline
                   maxLength={120}
                 />
@@ -1074,7 +1076,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 <Input
                   value={lines?.pursuit ?? ''}
                   onChangeText={(v) => setLines({ ...(lines ?? EMPTY_LINES), pursuit: v })}
-                  placeholder={t('可不填')}
+                  placeholder={t('先嫌弃、再靠近，关心全藏在吐槽里')}
                   multiline
                   maxLength={160}
                 />
@@ -1097,7 +1099,7 @@ function CreateForm({ edit }: { edit?: string }) {
         </ScrollView>
 
         {/* 底部常驻：预览 + 醒来 / 保存 */}
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Space.screen) }]}>
           {name.trim() ? (
             <Card style={styles.previewCard}>
               <CharAvatar name={name.trim()} color={PALETTES[palette].color} size={44} uri={portraitUri} />
@@ -1105,7 +1107,8 @@ function CreateForm({ edit }: { edit?: string }) {
                 <Text style={styles.previewName}>{name.trim()}</Text>
                 <Text style={styles.previewHook} numberOfLines={1}>
                   {[GENDERS.find((g) => g.key === gender)?.label, style?.label, finalRace !== '人类' ? finalRace : null]
-                    .filter(Boolean)
+                    .filter((x): x is string => !!x)
+                    .map((x) => t(x))
                     .join(' · ')}
                 </Text>
               </View>
@@ -1114,50 +1117,13 @@ function CreateForm({ edit }: { edit?: string }) {
           <Button
             label={publishLabel}
             style={styles.primaryBtn}
-            disabled={!name.trim() || !portraitUri || ageStatus === 'minor' || publishing}
+            disabled={!name.trim() || !portraitUri || publishing}
             onPress={submit}
           />
           <Text style={styles.footnote}>{t('不能创造真人与 IP 角色 · 发布即默认同意创作规范')}</Text>
         </View>
       </KeyboardAvoidingView>
 
-      {/* 生日下拉选单（D-045）：paper 底的底部面板，月 / 日按 chip 选 */}
-      <Modal
-        visible={pickerOpen !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPickerOpen(null)}>
-        <Pressable style={styles.pickerMask} onPress={() => setPickerOpen(null)}>
-          <Pressable style={styles.pickerSheet} onPress={() => {}}>
-            <Text style={styles.pickerTitle}>{pickerOpen === 'month' ? t('选择月份') : t('选择日期')}</Text>
-            <ScrollView contentContainerStyle={styles.pickerGrid}>
-              {(pickerOpen === 'month'
-                ? MONTH_OPTIONS
-                : Array.from({ length: daysInMonth(birthMonth ?? 1) }, (_, i) => i + 1)
-              ).map((n) => {
-                const active = (pickerOpen === 'month' ? birthMonth : birthDay) === n;
-                return (
-                  <Chip
-                    key={n}
-                    label={pickerOpen === 'month' ? t('{n} 月', { n }) : t('{n} 日', { n })}
-                    selected={active}
-                    onPress={() => {
-                      if (pickerOpen === 'month') {
-                        setBirthMonth(n);
-                        if (birthDay && birthDay > daysInMonth(n)) setBirthDay(null);
-                        setPickerOpen('day');
-                      } else {
-                        setBirthDay(n);
-                        setPickerOpen(null);
-                      }
-                    }}
-                  />
-                );
-              })}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </AppScreen>
   );
 }
@@ -1191,7 +1157,6 @@ const styles = themed(() =>
       borderTopColor: Romance.line,
       backgroundColor: Romance.bg,
     },
-    subtitle: { fontSize: Type.scale.label.size, color: Romance.sub, marginTop: Space.inlineLoose },
     descFoot: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1203,16 +1168,6 @@ const styles = themed(() =>
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.inline },
     inputShort: { minHeight: 64 },
     afterHint: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: Space.inline, lineHeight: 16 },
-    minorNotice: {
-      fontSize: Type.scale.caption.size,
-      color: Romance.danger,
-      backgroundColor: Romance.accentSoft,
-      borderRadius: Shape.radius,
-      paddingHorizontal: Space.cardX,
-      paddingVertical: Space.cardY,
-      marginTop: Space.inline,
-      lineHeight: 18,
-    },
     subLabel: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.ink, marginBottom: Space.inline },
     paletteRow: { flexDirection: 'row', gap: Space.inline, marginTop: Space.inline },
     swatchRing: {
@@ -1229,17 +1184,6 @@ const styles = themed(() =>
     portraitBtnRow: { flexDirection: 'row', gap: Space.inlineLoose, marginTop: Space.inlineLoose },
     portraitBtn: { flex: 1 },
     raceCustomInput: { marginTop: Space.inlineLoose },
-    ddBtn: {
-      backgroundColor: Romance.card,
-      borderRadius: Shape.radius,
-      paddingHorizontal: 18,
-      paddingVertical: 11,
-    },
-    ddText: { fontSize: Type.scale.sub.size, fontWeight: '500', color: Romance.ink },
-    ddTextEmpty: { color: Romance.sub },
-    ddClear: { justifyContent: 'center', paddingHorizontal: Space.inline },
-    ddClearText: { fontSize: Type.scale.caption.size, color: Romance.sub },
-    btnDisabled: { opacity: 0.4 },
     paceCard: {
       flex: 1,
       backgroundColor: Romance.card,
@@ -1265,6 +1209,7 @@ const styles = themed(() =>
     },
     sectionHint: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: Space.inlineLoose },
     rewriteBtn: { marginTop: Space.cardX },
+    moreBtn: { marginTop: Space.cardX },
     previewCard: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1276,35 +1221,5 @@ const styles = themed(() =>
     previewHook: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
     primaryBtn: { marginTop: 0 },
     footnote: { textAlign: 'center', fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: Space.inline },
-    // 生日选单：ink 45% 遮罩 + paper 底面板（1.5px ink 上沿，同输入栏）
-    pickerMask: {
-      flex: 1,
-      backgroundColor: withAlpha(Romance.ink, 0.45),
-      justifyContent: 'flex-end',
-    },
-    pickerSheet: {
-      backgroundColor: Romance.bg,
-      borderTopLeftRadius: Shape.radius,
-      borderTopRightRadius: Shape.radius,
-      borderTopWidth: Shape.stroke,
-      borderTopColor: Romance.stroke,
-      paddingTop: 18,
-      paddingBottom: 30,
-      maxHeight: '60%',
-    },
-    pickerTitle: {
-      fontSize: Type.scale.body.size,
-      fontWeight: '600',
-      color: Romance.ink,
-      textAlign: 'center',
-      marginBottom: Space.cardX,
-    },
-    pickerGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: Space.inline,
-      paddingHorizontal: 18,
-      paddingBottom: Space.inlineLoose,
-    },
   })
 );

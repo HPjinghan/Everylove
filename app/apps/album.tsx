@@ -52,23 +52,35 @@ export default function AlbumScreen() {
       });
       seen.add(p.uri);
     }
+    // 旧存档（D-079 之前）的拍立得还躺在会话里：只收外出拍的那种，她在聊天里发的图、TA 发来的照片不算
     for (const b of bonds) {
       for (const m of b.messages) {
-        if (m.kind === 'image' && m.imageUri && !seen.has(m.imageUri)) {
+        if (m.kind === 'image' && m.polaroid && m.imageUri && !seen.has(m.imageUri)) {
           shots.push({ id: m.id, uri: m.imageUri, at: m.at, from: b.name, caption: m.text || m.spoken, wall: b.name });
         }
       }
     }
     shots.sort((a, b) => b.at - a.at);
-    const byDay = new Map<string, Shot[]>();
+    // 按日分组：键带年份，跨年的同一天不并在一起；不是今年的标题带上年份
+    const byDay = new Map<string, { title: string; items: Shot[] }>();
     const locale = localeOf();
+    const thisYear = new Date().getFullYear();
     for (const s of shots) {
-      const day = new Date(s.at).toLocaleDateString(locale, { month: 'long', day: 'numeric', weekday: 'long' });
-      if (!byDay.has(day)) byDay.set(day, []);
-      byDay.get(day)!.push(s);
+      const d = new Date(s.at);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (!byDay.has(key)) {
+        const title = d.toLocaleDateString(locale, {
+          ...(d.getFullYear() === thisYear ? {} : { year: 'numeric' as const }),
+          month: 'long',
+          day: 'numeric',
+          weekday: 'long',
+        });
+        byDay.set(key, { title, items: [] });
+      }
+      byDay.get(key)!.items.push(s);
     }
     // 网格：每行 COLS 张
-    return [...byDay.entries()].map(([title, items]) => {
+    return [...byDay.values()].map(({ title, items }) => {
       const rows: Shot[][] = [];
       for (let i = 0; i < items.length; i += COLS) rows.push(items.slice(i, i + COLS));
       return { title, data: rows };

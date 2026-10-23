@@ -69,12 +69,12 @@ function roundDone(poolIds: string[], swiped: string[]): boolean {
   return poolIds.length > 0 && poolIds.every((id) => swiped.includes(id));
 }
 
-/** 偏好选项（D-049）：与 onboarding 第一问同一套口味 */
+/** 偏好选项（D-049）：与 onboarding 第一问同一套口味；「偏好::」语境键（D-223）与性别选项分开译 */
 const PREFS: { key: LovePref; label: string }[] = [
-  { key: 'male', label: '男生' },
-  { key: 'female', label: '女生' },
-  { key: 'any', label: '都可以' },
-  { key: 'nonhuman', label: '非人类' },
+  { key: 'male', label: '偏好::男生' },
+  { key: 'female', label: '偏好::女生' },
+  { key: 'any', label: '偏好::都可以' },
+  { key: 'nonhuman', label: '偏好::非人类' },
 ];
 
 /**
@@ -194,7 +194,7 @@ export default function DatingScreen() {
   // 顺序走推荐算法（D-041）：口味 / 热度 / 新面孔 / 自创 / 每日轮换 / 略过冷却。
   // 冷却只在供给充足时生效（D-042）：全池都被略过时忽略冷却直接回流，不用等 3 天。
   // 全划完自动回流（D-042）：本次全滑过但池子还有人 → 渲染期直接视为重开一轮，不出空牌堆。
-  const { deck, poolCount, poolIds } = useMemo(() => {
+  const { deck, seenCount, poolIds } = useMemo(() => {
     // 偏好过滤（D-049）：口味不再只是排序加权，而是直接筛（「都可以」看全部）；
     // 共享池（D-060）：别人公开的角色合入同一池、同一套打分（本地已有同 id 的不重复）
     const remote = sharedPool.filter((c) => !customs.some((x) => x.id === c.id));
@@ -216,7 +216,8 @@ export default function DatingScreen() {
         passes: ample ? datingPasses : {},
         knownIds: new Set([...Object.keys(squareChats), ...bondedIds]),
       }),
-      poolCount: pool.length,
+      // 本轮已经看过的：略过的仍在池里，右滑配对的已离池（进了试聊）——两种都算，计数才不会配对后倒退
+      seenCount: swiped.filter((id) => ids.includes(id) || squareChats[id]).length,
       poolIds: ids,
     };
   }, [customs, sharedPool, bondedIds, squareChats, swipedIds, lovePref, datingPasses, language]);
@@ -227,7 +228,8 @@ export default function DatingScreen() {
 
   const top = deck[0];
   const next = deck[1];
-  const position = `${poolCount - deck.length + 1} / ${poolCount}`;
+  // 「第几张 / 本轮共几张」：总数 = 已看过 + 还没看的，配对离池也不改总数
+  const position = `${seenCount + 1} / ${seenCount + deck.length}`;
   // 卡宽：设计 342；牌堆区放不下（小屏）就按可用高度收
   const cardW =
     deckH > 0
@@ -385,16 +387,11 @@ export default function DatingScreen() {
     { key: 'swipe', label: t('滑卡') },
     { key: 'grid', label: t('列表') },
   ];
-  const prefLabel = t(PREFS.find((p) => p.key === (lovePref ?? 'any'))?.label ?? '都可以');
+  const prefLabel = t(PREFS.find((p) => p.key === (lovePref ?? 'any'))?.label ?? '偏好::都可以');
 
   return (
-    <AppScreen title="交友" onBack={!introDone ? escapeIntro : undefined} pattern>
-      {/* 新手流（D-058）：滑到心动就是入口；不想滑有逃生门 */}
-      {!introDone ? (
-        <Pressable onPress={escapeIntro} hitSlop={6}>
-          <Text style={styles.skipIntro}>{t('先不滑了，随便逛逛 →')}</Text>
-        </Pressable>
-      ) : null}
+    // 新手流（D-058）：滑到心动就是入口；不想滑的逃生门 = 顶栏「‹ 桌面」（D-223 去掉重复的文字入口）
+    <AppScreen title={t('交友')} onBack={!introDone ? escapeIntro : undefined} pattern>
       {/* 视图切换（D-049）+ 口味 chip（D-100）：并排居中；chip 直接显示当前口味，点开偏好卡 */}
       <View style={styles.controls}>
         <Segmented
@@ -563,15 +560,18 @@ export default function DatingScreen() {
       {/* 配对成功：纸面整页（paper + 菱格），不再压深色遮罩 */}
       {match ? (
         <View style={styles.matchOverlay}>
+          {/* 暗纹铺在不带 padding 的外层，留白放内层——带 padding 的容器里 100% 宽的 SVG 铺不满 */}
           <DiamondBackground />
-          <Text style={styles.matchBig}>{t('配对成功')}</Text>
-          <CharAvatar name={match.name} color={match.color} size={96} characterId={match.id} />
-          <Text style={styles.matchCharName}>{match.name}</Text>
-          <Text style={styles.matchSub}>{t('TA 也心动了')}</Text>
-          <Button label={t('去打招呼')} onPress={() => sayHi(match)} style={styles.matchPrimary} />
-          <Pressable style={styles.matchSecondary} onPress={() => setMatch(null)}>
-            <Text style={styles.matchSecondaryText}>{t('继续滑')}</Text>
-          </Pressable>
+          <View style={styles.matchInner}>
+            <Text style={styles.matchBig}>{t('配对成功')}</Text>
+            <CharAvatar name={match.name} color={match.color} size={96} characterId={match.id} />
+            <Text style={styles.matchCharName}>{match.name}</Text>
+            <Text style={styles.matchSub}>{t('TA 也心动了')}</Text>
+            <Button label={t('去打招呼')} onPress={() => sayHi(match)} style={styles.matchPrimary} />
+            <Pressable style={styles.matchSecondary} onPress={() => setMatch(null)}>
+              <Text style={styles.matchSecondaryText}>{t('继续滑')}</Text>
+            </Pressable>
+          </View>
         </View>
       ) : null}
     </AppScreen>
@@ -580,7 +580,6 @@ export default function DatingScreen() {
 
 const styles = themed(() =>
   StyleSheet.create({
-    skipIntro: { textAlign: 'center', fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 8 },
     controls: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -709,9 +708,9 @@ const styles = themed(() =>
     prefSheet: { paddingVertical: 16, paddingHorizontal: 16 },
     prefTitle: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, marginBottom: 12 },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    matchOverlay: {
-      ...StyleSheet.absoluteFill,
-      backgroundColor: Romance.bg,
+    matchOverlay: { ...StyleSheet.absoluteFill, backgroundColor: Romance.bg },
+    matchInner: {
+      flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
       gap: 10,

@@ -52,7 +52,8 @@ export function CharacterSheet({ characterId, visible, onClose }: { characterId:
           </View>
           <View style={styles.nameRow}>
             <Text style={styles.name}>{name}</Text>
-            {c.styleLabel ? <Text style={styles.styleTag}>{c.styleLabel}</Text> : null}
+            {/* 自创角色的风格标签存的是中文原文（恋爱类型名），显示时再按界面语言译 */}
+            {c.styleLabel ? <Text style={styles.styleTag}>{t(c.styleLabel)}</Text> : null}
           </View>
           <Text style={styles.identity}>{c.identity}</Text>
           {bond ? (
@@ -75,7 +76,8 @@ export function CharacterSheet({ characterId, visible, onClose }: { characterId:
             ) : null}
           </Card>
 
-          <Text style={styles.eyebrow}>{t('见过面')}</Text>
+          {/* 见过面：没有偶遇记录就整栏不出（D-223）——正在试聊的人看到「还没碰到过」反而别扭 */}
+          {encounters.length ? <Text style={styles.eyebrow}>{t('见过面')}</Text> : null}
           {encounters.length ? (
             <Card style={styles.card}>
               {encounters.map((e, i) => (
@@ -89,9 +91,7 @@ export function CharacterSheet({ characterId, visible, onClose }: { characterId:
                 </View>
               ))}
             </Card>
-          ) : (
-            <Text style={styles.empty}>{bond ? t('你们已经很熟了。') : t('还没在广场上碰到过。')}</Text>
-          )}
+          ) : null}
         </ScrollView>
       </View>
     </Modal>
@@ -149,6 +149,5 @@ const styles = themed(() =>
     encounterHead: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.ink },
     encounterTime: { fontFamily: Fonts.label, fontWeight: '400', color: Romance.sub },
     encounterText: { fontSize: Type.scale.label.size, lineHeight: 19, color: Romance.sub },
-    empty: { fontSize: Type.scale.label.size, color: Romance.faint, marginLeft: 4 },
   })
 );

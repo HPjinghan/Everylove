@@ -50,7 +50,7 @@ export default function ShareScreen() {
           {!image && !text && !url ? <Text style={styles.previewText}>{t('…')}</Text> : null}
         </Card>
 
-        <Text style={styles.eyebrow}>{t('转给谁')}</Text>
+        {/* 顶栏已经说了「转给…」，下面直接是人，不再加一行「转给谁」 */}
         {bonds.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyText}>{t('通讯录里还没有人。')}</Text>
@@ -86,11 +86,10 @@ export default function ShareScreen() {
 const styles = themed(() =>
   StyleSheet.create({
     content: { padding: Space.screen, gap: Space.inline, paddingBottom: 40 },
-    preview: { gap: 8 },
+    preview: { gap: 8, marginBottom: 8 },
     previewImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: Shape.radius, backgroundColor: Romance.line },
     previewText: { fontSize: Type.scale.sub.size, lineHeight: 21, color: Romance.ink },
     previewUrl: { fontSize: Type.scale.caption.size, color: Romance.accent },
-    eyebrow: { fontSize: Type.scale.caption.size, fontWeight: '500', color: Romance.sub, letterSpacing: 0.5, marginTop: 8, marginLeft: 4 },
     row: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose },
     rowText: { flex: 1, minWidth: 0 },
     name: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },

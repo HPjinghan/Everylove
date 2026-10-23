@@ -278,7 +278,10 @@ export default function MeScreen() {
   /** 模拟订阅（D-063）：收费开关打开前点击即订 / 退，不扣费（服务器记档位，D-217） */
   const subscribe = (p: 'free' | 'pro' | 'max') => {
     if (p === plan) return;
-    const label = p === 'free' ? t('Free：每天 {n} 免费流量，没有语音', { n: mb(DAILY_FREE_MB) }) : `${p === 'max' ? 'Max' : 'Pro'}：${planBlurb(p)}`;
+    const label =
+      p === 'free'
+        ? t('Free：每天 {n} 免费流量，没有语音', { n: mb(DAILY_FREE_MB) })
+        : t('{plan}：{blurb}', { plan: p === 'max' ? 'Max' : 'Pro', blurb: planBlurb(p) });
     showAlert(p === 'free' ? t('取消订阅') : t('订阅'), label, [
       { text: t('取消'), style: 'cancel' },
       { text: p === 'free' ? t('确认取消') : t('订阅'), onPress: () => void viaServer(() => choosePlan(p)) },
@@ -375,7 +378,7 @@ export default function MeScreen() {
               <Row label={t('立即备份到云端')} onPress={doBackupNow} />
               <Row label={t('从云端恢复到本机')} onPress={doRestore} />
               <Row label={t('退出登录')} onPress={doSignOut} />
-              <Row label={t('删除云端数据')} hint={t('含聊天与记忆，按最高敏感级对待。')} onPress={doDeleteCloud} />
+              <Row label={t('删除云端数据')} onPress={doDeleteCloud} />
             </>
           ) : (
             <Row
@@ -386,7 +389,7 @@ export default function MeScreen() {
           )}
         </Section>
 
-        <Section title="Language · 语言 · 言語">
+        <Section title="Language · 语言 · 言語 · 언어">
           <View style={styles.langRow}>
             {LANGS.map(([lg, label]) => {
               const on = language === lg;
@@ -405,7 +408,7 @@ export default function MeScreen() {
         <Section title={t('我')}>
           <Row
             label={t('我的身份')}
-            value={me?.nickname ? `「${me.nickname}」` : t('还没告诉 TA 们你是谁')}
+            value={me?.nickname ? t('「{x}」', { x: me.nickname }) : t('还没告诉 TA 们你是谁')}
             onPress={() => router.push('/apps/identity')}
           />
         </Section>
@@ -413,7 +416,8 @@ export default function MeScreen() {
         <Section title={t('主题')}>
           <View>
             {/* 主题 = 壁纸（D-110）：纸面 + 换色，一步到位，主页和里面一起变 */}
-            <View style={styles.wallRow}>
+            {/* 一行横排，放不下就横向滑——不让最后一块单独掉到第二行 */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wallRow}>
               {WALLPAPERS.map((w) => {
                 const on = wallpaper === w.id;
                 return (
@@ -427,16 +431,27 @@ export default function MeScreen() {
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
         </Section>
 
         <Section title={t('订阅计划')}>
-          <Row label={t('当前计划')} value={plan === 'max' ? 'Max' : plan === 'pro' ? 'Pro' : 'Free'} />
+          {/* 已订阅时下面那行带 ✓，「当前计划」就不重复说一遍 */}
+          {plan === 'free' || !(storeMode === 'sim' || (storeMode === 'real' && iap.items.some((i) => i.kind === 'plan' && i.plan === plan))) ? (
+            <Row label={t('当前计划')} value={plan === 'max' ? 'Max' : plan === 'pro' ? 'Pro' : 'Free'} />
+          ) : null}
           {storeMode === 'sim' ? (
             <>
-              <Row label={plan === 'pro' ? t('已订阅 Pro ✓') : t('订阅 Pro')} value={planBlurb('pro')} onPress={() => subscribe('pro')} />
-              <Row label={plan === 'max' ? t('已订阅 Max ✓') : t('订阅 Max')} value={planBlurb('max')} onPress={() => subscribe('max')} />
+              <Row
+                label={plan === 'pro' ? t('已订阅 Pro ✓') : t('订阅 Pro')}
+                value={planBlurb('pro')}
+                onPress={plan === 'pro' ? undefined : () => subscribe('pro')}
+              />
+              <Row
+                label={plan === 'max' ? t('已订阅 Max ✓') : t('订阅 Max')}
+                value={planBlurb('max')}
+                onPress={plan === 'max' ? undefined : () => subscribe('max')}
+              />
               {plan !== 'free' ? <Row label={t('取消订阅（回 Free）')} onPress={() => subscribe('free')} /> : null}
             </>
           ) : null}
@@ -533,14 +548,13 @@ export default function MeScreen() {
             : null}
         </Section>
 
-        <Section title={t('TA 主动找你')}>
+        {/* 勿扰时段（D-120）：分区标题即标签，两只步进器单独一行居中，不和标签抢宽 */}
+        <Section title={t('勿扰时段')}>
           <View style={styles.quietRow}>
-            <Text style={styles.quietLabel}>{t('勿扰时段')}</Text>
             <HourStepper value={quiet.from} onChange={(from) => useAppStore.getState().setQuietHours({ ...quiet, from })} />
             <Text style={styles.quietDash}>–</Text>
             <HourStepper value={quiet.to} onChange={(to) => useAppStore.getState().setQuietHours({ ...quiet, to })} />
           </View>
-          <Text style={styles.cardNote}>{t('这段时间 TA 不会主动发消息，到点了也等到结束再来。')}</Text>
         </Section>
 
         <Section title={t('我的创作')}>
@@ -636,10 +650,8 @@ const styles = themed(() =>
     // 壁纸块：52×88 r6，选中外圈 primary 2 留 1
     wallRow: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
       gap: Space.inlineLoose,
-      paddingHorizontal: Space.inline,
-      paddingTop: Space.inline,
+      padding: Space.inline,
     },
     wallItem: { alignItems: 'center' },
     wallRing: {
@@ -652,8 +664,7 @@ const styles = themed(() =>
     wallSwatch: { width: 52, height: 88, borderRadius: Shape.radius, overflow: 'hidden', backgroundColor: Romance.bg },
     wallLabel: { fontSize: Type.scale.timestamp.size, color: Romance.sub, textAlign: 'center', marginTop: 4 },
     wallLabelOn: { color: Romance.accent },
-    quietRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inline, paddingVertical: 10, paddingHorizontal: Space.cardX },
-    quietLabel: { flex: 1, fontSize: Type.scale.sub.size, color: Romance.ink },
+    quietRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Space.inline, paddingVertical: 10, paddingHorizontal: Space.cardX },
     quietDash: { fontFamily: Fonts.label, fontSize: Type.scale.sub.size, color: Romance.sub },
     stepper: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Romance.bg, borderRadius: Shape.radius, paddingHorizontal: 4 },
     stepBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },

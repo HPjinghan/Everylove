@@ -7,6 +7,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLang } from '@/lib/i18n';
 import { requestWithTimeout, TIMEOUTS } from '@/lib/proxy';
 
 const STORE_KEY = 'everylove-weather-v2';
@@ -105,10 +106,11 @@ export function weatherIsReal(): boolean {
   return st.daily.length > 0;
 }
 
-export function setWeatherPlace(city: string, lat: number, lon: number): void {
-  st = { ...st, city: city.trim(), lat, lon, fetchedAt: 0 };
+/** 换地方：上一处的天气一并清掉（不让新城市名配旧数据），返回这次拉取成没成 */
+export function setWeatherPlace(city: string, lat: number, lon: number): Promise<boolean> {
+  st = { ...st, city: city.trim(), lat, lon, currentTemp: null, currentCode: null, daily: [], fetchedAt: 0 };
   save();
-  void refreshWeather(true);
+  return refreshWeather(true);
 }
 
 /** 拉真实天气（30 分钟节流；失败静默——继续用缓存或世界天气） */
@@ -162,7 +164,7 @@ export interface PlaceHit {
 /** 地区搜索（Open-Meteo 地理编码，免费无 key；中文/英文/日文都认） */
 export async function searchPlaces(query: string): Promise<PlaceHit[]> {
   const url =
-    'https://geocoding-api.open-meteo.com/v1/search?count=5&language=zh&name=' +
+    `https://geocoding-api.open-meteo.com/v1/search?count=5&language=${getLang()}&name=` +
     encodeURIComponent(query.trim());
   const res = await requestWithTimeout(url, { method: 'GET', timeoutMs: TIMEOUTS.web });
   if (!res.ok) throw new Error(`geocoding ${res.status}`);

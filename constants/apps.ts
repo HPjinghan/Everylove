@@ -18,7 +18,7 @@ export interface DesktopApp {
 }
 
 export const DESKTOP_APPS: DesktopApp[] = [
-  { id: 'messages', label: 'Message', icon: 'chat', route: '/apps/messages', badge: 'unread' },
+  { id: 'messages', label: 'Messages', icon: 'chat', route: '/apps/messages', badge: 'unread' },
   { id: 'phone', label: '电话', icon: 'phone', route: '/apps/phone' },
   // X（D-053）：拟真彩蛋 ✕（D-100 起与其它图块同为白底 ink）
   { id: 'moments', label: 'X', icon: 'close', route: '/apps/moments' },

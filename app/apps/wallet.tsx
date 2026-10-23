@@ -13,7 +13,8 @@ import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { money } from '@/lib/format';
 import { localeOf, t } from '@/lib/i18n';
-import type { LedgerKind } from '@/lib/types';
+import type { LedgerEntry, LedgerKind } from '@/lib/types';
+import { FORTUNE_ORDER, FORTUNES } from '@/lib/wallet';
 import { useAppStore } from '@/store/app-store';
 
 const KIND_LABEL: Record<LedgerKind, string> = {
@@ -25,6 +26,24 @@ const KIND_LABEL: Record<LedgerKind, string> = {
   refund: '退回',
   tip: '打赏',
 };
+
+/**
+ * 账单一行的标题：日签 / 转盘只存运势键或倍数（幸运签写入），这里按当前语言拼——切换语言后老账也跟着变；
+ * 别的种类的 note 本身就说清了是什么（「给 X 的红包」「给自己点的…」），原样显示。副行只放日期，不再重复种类。
+ */
+function entryTitle(e: LedgerEntry, nameOf: (bondId: string) => string | undefined): string {
+  // 红包 / 退回：按当前语言现拼（写入时的 note 是当时的语言），找不到那段羁绊就用 note
+  const name = e.bondId ? nameOf(e.bondId) : undefined;
+  if (name && e.kind === 'refund') return t('{name} 没拆的红包', { name });
+  if (name && e.kind === 'redpacket') {
+    return e.amount < 0 ? t('给 {name} 的红包', { name }) : t('{name} 的红包', { name });
+  }
+  if (e.kind === 'fortune' && e.note && FORTUNE_ORDER.some((k) => FORTUNES[k].label === e.note)) {
+    return t('日签 · {luck}', { luck: t(e.note) });
+  }
+  if (e.kind === 'wheel' && e.note?.startsWith('×')) return t('转盘 · {mult}', { mult: e.note });
+  return e.note || t(KIND_LABEL[e.kind]);
+}
 
 function dayLabel(at: number): string {
   try {
@@ -39,6 +58,8 @@ export default function WalletScreen() {
   const router = useRouter();
   const wallet = useAppStore((s) => s.wallet);
   const ledger = [...wallet.ledger].reverse();
+  const bonds = useAppStore((s) => s.bonds);
+  const nameOf = (bondId: string) => bonds.find((b) => b.id === bondId)?.name;
   const inSum = wallet.ledger.reduce((s, e) => (e.amount > 0 ? s + e.amount : s), 0);
   const outSum = wallet.ledger.reduce((s, e) => (e.amount < 0 ? s - e.amount : s), 0);
 
@@ -47,7 +68,8 @@ export default function WalletScreen() {
       <ScrollView contentContainerStyle={styles.body}>
         <Card style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>{t('零钱')}</Text>
-          <Text style={styles.balance}>{money(wallet.balance)}</Text>
+          {/* 标签已经叫「零钱」（Coins），这里只写数，不再挂单位 */}
+          <Text style={styles.balance}>{Math.round(wallet.balance)}</Text>
           <View style={styles.sums}>
             <Text style={styles.sumText}>
               {t('收到')} <Text style={styles.sumNum}>+{money(inSum)}</Text>
@@ -67,11 +89,9 @@ export default function WalletScreen() {
               <View key={e.id} style={[styles.row, i > 0 && styles.rowLine]}>
                 <View style={styles.rowBody}>
                   <Text style={styles.rowTitle} numberOfLines={1}>
-                    {e.note || t(KIND_LABEL[e.kind])}
+                    {entryTitle(e, nameOf)}
                   </Text>
-                  <Text style={styles.rowSub}>
-                    {t(KIND_LABEL[e.kind])} · {dayLabel(e.at)}
-                  </Text>
+                  <Text style={styles.rowSub}>{dayLabel(e.at)}</Text>
                 </View>
                 <Text style={[styles.rowAmount, e.amount < 0 && styles.rowAmountOut]}>
                   {e.amount < 0 ? '-' : '+'}

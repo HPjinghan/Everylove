@@ -86,9 +86,12 @@ export default function OutingSceneScreen() {
           quiet: true,
         });
         if (reply) return;
+        // 模板按界面语言取：地点名与称呼也要同一种语言（称呼缺省回落她的昵称）
+        const own = b?.nickname && b.nickname !== '你' ? b.nickname : undefined;
+        const nickname = own || useAppStore.getState().me?.nickname || t('你');
         const line = pickOutingOpener(openerKind)
-          .replace(/\{place\}/g, place.name)
-          .replace(/\{nickname\}/g, b?.nickname ?? '你')
+          .replace(/\{place\}/g, t(place.name))
+          .replace(/\{nickname\}/g, nickname)
           .replace(/\{minutes\}/g, String(s.lateMinutes ?? 0));
         setTyping(true);
         await wait(1000);

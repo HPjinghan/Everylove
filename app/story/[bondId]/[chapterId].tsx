@@ -7,6 +7,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { showAlert } from '@/components/action-sheet';
 import { AppScreen } from '@/components/app-screen';
 import { Card } from '@/components/card';
 import { Chip } from '@/components/chip';
@@ -31,10 +32,23 @@ export default function StoryReaderScreen() {
   const chapter = bond ? chaptersForBond(bond, { customCharacters, sharedPool }).find((c) => c.id === chapterId) : undefined;
   const open = bond && chapter ? chapterOpen(bond, chapter) : false;
 
+  // 打赏先确认一下（D-223）：点错一档不至于直接扣掉
   const tip = (amount: number) => {
     if (!chapter) return;
-    const ok = useAppStore.getState().tipChapter(chapter.id, amount, chapter.title);
-    if (!ok) showToast(t('零钱不够了'));
+    if (balance < amount) {
+      showToast(t('Coin 不够了'));
+      return;
+    }
+    showAlert(t('打赏 {n} Coin？', { n: amount }), chapter.title, [
+      { text: t('取消'), style: 'cancel' },
+      {
+        text: t('打赏'),
+        onPress: () => {
+          const ok = useAppStore.getState().tipChapter(chapter.id, amount, chapter.title);
+          if (!ok) showToast(t('Coin 不够了'));
+        },
+      },
+    ]);
   };
 
   return (

@@ -24,6 +24,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type Component
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -447,6 +448,17 @@ export function ChatThread({
     []
   );
 
+  // 键盘起着时输入栏不再垫 home indicator 的留白（D-223）：否则输入框和键盘之间空出一条
+  const [keyboardUp, setKeyboardUp] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardUp(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardUp(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
   // 「已读」：我的消息之后 TA 说过话，就算已读
   const readIds = useMemo(() => {
     let lastHimAt = -1;
@@ -536,6 +548,17 @@ export function ChatThread({
     if (uri && ms >= 600) onSendVoice?.(uri, ms);
   };
 
+  /** 取消录音（D-223）：录错了直接丢掉，不发 */
+  const cancelRecord = async () => {
+    if (!recordTimer.current) return;
+    clearInterval(recordTimer.current);
+    recordTimer.current = null;
+    await recorder.stop();
+    await audioSession.playback();
+    setRecording(false);
+    haptic.tap();
+  };
+
   const toggleRecord = async () => {
     if (!onSendVoice || inputDisabled) return;
     if (!recording) {
@@ -615,7 +638,9 @@ export function ChatThread({
       {replyTo ? (
         <View style={styles.replyBar}>
           <View style={styles.replyBody}>
-            <Text style={styles.replyName}>{t('回复')} {replyTo.from === 'me' ? t('自己') : name}</Text>
+            <Text style={styles.replyName}>
+              {replyTo.from === 'me' ? t('引用自己的话') : t('回复 {name}', { name })}
+            </Text>
             <Text style={styles.replyText} numberOfLines={1}>
               {replyTo.text}
             </Text>
@@ -626,19 +651,17 @@ export function ChatThread({
         </View>
       ) : null}
 
-      <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+      {/* 键盘起着 / 「+」面板开着时，底部留白归键盘或面板，输入栏只留自己的 10 */}
+      <View style={[styles.inputBar, { paddingBottom: keyboardUp || (extrasOpen && extras?.length) ? 10 : Math.max(insets.bottom, 10) }]}>
         {recording ? (
           <>
-            {/* 录音中（D-091）：整行让给录音条——「+」与相册先收起来；麦克风变 accent、右侧发送键都是「停止并发送」 */}
-            <Pressable onPress={() => void stopRecord()} hitSlop={6} accessibilityLabel={t('停止录音并发送')}>
-              <MingCute name="mic" size={Space.iconBar} color={Romance.accentStrong} />
+            {/* 录音中（D-091 → D-223）：整行让给录音条——左「×」取消（丢掉不发）、右箭头停止并发送；胶囊只放计时 */}
+            <Pressable onPress={() => void cancelRecord()} hitSlop={6} accessibilityLabel={t('取消录音')}>
+              <MingCute name="close" size={Space.iconBar} color={Romance.sub} />
             </Pressable>
             <View style={styles.recordingPill}>
               <View style={styles.recordingDot} />
               <Text style={styles.recordingTime}>0:{recordSecs.toString().padStart(2, '0')}</Text>
-              <Text style={styles.recordingText} numberOfLines={1} ellipsizeMode="tail">
-                {t('再点一下发送')}
-              </Text>
             </View>
             <Pressable onPress={() => void stopRecord()} hitSlop={8} style={styles.sendBtn} accessibilityLabel={t('停止录音并发送')}>
               <IconSymbol name="arrow.up" size={18} color="#FFFFFF" />
@@ -647,7 +670,13 @@ export function ChatThread({
         ) : (
           <>
             {extras?.length ? (
-              <Pressable onPress={() => setExtrasOpen((v) => !v)} hitSlop={6} disabled={inputDisabled} accessibilityLabel={t('更多')}>
+              <Pressable
+                onPress={() => {
+                  // 打开面板时收起键盘：两者不同时占着底部
+                  if (!extrasOpen) Keyboard.dismiss();
+                  setExtrasOpen((v) => !v);
+                }}
+                hitSlop={6} disabled={inputDisabled} accessibilityLabel={t('更多')}>
                 <MingCute name={extrasOpen ? 'close' : 'plus'} size={Space.iconBar} color={extrasOpen ? Romance.accent : iconColor} />
               </Pressable>
             ) : null}
@@ -660,6 +689,7 @@ export function ChatThread({
               style={[styles.input, inputDisabled && styles.inputDisabled]}
               value={draft}
               onChangeText={setDraft}
+              onFocus={() => setExtrasOpen(false)}
               placeholder={placeholder ?? t('说点什么…')}
               placeholderTextColor={Romance.sub}
               editable={!inputDisabled}
@@ -838,7 +868,6 @@ const styles = themed(() =>
     },
     recordingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Romance.accentStrong },
     recordingTime: { fontFamily: Fonts.labelBold, fontSize: Type.scale.sub.size, color: Romance.accentStrong },
-    recordingText: { fontSize: Type.scale.label.size, color: Romance.accentStrong, flexShrink: 1 },
     extrasPanel: {
       flexDirection: 'row',
       flexWrap: 'wrap',

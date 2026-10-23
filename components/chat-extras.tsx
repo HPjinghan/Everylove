@@ -18,7 +18,7 @@ import { Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { PLACES, type Place } from '@/content/places';
 import { money } from '@/lib/format';
-import { t } from '@/lib/i18n';
+import { getLang, t, type Lang } from '@/lib/i18n';
 
 export type ExtraSheet = 'invite' | 'phone' | 'redpacket' | 'location' | null;
 
@@ -104,7 +104,13 @@ export function InviteSheet({
 
 /* ── 红包：金额 + 留言（试装是游戏币，不扣费） ── */
 
-const RED_PACKET_PRESETS = [6, 13, 52, 99, 520];
+/** 金额预设按语言（D-223）：中文留谐音数（13 / 52 / 520）；英文整数小额；日 / 韩按本地常见面额。默认选中间那档 */
+const RED_PACKET_PRESETS: Record<Lang, number[]> = {
+  zh: [6, 13, 52, 99, 520],
+  en: [5, 10, 20, 50, 100],
+  ja: [10, 50, 100, 500, 1000],
+  ko: [10, 50, 100, 500, 1000],
+};
 
 export function RedPacketSheet({
   visible,
@@ -118,7 +124,8 @@ export function RedPacketSheet({
   /** 她的零钱余额（D-128）：超过发不出 */
   balance: number;
 }) {
-  const [amount, setAmount] = useState<number | null>(52);
+  const presets = RED_PACKET_PRESETS[getLang()];
+  const [amount, setAmount] = useState<number | null>(presets[2]);
   const [custom, setCustom] = useState('');
   const [note, setNote] = useState('');
   const value = custom.trim() ? Number(custom) : amount;
@@ -131,7 +138,7 @@ export function RedPacketSheet({
         <Text style={[styles.balance, value != null && value > balance && styles.balanceShort]}>{t('零钱 {n}', { n: money(balance) })}</Text>
       </Card>
       <View style={styles.chips}>
-        {RED_PACKET_PRESETS.map((n) => (
+        {presets.map((n) => (
           <Chip
             key={n}
             label={String(n)}

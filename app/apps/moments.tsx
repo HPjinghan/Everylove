@@ -99,7 +99,8 @@ function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: 
           </Text>
           <Text style={styles.ago}>· {compactAgo(post.at)}</Text>
         </View>
-        {!post.bondId ? <Text style={styles.lockedMeta}>{met ? t('在广场见过 · 加好友前的帖子') : t('加好友前的帖子')}</Text> : null}
+        {/* 在广场见过的 TA 标一下（D-110）；加好友前的帖子不再另写说明，评论键置灰即可 */}
+        {!post.bondId && met ? <Text style={styles.lockedMeta}>{t('在广场见过')}</Text> : null}
         <Text style={styles.body}>{post.text}</Text>
 
         <View style={styles.actions}>
@@ -109,12 +110,8 @@ function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: 
             accessibilityLabel={t('评论')}
             onPress={() => canComment && setCommentOpen((v) => !v)}
             disabled={!canComment}>
-            <MingCute name="chat" size={15} color={Romance.sub} />
-            {canComment ? (
-              <Text style={styles.actionCount}>{post.comments.length || ''}</Text>
-            ) : (
-              <Text style={styles.actionLabel}>{t('只能看看')}</Text>
-            )}
+            <MingCute name="chat" size={15} color={canComment ? Romance.sub : Romance.faint} />
+            {canComment ? <Text style={styles.actionCount}>{post.comments.length || ''}</Text> : null}
           </Pressable>
           <LikeButton
             liked={!!post.liked}
@@ -216,6 +213,9 @@ export default function FeedScreen() {
         keyExtractor={(p) => p.id}
         style={styles.feed}
         contentContainerStyle={styles.list}
+        // 评论框在列表里：键盘弹起时把列表往上推，回复靠下的帖子也看得见输入框
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => <PostRow post={item} onOpenCharacter={setSheetId} />}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
@@ -255,7 +255,6 @@ const styles = themed(() =>
     action: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 34, paddingVertical: 6 },
     actionCount: { fontFamily: Fonts.label, fontSize: Type.scale.caption.size, color: Romance.sub },
     actionCountOn: { color: Romance.accent },
-    actionLabel: { fontSize: Type.scale.caption.size, color: Romance.sub },
     reply: { flexDirection: 'row', gap: Space.inline, marginTop: 12 },
     replyBody: { flex: 1 },
     replyName: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.ink },

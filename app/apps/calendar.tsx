@@ -1,9 +1,10 @@
 /**
  * 日历（D-020；D-100 纸面）：内嵌真实日历，三层——
- * 世界层：真实日期 + 节假日（中文盘中国节日，content/calendar.ts）；
- * 关系层：自动记录（每一位 TA 的交换联系方式纪念日 / 一百天 / TA 的生日、你的生日、带时间的约定），不用用户动手；条目都带名字（D-110）；
+ * 世界层：真实日期 + 节假日，跟着界面语言走市场（中文 → 中国 / English → 美国 / 日本語 → 日本 / 한국어 → 韩国，content/calendar.ts）；
+ * 关系层：自动记录（每一位 TA 的「交换了联系方式」/ 自创角色的「确定了关系」纪念日、一百天、TA 的生日、你的生日、带时间的约定），不用用户动手；条目都带名字、写成已经发生的事（D-110）；
  * 用户层：手动添加日程（考试/面试/出差）——私密（D-113）：只有她让 TA 看过手机、TA 读到过的日程才会触发心跳三段式（lib/heartbeat.ts），没看过的 TA 不知道。
- * 三层圆点：节日 ink / 纪念 primary / 日程 accent，网格下方一行图例（D-110）；选中日 primary 底白字（今日不另标，选中即今日）。
+ * 三层圆点：节日 ink / 纪念 primary / 日程 accent，网格下方一行图例（D-110）；选中日 primary 底白字，今天没被选中时描一圈 primary 细边。
+ * 月份标题按界面语言本地化（localeOf：October 2026 / 2026年10月 / 2026년 10월），数字用 Fredoka。
  * 详情里来自 outingPlans 的条目右侧是「赴约 ›」，点了直接去现场（D-100 交互改动 7）。
  * 世界层任何年份都有内容（content/calendar.ts，D-110）。v1 边界：不读系统日历（手动添加、数据最小化）。日历只记安排与纪念日（D-090）：TA 经历的事在发生之后进记事本或 X，不作未来日程。
  */
@@ -46,7 +47,8 @@ export default function CalendarScreen() {
 
   const today = new Date();
   const [ym, setYm] = useState({ y: today.getFullYear(), m: today.getMonth() });
-  const [selected, setSelected] = useState(dateKey(today));
+  const todayKey = dateKey(today);
+  const [selected, setSelected] = useState(todayKey);
   const [draft, setDraft] = useState('');
 
   /** 关系层：自动记录，不用用户动手；每一位 TA 都有自己的纪念日，条目带名字（D-110） */
@@ -65,7 +67,14 @@ export default function CalendarScreen() {
     for (const bond of bonds) {
       const character = findCharacter(bond.characterId);
       const created = new Date(bond.createdAt);
-      push(dateKey(created), t('和{name}交换联系方式', { name: bond.name }), 'relation');
+      // 交友缔结 = 交换了联系方式；自创角色缔结 = 确定了关系（同缔结仪式的分法）
+      push(
+        dateKey(created),
+        character?.custom
+          ? t('和{name}确定了关系', { name: bond.name })
+          : t('和{name}交换了联系方式', { name: bond.name }),
+        'relation'
+      );
       const hundred = new Date(bond.createdAt);
       hundred.setDate(hundred.getDate() + 99);
       push(dateKey(hundred), t('和{name}的一百天', { name: bond.name }), 'relation');
@@ -134,8 +143,11 @@ export default function CalendarScreen() {
   const selectedMarks = marksFor(selected);
   const selectedUserEvents = userEvents.filter((e) => e.date === selected);
 
-  // 月份标题：文案走词典，数字部分单独用 Fredoka 排（不带参数调 t() 拿到的是保留 {y}/{m} 的模板）
-  const monthParts = t('{y} 年 {m} 月').split(/(\{y\}|\{m\})/);
+  // 月份标题：按界面语言本地化（October 2026 / 2026年10月 / 2026년 10월），数字部分单独用 Fredoka 排
+  const monthParts = new Date(ym.y, ym.m, 1)
+    .toLocaleDateString(localeOf(), { year: 'numeric', month: 'long' })
+    .split(/(\d+)/)
+    .filter(Boolean);
 
   const dotStyle = { world: styles.dotWorld, relation: styles.dotRelation, user: styles.dotUser } as const;
 
@@ -150,9 +162,9 @@ export default function CalendarScreen() {
             </Pressable>
             <Text style={styles.monthTitle}>
               {monthParts.map((part, i) =>
-                part === '{y}' || part === '{m}' ? (
+                /^\d+$/.test(part) ? (
                   <Text key={i} style={styles.monthNum}>
-                    {part === '{y}' ? ym.y : ym.m + 1}
+                    {part}
                   </Text>
                 ) : (
                   part
@@ -180,7 +192,12 @@ export default function CalendarScreen() {
                 <View key={`pad-${i}`} style={styles.dayCell} />
               ) : (
                 <Pressable key={key} style={styles.dayCell} onPress={() => setSelected(key)}>
-                  <View style={[styles.dayNum, key === selected && styles.daySelected]}>
+                  <View
+                    style={[
+                      styles.dayNum,
+                      key === todayKey && key !== selected && styles.dayToday,
+                      key === selected && styles.daySelected,
+                    ]}>
                     <Text style={[styles.dayText, key === selected && styles.dayTextSelected]}>
                       {parseDateKey(key).getDate()}
                     </Text>
@@ -290,8 +307,10 @@ const styles = themed(() =>
     dayCell: { width: '14.28%', alignItems: 'center', paddingVertical: 5 },
     dayNum: { width: 34, height: 34, borderRadius: Shape.radius, alignItems: 'center', justifyContent: 'center' },
     daySelected: { backgroundColor: Romance.accent },
+    // 今天（没被选中时）：一圈 primary 细边，不抢选中态
+    dayToday: { borderWidth: Shape.stroke, borderColor: Romance.accent },
     dayText: { fontFamily: Fonts.label, fontSize: Type.scale.sub.size, color: Romance.ink },
-    dayTextSelected: { fontFamily: Fonts.labelBold, color: '#FFFFFF' },
+    dayTextSelected: { fontFamily: Fonts.labelBold, color: Romance.card },
     dotRow: { flexDirection: 'row', gap: 3, height: 6, marginTop: 2 },
     // 三层圆点（D-100）：节日 ink / 纪念 primary / 日程 accent
     dot: { width: 5, height: 5, borderRadius: 3 },

@@ -156,7 +156,8 @@ export default function BondScreen() {
       <Text style={styles.infoNum}>
         {anniversary.getMonth() + 1}/{anniversary.getDate()}
       </Text>
-      <Text style={styles.infoValue}> {t('交换联系方式')}</Text>
+      {/* 写成「哪一天」而不是动作（D-223）；自创角色那天是确定关系 */}
+      <Text style={styles.infoValue}> · {character.custom ? t('确定关系的那天') : t('交换联系方式的那天')}</Text>
     </InfoRow>,
   ];
   if (myBirthday) {
@@ -328,7 +329,7 @@ export default function BondScreen() {
             <CharAvatar name={bond.name} color={character.color} size={84} characterId={character.id} />
             <Text style={styles.profileName}>{bond.name}</Text>
             <Text style={styles.profileIdentity}>
-              {character.identity} · {character.styleLabel ?? ARCHETYPE_LABEL[character.archetype]}
+              {character.identity} · {t(character.styleLabel ?? ARCHETYPE_LABEL[character.archetype])}
             </Text>
 
             <View style={styles.stats}>

@@ -79,7 +79,7 @@ export const VoicePicker = memo(function VoicePicker({
   };
 
   return (
-    <Field label={t('⑧ TA 的声音')}>
+    <Field label={t('TA 的声音')}>
       <View style={styles.rows}>
         {shown.map((v) => (
           <View key={v.id} style={styles.row}>

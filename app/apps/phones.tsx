@@ -87,7 +87,7 @@ export default function PhonesScreen() {
                   <View style={styles.actions}>
                     <Button label={t('看 TA 的手机')} variant="paper" size="sm" onPress={() => setOpenId(b.id)} />
                     <Button
-                      label={peeking === b.id ? t('TA 在看…') : t('让 TA 看我的手机')}
+                      label={peeking === b.id ? t('{name} 在看…', { name: b.name }) : t('让 TA 看我的手机')}
                       variant="primary"
                       size="sm"
                       disabled={peeking === b.id}
@@ -106,7 +106,7 @@ export default function PhonesScreen() {
         visible={!!confirming}
         title={t('让{name}看你的手机？', { name: confirming?.name ?? '' })}
         body={t('TA 会读到：记事本的全部内容、日历里的安排、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。')}
-        confirmLabel={t('让 TA 看')}
+        confirmLabel={t('让{name}看', { name: confirming?.name ?? '' })}
         onConfirm={() => confirming && invitePeek(confirming.id)}
         onClose={() => setConfirmId(null)}
       />

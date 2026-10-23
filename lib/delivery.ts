@@ -31,7 +31,7 @@ export function orderStatus(o: Pick<Order, 'at' | 'arriveAt'>, now = Date.now())
 
 /** 「珍珠奶茶 ×2、饭团」 */
 export function orderTitle(o: Pick<Order, 'items'>): string {
-  return o.items.map((i) => (i.qty > 1 ? `${t(i.name)} ×${i.qty}` : t(i.name))).join('、');
+  return o.items.map((i) => (i.qty > 1 ? `${t(i.name)} ×${i.qty}` : t(i.name))).join(t('、'));
 }
 
 /** 骑手多久送到：10–20 分钟 */

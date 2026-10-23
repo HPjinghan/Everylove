@@ -167,7 +167,8 @@ export default function CallScreen() {
       await speak(reply);
     } catch (e) {
       turnBusy.current = false;
-      setNote(t('模型没接上：{reason}', { reason: describeAiError(e) }));
+      // 原因只在开发构建露出（文案纪律 #6）
+      setNote(__DEV__ ? `${t('TA 这条没回上')} · ${describeAiError(e)}` : t('TA 这条没回上'));
       if (alive.current) void listen();
     }
   }, [bond, character, listen, recorder, speak]);
@@ -233,7 +234,7 @@ export default function CallScreen() {
         await speak(line);
       } catch (e) {
         if (cancelled) return;
-        showAlert(t('没打通'), describeAiError(e));
+        showAlert(t('没打通'), __DEV__ ? describeAiError(e) : undefined);
         router.back();
       }
     })();
@@ -323,8 +324,9 @@ export default function CallScreen() {
       </View>
 
       <View style={styles.controls}>
-        <Pressable style={styles.sideBtn} onPress={toggleSpeaker}>
-          <Text style={[styles.sideBtnText, speaker && styles.sideBtnTextOn]}>{speaker ? t('免提') : t('听筒')}</Text>
+        <Pressable style={[styles.sideBtn, speaker && styles.sideBtnOn]} onPress={toggleSpeaker} accessibilityState={{ selected: speaker }}>
+          {/* 开关只有一个名字：亮 = 免提开着，暗 = 听筒 */}
+          <Text style={[styles.sideBtnText, speaker && styles.sideBtnTextOn]}>{t('免提')}</Text>
         </Pressable>
         <Pressable style={styles.hangBtn} onPress={hangUp}>
           <View style={styles.hangIcon}>
@@ -375,7 +377,9 @@ const styles = themed(() =>
     },
     sideBtnDisabled: { opacity: 0.35 },
     sideBtnText: { color: '#FFFFFF', fontSize: Type.scale.label.size },
-    sideBtnTextOn: { fontWeight: '600' },
+    // 免提开着：像系统通话页一样反白
+    sideBtnOn: { backgroundColor: '#FFFFFF' },
+    sideBtnTextOn: { color: CALL_BG, fontWeight: '600' },
     hangBtn: {
       width: 80,
       height: 80,

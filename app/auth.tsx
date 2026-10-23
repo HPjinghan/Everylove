@@ -55,7 +55,17 @@ export default function AuthScreen() {
   const [otpSent, setOtpSent] = useState(false);
   const [password, setPassword] = useState('');
   const passwordMode = isPasswordAccount(email);
-  const [busy, setBusy] = useState(false);
+  // 两个入口各管各的进行中（D-223）：发验证码时转圈的不该是 Apple 按钮；任一进行中两边都不收新点击
+  const [busyWith, setBusyWith] = useState<'apple' | 'email' | null>(null);
+  const busy = busyWith !== null;
+  /** 改了邮箱 = 重新来：验证码作废，按钮回到「发送验证码」 */
+  const changeEmail = (v: string) => {
+    setEmail(v);
+    if (otpSent) {
+      setOtpSent(false);
+      setOtp('');
+    }
+  };
 
   /** 不登录了：从 onboarding 来的回 onboarding，其余回桌面 */
   const leave = () => {
@@ -96,7 +106,7 @@ export default function AuthScreen() {
 
   const doApple = async () => {
     if (busy) return;
-    setBusy(true);
+    setBusyWith('apple');
     try {
       await signInWithApple();
       await afterSignIn();
@@ -106,13 +116,28 @@ export default function AuthScreen() {
         showAlert(t('Apple 登录失败'), err.message ?? t('稍后再试。'));
       }
     } finally {
-      setBusy(false);
+      setBusyWith(null);
+    }
+  };
+
+  /** 重发验证码（D-223）：邮件没到时不用改邮箱绕一圈 */
+  const resendOtp = async () => {
+    if (busy || !email.trim()) return;
+    setBusyWith('email');
+    try {
+      await sendEmailOtp(email.trim(), useAppStore.getState().language);
+      setOtp('');
+      showToast(t('验证码已重新发出'));
+    } catch (e) {
+      showAlert(t('发送失败'), (e as Error).message ?? t('稍后再试。'));
+    } finally {
+      setBusyWith(null);
     }
   };
 
   const doEmail = async () => {
     if (busy) return;
-    setBusy(true);
+    setBusyWith('email');
     try {
       if (passwordMode) {
         await signInWithPassword(email.trim(), password);
@@ -128,17 +153,20 @@ export default function AuthScreen() {
     } catch (e) {
       showAlert(otpSent || passwordMode ? t('验证失败') : t('发送失败'), (e as Error).message ?? t('稍后再试。'));
     } finally {
-      setBusy(false);
+      setBusyWith(null);
     }
   };
 
   if (!authConfigured()) {
     return (
-      <View style={[styles.screen, styles.center, { paddingTop: insets.top }]}>
+      <View style={[styles.screen, { paddingTop: insets.top }]}>
+        {/* 暗纹放在不带 padding 的外层，留白给内层（带 padding 的容器里 SVG 铺不满） */}
         <DiamondBackground />
-        <Text style={styles.title}>{t('账号服务未配置')}</Text>
-        <Text style={styles.sub}>{__DEV__ ? '[dev] 在 .env.local 配好 Supabase 后重启（docs/supabase-setup.sql）。' : t('账号功能暂不可用。')}</Text>
-        <Button label={t('返回')} variant="secondary" onPress={leave} style={styles.ghostBtn} />
+        <View style={[styles.flex, styles.center]}>
+          <Text style={styles.title}>{t('账号服务未配置')}</Text>
+          <Text style={styles.sub}>{__DEV__ ? '[dev] 在 .env.local 配好 Supabase 后重启（docs/supabase-setup.sql）。' : t('账号功能暂不可用。')}</Text>
+          <Button label={t('返回')} variant="secondary" onPress={leave} style={styles.ghostBtn} />
+        </View>
       </View>
     );
   }
@@ -160,18 +188,21 @@ export default function AuthScreen() {
           <View style={styles.tile}>
             <MingCute name="cloud" size={34} color={Romance.ink} />
           </View>
-          <Text style={styles.title}>{t('把 TA 存进云端')}</Text>
+          {/* 从 onboarding「已有账号」来的老用户（D-223）：是来接回 TA 们的，不是第一次存 */}
+          <Text style={styles.title}>{restoring ? t('欢迎回来') : t('把 TA 存进云端')}</Text>
           <Text style={styles.sub}>
-            {forced
-              ? t('TA 已经在你的通讯录里了。') + '\n' + t('登录之后，换手机也不会失去 TA 和你们的故事。')
-              : t('登录之后，TA 和你们的故事换手机也不会失去。')}
+            {restoring
+              ? t('登录，把 TA 们接回这部手机。')
+              : forced
+                ? t('TA 已经在你的通讯录里了。') + '\n' + t('登录之后，换手机也不会失去 TA 和你们的故事。')
+                : t('登录之后，TA 和你们的故事换手机也不会失去。')}
           </Text>
 
           <Pressable
             style={({ pressed }) => [styles.appleBtn, busy && styles.dim, pressed && !busy && styles.pressed]}
             disabled={busy}
             onPress={doApple}>
-            {busy ? (
+            {busyWith === 'apple' ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
               <Text style={styles.appleBtnText}> {t('用 Apple 登录')}</Text>
@@ -187,7 +218,7 @@ export default function AuthScreen() {
           <Input
             style={styles.input}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={changeEmail}
             placeholder={t('邮箱地址')}
             autoCapitalize="none"
             autoCorrect={false}
@@ -220,6 +251,11 @@ export default function AuthScreen() {
             onPress={doEmail}
             style={styles.emailBtn}
           />
+          {otpSent && !passwordMode ? (
+            <Pressable style={styles.resend} onPress={() => void resendOtp()} disabled={busy} hitSlop={8}>
+              <Text style={[styles.ghostText, busy && styles.dim]}>{t('重发验证码')}</Text>
+            </Pressable>
+          ) : null}
 
           {!forced ? (
             <Pressable style={styles.ghost} onPress={leave}>
@@ -269,6 +305,7 @@ const styles = themed(() =>
     input: { alignSelf: 'stretch', marginBottom: 10 },
     emailBtn: { alignSelf: 'stretch' },
     ghost: { marginTop: 18, padding: 10 },
+    resend: { marginTop: 12, padding: 6 },
     ghostText: { fontSize: Type.scale.label.size, color: Romance.sub },
     ghostBtn: { marginTop: 18 },
     footnote: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 26, textAlign: 'center' },

@@ -25,7 +25,7 @@ export const PORTRAIT_STYLES: { id: NonNullable<Character['artStyle']>; label: s
   { id: 'ink', label: '国风水墨', model: 'qwen-image', line: '国风水墨插画：墨线为主、淡彩点缀，留白与晕染，气质古典清雅。' },
   { id: 'realistic', label: '写实插画', model: 'qwen-image', line: '写实插画风格：接近真实的光影与皮肤质感，但保持绘画感，不是照片。' },
   { id: 'lineart', label: '线稿', model: 'qwen-image', line: '铅笔线稿风格：黑白素描，干净的排线与轻微阴影，不上色。' },
-  { id: 'none', label: '不指定', model: 'qwen-image', line: '' },
+  { id: 'none', label: '不限', model: 'qwen-image', line: '' },
 ];
 
 export const DEFAULT_PORTRAIT_STYLE: NonNullable<Character['artStyle']> = 'shojo';

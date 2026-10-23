@@ -15,6 +15,7 @@ import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute } from '@/components/mingcute';
 import { TimePicker } from '@/components/time-picker';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
@@ -209,6 +210,17 @@ export default function OutingScreen() {
             }}>
             <MingCute name="close" size={20} color={Romance.sub} />
           </Pressable>
+          {/* 选错了能退回上一步，不用关掉重来 */}
+          {planCharacterId ? (
+            <Pressable
+              style={styles.modalBack}
+              hitSlop={10}
+              accessibilityLabel={t('返回')}
+              onPress={() => (planPlaceId ? setPlanPlaceId(null) : setPlanCharacterId(null))}>
+              <IconSymbol name="chevron.left" size={16} color={Romance.ink} />
+              <Text style={styles.modalBackText}>{t('返回')}</Text>
+            </Pressable>
+          ) : null}
           {!planCharacterId ? (
             <>
               <Text style={styles.modalTitle}>{t('约谁出来？')}</Text>
@@ -312,6 +324,8 @@ const styles = themed(() =>
     placeHook: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 2, marginLeft: 4 },
     modal: { flex: 1, backgroundColor: Romance.bg, paddingTop: 28, paddingHorizontal: Space.screen },
     modalClose: { position: 'absolute', top: 16, right: 16, padding: 8, zIndex: 2 },
+    modalBack: { flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', marginBottom: Space.inlineLoose },
+    modalBackText: { fontSize: Type.scale.sub.size, fontWeight: '500', color: Romance.ink },
     modalTitle: { fontSize: Type.scale.xxl.size, fontWeight: '600', color: Romance.ink, marginBottom: 18 },
     modalRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 10 },
     modalRowEmoji: { fontSize: Type.scale.h1.size },

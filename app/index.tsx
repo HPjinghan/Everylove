@@ -62,6 +62,8 @@ const MAX_PAGES = 6;
 /** 编辑模式拖到屏幕边缘多宽算「边缘」、停留多久翻页 */
 const EDGE_W = 28;
 const EDGE_FLIP_MS = 600;
+/** 天气卡里副行以外的宽：左右内边距 36 + 天气符号约 46 + 温度约 70 + 两道间距 */
+const WEATHER_FIXED_W = 36 + 46 + 70 + Space.screen * 2;
 
 /** 时钟副行是拉丁标签，不随界面语言变 */
 const WEEKDAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -165,8 +167,11 @@ function DesktopIcon({
 
 function WeatherCard() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const w = todayWeather();
   const city = weatherCity();
+  // 副行能用的宽：屏宽 − 两侧留白 − 卡内边距 / 天气符号 / 温度 / 间距
+  const lineMax = width - Space.screen * 2 - WEATHER_FIXED_W;
   return (
     <Pressable style={styles.weatherWrap} onPress={() => router.push('/weather')}>
       <Card padded={false} style={styles.weather}>
@@ -177,7 +182,7 @@ function WeatherCard() {
           <Text style={styles.weatherRange}>
             {w.hi}° / {w.lo}°
           </Text>
-          <Text style={styles.weatherLine} numberOfLines={1}>
+          <Text style={[styles.weatherLine, { maxWidth: lineMax }]} numberOfLines={1}>
             {city ? city : t(w.line)}
           </Text>
         </View>
@@ -575,7 +580,7 @@ export default function Desktop() {
                   {unreadBonds.map((b) => b.name).join(t('、'))}
                 </Text>
                 <Text style={styles.notifText} numberOfLines={1}>
-                  {t('{n} 条新消息 · 点开看看', { n: unreadTotal })}
+                  {unreadTotal === 1 ? t('1 条新消息') : t('{n} 条新消息', { n: unreadTotal })}
                 </Text>
               </View>
             </Card>
@@ -699,7 +704,7 @@ export default function Desktop() {
 
 /** 揭幕序列：一屏仪式文案 → 三张模块卡（Message / 创造 / 外出）→ 收尾放行 */
 const INTRO_CARDS: { icon: DesktopApp['icon']; title: string; line: string }[] = [
-  { icon: 'chat', title: 'TA 住进了 Message', line: 'TA 的第一句话在等你。' },
+  { icon: 'chat', title: 'TA 住进了 Messages', line: 'TA 的第一句话在等你。' },
   { icon: 'magicHat', title: '创造', line: '捏一个只属于你的 TA。' },
   { icon: 'location', title: '外出', line: '把相处从手机屏幕里拿出来。' },
 ];
@@ -819,7 +824,6 @@ const styles = themed(() =>
       fontSize: Type.scale.label.size,
       lineHeight: 18,
       color: Romance.sub,
-      maxWidth: 150,
     },
     grid: { flex: 1, marginTop: 10 },
     pager: { position: 'absolute', left: 0, right: 0, top: 0 },

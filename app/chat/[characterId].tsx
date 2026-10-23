@@ -14,7 +14,14 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
@@ -157,12 +164,7 @@ export default function SquareChatScreen() {
       <View style={styles.heartBar}>
         <Text style={styles.heartLabel}>{t('好奇')}</Text>
         <HeartMeter heart={heart} />
-        {!offered && (chat?.lastHeartGain ?? 0) > 0 ? (
-          // key = 当前值：每涨一次重新挂一次，入场动画才会再放
-          <Animated.Text key={heart} entering={FadeInDown.duration(260)} style={styles.heartGain}>
-            +{chat?.lastHeartGain}
-          </Animated.Text>
-        ) : null}
+        <HeartGain heart={heart} gain={offered ? 0 : (chat?.lastHeartGain ?? 0)} />
         <Text style={styles.heartNum}>
           {heart}/{HEART_FULL}
         </Text>
@@ -207,6 +209,36 @@ export default function SquareChatScreen() {
         }
       />
     </View>
+  );
+}
+
+/**
+ * 这一句涨了多少（D-126 / D-223）：只在这次看着它涨的时候冒出来、约 2 秒后淡掉——进页不重放、隔天回来不挂着旧的「+n」；
+ * 位置常驻占宽，出现 / 消失不挤动进度条。
+ */
+function HeartGain({ heart, gain }: { heart: number; gain: number }) {
+  const shown = useSharedValue(0);
+  const prev = useRef(heart);
+  useEffect(() => {
+    if (heart === prev.current) return;
+    const rose = heart > prev.current;
+    prev.current = heart;
+    if (!rose || gain <= 0) return;
+    shown.set(
+      withSequence(
+        withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) }),
+        withDelay(1700, withTiming(0, { duration: 400 }))
+      )
+    );
+  }, [heart, gain, shown]);
+  const style = useAnimatedStyle(() => ({
+    opacity: shown.get(),
+    transform: [{ translateY: (1 - shown.get()) * 6 }],
+  }));
+  return (
+    <Animated.Text style={[styles.heartGain, style]} numberOfLines={1}>
+      {gain > 0 ? `+${gain}` : ''}
+    </Animated.Text>
   );
 }
 
@@ -277,7 +309,8 @@ const styles = themed(() =>
     heartFill: { width: '100%', height: '100%', backgroundColor: Romance.accent, transformOrigin: 'left' },
     heartNum: { fontFamily: Fonts.labelBold, fontSize: Type.scale.caption.size, color: Romance.accentStrong },
     // 这一句涨了多少（D-126）：小字，0 不显示
-    heartGain: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.accent },
+    // 常驻占宽（够放「+30」），出现 / 消失不挤动进度条
+    heartGain: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.accent, width: 24, textAlign: 'right' },
     // offer 卡：白卡描边，贴在输入栏上方
     cta: {
       flexDirection: 'row',

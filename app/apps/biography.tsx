@@ -12,7 +12,7 @@ import { AppScreen } from '@/components/app-screen';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { Space, Type } from '@/constants/design';
-import { Fonts, Romance, themed } from '@/constants/theme';
+import { Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import { refreshSharedPool } from '@/lib/pool';
 import { chaptersForBond, liveCharacterFor } from '@/lib/story';
@@ -44,7 +44,7 @@ export default function BiographyScreen() {
             const chapters = chaptersForBond(b, sources);
             const color = c?.color ?? Romance.accent;
             return (
-              <Pressable key={b.id} onPress={() => router.push({ pathname: '/story/[bondId]', params: { bondId: b.id } } as never)}>
+              <Pressable key={b.id} disabled={!chapters.length} onPress={() => router.push({ pathname: '/story/[bondId]', params: { bondId: b.id } } as never)}>
                 <Card style={styles.row}>
                   <CharAvatar name={b.name} color={color} size={48} characterId={b.characterId} />
                   <View style={styles.text}>
@@ -57,7 +57,7 @@ export default function BiographyScreen() {
                   </View>
                   {chapters.length ? (
                     <Text style={styles.count}>
-                      <Text style={styles.countNum}>{chapters.length}</Text> {t('章')}
+                      {chapters.length === 1 ? t('1 章') : t('{n} 章', { n: chapters.length })}
                     </Text>
                   ) : (
                     <Text style={styles.none}>{t('还没有传记')}</Text>
@@ -80,7 +80,6 @@ const styles = themed(() =>
     name: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
     sub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
     count: { fontSize: Type.scale.caption.size, color: Romance.sub },
-    countNum: { fontFamily: Fonts.label, fontSize: Type.scale.sub.size, color: Romance.ink },
     none: { fontSize: Type.scale.caption.size, color: Romance.faint },
     empty: { alignItems: 'center', paddingTop: 60 },
     emptyText: { fontSize: Type.scale.sub.size, color: Romance.sub },

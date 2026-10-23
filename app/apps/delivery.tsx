@@ -7,7 +7,7 @@
 
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { showAlert } from '@/components/action-sheet';
 import { AppScreen } from '@/components/app-screen';
@@ -107,6 +107,8 @@ export default function DeliveryScreen() {
   const sorted = [...orders].sort((a, b) => b.at - a.at);
 
   return (
+    // 「留一句话」在屏幕最底下：整页随键盘让位（包在 AppScreen 外面，量的才是整屏、不漏算顶栏）
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <AppScreen title={t('外卖')} pattern onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
       <Segmented<Tab>
         options={[
@@ -221,7 +223,14 @@ export default function DeliveryScreen() {
           ) : (
             sorted.map((o) => {
               const bond = o.bondId ? bonds.find((b) => b.id === o.bondId) : undefined;
-              const who = o.from === 'him' ? t('{name} 给你点的', { name: bond?.name ?? 'TA' }) : bond ? t('你给 {name} 点的', { name: bond.name }) : t('给自己点的');
+              const who =
+                o.from === 'him'
+                  ? bond
+                    ? t('{name} 给你点的', { name: bond.name })
+                    : t('给你点的')
+                  : bond
+                    ? t('你给 {name} 点的', { name: bond.name })
+                    : t('给自己点的');
               const stage = now ? STAGES.indexOf(orderStatus(o, now)) : -1;
               const minutesLeft = now ? Math.max(1, Math.ceil((o.arriveAt - now) / 60_000)) : 0;
               const shopMeta = MENU.find((m) => m.id === o.storeId);
@@ -268,6 +277,7 @@ export default function DeliveryScreen() {
         </ScrollView>
       )}
     </AppScreen>
+    </KeyboardAvoidingView>
   );
 }
 

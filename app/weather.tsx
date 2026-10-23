@@ -37,23 +37,28 @@ export default function WeatherScreen() {
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<PlaceHit[]>([]);
   const [busy, setBusy] = useState(false);
-  const [, force] = useState(0);
-  const rerender = () => force((n) => n + 1);
+  /** 这次拉取的状态：拉着 / 没拉到（没设位置时不显示） */
+  const [load, setLoad] = useState<'loading' | 'failed' | 'done'>('loading');
 
   useEffect(() => {
-    void refreshWeather(true).then(rerender);
+    let alive = true;
+    void refreshWeather(true).then((ok) => {
+      if (alive) setLoad(ok ? 'done' : 'failed');
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const w = todayWeather();
 
   const applyPlace = (name: string, lat: number, lon: number) => {
-    setWeatherPlace(name, lat, lon);
     setCity(name);
     setQuery('');
     setHits([]);
-    // 拉到真实数据后刷新界面
-    setTimeout(rerender, 1200);
-    setTimeout(rerender, 4000);
+    setLoad('loading');
+    // 拉完（成或不成）再刷新界面，不靠定时猜
+    void setWeatherPlace(name, lat, lon).then((ok) => setLoad(ok ? 'done' : 'failed'));
   };
 
   /** 定位取城市：权限被拒则引导用搜索 */
@@ -119,7 +124,8 @@ export default function WeatherScreen() {
           <Text style={styles.todayLine}>{t(w.line)}</Text>
           <Text style={styles.todayCity}>
             {city ? `📍 ${city}` : t('未设置位置')}
-            {city && !weatherIsReal() ? ` · ${t('数据获取中…')}` : ''}
+            {city && load === 'loading' ? ` · ${t('数据获取中…')}` : ''}
+            {city && load === 'failed' && !weatherIsReal() ? ` · ${t('天气暂时没拿到')}` : ''}
           </Text>
         </Card>
 
