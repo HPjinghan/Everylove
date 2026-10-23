@@ -14,7 +14,7 @@
 
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -174,6 +174,8 @@ export default function DatingScreen() {
   const pastCommit = useRef(false);
   const [deckH, setDeckH] = useState(0);
   const pan = useAnimatedValueXY({ x: 0, y: 0 });
+  // 每滑走一张 +1：牌堆换上新牌顶之后（绘制前）才把 pan 归零，旧牌顶不会先弹回中间闪一下
+  const [swipeSeq, setSwipeSeq] = useState(0);
 
   useEffect(
     () => () => {
@@ -181,6 +183,10 @@ export default function DatingScreen() {
     },
     []
   );
+
+  useLayoutEffect(() => {
+    pan.setValue({ x: 0, y: 0 });
+  }, [swipeSeq, pan]);
 
   const bondedIds = useMemo(() => new Set(bonds.map((b) => b.characterId)), [bonds]);
 
@@ -267,8 +273,8 @@ export default function DatingScreen() {
   };
 
   const completeSwipe = (c: Character, liked: boolean) => {
-    pan.setValue({ x: 0, y: 0 });
     recordSwipe(c.id);
+    setSwipeSeq((n) => n + 1);
     if (liked) {
       haptic.success();
       // 右滑心动：TA 一定会同意——当场配对，等她去打招呼
@@ -346,6 +352,17 @@ export default function DatingScreen() {
   const passStamp = pan.x.interpolate({
     inputRange: [-120, -40],
     outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  // 下面那张跟着牌顶的位移长到全尺寸：飞出时已经和牌顶一样大，接班不跳一号
+  const behindScale = pan.x.interpolate({
+    inputRange: [-SCREEN_W, 0, SCREEN_W],
+    outputRange: [1, Space.matchBehindScale, 1],
+    extrapolate: 'clamp',
+  });
+  const behindY = pan.x.interpolate({
+    inputRange: [-SCREEN_W, 0, SCREEN_W],
+    outputRange: [0, Space.matchBehindOffset, 0],
     extrapolate: 'clamp',
   });
 
@@ -439,12 +456,19 @@ export default function DatingScreen() {
         <View style={styles.deckArea} onLayout={(e) => setDeckH(e.nativeEvent.layout.height)}>
           {top ? (
             <>
+              {/* 两张牌按角色 id 作 key：下面那张接班成牌顶时是同一个视图，立绘不重载 */}
               {next ? (
-                <View style={[styles.card, styles.cardBehind, { width: cardW }]}>
+                <Animated.View
+                  key={next.id}
+                  style={[
+                    styles.card,
+                    { width: cardW, transform: [{ scale: behindScale }, { translateY: behindY }] },
+                  ]}>
                   <DeckCard c={next} />
-                </View>
+                </Animated.View>
               ) : null}
               <Animated.View
+                key={top.id}
                 style={[
                   styles.card,
                   { width: cardW, transform: [...pan.getTranslateTransform(), { rotate }] },
@@ -586,9 +610,6 @@ const styles = themed(() =>
     matchName: { fontSize: Type.scale.caption.size, color: Romance.ink, marginTop: 4, maxWidth: 58 },
     deckArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     card: { position: 'absolute', aspectRatio: Space.matchCardRatio },
-    cardBehind: {
-      transform: [{ scale: Space.matchBehindScale }, { translateY: Space.matchBehindOffset }],
-    },
     // 卡面：白卡描边 r6（Card），内部裁切
     deckCard: { flex: 1, overflow: 'hidden' },
     deckTop: { flex: 1, alignItems: 'center', justifyContent: 'center' },
