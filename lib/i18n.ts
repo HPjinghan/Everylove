@@ -835,8 +835,6 @@ const en: Record<string, string> = {
   '{n} 章 ›': '{n} chapters ›',
   '{n} 张 ›': '{n} photos ›',
   '还没有照片': 'No photos yet',
-  '不填': 'Skip',
-  '填一下': 'Pick a date',
   '偶遇了{name} · 约在{time}': 'Ran into {name} · date at {time}',
   '没有定位权限': 'No location permission',
   '定位没成功': "Couldn't get your location",
@@ -912,6 +910,8 @@ const en: Record<string, string> = {
   '不想说': 'Prefer not to say',
   '比如：她、他，或你喜欢的叫法': 'e.g. she, he, they, or what you like to be called',
   '比如：学生、设计师、护士': 'e.g. student, designer, nurse',
+  '还没填': 'Not set',
+  '修改': 'Edit',
   // __EN_END__
 };
 
@@ -1719,8 +1719,6 @@ const ja: Record<string, string> = {
   '{n} 章 ›': '{n} 章 ›',
   '{n} 张 ›': '{n} 枚 ›',
   '还没有照片': 'まだ写真はない',
-  '不填': '入力しない',
-  '填一下': '選ぶ',
   '偶遇了{name} · 约在{time}': '{name}に偶然会った · 約束は{time}',
   '没有定位权限': '位置情報の許可がありません',
   '定位没成功': '現在地を取得できませんでした',
@@ -1796,6 +1794,8 @@ const ja: Record<string, string> = {
   '不想说': '答えたくない',
   '比如：她、他，或你喜欢的叫法': '例：彼女、彼、または呼ばれたい呼び方',
   '比如：学生、设计师、护士': '例：学生、デザイナー、看護師',
+  '还没填': '未設定',
+  '修改': '変更',
   // __JA_END__
 };
 
@@ -2597,8 +2597,6 @@ const ko: Record<string, string> = {
   '{n} 章 ›': '{n}장 ›',
   '{n} 张 ›': '{n}장 ›',
   '还没有照片': '아직 사진이 없어요',
-  '不填': '건너뛰기',
-  '填一下': '선택하기',
   '偶遇了{name} · 约在{time}': '{name}와 우연히 만남 · 약속은 {time}',
   '没有定位权限': '위치 권한이 없어요',
   '定位没成功': '위치를 가져오지 못했어요',
@@ -2674,6 +2672,8 @@ const ko: Record<string, string> = {
   '不想说': '밝히고 싶지 않음',
   '比如：她、他，或你喜欢的叫法': '예: 그녀, 그, 또는 불리고 싶은 호칭',
   '比如：学生、设计师、护士': '예: 학생, 디자이너, 간호사',
+  '还没填': '아직 없음',
+  '修改': '수정',
   // __KO_END__
 };
 
