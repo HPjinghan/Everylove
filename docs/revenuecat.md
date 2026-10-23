@@ -51,6 +51,8 @@
 
 ### E5 · 上线前要配的（D-218 代码已就位，缺这些就是「下个版本开放」）
 
+**进度（2026-10-23）**：RevenueCat 项目 `ringring`（id `0aa7f4a6`，Owner 是 Harper 的账号）已加 App Store app（`com.biibit.ringring`，App 内购买密钥 `ringring RevenueCat` · Key ID `8H5MJ9W27W`，Issuer ID `8357a944-b893-418a-831b-c955cce17b77`；.p8 只在 Harper 手里）、权益 `pro` / `max` 已建（还没挂商品）。公开 key `appl_HaUuaSoDByncTofcvdDvcuRbogm` 已拿到，但**等商品建好、挂进 offering 再写进 `IOS_KEYS`**：一写进去，随热更或下一次 build 设置页就从试装切成真买，商品没建好时是空的。创建向导自动生成的 `ringring_pro` 权益、lifetime / yearly / monthly 商品和 Test Store 不用，之后删掉。还缺：App Store Connect 的付费 App 协议与税务银行（账户持有人）、8 个商品、App Store Connect API 密钥（账户持有人先「请求访问」）、v2 secret key 与 webhook（下面 3、4）。
+
 1. **App Store Connect**（账户持有人）：付费 App 协议 + 税务银行；建上面 8 个商品（两个订阅放同一个订阅群组；每个要审核截图；价格照 D-221：美国为基准店面填美元价，日本手动改成日元价，其余店面用苹果自动换算）；小企业计划；生成 In-App Purchase 密钥（.p8）与 App Store Connect API 密钥；App Store 服务器通知 V2 正式 / 沙盒都填 RevenueCat 给的地址。
 2. **RevenueCat**：建项目 → 加 App Store app（bundle id `com.biibit.ringring`）→ 填两把苹果密钥 → 导入 8 个商品 → 建两个 entitlement，**lookup key 必须是 `pro` 和 `max`**（Pro 订阅挂 pro、Max 订阅挂 max）→ 建一个 offering 设为 current，8 个商品各挂一个 package。恢复行为保持默认「转给新的 App User ID」；「Track new purchases from server-to-server notifications」保持关；Refund Control 先选不回应。
 3. **把这些交给我**（经密码管理器，不走聊天）：公开 iOS key（`appl_`，写进 `lib/purchases.ts` 的 `IOS_KEYS`）；v2 secret key（权限：Customer information 的 Purchases 读、Customers 读写，Project configuration 的 Products 读、Entitlements 读）+ 项目 id → Supabase Secrets `RC_SECRET_KEY` / `RC_PROJECT_ID`；webhook 签名密钥 → `RC_WEBHOOK_SECRETS`。
