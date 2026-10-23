@@ -32,7 +32,7 @@
 
 ### E3 · 动手前还要开发者 / Harper 给的
 
-- 价格与额度（OPEN_QUESTIONS #30，已在）：Pro / Max 月费、流量包与语音分钟包单价、溢价落在哪。
+- 价格（**已定 D-221**）：Pro $9.99 / ¥1,500、Max $24.99 / ¥3,800 每月；流量包 1000 / 3000 / 10000 RB = $1.99 / $4.99 / $14.99（¥300 / ¥750 / ¥2,200）；语音分钟包 30 / 60 / 180 分钟 = $2.99 / $4.99 / $12.99（¥450 / ¥750 / ¥1,900）。
 - **商品 ID**（原手册第 18 条，一旦提交就改不了；**已定 D-218**）：`ringring.pro.monthly`、`ringring.max.monthly`（自动续期订阅，放同一个订阅群组，升降级由苹果处理）、`ringring.traffic.s` / `.m` / `.l`、`ringring.voice.s` / `.m` / `.l`（消耗型）。ID 里不写数量，入账数只写在服务器商品表 `iap_products`。App Store Connect 里的显示名用 RingBit 的单位（如「流量 1000 RB」，D-219），不写 MB。
 - **创作者分成要不要按买家实付分**（OPEN_QUESTIONS #38）：要的话原手册 §9 的店面 / 当地价格要在第一笔正式购买之前开始存。
 - 上架市场：日本 + 中文先行之外，欧盟上不上（上的话先申报 DSA 交易者身份）。
@@ -51,7 +51,7 @@
 
 ### E5 · 上线前要配的（D-218 代码已就位，缺这些就是「下个版本开放」）
 
-1. **App Store Connect**（账户持有人）：付费 App 协议 + 税务银行；建上面 8 个商品（两个订阅放同一个订阅群组；每个要审核截图）；小企业计划；生成 In-App Purchase 密钥（.p8）与 App Store Connect API 密钥；App Store 服务器通知 V2 正式 / 沙盒都填 RevenueCat 给的地址。
+1. **App Store Connect**（账户持有人）：付费 App 协议 + 税务银行；建上面 8 个商品（两个订阅放同一个订阅群组；每个要审核截图；价格照 D-221：美国为基准店面填美元价，日本手动改成日元价，其余店面用苹果自动换算）；小企业计划；生成 In-App Purchase 密钥（.p8）与 App Store Connect API 密钥；App Store 服务器通知 V2 正式 / 沙盒都填 RevenueCat 给的地址。
 2. **RevenueCat**：建项目 → 加 App Store app（bundle id `com.biibit.ringring`）→ 填两把苹果密钥 → 导入 8 个商品 → 建两个 entitlement，**lookup key 必须是 `pro` 和 `max`**（Pro 订阅挂 pro、Max 订阅挂 max）→ 建一个 offering 设为 current，8 个商品各挂一个 package。恢复行为保持默认「转给新的 App User ID」；「Track new purchases from server-to-server notifications」保持关；Refund Control 先选不回应。
 3. **把这些交给我**（经密码管理器，不走聊天）：公开 iOS key（`appl_`，写进 `lib/purchases.ts` 的 `IOS_KEYS`）；v2 secret key（权限：Customer information 的 Purchases 读、Customers 读写，Project configuration 的 Products 读、Entitlements 读）+ 项目 id → Supabase Secrets `RC_SECRET_KEY` / `RC_PROJECT_ID`；webhook 签名密钥 → `RC_WEBHOOK_SECRETS`。
 4. **Webhook 集成**：地址 `https://ehdqdibvvzxcnzekqhmq.supabase.co/functions/v1/iap-webhook`，正式和沙盒都发（审核与 TestFlight 是沙盒），开签名，事件过滤不开。
