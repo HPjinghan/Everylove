@@ -38,10 +38,10 @@ import type { UserProfile } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
 const GENDERS: { key: NonNullable<UserProfile['gender']>; label: string }[] = [
-  { key: 'unspecified', label: '不指定' },
   { key: 'female', label: '女生' },
   { key: 'male', label: '男生' },
   { key: 'nonbinary', label: '非二元' },
+  { key: 'unspecified', label: '不想说' },
 ];
 
 /** 文本字段：Field + Input；numeric = 值是数字（生日）时用 Fredoka */
@@ -179,11 +179,13 @@ export default function IdentityScreen() {
 
           <TextField
             label={t('称呼 / 代词')}
+            placeholder={t('比如：她、他，或你喜欢的叫法')}
             value={draft.pronoun ?? ''}
             onChange={(v) => patch({ pronoun: v })}
           />
           <TextField
             label={t('职业')}
+            placeholder={t('比如：学生、设计师、护士')}
             value={draft.occupation ?? ''}
             onChange={(v) => patch({ occupation: v })}
           />

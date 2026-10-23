@@ -1,10 +1,10 @@
 /**
  * Onboarding（D-035；D-080 并成一步；D-100 纸面）：语言 →「先让 TA 们认识你」。
  * 昵称与「更倾向于和什么样的人建立关系」必填（后者既是全性向声明，也是交友推荐的口味过滤，原独立一步「你想被谁爱？」并入此处）；
- * 其余（性别/称呼/职业/生日）都可跳过，完整设定稍后在 设置 → 我的身份 里补充，也能为单个角色使用不同身份。
- * 第一步「已有账号？去登录」（D-096 → D-125 提到语言按钮正下方、outline 按钮）：换了手机的老用户直接登录把 TA 们接回来，不重走新手流（语言还没选，所以多语并排）。
+ * 其余（性别/称呼/职业）都可跳过；生日与完整设定在 设置 → 我的身份 里补充（D-222），也能为单个角色使用不同身份。
+ * 第一步「已有账号？去登录」（D-096 → D-125 提到语言按钮正下方、outline 按钮）：换了手机的老用户直接登录把 TA 们接回来，不重走新手流（语言还没选，所以英 / 日 / 韩并排，D-222 去掉中文）。
  * 默认语言 English（D-125）：没选过语言的新装机（TestFlight 公测面向海外）一打开就是英文，语言按钮 English 排第一。
- * 纸面：paper 底 + 菱格暗纹；字段用 Field / Input，选项用 Chip，主按钮 Button——无阴影、无描边输入框、r6。
+ * 纸面：纯 paper 底（D-222 去掉菱格暗纹）；字段用 Field / Input，选项用 Chip，主按钮 Button——无阴影、无描边输入框、r6。
  */
 
 import { useRouter } from 'expo-router';
@@ -20,11 +20,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BirthdayPicker } from '@/components/birthday-picker';
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
 import { Field, Input } from '@/components/input';
-import { DiamondBackground } from '@/components/paper-bg';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Space, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
@@ -48,10 +46,10 @@ const PREFS: { key: LovePref; label: string }[] = [
 ];
 
 const GENDERS: { key: NonNullable<UserProfile['gender']>; label: string }[] = [
-  { key: 'unspecified', label: '不指定' },
   { key: 'female', label: '女生' },
   { key: 'male', label: '男生' },
   { key: 'nonbinary', label: '非二元' },
+  { key: 'unspecified', label: '不想说' },
 ];
 
 export default function OnboardingScreen() {
@@ -65,12 +63,10 @@ export default function OnboardingScreen() {
   const [gender, setGender] = useState<NonNullable<UserProfile['gender']>>('unspecified');
   const [pronoun, setPronoun] = useState('');
   const [occupation, setOccupation] = useState('');
-  const [birthday, setBirthday] = useState('');
 
   if (step === 'lang') {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 80, paddingBottom: insets.bottom }]}>
-        <DiamondBackground />
         <Text style={styles.title}>选择语言{'\n'}Language · 言語</Text>
         <View style={styles.options}>
           {LANGS.map((l) => (
@@ -87,9 +83,9 @@ export default function OnboardingScreen() {
         </View>
         {authConfigured() ? (
           <View style={styles.signIn}>
-            <Text style={styles.signInHint}>Already have an account? · 已有账号？</Text>
+            <Text style={styles.signInHint}>Already have an account? · アカウントをお持ちの方 · 계정이 있으신가요?</Text>
             <Button
-              label="Sign in · 去登录 · ログイン · 로그인"
+              label="Sign in · ログイン · 로그인"
               variant="outline"
               onPress={() => router.push({ pathname: '/auth', params: { restore: '1' } })}
             />
@@ -109,7 +105,6 @@ export default function OnboardingScreen() {
       gender,
       pronoun: pronoun.trim() || undefined,
       occupation: occupation.trim() || undefined,
-      birthday: birthday.trim() || undefined,
     });
     useAppStore.getState().completeOnboarding(pref);
     router.replace('/');
@@ -117,7 +112,6 @@ export default function OnboardingScreen() {
 
   return (
     <View style={styles.screen}>
-      <DiamondBackground />
       {/* 回语言步（D-182）：选错语言不用重装 */}
       <Pressable onPress={() => setStep('lang')} hitSlop={10} style={[styles.back, { top: insets.top + 8 }]}>
         <IconSymbol name="chevron.left" size={22} color={Romance.ink} />
@@ -131,7 +125,6 @@ export default function OnboardingScreen() {
           ]}
           keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>{t('先让 TA 们认识你')}</Text>
-          <Text style={styles.hint}>{t('只用填最基本的，其余都可以跳过。')}</Text>
 
           <Field label={t('昵称')} hint={t('角色看到的名字')} required>
             <Input
@@ -169,20 +162,21 @@ export default function OnboardingScreen() {
           </Field>
 
           <Field label={t('称呼 / 代词')}>
-            <Input value={pronoun} onChangeText={setPronoun} placeholder={t('可不填')} maxLength={12} />
+            <Input
+              value={pronoun}
+              onChangeText={setPronoun}
+              placeholder={t('比如：她、他，或你喜欢的叫法')}
+              maxLength={12}
+            />
           </Field>
 
           <Field label={t('职业')}>
             <Input
               value={occupation}
               onChangeText={setOccupation}
-              placeholder={t('可不填')}
+              placeholder={t('比如：学生、设计师、护士')}
               maxLength={20}
             />
-          </Field>
-
-          <Field label={t('生日')}>
-            <BirthdayPicker value={birthday} onChange={setBirthday} />
           </Field>
 
           <Button label={t('进去看看')} disabled={!ready} onPress={finish} style={styles.submit} />
@@ -203,7 +197,6 @@ const styles = themed(() =>
       fontWeight: '600',
       color: Romance.ink,
     },
-    hint: { fontSize: Type.scale.sub.size, color: Romance.sub, marginTop: 10 },
     options: { marginTop: 40, gap: 10 },
     signIn: { marginTop: 36, gap: 10 },
     signInHint: { fontSize: Type.scale.sub.size, fontWeight: '500', color: Romance.sub, textAlign: 'center' },

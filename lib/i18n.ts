@@ -230,14 +230,14 @@ const en: Record<string, string> = {
   '必填': 'Required',
   '性别': 'Gender',
   '不指定': 'Unspecified',
-  '女生': 'Girl',
-  '男生': 'Boy',
+  '女生': 'Female',
+  '男生': 'Male',
   '非二元': 'Non-binary',
   '称呼 / 代词': 'Form of address / pronouns',
   '职业': 'Occupation',
 
   '情感取向': 'Orientation',
-  '例如：喜欢女生': 'e.g. likes girls',
+  '例如：喜欢女生': 'e.g. into women',
   '个性签名': 'Status line',
   '一句现在的状态': 'One line about right now',
   '完整设定': 'Full profile',
@@ -909,6 +909,9 @@ const en: Record<string, string> = {
   '今天先到这里，明天再来': 'That\'s enough for today. Come back tomorrow',
   '照片还在冲洗，过几分钟再拍': 'Still developing. Try again in a few minutes',
   'TA 这会儿忙，等一下再说': 'Busy right now. Try again in a moment',
+  '不想说': 'Prefer not to say',
+  '比如：她、他，或你喜欢的叫法': 'e.g. she, he, they, or what you like to be called',
+  '比如：学生、设计师、护士': 'e.g. student, designer, nurse',
   // __EN_END__
 };
 
@@ -1790,6 +1793,9 @@ const ja: Record<string, string> = {
   '今天先到这里，明天再来': '今日はここまで。また明日',
   '照片还在冲洗，过几分钟再拍': 'まだ現像中。数分後にもう一度どうぞ',
   'TA 这会儿忙，等一下再说': '今ちょっと手が離せないみたい。少し待ってね',
+  '不想说': '答えたくない',
+  '比如：她、他，或你喜欢的叫法': '例：彼女、彼、または呼ばれたい呼び方',
+  '比如：学生、设计师、护士': '例：学生、デザイナー、看護師',
   // __JA_END__
 };
 
@@ -2665,6 +2671,9 @@ const ko: Record<string, string> = {
   '今天先到这里，明天再来': '오늘은 여기까지, 내일 또 와요',
   '照片还在冲洗，过几分钟再拍': '아직 인화 중이에요. 몇 분 뒤에 다시 찍어요',
   'TA 这会儿忙，等一下再说': '지금 좀 바쁜가 봐요. 잠시 후에 다시 말해요',
+  '不想说': '밝히고 싶지 않음',
+  '比如：她、他，或你喜欢的叫法': '예: 그녀, 그, 또는 불리고 싶은 호칭',
+  '比如：学生、设计师、护士': '예: 학생, 디자이너, 간호사',
   // __KO_END__
 };
 
