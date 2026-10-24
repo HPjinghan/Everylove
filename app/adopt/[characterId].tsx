@@ -32,7 +32,7 @@ import { authConfigured, signedInSession } from '@/lib/auth';
 import { generateCharacterLines } from '@/lib/character-lines';
 import { t } from '@/lib/i18n';
 import { requestNotificationPermission } from '@/lib/notifications';
-import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
+import { findCharacter, useAppStore } from '@/store/app-store';
 import { Shape, Type } from '@/constants/design';
 
 /** 两步（D-223）：起名（兼确认）→ 仪式。原「开始缔结」那一步只剩标题 + 按钮（槽位 D-210 起不限），已并掉 */
@@ -51,8 +51,6 @@ export default function AdoptScreen() {
 
   if (!character) return <Redirect href="/" />;
 
-  // TA 叫她的名字 = 她在这个角色眼中的昵称（D-088）
-  const finalNickname = meForCharacter(character.id)?.nickname?.trim() || '你';
 
   const finish = async () => {
     if (finishing.current) return;
@@ -132,7 +130,6 @@ export default function AdoptScreen() {
           {step === 'ceremony' && (
             <Ceremony
               hisName={hisName.trim() || character.name}
-              nickname={finalNickname}
               color={character.color}
               characterId={character.id}
               custom={!!character.custom}
@@ -145,18 +142,16 @@ export default function AdoptScreen() {
   );
 }
 
-/** 迁移仪式：三行文字依次显影 + 心跳（自创角色有自己的仪式文案，D-052）。
- * D-208：TA 的立绘放大到 168，开场盖着一层墨色相纸、跟着三行字慢慢褪掉——TA 像一张拍立得一样显影出来，褪尽时 success 震动 + 心跳 */
+/** 迁移仪式：两行文字依次显影（D-223：「TA 给你的备注是」那行删了——昵称是她自己起的，不用再念给她听） + 心跳（自创角色有自己的仪式文案，D-052）。
+ * D-208：TA 的立绘放大到 168，开场盖着一层墨色相纸、跟着两行字慢慢褪掉——TA 像一张拍立得一样显影出来，褪尽时 success 震动 + 心跳 */
 function Ceremony({
   hisName,
-  nickname,
   color,
   characterId,
   custom,
   onDone,
 }: {
   hisName: string;
-  nickname: string;
   color: string;
   characterId?: string;
   custom?: boolean;
@@ -166,20 +161,17 @@ function Ceremony({
     ? [
         t('{name}不再只是你创造的角色', { name: hisName }),
         t('这一次，是 TA 自己选择留下'),
-        t('TA 给你的备注是——「{nickname}」', { nickname }),
       ]
     : [
         t('TA 存下了你的号码'),
         t('你出现在了 TA 的通讯录里'),
-        t('TA 给你的备注是——「{nickname}」', { nickname }),
       ];
-  // 三行显影各一只 Animated 值（仪式固定三行，hook 个数固定）+ 心跳一只
+  // 两行显影各一只 Animated 值（仪式固定两行，hook 个数固定）+ 心跳一只
   const fade0 = useAnimatedValue(0);
   const fade1 = useAnimatedValue(0);
-  const fade2 = useAnimatedValue(0);
-  const fades = [fade0, fade1, fade2];
+  const fades = [fade0, fade1];
   const heart = useAnimatedValue(0);
-  // 盖在立绘上的墨色相纸：1 → 0，和三行字一起走完
+  // 盖在立绘上的墨色相纸：1 → 0，和两行字一起走完
   const film = useAnimatedValue(1);
   const [done, setDone] = useState(false);
 
@@ -189,7 +181,7 @@ function Ceremony({
     );
     Animated.parallel([
       ...anims,
-      Animated.timing(film, { toValue: 0, duration: 2400, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(film, { toValue: 0, duration: 1500, easing: Easing.out(Easing.quad), useNativeDriver: true }),
     ]).start(() => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Animated.timing(heart, { toValue: 1, duration: 500, useNativeDriver: true }).start(() =>
