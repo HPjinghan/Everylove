@@ -320,8 +320,6 @@ export interface Bond {
   phoneUnlocked?: boolean;
   /** TA 的记事本（D-085）：lib/his-notes.ts 按 MBTI 频率写，最多 30 条（store HIS_NOTES_MAX） */
   notes: HisNote[];
-  /** LV1 首次进会话时的「+」面板预告已插过（D-100，只出现一次） */
-  hintPlusSeen?: boolean;
   /** 缔结那一刻的角色快照（D-116）：设定、台词、世界都定格在这里；之后角色库里怎么改（自己改 / 创作者改）都不动这段关系。旧存档没有的按 id 取现行 */
   character?: Character;
   /** TA 自己的作息（D-119）：TA 日历里自己的安排（上班 / 和朋友的约 / 家里的事……），按周补写；进【你的日程】 */

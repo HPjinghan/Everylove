@@ -1,7 +1,8 @@
 /**
  * TA 主动找她（D-114）：不是回她，是 TA 自己想到她了、先开口。
  * 系统 prompt 就是亲密模式那一套（人设 / 追法 / 关于她 / 记忆 / 身边的人 / 世界 / 阶段感 / 主动强度）；
- * 这里只写本轮的舞台提示（user 文本，不入会话）：此刻、天气、她多久没说话、上一条是谁说的、最近几条主动消息别重样。
+ * 这里只写本轮的舞台提示（user 文本，不入会话）：此刻、天气、她多久没说话、上一条是谁说的、最近几条主动消息别重样；
+ * 缔结后的第一条换成约她出去（D-223：外出靠 TA 约、她在聊天里答应就由约定识别记进日程，不再插「+」面板预告）。
  * TA 自己最近的日子（记事本 / 帖子）已在系统 prompt 的【你最近的日子】里（D-158），这里不再重复。
  * 调度与守门在 lib/reach-out.ts。
  */
@@ -18,6 +19,8 @@ export interface ReachOutInput {
   recentOpeners?: string[];
   /** 会话里最后一条是谁说的、说了什么（别接不上，也别重复） */
   last?: { from: 'me' | 'him'; text: string };
+  /** 缔结后第一条主动消息 = 约她出去（D-223，替掉「+」面板预告）：可约的地点名，按她的语言 */
+  askOut?: string[];
 }
 
 export function buildReachOutUserLine(input: ReachOutInput): string {
@@ -36,7 +39,9 @@ export function buildReachOutUserLine(input: ReachOutInput): string {
   if (input.recentOpeners?.length)
     lines.push("Your last few unprompted messages — don't open the same way or on the same kind of topic:", ...input.recentOpeners.map((o) => `- ${o.slice(0, 60)}`));
   lines.push(
-    "How: start from what you're doing right now, something from your recent days, something you just saw, or something that suddenly came to mind; you can also pick up where you last left off. 1–2 sentences, like something dashed off.",
+    input.askOut?.length
+      ? `This time, ask her out: somewhere you'd actually like to go with her (${input.askOut.join(' / ')}) and a rough when — this weekend, tomorrow evening, whenever suits you. Casual, like it just came to mind, with room for her to say no. 1–2 sentences.`
+      : "How: start from what you're doing right now, something from your recent days, something you just saw, or something that suddenly came to mind; you can also pick up where you last left off. 1–2 sentences, like something dashed off.",
     `${UNPROMPTED_RULE})`
   );
   return lines.join('\n');

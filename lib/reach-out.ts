@@ -9,10 +9,12 @@
  *   她在写好之后又说过话 → 那条作废、到点时按新上下文重写。AI 不可用 / 失败 = 这次不发，钟照排。
  */
 
+import { PLACES } from '@/content/places';
 import { buildReachOutUserLine } from '@/content/prompts';
 import { draftReply, landReply } from '@/core/turn';
 import { bondScope } from '@/lib/chat';
 import { bondLevel, DISTANT_MIN_INTERVAL_MS, REACH_PLAN_MULT, WARMTH_REACH_MULT, warmthBand, warmthNow, type WarmthBand } from '@/lib/bond';
+import { t } from '@/lib/i18n';
 import { cancelScheduled, hasNotificationPermission, scheduleArrivalNotification } from '@/lib/notifications';
 import type { Bond, Character, ChatMessage, EngineReply } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
@@ -179,6 +181,12 @@ async function clearPending(bondId: string): Promise<void> {
   useAppStore.getState().setReachPending(bondId, undefined);
 }
 
+/** 缔结后的第一条主动消息、两人还没有约定 → 这条约她出去（D-223） */
+export function wantsFirstDate(bond: Pick<Bond, 'messages' | 'characterId'>): boolean {
+  if (bond.messages.some((m) => m.reach)) return false;
+  return !useAppStore.getState().outingPlans.some((p) => p.characterId === bond.characterId);
+}
+
 /** 亲密模式整套 prompt + 舞台提示 → TA 主动的一两句（连暗号）；不可用 / 失败返回 null */
 async function generateReachOut(bond: Bond, character: Character, at: Date): Promise<EngineReply | null> {
   const her = lastFrom(bond.messages, 'me');
@@ -190,6 +198,7 @@ async function generateReachOut(bond: Bond, character: Character, at: Date): Pro
     // 最近几条主动消息（D-153）：话题与开头别重样
     recentOpeners: bond.messages.filter((m) => m.from === 'him' && m.reach && m.text).slice(-RECENT).map((m) => m.text),
     last: lastMsg ? { from: lastMsg.from === 'me' ? 'me' : 'him', text: lastMsg.text } : undefined,
+    askOut: wantsFirstDate(bond) ? PLACES.filter((p) => !p.stranger).map((p) => t(p.name)) : undefined,
   });
   try {
     return await draftReply(bondScope(bond.id), line);

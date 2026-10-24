@@ -219,7 +219,6 @@ interface AppState {
   /** 查手机（D-082）：拿到密码后解锁，之后随时能看 */
   setPhoneUnlocked: (bondId: string) => void;
   /** 「+」面板预告已插过（D-100） */
-  markBondHintSeen: (bondId: string) => void;
   /** LINE 规则（D-030）：撤回=占位+清内容（仅自己的消息、24h 内，界面侧把关）；删除=本地移除任意消息 */
   recallMessage: (scope: { bondId?: string; characterId?: string }, msgId: string) => void;
   /** 就地更新一条消息（D-073：语音识别 / 看图结果回填） */
@@ -693,10 +692,6 @@ export const useAppStore = create<AppState>()(
       setPhoneUnlocked: (bondId) =>
         set({
           bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, phoneUnlocked: true } : b)),
-        }),
-      markBondHintSeen: (bondId) =>
-        set({
-          bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, hintPlusSeen: true } : b)),
         }),
 
       recallMessage: ({ bondId, characterId }, msgId) => {

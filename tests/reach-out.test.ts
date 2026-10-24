@@ -101,4 +101,10 @@ describe('舞台提示', () => {
     expect(line).toContain('was hers: "晚安"');
     expect(line).toContain("Don't ask \"you there?\"");
   });
+  it('缔结后第一条主动消息约她出去（D-223）：地点按她的语言列出，替掉「从你的日子说起」', () => {
+    const line = buildReachOutUserLine({ now: new Date(2026, 8, 10, 21, 30), weather: '今天多云', hoursSinceHer: 5, askOut: ['海边', '书店'] });
+    expect(line).toContain('ask her out');
+    expect(line).toContain('海边 / 书店');
+    expect(line).not.toContain("start from what you're doing");
+  });
 });

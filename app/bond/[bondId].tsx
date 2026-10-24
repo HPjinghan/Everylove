@@ -1,7 +1,6 @@
 /**
  * 羁绊会话（D-100 纸面）：加好友之后的家。
  * 顶栏自绘：‹、头像 36、名 17/600、「羁绊 LVn · 阶段 ›」12/500 primary（整块点开「TA 的主页」）、右侧只留电话；下沿 1.5px ink。
- * LV1 首次进入插一条「+」面板预告（白底 accent 字，只一次，bond.hintPlusSeen）。
  * 「TA 的主页」= 原 profile Modal 扩展：统计卡 + 信息卡（Card + Divider 分区）；三个动作图块已下线（D-147：与顶栏电话、「+」面板重复）。
  * 开门/离席已下线（D-046）：加好友即在线，TA 一直会回消息。
  * 升级时刻（D-208）：她正看着这段会话时羁绊升级 → components/level-up 全屏浮出立绘与新等级。
@@ -34,7 +33,7 @@ import { sendInvite } from '@/features/invite';
 import { sendLocation } from '@/features/location';
 import { askPasscode } from '@/features/phone-peek';
 import { sendRedPacket } from '@/features/red-packet';
-import { levelInfoFor, levelOf } from '@/lib/bond';
+import { levelInfoFor } from '@/lib/bond';
 import { callReady } from '@/lib/call';
 import { characterUpdateFor } from '@/lib/character-update';
 import { bondScope, resendTurn, sendImage, sendText, sendVoice, sysMsg } from '@/lib/chat';
@@ -78,15 +77,6 @@ export default function BondScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bondId, messageCount]);
-
-  // 「+」面板预告（D-100）：LV1 第一次进来插一条白底 accent 字的提示，只出现一次
-  useEffect(() => {
-    if (!bond || bond.hintPlusSeen || levelOf(bond) !== 1) return;
-    const store = useAppStore.getState();
-    store.appendBond(bond.id, [{ ...sysMsg(t('试试「+」里的外出邀请，把相处从屏幕里拿出来')), tone: 'hint' }]);
-    store.markBondHintSeen(bond.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bondId]);
 
   // 角色更新通道（D-140）：现行版本（角色库 / 共享池）和快照不一样 → 信息卡「设定」行可换；进来先刷一次共享池（5 分钟节流）
   const customs = useAppStore((s) => s.customCharacters);
