@@ -61,7 +61,7 @@ const styles = themed(() =>
   StyleSheet.create({
     card: { minWidth: 190, maxWidth: 240 },
     map: { height: 110, borderRadius: Shape.radiusInner, overflow: 'hidden', marginBottom: 8 },
-    kicker: { fontSize: Type.scale.xs.size, color: withAlpha(Romance.ink, 0.45), letterSpacing: 0.5 },
+    kicker: { fontSize: Type.scale.caption.size, color: withAlpha(Romance.ink, 0.55), letterSpacing: 0.5 },
     kickerLight: { color: withAlpha('#FFFFFF', 0.8) },
     title: { fontSize: Type.scale.md.size, fontWeight: '700', color: Romance.ink, marginTop: 4 },
     titleLight: { color: '#FFFFFF' },

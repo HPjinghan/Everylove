@@ -13,7 +13,7 @@ import { showAlert } from '@/components/action-sheet';
 import { AppScreen, HeaderAction } from '@/components/app-screen';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
-import { MingCute } from '@/components/mingcute';
+import { MingCute, WEATHER_ICON } from '@/components/mingcute';
 import { TimePicker } from '@/components/time-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space, Type } from '@/constants/design';
@@ -104,7 +104,7 @@ export default function OutingScreen() {
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         {/* 天气条：白 r6 9×14，温度 Fredoka */}
         <View style={styles.weatherStrip}>
-          <Text style={styles.weatherEmoji}>{w.emoji}</Text>
+          <MingCute name={WEATHER_ICON[w.id]} size={Space.iconBar} color={Romance.accent} />
           <Text style={styles.weatherText} numberOfLines={1}>
             {t(w.label)} <Text style={styles.weatherTemp}>{tempNow(w)}°</Text> · {t(w.line)}
           </Text>
@@ -273,7 +273,6 @@ const styles = themed(() =>
       paddingHorizontal: 14,
       paddingVertical: 9,
     },
-    weatherEmoji: { fontSize: Type.scale.xl.size },
     weatherText: { flex: 1, fontSize: Type.scale.label.size, color: Romance.sub },
     weatherTemp: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.sub },
     planStrip: {

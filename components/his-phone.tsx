@@ -342,12 +342,12 @@ export function PhoneSheet({
                 {secrets.map((s, i) =>
                   i < unlockedSecrets ? (
                     <View key={`s${i}`} style={styles.noteItem}>
-                      <Text style={styles.noteTime}>🔓</Text>
+                      <MingCute name="lockOpen" size={14} color={NOTE_PAPER.ink} />
                       <Text style={styles.noteLine}>{s}</Text>
                     </View>
                   ) : (
                     <View key={`s${i}`} style={styles.noteItem}>
-                      <Text style={styles.noteTime}>🔒</Text>
+                      <MingCute name="lock" size={14} color={Romance.sub} />
                       <Text style={styles.noteLocked}>••••••••••••</Text>
                     </View>
                   )

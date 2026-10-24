@@ -86,6 +86,7 @@ export function ActionSheet({
                   onClose();
                   a.onPress();
                 }}
+                accessibilityRole="button"
                 style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
                 <Text style={[styles.rowText, a.destructive && styles.rowDanger]}>{a.label}</Text>
               </Pressable>

@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react';
 import { SectionList, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
-import { PhotoViewer, Polaroid } from '@/components/polaroid';
+import { BlankPolaroid, PhotoViewer, Polaroid } from '@/components/polaroid';
 import { Space, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { placeById } from '@/content/places';
@@ -113,7 +113,7 @@ export default function AlbumScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>🖼️</Text>
+            <BlankPolaroid icon="album" tiltKey="album" />
             <Text style={styles.emptyText}>{t('还没有你们的照片。')}</Text>
           </View>
         }
@@ -145,7 +145,6 @@ const styles = themed(() =>
     day: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.ink, marginTop: 14, marginBottom: 8 },
     gridRow: { flexDirection: 'row', gap: GAP, marginBottom: 8 },
     empty: { alignItems: 'center', marginTop: 90 },
-    emptyEmoji: { fontSize: 40 },
-    emptyText: { textAlign: 'center', color: Romance.sub, fontSize: Type.scale.label.size, lineHeight: 20, marginTop: 12 },
+    emptyText: { textAlign: 'center', color: Romance.sub, fontSize: Type.scale.label.size, lineHeight: 20, marginTop: 16 },
   })
 );

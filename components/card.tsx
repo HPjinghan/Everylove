@@ -21,8 +21,9 @@ export function Card({
   return <View style={[styles.card, padded && styles.padded, style]}>{children}</View>;
 }
 
-export function Divider({ style }: { style?: StyleProp<ViewStyle> }) {
-  return <View style={[styles.divider, style]} />;
+/** 分区线；soft = 同一组里行与行之间的浅线（D-229：长列表行行都是墨线会显得格子很密），卡片边框照旧是墨线 */
+export function Divider({ style, soft }: { style?: StyleProp<ViewStyle>; soft?: boolean }) {
+  return <View style={[styles.divider, soft && styles.dividerSoft, style]} />;
 }
 
 const styles = themed(() =>
@@ -35,5 +36,6 @@ const styles = themed(() =>
     },
     padded: { paddingVertical: Space.cardY, paddingHorizontal: Space.cardX },
     divider: { height: Shape.stroke, backgroundColor: Romance.stroke, alignSelf: 'stretch' },
+    dividerSoft: { backgroundColor: Romance.line },
   })
 );

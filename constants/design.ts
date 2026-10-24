@@ -45,6 +45,7 @@ export const Type = {
     caption: { size: 12, weight: '400', color: 'muted' },
     timestamp: { size: 11, weight: '500', color: 'muted' },
     // 下面是字号阶梯（D-199）：界面里的 fontSize 只从这里取，不手写数字；≥ 28 的展示型数字（时钟 / 计时 / 金额）各屏自定
+    // xs 只给角标 / 键盘字母这种贴在图形上的小标签；说明、提示、手写字至少 caption 12（D-229）
     xs: { size: 10, weight: '400' },
     sub: { size: 14, weight: '400' },
     md: { size: 16, weight: '400' },
@@ -55,6 +56,14 @@ export const Type = {
     h1: { size: 26, weight: '600' },
   },
 } as const;
+
+/**
+ * 系统字号放大的上限（D-229）：开了「更大字体」时，正文跟着放大不设限；
+ * 尺寸固定的控件（按钮 / 分段 / chip / 顶栏 / 桌面图块标签 / 角标）最多放大到 CONTROL，
+ * 展示型大数字（桌面时钟、天气温度）最多到 DISPLAY——再大就撑破版式。
+ */
+export const CONTROL_FONT_SCALE = 1.3;
+export const DISPLAY_FONT_SCALE = 1.1;
 
 /** 间距 */
 export const Space = {

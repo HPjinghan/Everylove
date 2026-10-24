@@ -1,6 +1,6 @@
 /**
  * 拍立得（D-056；D-100 纸面）：生成照片的统一呈现——白框相纸 1.5px ink 描边 r6、内距 6/6/16、照片区 1:1（r4）、
- * 下方 Fredoka 10 muted 手写字，微微歪着（±0.6–1.8°，倾角由 key 决定）；无阴影。
+ * 下方 12 muted 手写字（D-229 从 10 提到 12），微微歪着（±0.6–1.8°，倾角由 key 决定）；无阴影。
  * 会话流里居中（不是对话气泡——照片不是谁「说」的话，是你们的东西）；相册同框。
  * PhotoViewer：点开看大图 + 分享（expo-sharing 调系统分享面板）。
  */
@@ -11,6 +11,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { showAlert } from '@/components/action-sheet';
 import { Button } from '@/components/button';
+import { MingCute, type MingCuteName } from '@/components/mingcute';
 import { POLAROID_TILTS, Shape, Type } from '@/constants/design';
 import { Romance, themed, withAlpha } from '@/constants/theme';
 import { t } from '@/lib/i18n';
@@ -52,6 +53,20 @@ export function Polaroid({
         {caption ?? ' '}
       </Text>
     </Pressable>
+  );
+}
+
+/** 空状态（D-229）：一张还没洗出东西的空相纸，中间一枚淡淡的图标——空状态不用彩色 emoji */
+export function BlankPolaroid({ icon, width = 96, tiltKey = 'empty' }: { icon: MingCuteName; width?: number; tiltKey?: string }) {
+  const pad = 6;
+  const img = width - pad * 2 - Shape.stroke * 2;
+  return (
+    <View style={[styles.frame, { width, transform: [{ rotate: `${tiltFor(tiltKey)}deg` }] }]}>
+      <View style={[styles.photo, styles.blank, { width: img, height: img }]}>
+        <MingCute name={icon} size={Math.round(img * 0.4)} color={Romance.faint} />
+      </View>
+      <Text style={styles.caption}> </Text>
+    </View>
   );
 }
 
@@ -102,8 +117,9 @@ const styles = themed(() =>
       alignItems: 'center',
     },
     photo: { borderRadius: Shape.radiusInner, backgroundColor: Romance.bg },
+    blank: { alignItems: 'center', justifyContent: 'center' },
     // 手写字幕是她的话，不上 Fredoka（D-199）
-    caption: { fontSize: Type.scale.xs.size, color: Romance.sub, marginTop: 6, textAlign: 'center' },
+    caption: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 6, textAlign: 'center' },
     viewer: {
       flex: 1,
       backgroundColor: withAlpha(Romance.ink, 0.92),

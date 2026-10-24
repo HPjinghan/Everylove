@@ -17,6 +17,7 @@ import { Card, Divider } from '@/components/card';
 import { Input } from '@/components/input';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
+import { MingCute, WEATHER_ICON } from '@/components/mingcute';
 import { t } from '@/lib/i18n';
 import {
   refreshWeather,
@@ -113,7 +114,7 @@ export default function WeatherScreen() {
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* 今日 */}
         <Card padded={false} style={styles.today}>
-          <Text style={styles.todayEmoji}>{w.emoji}</Text>
+          <MingCute name={WEATHER_ICON[w.id]} size={56} color={Romance.accent} />
           <Text style={styles.todayTemp}>{tempNow(w)}°</Text>
           <Text style={styles.todayLabel}>
             {t(w.label)} ·{' '}
@@ -123,7 +124,7 @@ export default function WeatherScreen() {
           </Text>
           <Text style={styles.todayLine}>{t(w.line)}</Text>
           <Text style={styles.todayCity}>
-            {city ? `📍 ${city}` : t('未设置位置')}
+            {city || t('未设置位置')}
             {city && load === 'loading' ? ` · ${t('数据获取中…')}` : ''}
             {city && load === 'failed' && !weatherIsReal() ? ` · ${t('天气暂时没拿到')}` : ''}
           </Text>
@@ -164,7 +165,7 @@ export default function WeatherScreen() {
               {i > 0 ? <Divider /> : null}
               <View style={styles.dayRow}>
                 <Text style={styles.dayName}>{i === 0 ? t('今天') : t(WEEKDAY[date.getDay()])}</Text>
-                <Text style={styles.dayEmoji}>{dw.emoji}</Text>
+                <MingCute name={WEATHER_ICON[dw.id]} size={Space.iconBar} color={Romance.ink} />
                 <Text style={styles.dayLabel}>{t(dw.label)}</Text>
                 <Text style={styles.dayTemp}>
                   {dw.hi}° / {dw.lo}°
@@ -185,7 +186,6 @@ const styles = themed(() =>
     screen: { flex: 1, backgroundColor: Romance.bg },
     content: { padding: Space.screen, paddingBottom: 40 },
     today: { alignItems: 'center', padding: 24 },
-    todayEmoji: { fontSize: 52, lineHeight: 60 },
     todayTemp: { fontFamily: Fonts.labelBold, fontSize: 54, lineHeight: 58, color: Romance.ink, marginTop: 8 },
     todayLabel: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, marginTop: 6 },
     todayHiLo: { fontFamily: Fonts.labelBold, fontSize: Type.scale.body.size, color: Romance.ink },
@@ -210,7 +210,6 @@ const styles = themed(() =>
     week: { paddingHorizontal: 14 },
     dayRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: Space.inlineLoose },
     dayName: { width: 58, fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.ink },
-    dayEmoji: { fontSize: Type.scale.lg.size },
     dayLabel: { flex: 1, fontSize: Type.scale.label.size, color: Romance.sub },
     dayTemp: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.ink },
     footnote: { textAlign: 'center', fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 22, lineHeight: 17 },

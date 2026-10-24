@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DiamondBackground } from '@/components/paper-bg';
 import { useGuardedPress } from '@/components/press-guard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Shape, Space, Type } from '@/constants/design';
+import { CONTROL_FONT_SCALE, Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 
@@ -47,9 +47,9 @@ export function AppScreen({
           accessibilityLabel={t('返回')}
           style={styles.back}>
           <IconSymbol name="chevron.left" size={16} color={Romance.ink} />
-          <Text style={styles.backText}>{t('桌面')}</Text>
+          <Text style={styles.backText} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>{t('桌面')}</Text>
         </Pressable>
-        <Text style={[styles.title, LATIN.test(title) && styles.titleLatin]} numberOfLines={1}>
+        <Text style={[styles.title, LATIN.test(title) && styles.titleLatin]} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
           {title}
         </Text>
         <View style={styles.right}>{right}</View>
@@ -75,7 +75,7 @@ export function HeaderAction({
   const press = useGuardedPress(onPress, cooldownMs);
   return (
     <Pressable onPress={press} disabled={disabled} hitSlop={10}>
-      <Text style={[styles.action, disabled && styles.actionDisabled]} numberOfLines={1}>
+      <Text style={[styles.action, disabled && styles.actionDisabled]} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
         {label}
       </Text>
     </Pressable>

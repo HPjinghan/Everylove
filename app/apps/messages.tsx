@@ -11,6 +11,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppScreen } from '@/components/app-screen';
 import { Button } from '@/components/button';
 import { CharAvatar } from '@/components/char-avatar';
+import { BlankPolaroid } from '@/components/polaroid';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { clockTime, timeAgo } from '@/lib/format';
@@ -54,7 +55,7 @@ export default function MessagesScreen() {
     <AppScreen title="Messages">
       {bonds.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyHeart}>♡</Text>
+          <BlankPolaroid icon="chat" tiltKey="messages" />
           <Text style={styles.emptyText}>{t('还没有人住进来。')}</Text>
           <Button label={t('去交友看看')} size="md" style={styles.emptyBtn} onPress={() => router.push('/apps/dating')} />
         </View>
@@ -107,8 +108,7 @@ export default function MessagesScreen() {
 const styles = themed(() =>
   StyleSheet.create({
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80 },
-    emptyHeart: { fontSize: 48, color: Romance.accent, marginBottom: 12 },
-    emptyText: { fontSize: Type.scale.sub.size, color: Romance.sub, textAlign: 'center', lineHeight: 22 },
+    emptyText: { marginTop: 16, fontSize: Type.scale.sub.size, color: Romance.sub, textAlign: 'center', lineHeight: 22 },
     emptyBtn: { marginTop: 20 },
     // 通栏列表：白底、1px line 分隔，不做卡片
     list: { backgroundColor: Romance.card },

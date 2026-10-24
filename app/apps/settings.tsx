@@ -1,5 +1,5 @@
 /**
- * 设置（D-100 纸面）：分区标题 13/600 muted；每区一张白卡（不带内距），行内距 13×12，行间 1.5px ink 分区线（Divider，不用 hairline）；
+ * 设置（D-100 纸面）：分区标题 13/600 muted；每区一张白卡（不带内距、墨色描边），行内距 13×12，行间浅色分区线（D-229：Divider soft）；
  * 行左 14 ink、右值 13/500 muted。语言 = 三段等宽（paper 底 / 选中 primary 白字）；主题点 34 r6（选中外圈 ink 2.5、留 2）；
  * 壁纸块 52×88 r6（纸面画 paper 底 + 菱格，其余上下两段纯色；选中外圈 primary 2、留 1）；槽位超额时数值与说明走 accent（交互改动 9）。
  * 开发者区显示 AI 引擎与取路（D-069：key 全走工程配置 .env.local，手填与脚本引擎已下线；D-106：「AI 引擎」可点选供应商，本机偏好）。
@@ -88,7 +88,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       <Card padded={false}>
         {items.map((item, i) => (
           <Fragment key={i}>
-            {i > 0 ? <Divider /> : null}
+            {i > 0 ? <Divider soft /> : null}
             {item}
           </Fragment>
         ))}

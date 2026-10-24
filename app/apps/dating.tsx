@@ -1,6 +1,6 @@
 /**
  * 交友（D-040/D-041，原「广场」交友 App 更名；D-100 纸面）：Tinder 式滑卡。
- * 左滑 = 略过（不是拉黑，冷却后回流牌堆；略过后 3 秒内可撤销，卡回牌顶）；右滑 = 心动——**TA 一定会同意**，
+ * 左滑 = 略过（不是拉黑，冷却后回流牌堆；刚略过的那位一直可撤销到下一次滑，卡回牌顶，D-229）；右滑 = 心动——**TA 一定会同意**，
  * 右滑即配对成功（无条件接纳你的世界，你的心动不会落空）。
  * 牌堆顺序走推荐算法 lib/recommend.ts（口味/热度/新面孔/自创/每日轮换/略过冷却），
  * 之后其他用户上传的角色进同一个池子、同一套打分（UGC 供给接口，D-041）。
@@ -9,7 +9,7 @@
  *
  * 纸面（D-100）：paper 底 + 菱格；顶栏右侧留空——滑卡 / 列表分段与口味 chip 并排居中（chip 直接显示当前口味，点开偏好卡）；
  * 牌堆卡 = 白卡描边 r6，上半 paper 圆托宋体大首字（有立绘则铺立绘），下半信息块以分区线隔开；无阴影、无渐变。
- * 左滑略过后，按钮下方的提示原位换成 ink 底行内 toast「已略过一位 · 撤销」，3s 后换回；飞出动画期间不响应再次滑动。
+ * 左滑略过后，按钮下方的提示原位换成 ink 底行内 toast「已略过一位 · 撤销」，一直留到下一次滑（D-229：3 秒太短，回过神来已经没了）；飞出动画期间不响应再次滑动。
  */
 
 import { Image } from 'expo-image';
@@ -34,6 +34,7 @@ import { Button } from '@/components/button';
 import { Card, Divider } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { Chip, Segmented } from '@/components/chip';
+import { BlankPolaroid } from '@/components/polaroid';
 import { MingCute } from '@/components/mingcute';
 import { DiamondBackground } from '@/components/paper-bg';
 import { CHARACTERS, seedCharactersFor } from '@/content/characters';
@@ -54,8 +55,6 @@ const CARD_W = Math.min(Space.matchCardWidth, SCREEN_W - Space.screen * 2);
 /** 无立绘时托首字的 paper 圆：直径 236（设计稿半径 118）；瀑布流小卡缩到 112 */
 const INITIAL_CIRCLE = 236;
 const INITIAL_CIRCLE_COMPACT = 112;
-/** 略过后行内 toast 的停留时长 */
-const PASS_TOAST_MS = 3000;
 /** 滑卡手势：横向位移超过这个值才接管手势 */
 const SWIPE_START_PX = 8;
 /** 松手时横向位移超过这个值 = 飞出，否则弹回 */
@@ -163,9 +162,8 @@ export default function DatingScreen() {
   const [swipedIds, setSwipedIds] = useState<string[]>([]);
   const [match, setMatch] = useState<Character | null>(null);
   const [prefOpen, setPrefOpen] = useState(false);
-  // 刚略过的那位（D-100）：3 秒内可撤销
+  // 刚略过的那位（D-229）：下一次滑之前都能撤销
   const [passed, setPassed] = useState<Character | null>(null);
-  const passTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 飞出动画锁：动画期间不响应再次滑动
   const animating = useRef(false);
   // 手势原点：触摸落下时记一次，接管手势时再归零（同 PanResponder：dx 从接管点起算）
@@ -176,13 +174,6 @@ export default function DatingScreen() {
   const pan = useAnimatedValueXY({ x: 0, y: 0 });
   // 每滑走一张 +1：牌堆换上新牌顶之后（绘制前）才把 pan 归零，旧牌顶不会先弹回中间闪一下
   const [swipeSeq, setSwipeSeq] = useState(0);
-
-  useEffect(
-    () => () => {
-      if (passTimer.current) clearTimeout(passTimer.current);
-    },
-    []
-  );
 
   useLayoutEffect(() => {
     pan.setValue({ x: 0, y: 0 });
@@ -250,20 +241,8 @@ export default function DatingScreen() {
     [squareChats, bondedIds, customs, sharedPool]
   );
 
-  const clearPassToast = () => {
-    if (passTimer.current) clearTimeout(passTimer.current);
-    passTimer.current = null;
-    setPassed(null);
-  };
-
-  const showPassToast = (c: Character) => {
-    if (passTimer.current) clearTimeout(passTimer.current);
-    setPassed(c);
-    passTimer.current = setTimeout(() => {
-      passTimer.current = null;
-      setPassed(null);
-    }, PASS_TOAST_MS);
-  };
+  const clearPassToast = () => setPassed(null);
+  const showPassToast = (c: Character) => setPassed(c);
 
   // 撤销略过（D-100）：本轮已滑列表里去掉 + 冷却记录去掉——状态整体回到略过前，牌堆重排后 TA 自然回到牌顶
   const undoPass = () => {
@@ -284,7 +263,7 @@ export default function DatingScreen() {
       useAppStore.getState().ensureSquareChat(c.id);
       setMatch(c);
     } else {
-      // 左滑略过：记进推荐算法的冷却项（不是拉黑，之后回流）；3 秒内可撤销
+      // 左滑略过：记进推荐算法的冷却项（不是拉黑，之后回流）；下一次滑之前可撤销
       haptic.tap();
       useAppStore.getState().markDatingPass(c.id);
       showPassToast(c);
@@ -444,7 +423,7 @@ export default function DatingScreen() {
           </View>
           {deck.length === 0 ? (
             <View style={styles.emptyDeck}>
-              <Text style={styles.emptyEmoji}>🫧</Text>
+              <BlankPolaroid icon="heart" tiltKey="dating" />
               <Text style={styles.emptyText}>{t('这里的人都被你聊完了。')}</Text>
             </View>
           ) : null}
@@ -488,7 +467,7 @@ export default function DatingScreen() {
             </>
           ) : (
             <View style={styles.emptyDeck}>
-              <Text style={styles.emptyEmoji}>🫧</Text>
+              <BlankPolaroid icon="heart" tiltKey="dating" />
               <Text style={styles.emptyText}>{t('这里的人都被你聊完了。')}</Text>
               <Button
                 label={t('去创造一个新的 TA')}
@@ -504,10 +483,10 @@ export default function DatingScreen() {
       {view === 'swipe' && top ? (
         <View style={styles.footArea}>
           <View style={styles.btnRow}>
-            <Pressable style={styles.passBtn} onPress={() => flyOut(-1)}>
+            <Pressable style={styles.passBtn} onPress={() => flyOut(-1)} accessibilityRole="button" accessibilityLabel={t('略过')}>
               <MingCute name="close" size={22} color={Romance.sub} />
             </Pressable>
-            <Pressable style={styles.heartBtn} onPress={() => flyOut(1)}>
+            <Pressable style={styles.heartBtn} onPress={() => flyOut(1)} accessibilityRole="button" accessibilityLabel={t('心动')}>
               <MingCute name="heart" size={30} color="#FFFFFF" />
             </Pressable>
           </View>
@@ -700,8 +679,7 @@ const styles = themed(() =>
     gridCol: { flex: 1, gap: 10 },
     gridCard: { aspectRatio: Space.matchCardRatio },
     emptyDeck: { alignItems: 'center', gap: 10, paddingHorizontal: 40, paddingVertical: 24 },
-    emptyEmoji: { fontSize: 44 },
-    emptyText: { fontSize: Type.scale.sub.size, color: Romance.sub, textAlign: 'center' },
+    emptyText: { marginTop: 6, fontSize: Type.scale.sub.size, color: Romance.sub, textAlign: 'center' },
     emptyBtn: { marginTop: 6 },
     prefMask: { flex: 1, backgroundColor: withAlpha(Romance.ink, 0.45), justifyContent: 'flex-end' },
     prefSheetWrap: { paddingHorizontal: Space.screen },

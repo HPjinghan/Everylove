@@ -32,8 +32,9 @@ import {
   Text,
   TextInput,
   View,
+  type GestureResponderEvent,
 } from 'react-native';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInUp, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionSheet, ConfirmSheet, showAlert, type SheetAction } from '@/components/action-sheet';
@@ -74,6 +75,72 @@ export const RECALL_WINDOW_MS = 24 * 60 * 60 * 1000;
 const PHOTO = 220;
 /** 新消息入场：从下方 10px 淡入升起（倒置列表里格子与列表各翻一次，方向不变） */
 const BUBBLE_ENTER = FadeInUp.duration(240).withInitialValues({ transform: [{ translateY: 10 }] });
+
+/** 输入框最多长到几行高，再多就在框里滚（D-229） */
+const INPUT_MAX_LINES = 5;
+const INPUT_LINE_H = 21;
+/** 横滑引用（D-229）：往右拖过这么远松手 = 引用这条；最远跟手到 SWIPE_REPLY_MAX */
+const SWIPE_REPLY_PX = 56;
+const SWIPE_REPLY_MAX = 80;
+
+/**
+ * 横滑引用（D-229）：文字气泡往右拖，过线轻震一下、松手就引用这条——像 LINE / WhatsApp。
+ * 只认明显的横向拖动（横向 > 竖向两倍），竖着滑仍然是滚列表；接管后不让列表抢走手势。
+ */
+function SwipeReply({ onReply, children }: { onReply?: () => void; children: ReactNode }) {
+  const dx = useSharedValue(0);
+  // 手势原点与「过线了」：只在手势事件里读写（同交友滑卡的 responder 写法，渲染期不碰 ref）
+  const origin = useRef({ x: 0, y: 0 });
+  const armed = useRef(false);
+  const delta = (e: GestureResponderEvent) => ({
+    x: e.nativeEvent.pageX - origin.current.x,
+    y: e.nativeEvent.pageY - origin.current.y,
+  });
+  const reset = () => {
+    armed.current = false;
+    dx.set(withTiming(0, { duration: 180 }));
+  };
+  const responder = {
+    onStartShouldSetResponderCapture: (e: GestureResponderEvent) => {
+      origin.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+      return false;
+    },
+    onMoveShouldSetResponder: (e: GestureResponderEvent) => {
+      const d = delta(e);
+      return d.x > 10 && Math.abs(d.x) > Math.abs(d.y) * 2;
+    },
+    onResponderTerminationRequest: () => false,
+    onResponderMove: (e: GestureResponderEvent) => {
+      const x = Math.max(0, Math.min(delta(e).x, SWIPE_REPLY_MAX));
+      dx.set(x);
+      if (x >= SWIPE_REPLY_PX && !armed.current) {
+        armed.current = true;
+        haptic.tick();
+      } else if (x < SWIPE_REPLY_PX) armed.current = false;
+    },
+    onResponderRelease: () => {
+      if (armed.current) onReply?.();
+      reset();
+    },
+    onResponderTerminate: reset,
+  };
+  const rowStyle = useAnimatedStyle(() => ({ transform: [{ translateX: dx.get() }] }));
+  const iconStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(dx.get(), [12, SWIPE_REPLY_PX], [0, 1], 'clamp'),
+    transform: [{ scale: interpolate(dx.get(), [12, SWIPE_REPLY_PX], [0.6, 1], 'clamp') }],
+  }));
+  if (!onReply) return <>{children}</>;
+  return (
+    <View>
+      <Animated.View style={[styles.swipeIcon, iconStyle]} pointerEvents="none">
+        <MingCute name="reply" size={18} color={Romance.sub} />
+      </Animated.View>
+      <Animated.View style={rowStyle} {...responder}>
+        {children}
+      </Animated.View>
+    </View>
+  );
+}
 
 /** 卡片气泡（D-081）：怎么画由卡片种类注册表决定（core/cards，各玩法注册；D-086）；没注册的画一张只有标题的通用卡 */
 function CardBody({ msg, dark }: { msg: ChatMessage; dark: boolean }) {
@@ -229,11 +296,14 @@ const Bubble = memo(function Bubble({
   onOpenPhoto,
   onAvatarPress,
   onResend,
+  onReply,
 }: {
   msg: ChatMessage;
   color: string;
   name: string;
   characterId?: string;
+  /** 横滑引用这条（D-229）；只有文字消息会传 */
+  onReply?: (msg: ChatMessage) => void;
   /** 点 TA 的头像（D-110：打开资料页） */
   onAvatarPress?: () => void;
   /** 我的消息是否显示「已读」（TA 回过话即视为已读） */
@@ -287,6 +357,7 @@ const Bubble = memo(function Bubble({
   const bubbleTint = msg.kind === 'card' && msg.card ? cardKindOf(msg.card.type)?.bubbleColor : undefined;
   return (
     <View>
+    <SwipeReply onReply={onReply ? () => onReply(msg) : undefined}>
     <View style={[styles.msgRow, mine ? styles.msgRowMe : styles.msgRowHim]}>
       {!mine && (
         <Pressable onPress={onAvatarPress} disabled={!onAvatarPress} hitSlop={6}>
@@ -353,6 +424,7 @@ const Bubble = memo(function Bubble({
       </Pressable>
       {!mine ? meta : null}
     </View>
+    </SwipeReply>
     {mine && msg.failed ? (
       <Pressable onPress={onResend ? () => onResend(msg) : undefined} hitSlop={8} style={styles.failedRow}>
         <Text style={styles.failedText}>{t('没送到 · 重发')}</Text>
@@ -417,6 +489,7 @@ export function ChatThread({
   const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState<ReplyRef | null>(null);
+  const inputRef = useRef<TextInput>(null);
   const [viewingShot, setViewingShot] = useState<ViewerShot | null>(null);
   const [extrasOpen, setExtrasOpen] = useState(false);
   // 长按消息的动作卡与删除确认（D-160：纸面底部卡，不用系统弹窗）
@@ -504,6 +577,11 @@ export function ChatThread({
     },
     [onRecall, onDelete]
   );
+  /** 横滑引用（D-229）：同长按里的「引用」，引好直接把键盘叫起来 */
+  const replyBySwipe = useCallback((msg: ChatMessage) => {
+    setReplyTo({ from: msg.from, text: msg.text });
+    inputRef.current?.focus();
+  }, []);
   const renderItem = useCallback(
     ({ item }: { item: ChatMessage }) => (
       <Animated.View entering={item.at >= openedAt ? BUBBLE_ENTER : undefined}>
@@ -517,10 +595,11 @@ export function ChatThread({
           onOpenPhoto={setViewingShot}
           onAvatarPress={onAvatarPress}
           onResend={onResend}
+          onReply={item.kind === 'text' && item.text && !item.recalled && item.from !== 'system' ? replyBySwipe : undefined}
         />
       </Animated.View>
     ),
-    [color, name, characterId, readIds, openActions, onAvatarPress, onResend, openedAt]
+    [color, name, characterId, readIds, openActions, onAvatarPress, onResend, openedAt, replyBySwipe]
   );
 
   const pickImage = async () => {
@@ -656,7 +735,7 @@ export function ChatThread({
         {recording ? (
           <>
             {/* 录音中（D-091 → D-223）：整行让给录音条——左「×」取消（丢掉不发）、右箭头停止并发送；胶囊只放计时 */}
-            <Pressable onPress={() => void cancelRecord()} hitSlop={6} accessibilityLabel={t('取消录音')}>
+            <Pressable onPress={() => void cancelRecord()} hitSlop={6} style={styles.barBtn} accessibilityLabel={t('取消录音')}>
               <MingCute name="close" size={Space.iconBar} color={Romance.sub} />
             </Pressable>
             <View style={styles.recordingPill}>
@@ -676,16 +755,19 @@ export function ChatThread({
                   if (!extrasOpen) Keyboard.dismiss();
                   setExtrasOpen((v) => !v);
                 }}
-                hitSlop={6} disabled={inputDisabled} accessibilityLabel={t('更多')}>
+                hitSlop={6} style={styles.barBtn} disabled={inputDisabled} accessibilityLabel={t('更多')}>
                 <MingCute name={extrasOpen ? 'close' : 'plus'} size={Space.iconBar} color={extrasOpen ? Romance.accent : iconColor} />
               </Pressable>
             ) : null}
             {onSendVoice ? (
-              <Pressable onPress={toggleRecord} hitSlop={6} disabled={inputDisabled} accessibilityLabel={t('录语音')}>
+              <Pressable onPress={toggleRecord} hitSlop={6} style={styles.barBtn} disabled={inputDisabled} accessibilityLabel={t('录语音')}>
                 <MingCute name="mic" size={Space.iconBar} color={iconColor} />
               </Pressable>
             ) : null}
+            {/* 多行（D-229）：长段落看得见全貌，最多长到 5 行；回车照旧是发送 */}
             <TextInput
+              ref={inputRef}
+              multiline
               style={[styles.input, inputDisabled && styles.inputDisabled]}
               value={draft}
               onChangeText={setDraft}
@@ -702,7 +784,7 @@ export function ChatThread({
                 <IconSymbol name="arrow.up" size={18} color="#FFFFFF" />
               </Pressable>
             ) : onSendImage ? (
-              <Pressable onPress={pickImage} hitSlop={6} disabled={inputDisabled} accessibilityLabel={t('选照片')}>
+              <Pressable onPress={pickImage} hitSlop={6} style={styles.barBtn} disabled={inputDisabled} accessibilityLabel={t('选照片')}>
                 <MingCute name="pic" size={Space.iconBar} color={iconColor} />
               </Pressable>
             ) : null}
@@ -827,7 +909,8 @@ const styles = themed(() =>
     // 输入栏：白底、一条 1.5px 上沿
     inputBar: {
       flexDirection: 'row',
-      alignItems: 'center',
+      // 输入框长高时两边的按钮贴底（D-229）
+      alignItems: 'flex-end',
       gap: Space.inlineLoose,
       paddingHorizontal: Space.screen,
       paddingTop: 10,
@@ -837,13 +920,21 @@ const styles = themed(() =>
     },
     input: {
       flex: 1,
-      height: Space.inputHeight,
+      minHeight: Space.inputHeight,
+      maxHeight: INPUT_LINE_H * INPUT_MAX_LINES + 18,
       borderRadius: Shape.radius,
       backgroundColor: Romance.bg,
       paddingHorizontal: 14,
-      fontSize: Type.scale.sub.size,
+      paddingTop: 9,
+      paddingBottom: 9,
+      fontSize: Type.scale.md.size,
+      lineHeight: INPUT_LINE_H,
       color: Romance.ink,
     },
+    // 输入栏两边的图标按钮：占一个输入框的高，图标居中，框长高时贴底
+    barBtn: { height: Space.inputHeight, justifyContent: 'center' },
+    // 横滑引用时从气泡左边露出来的箭头
+    swipeIcon: { position: 'absolute', left: 0, top: 0, bottom: 0, justifyContent: 'center' },
     inputDisabled: { opacity: 0.5 },
     sendBtn: {
       width: Space.inputHeight,

@@ -242,7 +242,8 @@ export default function OutingSceneScreen() {
                 variant="secondary"
                 size="sm"
                 style={styles.shootBtn}
-                label={shooting === 'together' ? t('拍摄中…') : t('📸 合影')}
+                icon="emoji"
+                label={shooting === 'together' ? t('拍摄中…') : t('合影')}
                 disabled={!!shooting}
                 onPress={() => shoot('together')}
               />
@@ -250,7 +251,8 @@ export default function OutingSceneScreen() {
                 variant="secondary"
                 size="sm"
                 style={styles.shootBtn}
-                label={shooting === 'solo' ? t('拍摄中…') : t('📷 拍 TA')}
+                icon="camera"
+                label={shooting === 'solo' ? t('拍摄中…') : t('拍 TA')}
                 disabled={!!shooting}
                 onPress={() => shoot('solo')}
               />

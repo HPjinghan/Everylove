@@ -282,8 +282,8 @@ const en: Record<string, string> = {
 
   '就在这里、就是现在——面对面的那种': 'Right here, right now — face to face',
   '拍摄中…': 'Developing…',
-  '📸 合影': '📸 Together',
-  '📷 拍 TA': '📷 Snap them',
+  '合影': 'Together',
+  '拍 TA': 'Snap them',
 
   '你们面对面': 'Face to face',
   '结束外出': 'End outing',
@@ -967,6 +967,8 @@ const en: Record<string, string> = {
   // D-223：各模块细节
   '在广场见过': 'Met at the plaza', '让{name}看': 'Show {name}', '{name} 在看…': '{name} is looking…', '生成图片': 'Generate',
   '1 章': '1 chapter', '{n} 章': '{n} chapters', 'Coin 不够了': 'Not enough Coin', '打赏 {n} Coin？': 'Tip {n} Coin?',
+  // D-229：读屏
+  '{app}，{n} 条未读': '{app}, {n} unread',
   // __EN_END__
 };
 
@@ -1216,8 +1218,8 @@ const ja: Record<string, string> = {
 
   '就在这里、就是现在——面对面的那种': '今ここで——面と向かって',
   '拍摄中…': '撮影中…',
-  '📸 合影': '📸 ツーショット',
-  '📷 拍 TA': '📷 相手を撮る',
+  '合影': 'ツーショット',
+  '拍 TA': '相手を撮る',
 
   '你们面对面': 'ふたりは面と向かってる',
   '结束外出': 'おでかけ終了',
@@ -1901,6 +1903,8 @@ const ja: Record<string, string> = {
   // D-223：各モジュール
   '在广场见过': '広場で会った', '让{name}看': '{name}に見せる', '{name} 在看…': '{name}が見てる…', '生成图片': '生成する',
   '1 章': '1章', '{n} 章': '{n}章', 'Coin 不够了': 'Coinが足りない', '打赏 {n} Coin？': '{n} Coin を投げ銭する？',
+  // D-229：読み上げ
+  '{app}，{n} 条未读': '{app}、未読 {n} 件',
   // __JA_END__
 };
 
@@ -2180,8 +2184,8 @@ const ko: Record<string, string> = {
   '说点什么，或用（）写下你的动作…': '말을 걸거나, （） 안에 행동을 적어 보세요…',
   '就在这里、就是现在——面对面的那种': '바로 여기, 바로 지금—얼굴을 마주 보고',
   '拍摄中…': '촬영 중…',
-  '📸 合影': '📸 투샷',
-  '📷 拍 TA': '📷 상대 찍기',
+  '合影': '투샷',
+  '拍 TA': '상대 찍기',
   '你们面对面': '얼굴을 마주 보고 있어요',
   '结束外出': '외출 끝내기',
   '加好友前的帖子': '친구가 되기 전의 게시글',
@@ -2829,6 +2833,8 @@ const ko: Record<string, string> = {
   // D-223：각 모듈
   '在广场见过': '광장에서 만남', '让{name}看': '{name}에게 보여 주기', '{name} 在看…': '{name}이(가) 보는 중…', '生成图片': '생성하기',
   '1 章': '1장', '{n} 章': '{n}장', 'Coin 不够了': 'Coin이 부족해요', '打赏 {n} Coin？': '{n} Coin을 후원할까요?',
+  // D-229：스크린 리더
+  '{app}，{n} 条未读': '{app}, 읽지 않음 {n}개',
   // __KO_END__
 };
 

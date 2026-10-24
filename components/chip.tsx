@@ -6,7 +6,7 @@
 
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { Shape, Type } from '@/constants/design';
+import { CONTROL_FONT_SCALE, Shape, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 
 export function Chip({
@@ -21,8 +21,12 @@ export function Chip({
   style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <Pressable onPress={onPress} style={[styles.chip, selected && styles.chipOn, style]}>
-      <Text style={[styles.chipText, selected && styles.chipTextOn]}>{label}</Text>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!selected }}
+      style={[styles.chip, selected && styles.chipOn, style]}>
+      <Text style={[styles.chipText, selected && styles.chipTextOn]} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>{label}</Text>
     </Pressable>
   );
 }
@@ -46,8 +50,13 @@ export function Segmented<T extends string>({
       {options.map((o) => {
         const on = o.key === value;
         return (
-          <Pressable key={o.key} onPress={() => onChange(o.key)} style={[styles.segItem, on && styles.segItemOn]}>
-            <Text style={[styles.segText, on && styles.segTextOn]}>{o.label}</Text>
+          <Pressable
+            key={o.key}
+            onPress={() => onChange(o.key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            style={[styles.segItem, on && styles.segItemOn]}>
+            <Text style={[styles.segText, on && styles.segTextOn]} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>{o.label}</Text>
           </Pressable>
         );
       })}

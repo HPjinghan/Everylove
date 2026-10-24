@@ -1195,7 +1195,7 @@ const styles = themed(() =>
     paceCardOn: { backgroundColor: Romance.accent },
     paceLabel: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
     paceLabelOn: { color: '#FFFFFF' },
-    paceHint: { fontSize: Type.scale.xs.size, color: Romance.sub, marginTop: 3 },
+    paceHint: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 3 },
     paceHintOn: { color: withAlpha('#FFFFFF', 0.8) },
     styleDesc: {
       fontSize: Type.scale.caption.size,

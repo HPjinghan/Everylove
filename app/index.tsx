@@ -38,10 +38,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
-import { MingCute } from '@/components/mingcute';
+import { MingCute, WEATHER_ICON } from '@/components/mingcute';
 import { DiamondBackground } from '@/components/paper-bg';
 import { appById, DEFAULT_DESKTOP_ORDER, type DesktopApp } from '@/constants/apps';
-import { Shape, Space, Type } from '@/constants/design';
+import { CONTROL_FONT_SCALE, DISPLAY_FONT_SCALE, Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import { tempNow, todayWeather, weatherCity } from '@/lib/weather';
@@ -62,8 +62,10 @@ const MAX_PAGES = 6;
 /** 编辑模式拖到屏幕边缘多宽算「边缘」、停留多久翻页 */
 const EDGE_W = 28;
 const EDGE_FLIP_MS = 600;
-/** 天气卡里副行以外的宽：左右内边距 36 + 天气符号约 46 + 温度约 70 + 两道间距 */
-const WEATHER_FIXED_W = 36 + 46 + 70 + Space.screen * 2;
+/** 天气卡的天气图标边长（D-229：单色图标替掉彩色 emoji） */
+const WEATHER_ICON_SIZE = 40;
+/** 天气卡里副行以外的宽：左右内边距 36 + 天气图标 + 温度约 70 + 两道间距 */
+const WEATHER_FIXED_W = 36 + WEATHER_ICON_SIZE + 70 + Space.screen * 2;
 
 /** 时钟副行是拉丁标签，不随界面语言变 */
 const WEEKDAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -88,8 +90,12 @@ function Clock() {
   const clock = useClock();
   return (
     <>
-      <Text style={styles.bigClock}>{clock.time}</Text>
-      <Text style={styles.clockSub}>{clock.date}</Text>
+      <Text style={styles.bigClock} maxFontSizeMultiplier={DISPLAY_FONT_SCALE}>
+        {clock.time}
+      </Text>
+      <Text style={styles.clockSub} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
+        {clock.date}
+      </Text>
     </>
   );
 }
@@ -147,17 +153,29 @@ function DesktopIcon({
     outputRange: ['-2.2deg', '2.2deg'],
   });
   return (
-    <Animated.View style={[dock ? styles.iconDock : styles.icon, { transform: [{ rotate }] }]}>
+    <Animated.View
+      style={[dock ? styles.iconDock : styles.icon, { transform: [{ rotate }] }]}
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel={unread > 0 ? t('{app}，{n} 条未读', { app: t(app.label), n: unread }) : t(app.label)}>
       <View style={[styles.iconTile, dock && styles.dockTile]}>
-        <MingCute name={app.icon} size={Space.iconTile} color={Romance.ink} />
+        {app.glyph ? (
+          <Text style={styles.iconGlyph} maxFontSizeMultiplier={1}>
+            {app.glyph}
+          </Text>
+        ) : (
+          <MingCute name={app.icon} size={Space.iconTile} color={Romance.ink} />
+        )}
         {unread > 0 ? (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text>
+            <Text style={styles.badgeText} maxFontSizeMultiplier={1}>
+              {unread > 99 ? '99+' : unread}
+            </Text>
           </View>
         ) : null}
       </View>
       {dock ? null : (
-        <Text style={styles.iconLabel} numberOfLines={1}>
+        <Text style={styles.iconLabel} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
           {t(app.label)}
         </Text>
       )}
@@ -175,14 +193,18 @@ function WeatherCard() {
   return (
     <Pressable style={styles.weatherWrap} onPress={() => router.push('/weather')}>
       <Card padded={false} style={styles.weather}>
-        <Text style={styles.weatherEmoji}>{w.emoji}</Text>
-        <Text style={styles.weatherTemp}>{tempNow(w)}°</Text>
+        <MingCute name={WEATHER_ICON[w.id]} size={WEATHER_ICON_SIZE} color={Romance.accent} />
+        <Text style={styles.weatherTemp} maxFontSizeMultiplier={DISPLAY_FONT_SCALE}>
+          {tempNow(w)}°
+        </Text>
         <View style={styles.weatherInfo}>
-          <Text style={styles.weatherLabel}>{t(w.label)}</Text>
-          <Text style={styles.weatherRange}>
+          <Text style={styles.weatherLabel} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
+            {t(w.label)}
+          </Text>
+          <Text style={styles.weatherRange} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
             {w.hi}° / {w.lo}°
           </Text>
-          <Text style={[styles.weatherLine, { maxWidth: lineMax }]} numberOfLines={1}>
+          <Text style={[styles.weatherLine, { maxWidth: lineMax }]} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
             {city ? city : t(w.line)}
           </Text>
         </View>
@@ -801,7 +823,6 @@ const styles = themed(() =>
       paddingVertical: 8,
       paddingHorizontal: 18,
     },
-    weatherEmoji: { fontSize: 38 },
     weatherTemp: {
       fontFamily: Fonts.labelBold,
       fontSize: 44,
@@ -873,6 +894,8 @@ const styles = themed(() =>
       justifyContent: 'center',
     },
     dockTile: { backgroundColor: Romance.bg },
+    // 字标图块（D-229：X 用 Fredoka 写一个 X，不借「关闭」的 ✕）
+    iconGlyph: { fontFamily: Fonts.labelBold, fontSize: Type.scale.display.size, lineHeight: Type.scale.display.size + 4, color: Romance.ink },
     iconLabel: {
       fontSize: Type.scale.caption.size,
       fontWeight: '500',

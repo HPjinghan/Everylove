@@ -12,6 +12,8 @@ export interface DesktopApp {
   label: string;
   /** MingCute 图标名（components/mingcute.tsx，D-026）；D-100 纸面：图块一律白底 r6、图标 ink，不再配色 */
   icon: MingCuteName;
+  /** 字标（D-229）：有它就在图块上写这几个字母，不画图标 */
+  glyph?: string;
   route: string;
   /** 显示未读角标（目前只有 Message） */
   badge?: 'unread';
@@ -20,8 +22,8 @@ export interface DesktopApp {
 export const DESKTOP_APPS: DesktopApp[] = [
   { id: 'messages', label: 'Messages', icon: 'chat', route: '/apps/messages', badge: 'unread' },
   { id: 'phone', label: '电话', icon: 'phone', route: '/apps/phone' },
-  // X（D-053）：拟真彩蛋 ✕（D-100 起与其它图块同为白底 ink）
-  { id: 'moments', label: 'X', icon: 'close', route: '/apps/moments' },
+  // X（D-053）：图块是 Fredoka 写的字标 X（D-229：✕ 读起来是「关闭」）
+  { id: 'moments', label: 'X', icon: 'close', glyph: 'X', route: '/apps/moments' },
   { id: 'dating', label: '交友', icon: 'heart', route: '/apps/dating' },
   { id: 'contacts', label: '通讯录', icon: 'contacts', route: '/apps/contacts' },
   { id: 'album', label: '相册', icon: 'album', route: '/apps/album' },
@@ -45,8 +47,8 @@ export const DESKTOP_APPS: DesktopApp[] = [
 
 export const DEFAULT_DESKTOP_ORDER = DESKTOP_APPS.map((a) => a.id);
 
-/** 底部 Dock 默认（D-044/D-064 收窄为两个）：编辑模式可拖入拖出，上限仍是 4 个 */
-export const DEFAULT_DOCK = ['contacts', 'settings'];
+/** 底部 Dock 默认（D-229）：最常用的四个——Messages 带未读角标、像 iPhone 的 Dock 一样放在拇指底下；编辑模式可拖入拖出，上限 4 个 */
+export const DEFAULT_DOCK = ['messages', 'outing', 'dating', 'settings'];
 
 export function appById(id: string): DesktopApp | undefined {
   return DESKTOP_APPS.find((a) => a.id === id);
