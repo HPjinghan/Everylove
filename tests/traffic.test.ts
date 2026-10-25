@@ -69,11 +69,11 @@ describe('换算', () => {
     expect(mbForUsage({ kind: 'chat', provider: 'qianfan', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(3.4);
     expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(3.4);
     expect(mbForUsage({ kind: 'chat', provider: 'fake', inputTokens: 1000 })).toBe(1);
-    expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 1 })).toBe(IMAGE_MB);
-    expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 2 })).toBe(IMAGE_MB * 2);
-    expect(mbForUsage({ kind: 'image', provider: 'musesteamer', outputTokens: 2000 })).toBe(IMAGE_MB);
+    expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 1 })).toBe(IMAGE_MB.qwen);
+    expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 2 })).toBe(IMAGE_MB.qwen * 2);
+    expect(mbForUsage({ kind: 'image', provider: 'musesteamer-air-image', outputTokens: 2000 })).toBe(IMAGE_MB.muse);
     expect(mbForUsage({ kind: 'tts', provider: 'baidu', chars: 400 })).toBe(0);
-    expect(mbForUsage({ kind: 'asr', provider: 'baidu', seconds: 30 })).toBe(0.5);
+    expect(mbForUsage({ kind: 'asr', provider: 'baidu', seconds: 30 })).toBe(1);
     expect(mbForUsage({ kind: 'vision', provider: 'x' })).toBe(3);
     expect(LOVE_MODELS.v1.mbPerKTok).toBe(1);
     expect(LOVE_MODELS.v2.mbPerKTok).toBe(1);
@@ -206,9 +206,9 @@ describe('D-210：只扣她发起的、语音按分钟、后台保险丝', () =>
     // Free 也能说话：识别按秒折流量，不碰语音时长
     s().setPlan('free');
     reportUsage({ kind: 'asr', provider: 'baidu', seconds: 30 });
-    expect(s().traffic.freeUsed).toBe(0.5);
+    expect(s().traffic.freeUsed).toBe(1);
     expect(s().voice.usedSec).toBe(12);
-    expect(s().trafficLog.at(-1)).toMatchObject({ kind: 'asr', mb: 0.5 });
+    expect(s().trafficLog.at(-1)).toMatchObject({ kind: 'asr', mb: 1 });
   });
 
   it('「TA 发语音」开关：没动过 = 订阅开、Free 关；Free 买了分钟包才能开', () => {

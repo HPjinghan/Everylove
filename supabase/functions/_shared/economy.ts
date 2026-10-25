@@ -33,11 +33,16 @@ export function costTokens(u: TokenUsage): number {
   const n = (u.input ?? 0) + (u.cacheRead ?? 0) * TOKEN_WEIGHT.cacheRead + (u.cacheWrite ?? 0) * TOKEN_WEIGHT.cacheWrite + (u.output ?? 0) * TOKEN_WEIGHT.output;
   return Math.round(n);
 }
-/** 生图一张（D-219：不分画风、不看供应商怎么计费，一律按张；D-233 起 50） */
-export const IMAGE_MB = 50;
+/** 生图一张（D-219 按张、不看供应商怎么计费）：qwen-image（动漫以外的画风）60、蒸汽机（动漫）50（D-234） */
+export type ImageModel = 'qwen' | 'muse';
+export const IMAGE_MB: Record<ImageModel, number> = { qwen: 60, muse: 50 };
+/** 模型名 / 代理服务名 → 哪一档（认不出的按 qwen 算） */
+export function imageModelOf(name: string): ImageModel {
+  return /musesteamer/.test(name) ? 'muse' : 'qwen';
+}
 export const VISION_MB = 3;
-/** 她的语音识别（D-211）：按录音时长折流量 */
-export const ASR_SECONDS_PER_MB = 60;
+/** 她的语音识别（D-211）：按录音时长折流量，2 RB / 分钟（D-234） */
+export const ASR_SECONDS_PER_MB = 30;
 /** 流量包（价格待 #30；收费开关打开前点即到账） */
 export const TRAFFIC_PACKS: { id: string; mb: number }[] = [
   { id: 'pack-1000', mb: 1000 },
@@ -111,12 +116,12 @@ function isCjk(ch: string): boolean {
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** 一笔用量折多少 MB（TA 的语音按分钟另算，这里是 0） */
-export function mbFor(u: { kind: MeterKind; tokens?: number; images?: number; seconds?: number }): number {
+export function mbFor(u: { kind: MeterKind; tokens?: number; images?: number; model?: ImageModel; seconds?: number }): number {
   switch (u.kind) {
     case 'chat':
       return round2(((u.tokens ?? 0) / 1000) * CHAT_MB_PER_KTOK);
     case 'image':
-      return IMAGE_MB * (u.images ?? 1);
+      return IMAGE_MB[u.model ?? 'qwen'] * (u.images ?? 1);
     case 'vision':
       return VISION_MB;
     case 'asr':

@@ -33,6 +33,7 @@ import {
   costTokens,
   estimateTokens,
   gateReason,
+  imageModelOf,
   slowLaneOf,
   mbFor,
   sqlEconomy,
@@ -402,11 +403,11 @@ async function chargeAfter(m: Meter, data: unknown): Promise<WalletView | null> 
         fairKtok = tokens / 1000;
       } else if (m.billing === 'house') houseKtok = tokens / 1000;
     } else if (m.kind === 'image') {
-      // D-219：一律按张（n 固定 1；上游报了张数就用它）
+      // D-219：按张（n 固定 1；上游报了张数就用它），D-234：qwen 与蒸汽机两档
       const images = u.generated_images && u.generated_images > 0 ? u.generated_images : 1;
       estimated = !usage;
       if (m.billing === 'user') {
-        mb = mbFor({ kind: 'image', images });
+        mb = mbFor({ kind: 'image', images, model: imageModelOf(m.service) });
         fairImages = images;
       } else if (m.billing === 'house') houseImages = images;
     } else if (m.kind === 'asr') {

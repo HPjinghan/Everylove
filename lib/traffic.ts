@@ -1,10 +1,10 @@
 /**
  * 流量、语音时长与后台保险丝（D-132 → D-133 → D-210）。
  * - 「流量」= 真实消耗的包装，单位 RingBit（RB，D-219；代码字段沿用 mb）：**只记她发起的**（D-210，Harper：「主动找我这些生成不扣流量，在其他的地方多做溢价」）——
- *   她的回合（含 TA 回她的那句）、她按快门 / 生成立绘、她要看的照片、看图、她的语音识别（D-211：1 RB / 60 秒，麦克风人人可用）。TA 自己发起的（主动 / 召回 / 心跳 / 记事本 / 发帖 /
+ *   她的回合（含 TA 回她的那句）、她按快门 / 生成立绘、她要看的照片、看图、她的语音识别（D-211：麦克风人人可用；D-234：2 RB / 分钟）。TA 自己发起的（主动 / 召回 / 心跳 / 记事本 / 发帖 /
  *   评论区 / 身边的人 / 日程 / 周薪 / 外卖送到 / 爽约后说一句 / 主动发图）和工具调用（记忆提取、描述导入、台词）平台出，不扣她，
  *   只受每人每天的后台保险丝管（看不见，防失控）。底座在 core/usage 报用量并标账单归属，这里换算（features/traffic.ts 扣账）。
- * - 换算：聊天按真实成本——全部文字调用走 Claude Haiku 5.5（D-205），1 RB / 千 token 当量（D-233：缓存读 0.1、缓存写 1.25、输出 5）；生图 50 RB / 张（D-219 不分画风，D-233 定价）；看图 3 RB / 张。供应商没返回 usage 就按字数估。
+ * - 换算：聊天按真实成本——全部文字调用走 Claude Haiku 5.5（D-205），1 RB / 千 token 当量（D-233：缓存读 0.1、缓存写 1.25、输出 5）；生图按张（D-219）：qwen-image 60 RB、动漫（蒸汽机）50 RB（D-234）；看图 3 RB / 张。供应商没返回 usage 就按字数估。
  * - 流量来源：每天免费 100 RB（不累积）、订阅每月发（Pro 6000 / Max 不限）、流量包（不订阅也能买）。
  * - **TA 的声音单独按分钟算**（D-210）：TA 的语音、电话都不折流量。每天的额度 Free 0 / Pro 30 / Max 90 分钟（不累积）；
  *   （D-233 起 Pro 15 / Max 60）；用完了订阅用户能买语音分钟包（不过期）；新用户送 5 分钟只能打电话（不过期，用完为止）。
@@ -22,6 +22,7 @@ import {
   HOUSE_DAILY_IMAGES,
   HOUSE_DAILY_KTOK,
   IMAGE_MB,
+  imageModelOf,
   mbFor,
   NEW_USER_CALL_MIN,
   PLAN_GRANT_PERIOD_DAYS,
@@ -84,6 +85,7 @@ export function mbForUsage(e: UsageEvent): number {
     kind: e.kind,
     tokens: usageTokens(e),
     images: e.images,
+    model: e.kind === 'image' ? imageModelOf(e.provider) : undefined,
     seconds: e.seconds,
   });
 }

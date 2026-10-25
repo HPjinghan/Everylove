@@ -106,17 +106,18 @@ describe('生成前的闸门（服务器照它拦）', () => {
 });
 
 describe('换算：客户端与服务端同一个 mbFor', () => {
-  it('聊天按 token、生图一律按张（50）、看图按件、识别按秒、TA 的语音不折流量', () => {
+  it('聊天按 token、生图按张（qwen 60 / 动漫 50）、看图按件、识别按秒、TA 的语音不折流量', () => {
     expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 1500, outputTokens: 500 })).toBe(mbFor({ kind: 'chat', tokens: 4000 }));
     // D-233：缓存住的前缀也算，按价目比折（实测一轮：没命中 4、缓存读 3512、缓存写 24、输出 11 → 440 当量）
     expect(costTokens({ input: 4, cacheRead: 3512, cacheWrite: 24, output: 11 })).toBe(440);
     expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 4, cacheReadTokens: 3512, cacheWriteTokens: 24, outputTokens: 11 })).toBe(0.44);
     expect(mbFor({ kind: 'chat', tokens: 2000 })).toBe(2);
-    expect(mbFor({ kind: 'image', images: 2 })).toBe(100);
-    expect(mbFor({ kind: 'image' })).toBe(50);
+    expect(mbFor({ kind: 'image', images: 2 })).toBe(120);
+    expect(mbFor({ kind: 'image' })).toBe(60);
+    expect(mbFor({ kind: 'image', model: 'muse' })).toBe(50);
     expect(mbFor({ kind: 'vision' })).toBe(3);
     expect(mbFor({ kind: 'asr', seconds: 1 })).toBe(0.1);
-    expect(mbFor({ kind: 'asr', seconds: 90 })).toBe(1.5);
+    expect(mbFor({ kind: 'asr', seconds: 90 })).toBe(3);
     expect(mbFor({ kind: 'tts', seconds: 30 })).toBe(0);
   });
 
