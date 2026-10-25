@@ -2,14 +2,14 @@
  * 语音供给的纯逻辑（D-139）：识别按语言分流 + 音色池推荐。不碰网络、不碰 RN，可直接测。
  * - 识别：中 / 英走百度（同一把千帆 key、快且免费），日 / 韩走多语种通道（Fish transcribe-1，或 Whisper 协议的 Groq / OpenAI …，CONFIG.asr.provider）；
  *   哪些语言走多语种通道由 CONFIG.asr.langs 定。
- * - 音色：角色自己选的 > 种子角色预定的 > 音色池里同语言同性别的第一把 > env 兜底 > Fish 默认声。
+ * - 音色（D-230）：角色自己选的 > 按恋爱类型取池里同语言同性别的那把（种子按 SEED_STYLES、没填类型按原型）> 同性别第一把 > env 兜底 > Fish 默认声。
  */
 
-import { SEED_VOICES, VOICES, type VoiceOption } from '@/content/voices';
+import { SEED_STYLES, VOICES, type VoiceOption } from '@/content/voices';
 import { CONFIG } from '@/core/config';
 import { seedBaseId } from '@/content/portraits';
 import type { Lang } from '@/lib/i18n';
-import type { Character } from '@/lib/types';
+import type { ArchetypeId, Character } from '@/lib/types';
 
 /* ═══ 识别分流 ═══ */
 
@@ -45,20 +45,35 @@ export function voicesFor(lang: Lang): VoiceOption[] {
   return VOICES.filter((v) => v.lang === lang);
 }
 
-/** 角色的性别归一（推荐与默认音色用）：没填按 loveTag 推 */
-export function voiceGenderOf(c: Pick<Character, 'gender' | 'loveTag'>): VoiceOption['gender'] {
+/** 角色的性别归一（推荐与默认音色用）：没填按 loveTag 推，人外按人称（她 = 女声） */
+export function voiceGenderOf(c: Pick<Character, 'gender' | 'loveTag' | 'pronoun'>): VoiceOption['gender'] {
   if (c.gender) return c.gender;
   if (c.loveTag === 'male') return 'male';
   if (c.loveTag === 'female') return 'female';
+  if (c.pronoun === '他') return 'male';
+  if (c.pronoun === '她') return 'female';
   return 'nonbinary';
 }
 
 /** 一轮推荐几把 */
 export const VOICE_PICK = 3;
 
+/** 没填恋爱类型时按原型取声 */
+const ARCHETYPE_STYLE: Record<ArchetypeId, string> = {
+  gentle: '温柔年上',
+  sharp: '毒舌竹马',
+  ceo: '霸总',
+  nonhuman: '高冷禁欲',
+};
+
+/** 这个角色按哪种恋爱类型取声：种子预定 > 自己填的 > 原型 */
+export function voiceStyleOf(c: { id: string; loveStyle?: string; archetype?: ArchetypeId }): string | undefined {
+  return SEED_STYLES[seedBaseId(c.id)] ?? c.loveStyle ?? (c.archetype ? ARCHETYPE_STYLE[c.archetype] : undefined);
+}
+
 /**
- * 按角色推荐音色：同语言、同性别（nonbinary 不限性别），气质标签命中角色的提示词（恋爱类型 / 种族 / 风格标签）越多越靠前；
- * round 每加一就换下一批（池子转完循环）。池子不够三把就全给。
+ * 按角色推荐音色：同语言、同性别（nonbinary 不限性别）；对应角色恋爱类型的那把排第一，
+ * 其余按提示词（恋爱类型 / 种族）命中排；round 每加一就换下一批（池子转完循环）。池子不够三把就全给。
  */
 export function recommendVoices(
   opts: { lang: Lang; gender: VoiceOption['gender']; hints?: string[] },
@@ -67,7 +82,7 @@ export function recommendVoices(
   const pool = voicesFor(opts.lang).filter((v) => opts.gender === 'nonbinary' || v.gender === opts.gender || v.gender === 'nonbinary');
   if (pool.length <= VOICE_PICK) return pool;
   const hints = (opts.hints ?? []).map((h) => h.trim()).filter(Boolean);
-  const score = (v: VoiceOption) => hints.reduce((s, h) => s + (v.tags.some((tg) => tg.includes(h) || h.includes(tg)) || v.name.includes(h) ? 1 : 0), 0);
+  const score = (v: VoiceOption) => hints.reduce((s, h) => s + (v.styles.includes(h) ? 1 : 0), 0);
   const ranked = pool
     .map((v, i) => ({ v, i, s: score(v) }))
     .sort((a, b) => b.s - a.s || a.i - b.i)
@@ -78,13 +93,15 @@ export function recommendVoices(
   return out;
 }
 
-/** 角色没选音色时的默认：种子预定 > 池里同语言同性别第一把 > env 按人称 */
-export function defaultVoiceId(c: Pick<Character, 'id' | 'gender' | 'loveTag' | 'pronoun'>, lang: Lang): string {
-  const base = seedBaseId(c.id);
-  const seed = SEED_VOICES[`${base}@${lang}`] ?? SEED_VOICES[base];
-  if (seed) return seed;
+/** 角色没选音色时的默认：按恋爱类型取同语言同性别那把 > 同性别第一把 > 池里第一把 > env 按人称 */
+export function defaultVoiceId(
+  c: Pick<Character, 'id' | 'gender' | 'loveTag' | 'pronoun' | 'loveStyle'> & { archetype?: ArchetypeId },
+  lang: Lang
+): string {
   const gender = voiceGenderOf(c);
-  const fromPool = voicesFor(lang).find((v) => v.gender === gender) ?? voicesFor(lang)[0];
+  const pool = voicesFor(lang).filter((v) => gender === 'nonbinary' || v.gender === gender);
+  const style = voiceStyleOf(c);
+  const fromPool = (style ? pool.find((v) => v.styles.includes(style)) : undefined) ?? pool[0] ?? voicesFor(lang)[0];
   if (fromPool) return fromPool.id;
   const p = c.pronoun ?? (gender === 'male' ? '他' : gender === 'female' ? '她' : 'TA');
   return p === '他' ? CONFIG.fish.voice.he : p === '她' ? CONFIG.fish.voice.she : CONFIG.fish.voice.ta;

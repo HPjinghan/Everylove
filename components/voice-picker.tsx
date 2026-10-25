@@ -1,5 +1,5 @@
 /**
- * 音色选择（D-139，创造 ⑧）：按角色的语言 × 性别 × 气质从音色池推荐三把，每把可试听一句（Fish 合成、走 tts 缓存）；
+ * 音色选择（D-139 / D-230，创造 ⑧）：按角色的语言 × 性别 × 恋爱类型从音色池推荐三把（每把旁边写它是哪几种类型的声），每把可试听一句（Fish 合成、走 tts 缓存）；
  * 「换一批」再推三把，池子转完循环。音色池里没有这门语言的声线时整块不显示（无供给不摆入口）。
  * 纸面：Chip 选中 = primary；试听键 ink 图标。
  */
@@ -33,7 +33,7 @@ export const VoicePicker = memo(function VoicePicker({
 }: {
   lang: Lang;
   gender: VoiceOption['gender'];
-  /** 推荐打分用的提示词（恋爱类型 / 种族 / 风格标签） */
+  /** 推荐打分用的提示词（恋爱类型） */
   hints: (string | undefined)[];
   value: string | undefined;
   onChange: (id: string | undefined) => void;
@@ -85,7 +85,7 @@ export const VoicePicker = memo(function VoicePicker({
           <View key={v.id} style={styles.row}>
             <Chip label={v.name} selected={value === v.id} onPress={() => onChange(value === v.id ? undefined : v.id)} style={styles.chip} />
             <Text style={styles.tags} numberOfLines={1}>
-              {v.tags.slice(0, 3).map((tg) => t(tg)).join(' · ')}
+              {v.styles.slice(0, 3).map((st) => t(st)).join(' · ')}
             </Text>
             <Pressable onPress={() => void listen(v)} style={styles.play} hitSlop={8}>
               <IconSymbol name={playingId === v.id ? 'pause.fill' : 'play.fill'} size={14} color={busyId === v.id ? Romance.sub : Romance.ink} />
