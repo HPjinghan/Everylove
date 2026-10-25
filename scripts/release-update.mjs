@@ -39,7 +39,7 @@ const env = { ...process.env, EXPO_NO_DOTENV: '1' };
 for (const k of Object.keys(env)) if (k.startsWith('EXPO_PUBLIC_') && !KEEP.includes(k)) delete env[k];
 for (const k of KEEP) if (kv[k]) env[k] = kv[k];
 const secrets = Object.entries(kv)
-  .filter(([k, v]) => !KEEP.includes(k) && v.length >= 12)
+  .filter(([k, v]) => !KEEP.includes(k) && !/_MODEL$/.test(k) && v.length >= 12) // 模型名不是秘密，代码里本来就写着默认值
   .map(([k, v]) => ({ name: k, value: v }));
 const PATTERNS = [/sk-ant-[A-Za-z0-9_-]{8,}/, /bce-v3\/[A-Za-z0-9_\/-]{8,}/, /\bsk_[A-Za-z0-9]{20,}/];
 
