@@ -1,5 +1,5 @@
 /**
- * X（原朋友圈，D-053 推特模式改版；D-100 纸面）：缔结契约（领养）的 TA 们的时间线（D-027 口径不变）。
+ * X（原朋友圈，D-053 推特模式改版；D-231 黑白时间线、圆头像）：缔结契约（领养）的 TA 们的时间线（D-027 口径不变）。
  * - 白通栏、行间 1px line：头像 40、名 15/600 + @handle 13 muted、正文 15/21、动作行 Fredoka 12 muted（已赞 primary）
  * - 回复缩进、头像 26；「我的头像」= paper 底 accent 首字（不是角色色）；评论输入框 paper r6
  * - 回复走回合管线的 post 模式（D-053 / D-178）：她评论 → TA 用当前引擎真的回一条（亲密背景 + 回帖写法），
@@ -20,6 +20,7 @@ import { CharacterSheet } from '@/components/character-sheet';
 import { MingCute } from '@/components/mingcute';
 import { runJobs } from '@/core/jobs';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { appTint } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { sendText } from '@/lib/chat';
@@ -28,6 +29,9 @@ import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
 import type { Character, Post } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
+
+/** X 的颜色（D-231）：黑白，发送键是黑的；点赞仍是粉红 */
+const TINT = appTint('moments') ?? Romance.ink;
 
 /** @handle：种子角色用 id 转推特腔；自创的 id 是 c_17xxx 这种时间戳，用名字（D-197） */
 function handleFor(c: Character): string {
@@ -85,7 +89,7 @@ function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: 
     <View style={styles.row}>
       <View style={styles.avatarCol}>
         <Pressable onPress={() => onOpenCharacter(character.id)} hitSlop={6}>
-          <CharAvatar name={displayName} color={character.color} size={40} characterId={character.id} />
+          <CharAvatar name={displayName} color={character.color} size={40} characterId={character.id} round />
         </Pressable>
         {threaded ? <View style={styles.threadLine} /> : null}
       </View>
@@ -133,11 +137,11 @@ function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: 
           return (
             <View key={cm.id} style={styles.reply}>
               {cm.from === 'him' ? (
-                <CharAvatar name={displayName} color={character.color} size={26} characterId={character.id} />
+                <CharAvatar name={displayName} color={character.color} size={26} characterId={character.id} round />
               ) : cm.from === 'other' ? (
                 other ? (
                   <Pressable onPress={() => onOpenCharacter(other.id)} hitSlop={6}>
-                    <CharAvatar name={otherName} color={other.color} size={26} characterId={other.id} />
+                    <CharAvatar name={otherName} color={other.color} size={26} characterId={other.id} round />
                   </Pressable>
                 ) : (
                   <View style={styles.otherAvatar}>
@@ -164,7 +168,7 @@ function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: 
         })}
         {replying ? (
           <View style={styles.reply}>
-            <CharAvatar name={displayName} color={character.color} size={26} characterId={character.id} />
+            <CharAvatar name={displayName} color={character.color} size={26} characterId={character.id} round />
             <Text style={styles.replyTyping}>{t('{name} 正在回复…', { name: displayName })}</Text>
           </View>
         ) : null}
@@ -184,7 +188,7 @@ function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: 
               <IconSymbol
                 name="arrow.up.circle.fill"
                 size={28}
-                color={commentDraft.trim() && !replying ? Romance.accent : Romance.sub}
+                color={commentDraft.trim() && !replying ? TINT : Romance.sub}
               />
             </Pressable>
           </View>
@@ -232,7 +236,7 @@ export default function FeedScreen() {
 const styles = themed(() =>
   StyleSheet.create({
     // 白通栏：列表底白、行间 1px line
-    feed: { backgroundColor: Romance.card },
+    feed: { flex: 1, backgroundColor: Romance.card },
     list: { paddingBottom: 24 },
     separator: { height: 1, backgroundColor: Romance.line },
     row: {
@@ -261,21 +265,21 @@ const styles = themed(() =>
     replyHandle: { fontSize: Type.scale.caption.size, fontWeight: '400', color: Romance.sub },
     replyText: { fontSize: Type.scale.sub.size, lineHeight: 20, color: Romance.ink, marginTop: 1 },
     replyTyping: { fontSize: Type.scale.label.size, color: Romance.sub, alignSelf: 'center' },
-    // 我的头像：paper 底 + accent 首字（不是角色色）
+    // 我的头像：浅底圆头像 + 黑色首字（不是角色色）
     myAvatar: {
       width: 26,
       height: 26,
-      borderRadius: Shape.radius,
+      borderRadius: Shape.radiusPill,
       backgroundColor: Romance.bg,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    myAvatarText: { fontSize: Type.scale.caption.size, fontWeight: '600', color: Romance.accentStrong },
+    myAvatarText: { fontSize: Type.scale.caption.size, fontWeight: '600', color: Romance.ink },
     // 别人的头像（TA 身边的人，D-110）：line 底 ink 首字
     otherAvatar: {
       width: 26,
       height: 26,
-      borderRadius: Shape.radius,
+      borderRadius: Shape.radiusPill,
       backgroundColor: Romance.line,
       alignItems: 'center',
       justifyContent: 'center',
@@ -285,7 +289,7 @@ const styles = themed(() =>
     commentInput: {
       flex: 1,
       height: 36,
-      borderRadius: Shape.radius,
+      borderRadius: Shape.radiusPill,
       backgroundColor: Romance.bg,
       paddingHorizontal: 14,
       fontSize: Type.scale.sub.size,

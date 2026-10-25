@@ -27,7 +27,6 @@ import { showAlert } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { Input } from '@/components/input';
 import { MingCute } from '@/components/mingcute';
-import { DiamondBackground } from '@/components/paper-bg';
 import { showToast } from '@/components/toast';
 import { Shape, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
@@ -160,8 +159,6 @@ export default function AuthScreen() {
   if (!authConfigured()) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top }]}>
-        {/* 暗纹放在不带 padding 的外层，留白给内层（带 padding 的容器里 SVG 铺不满） */}
-        <DiamondBackground />
         <View style={[styles.flex, styles.center]}>
           <Text style={styles.title}>{t('账号服务未配置')}</Text>
           <Text style={styles.sub}>{__DEV__ ? '[dev] 在 .env.local 配好 Supabase 后重启（docs/supabase-setup.sql）。' : t('账号功能暂不可用。')}</Text>
@@ -176,7 +173,6 @@ export default function AuthScreen() {
 
   return (
     <View style={styles.screen}>
-      <DiamondBackground />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           style={styles.flex}

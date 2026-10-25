@@ -22,7 +22,8 @@ import { Polaroid } from '@/components/polaroid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { placeById } from '@/content/places';
 import { characterSecrets, messageContextText, unlockedSecretCount } from '@/content/prompts';
-import { NOTE_PAPER, Shape, Space, Type } from '@/constants/design';
+import { appById } from '@/constants/apps';
+import { Elevation, NOTE_PAPER, Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { planTimeLabel } from '@/lib/appointments';
 import { levelOf } from '@/lib/bond';
@@ -46,6 +47,10 @@ type PhoneApp = 'messages' | 'contacts' | 'notes' | 'calendar' | 'album' | 'wall
 
 /** Dock 里的两个（其余摆网格） */
 const DOCK_APPS: PhoneApp[] = ['messages', 'contacts'];
+
+/** TA 手机上的 App 用她桌面上同一个 App 的颜色（D-231） */
+const tileOf = (id: PhoneApp) => appById(id)?.tile;
+const glyphOf = (id: PhoneApp) => appById(id)?.glyphColor ?? '#FFFFFF';
 
 const APPS: { id: PhoneApp; label: string; icon: MingCuteName }[] = [
   { id: 'messages', label: 'Message', icon: 'chat' },
@@ -204,8 +209,8 @@ export function PhoneSheet({
           <View style={styles.grid}>
             {APPS.filter((a) => !DOCK_APPS.includes(a.id)).map((a) => (
               <Pressable key={a.id} style={styles.tileWrap} onPress={() => setApp(a.id)}>
-                <View style={styles.tile}>
-                  <MingCute name={a.icon} size={Space.iconTile} color={Romance.ink} />
+                <View style={[styles.tile, { backgroundColor: tileOf(a.id) }]}>
+                  <MingCute name={a.icon} size={Space.iconTile} color={glyphOf(a.id)} />
                 </View>
                 <Text style={styles.tileLabel}>{t(a.label)}</Text>
               </Pressable>
@@ -216,8 +221,8 @@ export function PhoneSheet({
               const badge = a.id === 'messages' ? conversations.filter((c) => c.lines.length).length : 0;
               return (
                 <Pressable key={a.id} onPress={() => setApp(a.id)} accessibilityLabel={a.label === 'Message' ? 'Message' : t(a.label)}>
-                  <View style={styles.tile}>
-                    <MingCute name={a.icon} size={Space.iconTile} color={Romance.ink} />
+                  <View style={[styles.tile, { backgroundColor: tileOf(a.id) }]}>
+                    <MingCute name={a.icon} size={Space.iconTile} color={glyphOf(a.id)} />
                     {badge > 0 ? (
                       <View style={styles.badge}>
                         <Text style={styles.badgeText}>{badge}</Text>
@@ -459,7 +464,8 @@ const styles = themed(() =>
       backgroundColor: withAlpha('#FFFFFF', 0.14),
     },
     tileWrap: { width: '25%', alignItems: 'center' },
-    tile: { width: TILE, height: TILE, borderRadius: Shape.radius, backgroundColor: Romance.card, alignItems: 'center', justifyContent: 'center' },
+    // TA 手机上的图块（D-231）：跟她桌面上同一个 App 一样的颜色
+    tile: { width: TILE, height: TILE, borderRadius: Shape.radiusIcon, backgroundColor: Romance.card, alignItems: 'center', justifyContent: 'center', ...Elevation.low },
     tileLabel: { fontSize: Type.scale.caption.size, fontWeight: '500', color: '#FFFFFF', marginTop: 6 },
     badge: {
       position: 'absolute',
@@ -467,8 +473,8 @@ const styles = themed(() =>
       right: -6,
       minWidth: 20,
       height: 20,
-      borderRadius: Shape.radius,
-      backgroundColor: Romance.accent,
+      borderRadius: Shape.radiusPill,
+      backgroundColor: Romance.danger,
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 5,

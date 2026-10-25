@@ -38,8 +38,9 @@ import { BlankPolaroid } from '@/components/polaroid';
 import { MingCute } from '@/components/mingcute';
 import { DiamondBackground } from '@/components/paper-bg';
 import { CHARACTERS, seedCharactersFor } from '@/content/characters';
-import { Shape, Space, Type } from '@/constants/design';
-import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
+import { appTint } from '@/constants/apps';
+import { Elevation, Shape, Space, Type } from '@/constants/design';
+import { Fonts, Romance, themed, WallpaperTint, withAlpha } from '@/constants/theme';
 import { heatLabel } from '@/lib/format';
 import { haptic } from '@/lib/haptics';
 import { portraitSource } from '@/lib/imagegen';
@@ -50,6 +51,8 @@ import type { Character, LovePref } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
 const { width: SCREEN_W } = Dimensions.get('window');
+/** 交友 App 自己的颜色（D-231）：跟桌面图块一样的珊瑚粉 */
+const TINT = appTint('dating') ?? Romance.accent;
 /** 牌堆卡宽：设计 342；窄屏按屏幕左右留白收 */
 const CARD_W = Math.min(Space.matchCardWidth, SCREEN_W - Space.screen * 2);
 /** 无立绘时托首字的 paper 圆：直径 236（设计稿半径 118）；瀑布流小卡缩到 112 */
@@ -540,7 +543,7 @@ export default function DatingScreen() {
       {match ? (
         <View style={styles.matchOverlay}>
           {/* 暗纹铺在不带 padding 的外层，留白放内层——带 padding 的容器里 100% 宽的 SVG 铺不满 */}
-          <DiamondBackground />
+          <DiamondBackground color={WallpaperTint.pattern} />
           <View style={styles.matchInner}>
             <Text style={styles.matchBig}>{t('配对成功')}</Text>
             <CharAvatar name={match.name} color={match.color} size={96} characterId={match.id} />
@@ -566,14 +569,14 @@ const styles = themed(() =>
       gap: 8,
       marginTop: 12,
     },
-    // 口味 chip：白底 r6 8×12，accent 13/600「男生 ▾」
+    // 口味 chip：白色胶囊，交友色字「男生 ▾」
     prefChip: {
       backgroundColor: Romance.card,
-      borderRadius: Shape.radius,
+      borderRadius: Shape.radiusPill,
       paddingVertical: 8,
       paddingHorizontal: 12,
     },
-    prefChipText: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.accentStrong },
+    prefChipText: { fontSize: Type.scale.label.size, fontWeight: '600', color: TINT },
     matchesWrap: { paddingTop: 12 },
     matchesTitle: {
       fontSize: Type.scale.eyebrow.size,
@@ -588,8 +591,8 @@ const styles = themed(() =>
     matchName: { fontSize: Type.scale.caption.size, color: Romance.ink, marginTop: 4, maxWidth: 58 },
     deckArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     card: { position: 'absolute', aspectRatio: Space.matchCardRatio },
-    // 卡面：白卡描边 r6（Card），内部裁切
-    deckCard: { flex: 1, overflow: 'hidden' },
+    // 卡面（D-231）：交友 App 的大圆角卡片、浮在页面上，内部裁切
+    deckCard: { flex: 1, overflow: 'hidden', borderRadius: Shape.radiusIcon, ...Elevation.low },
     deckTop: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     deckPortrait: { ...StyleSheet.absoluteFill },
     deckCircle: {
@@ -625,41 +628,41 @@ const styles = themed(() =>
     deckIdentityCompact: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
     deckHook: { fontSize: Type.scale.label.size, lineHeight: Math.round(13 * 1.45), color: Romance.ink, marginTop: 8 },
     heatRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, flexWrap: 'wrap' },
-    heatNum: { fontFamily: Fonts.labelBold, fontSize: Type.scale.caption.size, color: Romance.accentStrong },
-    heatText: { fontSize: Type.scale.caption.size, fontWeight: '600', color: Romance.accentStrong },
+    heatNum: { fontFamily: Fonts.labelBold, fontSize: Type.scale.caption.size, color: TINT },
+    heatText: { fontSize: Type.scale.caption.size, fontWeight: '600', color: TINT },
     tag: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginLeft: 8 },
     stamp: {
       position: 'absolute',
       top: 26,
       backgroundColor: Romance.card,
-      borderRadius: Shape.radius,
+      borderRadius: Shape.radiusPill,
       paddingHorizontal: 18,
       paddingVertical: 8,
     },
     stampLike: { left: 18, transform: [{ rotate: '-8deg' }] },
     stampPass: { right: 18, transform: [{ rotate: '8deg' }] },
-    stampText: { fontSize: Type.scale.xl.size, fontWeight: '600', color: Romance.accentStrong },
+    stampText: { fontSize: Type.scale.xl.size, fontWeight: '600', color: TINT },
     stampPassText: { color: Romance.sub },
     footArea: { alignItems: 'center', paddingBottom: 22, gap: 10 },
     btnRow: { flexDirection: 'row', alignItems: 'center', gap: Space.tileGapLoose },
-    // 略过：54 白图块（无描边）；心动：66 primary + 描边
+    // 交友 App 的两颗圆按钮（D-231）：略过 = 白圆、灰叉；心动 = 大一号的交友色圆、白心
     passBtn: {
-      width: 54,
-      height: 54,
-      borderRadius: Shape.radius,
+      width: 58,
+      height: 58,
+      borderRadius: Shape.radiusPill,
       backgroundColor: Romance.card,
       alignItems: 'center',
       justifyContent: 'center',
+      ...Elevation.low,
     },
     heartBtn: {
-      width: 66,
-      height: 66,
-      borderRadius: Shape.radius,
-      backgroundColor: Romance.accent,
-      borderWidth: Shape.stroke,
-      borderColor: Romance.stroke,
+      width: 70,
+      height: 70,
+      borderRadius: Shape.radiusPill,
+      backgroundColor: TINT,
       alignItems: 'center',
       justifyContent: 'center',
+      ...Elevation.low,
     },
     footSlot: { minHeight: 28, alignItems: 'center', justifyContent: 'center' },
     footHint: { fontSize: Type.scale.caption.size, color: Romance.sub },
@@ -668,7 +671,7 @@ const styles = themed(() =>
       alignItems: 'center',
       gap: 14,
       backgroundColor: Romance.ink,
-      borderRadius: Shape.radius,
+      borderRadius: Shape.radiusPill,
       paddingVertical: 6,
       paddingHorizontal: 14,
     },
@@ -686,7 +689,8 @@ const styles = themed(() =>
     prefSheet: { paddingVertical: 16, paddingHorizontal: 16 },
     prefTitle: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, marginBottom: 12 },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    matchOverlay: { ...StyleSheet.absoluteFill, backgroundColor: Romance.bg },
+    // 配对成功（D-231）：铺她的桌面壁纸
+    matchOverlay: { ...StyleSheet.absoluteFill, backgroundColor: WallpaperTint.bg },
     matchInner: {
       flex: 1,
       alignItems: 'center',

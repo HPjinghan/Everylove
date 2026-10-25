@@ -16,6 +16,7 @@ import { showAlert } from '@/components/action-sheet';
 import { alertAiUnavailable } from '@/components/ai-unavailable';
 import { AppScreen } from '@/components/app-screen';
 import { Card, Divider } from '@/components/card';
+import { MingCute, type MingCuteName } from '@/components/mingcute';
 import { DiamondBackground } from '@/components/paper-bg';
 import { WALLPAPERS } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
@@ -97,6 +98,16 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+/** 设置行前的小彩色图标（D-231）：手机设置页的样子——每个分区第一行带一个，颜色跟它说的东西走 */
+const ROW_ICON: Record<string, { icon: MingCuteName; color: string }> = {
+  cloud: { icon: 'cloud', color: '#3BB6F5' },
+  me: { icon: 'contacts', color: '#9B6BF2' },
+  plan: { icon: 'sparkles', color: '#FF9F2E' },
+  traffic: { icon: 'fire', color: '#FF5A79' },
+  voice: { icon: 'mic', color: '#4CD07D' },
+  create: { icon: 'magicHat', color: '#6F5CE6' },
+};
+
 function Row({
   label,
   value,
@@ -105,7 +116,10 @@ function Row({
   tone,
   hint,
   onPress,
+  icon,
 }: {
+  /** 行首图标（ROW_ICON 的键） */
+  icon?: keyof typeof ROW_ICON;
   label: string;
   value?: string;
   /** 值置灰（未开放的功能） */
@@ -121,6 +135,11 @@ function Row({
   return (
     <Pressable onPress={onPress} disabled={!onPress}>
       <View style={[styles.row, !!hint && styles.rowWithHint]}>
+        {icon ? (
+          <View style={[styles.rowIcon, { backgroundColor: ROW_ICON[icon].color }]}>
+            <MingCute name={ROW_ICON[icon].icon} size={17} color="#FFFFFF" />
+          </View>
+        ) : null}
         <Text style={styles.rowLabel}>{label}</Text>
         {value ? (
           <Text
@@ -134,6 +153,7 @@ function Row({
             {value}
           </Text>
         ) : null}
+        {onPress ? <Text style={styles.rowChevron}>›</Text> : null}
       </View>
       {hint ? <Text style={[styles.rowHint, tone === 'accent' && styles.rowHintAccent]}>{hint}</Text> : null}
     </Pressable>
@@ -374,7 +394,7 @@ export default function MeScreen() {
             </Text>
           ) : session ? (
             <>
-              <Row label={t('账号')} value={sessionLabel(session)} />
+              <Row icon="cloud" label={t('账号')} value={sessionLabel(session)} />
               <Row label={t('立即备份到云端')} onPress={doBackupNow} />
               <Row label={t('从云端恢复到本机')} onPress={doRestore} />
               <Row label={t('退出登录')} onPress={doSignOut} />
@@ -382,6 +402,7 @@ export default function MeScreen() {
             </>
           ) : (
             <Row
+              icon="cloud"
               label={t('登录 / 开通云端')}
               hint={t('换手机也不会失去 TA 和你们的故事。')}
               onPress={() => router.push('/auth')}
@@ -407,6 +428,7 @@ export default function MeScreen() {
 
         <Section title={t('我')}>
           <Row
+            icon="me"
             label={t('我的身份')}
             value={me?.nickname ? t('「{x}」', { x: me.nickname }) : t('还没告诉 TA 们你是谁')}
             onPress={() => router.push('/apps/identity')}
@@ -438,7 +460,7 @@ export default function MeScreen() {
         <Section title={t('订阅计划')}>
           {/* 已订阅时下面那行带 ✓，「当前计划」就不重复说一遍 */}
           {plan === 'free' || !(storeMode === 'sim' || (storeMode === 'real' && iap.items.some((i) => i.kind === 'plan' && i.plan === plan))) ? (
-            <Row label={t('当前计划')} value={plan === 'max' ? 'Max' : plan === 'pro' ? 'Pro' : 'Free'} />
+            <Row icon="plan" label={t('当前计划')} value={plan === 'max' ? 'Max' : plan === 'pro' ? 'Pro' : 'Free'} />
           ) : null}
           {storeMode === 'sim' ? (
             <>
@@ -480,7 +502,7 @@ export default function MeScreen() {
         </Section>
 
         <Section title={t('流量')}>
-          <Row label={t('剩余流量')} value={plan === 'max' ? '∞' : mb(traffic.balance)} numeric hint={plan === 'max' ? t('Max 不限流量') : t('今天免费的还剩 {n}', { n: mb(freeLeft(traffic, trafficNow)) })} />
+          <Row icon="traffic" label={t('剩余流量')} value={plan === 'max' ? '∞' : mb(traffic.balance)} numeric hint={plan === 'max' ? t('Max 不限流量') : t('今天免费的还剩 {n}', { n: mb(freeLeft(traffic, trafficNow)) })} />
           {/* 只剩一档时不给选（D-205） */}
           {LOVE_MODEL_ORDER.length > 1 && LOVE_MODEL_ORDER.map((id) => {
             const m = LOVE_MODELS[id];
@@ -516,6 +538,7 @@ export default function MeScreen() {
         {/* 语音时长（D-210）：TA 的语音、她的语音、电话都按分钟算；Free 没有（新用户送的只能打电话） */}
         <Section title={t('语音时长')}>
           <Row
+            icon="voice"
             label={t('今天还剩')}
             value={t('{n} 分钟', { n: voiceMinutes(voiceDailyLeft(voice, plan, trafficNow)) })}
             hint={plan === 'free' ? t('订阅后每天都能听到 TA 的语音、打电话。') : t('每天的不累积。')}
@@ -559,6 +582,7 @@ export default function MeScreen() {
 
         <Section title={t('我的创作')}>
           <Row
+            icon="create"
             label={t('创造的角色')}
             value={`${customs.filter((c) => !c.shared).length}`}
             numeric
@@ -622,11 +646,13 @@ const styles = themed(() =>
       justifyContent: 'space-between',
       alignItems: 'center',
       gap: Space.inline,
-      paddingVertical: 13,
+      paddingVertical: 12,
       paddingHorizontal: Space.cardX,
     },
     rowWithHint: { paddingBottom: 4 },
-    rowLabel: { fontSize: Type.scale.sub.size, color: Romance.ink },
+    rowIcon: { width: 28, height: 28, borderRadius: Shape.radiusInner, alignItems: 'center', justifyContent: 'center' },
+    rowLabel: { flex: 1, fontSize: Type.scale.body.size, color: Romance.ink },
+    rowChevron: { fontSize: Type.scale.xl.size, lineHeight: Type.scale.xl.size, color: Romance.faint, marginLeft: 2 },
     rowValue: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.sub, flexShrink: 1, textAlign: 'right' },
     rowValueNumeric: { fontFamily: Fonts.labelBold },
     rowValueDim: { color: Romance.faint },

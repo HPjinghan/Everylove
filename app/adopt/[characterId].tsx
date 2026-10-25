@@ -27,7 +27,7 @@ import { Button } from '@/components/button';
 import { CharAvatar } from '@/components/char-avatar';
 import { Input } from '@/components/input';
 import { DiamondBackground } from '@/components/paper-bg';
-import { Romance, themed } from '@/constants/theme';
+import { Romance, themed, WallpaperTint } from '@/constants/theme';
 import { authConfigured, signedInSession } from '@/lib/auth';
 import { generateCharacterLines } from '@/lib/character-lines';
 import { t } from '@/lib/i18n';
@@ -88,7 +88,8 @@ export default function AdoptScreen() {
 
   return (
     <View style={styles.screen}>
-      <DiamondBackground />
+      {/* 缔结仪式（D-231）：铺的是她的桌面壁纸——这一刻是这部手机本身在庆祝 */}
+      <DiamondBackground color={WallpaperTint.pattern} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -229,7 +230,7 @@ const REVEAL = 168;
 const styles = themed(() =>
   StyleSheet.create({
     flex: { flex: 1 },
-    screen: { flex: 1, backgroundColor: Romance.bg },
+    screen: { flex: 1, backgroundColor: WallpaperTint.bg },
     content: { paddingHorizontal: 28, flexGrow: 1, justifyContent: 'center' },
     center: { alignItems: 'center' },
     h1: { fontSize: Type.scale.xxl.size, fontWeight: '600', color: Romance.ink, marginTop: 20, textAlign: 'center' },

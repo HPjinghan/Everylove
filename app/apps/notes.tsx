@@ -25,6 +25,7 @@ import { Card } from '@/components/card';
 import { Input } from '@/components/input';
 import { MingCute } from '@/components/mingcute';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { appTextTint } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { timeAgo, uid } from '@/lib/format';
@@ -103,7 +104,7 @@ export default function NotesScreen() {
       onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}
       right={
         <Pressable onPress={() => open(null)} hitSlop={10}>
-          <MingCute name="pencil" size={22} color={Romance.accent} />
+          <MingCute name="pencil" size={22} color={TINT} />
         </Pressable>
       }>
       <ScrollView contentContainerStyle={styles.list}>
@@ -172,7 +173,7 @@ export default function NotesScreen() {
                   onPress={() => remove(editing, close)}
                 />
               ) : null}
-              <Button label={t('保存')} variant="primary" size="md" style={styles.flex} onPress={save} />
+              <Button label={t('保存')} variant="primary" size="md" style={[styles.flex, styles.saveBtn]} onPress={save} />
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -181,8 +182,12 @@ export default function NotesScreen() {
   );
 }
 
+/** 记事本的颜色（D-231）：记事本 App 的黄（字用深一档） */
+const TINT = appTextTint('notes') ?? Romance.accent;
+
 const styles = themed(() =>
   StyleSheet.create({
+    saveBtn: { backgroundColor: TINT },
     flex: { flex: 1 },
     list: { padding: Space.screen, gap: Space.inlineLoose, paddingBottom: 40 },
     empty: { textAlign: 'center', color: Romance.sub, fontSize: Type.scale.label.size, marginTop: 40 },

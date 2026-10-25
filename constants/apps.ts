@@ -16,6 +16,8 @@ export interface DesktopApp {
   tile: string;
   /** 图标颜色（浅色图块上用深色图标） */
   glyphColor?: string;
+  /** 图块色太浅、当字色看不清时，App 里面的字 / 图标用这一档深一点的（记事本的黄） */
+  textTint?: string;
   /** 字标（D-229）：有它就在图块上写这几个字母，不画图标 */
   glyph?: string;
   route: string;
@@ -36,7 +38,7 @@ export const DESKTOP_APPS: DesktopApp[] = [
   { id: 'outing', label: '外出', icon: 'location', tile: '#3BB6F5', route: '/apps/outing' },
   { id: 'create', label: '创造', icon: 'magicHat', tile: '#9B6BF2', route: '/apps/create' },
   // 记事本（D-085）：她自己的本子，私密——只有她让 TA 看手机时 TA 才看得到
-  { id: 'notes', label: '记事本', icon: 'notebook', tile: '#FFC93C', route: '/apps/notes' },
+  { id: 'notes', label: '记事本', icon: 'notebook', tile: '#FFC93C', textTint: '#C98F00', route: '/apps/notes' },
   // 查手机（D-085）：所有缔结的 TA 各一部手机；也能让 TA 看我的手机
   { id: 'phones', label: '查手机', icon: 'phoneEye', tile: '#2E2A33', route: '/apps/phones' },
   // 钱包（D-138）：她的零钱余额与 Coin 流水（红包 / 外卖 / 日签 / 转盘）
@@ -49,6 +51,20 @@ export const DESKTOP_APPS: DesktopApp[] = [
   { id: 'biography', label: '传记', icon: 'book', tile: '#FF9F2E', route: '/apps/biography' },
   { id: 'settings', label: '设置', icon: 'settings', tile: '#8E8E93', route: '/apps/settings' },
 ];
+
+/**
+ * 第三方类 App 的品牌色（D-231）：App 里面的强调色跟它桌面图块一个颜色——交友珊瑚粉、X 黑、外卖黄、幸运签紫。
+ * 系统类 App（Messages / 设置 / 日历…）用界面统一的品牌粉。
+ */
+export function appTint(id: string): string | undefined {
+  return DESKTOP_APPS.find((a) => a.id === id)?.tile;
+}
+
+/** 当字色 / 图标色用的那一档：有 textTint 用它，否则就是图块色 */
+export function appTextTint(id: string): string | undefined {
+  const a = DESKTOP_APPS.find((x) => x.id === id);
+  return a?.textTint ?? a?.tile;
+}
 
 /** 桌面小组件的底色（D-231）：天气是一块晴空蓝 */
 export const WIDGET_TINT = { weather: '#5AAEEB' } as const;

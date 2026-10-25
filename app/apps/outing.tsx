@@ -158,7 +158,7 @@ export default function OutingScreen() {
           </Pressable>
         ) : null}
 
-        {/* 六个地点：白卡描边，上 100 高 paper 底放 emoji，角标「和 X 有约」 */}
+        {/* 六个地点：圆角卡片，上 100 高浅粉底放 emoji，角标「和 X 有约」 */}
         <View style={styles.grid}>
           {spots.map((place) => {
             const plan = plans.find((p) => p.placeId === place.id);
@@ -306,8 +306,8 @@ const styles = themed(() =>
     plazaSub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 3 },
     plazaGo: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.accent },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP },
-    placeCard: { overflow: 'hidden' },
-    placeArt: { height: 100, backgroundColor: Romance.bg, alignItems: 'center', justifyContent: 'center' },
+    placeCard: { overflow: 'hidden', borderRadius: Shape.radiusIcon },
+    placeArt: { height: 100, backgroundColor: Romance.accentSoft, alignItems: 'center', justifyContent: 'center' },
     placeEmoji: { fontSize: 40 },
     placeBadge: {
       position: 'absolute',

@@ -198,7 +198,12 @@ export default function CalendarScreen() {
                       key === todayKey && key !== selected && styles.dayToday,
                       key === selected && styles.daySelected,
                     ]}>
-                    <Text style={[styles.dayText, key === selected && styles.dayTextSelected]}>
+                    <Text
+                      style={[
+                        styles.dayText,
+                        key === todayKey && key !== selected && styles.dayTextToday,
+                        key === selected && styles.dayTextSelected,
+                      ]}>
                       {parseDateKey(key).getDate()}
                     </Text>
                   </View>
@@ -297,7 +302,7 @@ const styles = themed(() =>
     flex: { flex: 1 },
     content: { padding: Space.screen, paddingBottom: 40 },
     monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Space.tileGapLoose, marginBottom: 8 },
-    monthArrow: { fontFamily: Fonts.label, fontSize: Type.scale.h1.size, color: Romance.accent, paddingHorizontal: 8 },
+    monthArrow: { fontFamily: Fonts.label, fontSize: Type.scale.h1.size, color: Romance.danger, paddingHorizontal: 8 },
     monthTitle: { fontSize: Type.scale.screenTitle.size, fontWeight: '600', color: Romance.ink },
     monthNum: { fontFamily: Fonts.labelBold, fontSize: Type.scale.screenTitle.size, color: Romance.ink },
     weekRow: { flexDirection: 'row' },
@@ -305,10 +310,11 @@ const styles = themed(() =>
     grid: { flexDirection: 'row', flexWrap: 'wrap' },
     // 7 × (100/7)% 浮点合计会略超 100%，第 7 格被挤到下一行 → 周日列全空；用略小的固定值
     dayCell: { width: '14.28%', alignItems: 'center', paddingVertical: 5 },
-    dayNum: { width: 34, height: 34, borderRadius: Shape.radius, alignItems: 'center', justifyContent: 'center' },
-    daySelected: { backgroundColor: Romance.accent },
-    // 今天（没被选中时）：一圈 primary 细边，不抢选中态
-    dayToday: { borderWidth: Shape.stroke, borderColor: Romance.accent },
+    // 日历 App 的红（D-231）：选中 = 红圆白字；今天（没被选中时）= 红字，不抢选中态
+    dayNum: { width: 34, height: 34, borderRadius: Shape.radiusPill, alignItems: 'center', justifyContent: 'center' },
+    daySelected: { backgroundColor: Romance.danger },
+    dayToday: {},
+    dayTextToday: { fontFamily: Fonts.labelBold, color: Romance.danger },
     dayText: { fontFamily: Fonts.label, fontSize: Type.scale.sub.size, color: Romance.ink },
     dayTextSelected: { fontFamily: Fonts.labelBold, color: Romance.card },
     dotRow: { flexDirection: 'row', gap: 3, height: 6, marginTop: 2 },

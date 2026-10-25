@@ -9,8 +9,9 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
 import { Card } from '@/components/card';
-import { Shape, Space, Type } from '@/constants/design';
-import { Fonts, Romance, themed } from '@/constants/theme';
+import { appTint } from '@/constants/apps';
+import { Elevation, Shape, Space, Type } from '@/constants/design';
+import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { money } from '@/lib/format';
 import { localeOf, t } from '@/lib/i18n';
 import type { LedgerEntry, LedgerKind } from '@/lib/types';
@@ -106,15 +107,19 @@ export default function WalletScreen() {
   );
 }
 
+/** 钱包卡面色（D-231）：跟桌面钱包图块一样的深色 */
+const CARD_FACE = appTint('wallet') ?? Romance.ink;
+
 const styles = themed(() =>
   StyleSheet.create({
     body: { paddingHorizontal: Space.screen, paddingTop: Space.screen, paddingBottom: 40, gap: Space.screen, alignItems: 'stretch' },
-    balanceCard: { alignItems: 'center', gap: 4, paddingVertical: 22 },
-    balanceLabel: { fontSize: Type.scale.label.size, color: Romance.sub },
-    balance: { fontFamily: Fonts.labelBold, fontSize: 34, color: Romance.ink },
+    // 余额卡（D-231）：钱包 App 里的一张卡面——深色卡、白字，大圆角、浮起一点
+    balanceCard: { alignItems: 'center', gap: 4, paddingVertical: 26, backgroundColor: CARD_FACE, borderRadius: Shape.radiusIcon, ...Elevation.low },
+    balanceLabel: { fontSize: Type.scale.label.size, color: withAlpha('#FFFFFF', 0.7) },
+    balance: { fontFamily: Fonts.labelBold, fontSize: 34, color: '#FFFFFF' },
     sums: { flexDirection: 'row', gap: 18, marginTop: 8 },
-    sumText: { fontSize: Type.scale.caption.size, color: Romance.sub },
-    sumNum: { fontFamily: Fonts.label, color: Romance.ink },
+    sumText: { fontSize: Type.scale.caption.size, color: withAlpha('#FFFFFF', 0.7) },
+    sumNum: { fontFamily: Fonts.label, color: '#FFFFFF' },
     sectionTitle: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.sub, marginTop: 4 },
     ledgerCard: { paddingVertical: 4 },
     empty: { fontSize: Type.scale.label.size, color: Romance.sub, paddingVertical: 10 },

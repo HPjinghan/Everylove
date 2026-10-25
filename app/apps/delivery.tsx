@@ -1,7 +1,7 @@
 /**
  * 外卖（D-129）：像一个外卖平台——选给谁点（自己 / 缔结的 TA）→ 选店 → 加减数量 → 留一句话 → 下单（扣 Coin）；
  * 「订单」里是所有单子（她点的、TA 给她点的），状态按时间推：商家接单 → 骑手取餐 → 在路上 → 已送达。
- * 纸面：白卡 + Chip / Segmented / Input / Button，价格 Fredoka。
+ * 外卖平台的黄（D-231）：强调色 = 桌面图块的黄、上面写黑字；白卡 + Chip / Segmented / Input / Button，价格 Fredoka。
  * 版式像外卖平台（D-206）：左一列店、右边这家店的菜单，底部墨色购物车条；订单卡带四段配送进度条，在路上时大字报剩几分钟。
  */
 
@@ -16,6 +16,7 @@ import { Card } from '@/components/card';
 import { Chip, Segmented } from '@/components/chip';
 import { Input } from '@/components/input';
 import { MingCute } from '@/components/mingcute';
+import { appTint } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { MENU } from '@/content/menu';
@@ -195,7 +196,7 @@ export default function DeliveryScreen() {
             {/* 购物车条：墨色一条，左边袋子 + 件数、合计，右边下单 */}
             <View style={styles.cartBar}>
               <View style={styles.cartIcon}>
-                <MingCute name="takeout" size={22} color={count ? Romance.accent : Romance.sub} />
+                <MingCute name="takeout" size={22} color={count ? Romance.ink : Romance.sub} />
                 {count > 0 ? (
                   <View style={styles.cartBadge}>
                     <Text style={styles.cartBadgeText}>{count}</Text>
@@ -212,6 +213,7 @@ export default function DeliveryScreen() {
                 disabled={!count || short || placing}
                 onPress={() => void submit()}
                 style={styles.submit}
+                textStyle={styles.submitText}
               />
             </View>
           </View>
@@ -283,6 +285,8 @@ export default function DeliveryScreen() {
 
 /** 左边店铺栏宽 */
 const RAIL = 84;
+/** 外卖的颜色（D-231）：跟桌面图块一样的黄，上面写黑字 */
+const TINT = appTint('delivery') ?? Romance.accent;
 
 const styles = themed(() =>
   StyleSheet.create({
@@ -297,7 +301,7 @@ const styles = themed(() =>
     rail: { width: RAIL, flexGrow: 0, backgroundColor: Romance.bg },
     railItem: { alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6, gap: 2 },
     railItemOn: { backgroundColor: Romance.card },
-    railMark: { position: 'absolute', left: 0, top: 12, bottom: 12, width: 3, borderRadius: Shape.radiusTail, backgroundColor: Romance.accent },
+    railMark: { position: 'absolute', left: 0, top: 12, bottom: 12, width: 3, borderRadius: Shape.radiusTail, backgroundColor: TINT },
     railEmoji: { fontSize: Type.scale.xxl.size },
     railName: { fontSize: Type.scale.caption.size, color: Romance.sub, textAlign: 'center' },
     railNameOn: { color: Romance.ink, fontWeight: '600' },
@@ -308,8 +312,8 @@ const styles = themed(() =>
       minWidth: 16,
       height: 16,
       paddingHorizontal: 4,
-      borderRadius: Shape.radiusInner,
-      backgroundColor: Romance.accent,
+      borderRadius: Shape.radiusPill,
+      backgroundColor: Romance.danger,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -325,20 +329,20 @@ const styles = themed(() =>
     rowLine: { borderTopWidth: 1, borderTopColor: Romance.line },
     rowBody: { flex: 1 },
     rowTitle: { flexShrink: 1, fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
-    price: { fontFamily: Fonts.labelBold, fontSize: Type.scale.label.size, color: Romance.accentStrong, marginTop: 2 },
+    price: { fontFamily: Fonts.labelBold, fontSize: Type.scale.label.size, color: Romance.ink, marginTop: 2 },
     stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     stepBtn: {
       width: 28,
       height: 28,
-      borderRadius: Shape.radius,
-      borderWidth: Shape.stroke,
+      borderRadius: Shape.radiusPill,
+      borderWidth: Shape.border,
       borderColor: Romance.stroke,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    stepBtnOn: { backgroundColor: Romance.accent, borderColor: Romance.accent },
+    stepBtnOn: { backgroundColor: TINT, borderColor: TINT },
     stepText: { fontFamily: Fonts.labelBold, fontSize: Type.scale.md.size, color: Romance.ink, lineHeight: 18 },
-    stepTextOn: { color: '#FFFFFF' },
+    stepTextOn: { color: Romance.ink },
     qty: { fontFamily: Fonts.labelBold, fontSize: Type.scale.sub.size, color: Romance.ink, minWidth: 14, textAlign: 'center' },
     checkout: {
       paddingHorizontal: Space.screen,
@@ -349,18 +353,18 @@ const styles = themed(() =>
       backgroundColor: Romance.bg,
       gap: Space.inlineLoose,
     },
-    // 购物车条：ink 底（同系统条）白字
+    // 购物车条：墨色胶囊、白字，左边一颗黄色购物袋
     cartBar: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: Space.inlineLoose,
       backgroundColor: Romance.ink,
-      borderRadius: Shape.radius,
+      borderRadius: Shape.radiusPill,
       paddingVertical: 8,
       paddingLeft: 10,
       paddingRight: 8,
     },
-    cartIcon: { width: 40, height: 40, borderRadius: Shape.radius, backgroundColor: Romance.card, alignItems: 'center', justifyContent: 'center' },
+    cartIcon: { width: 40, height: 40, borderRadius: Shape.radiusPill, backgroundColor: TINT, alignItems: 'center', justifyContent: 'center' },
     cartBadge: {
       position: 'absolute',
       top: -6,
@@ -368,34 +372,36 @@ const styles = themed(() =>
       minWidth: 18,
       height: 18,
       paddingHorizontal: 4,
-      borderRadius: Shape.radiusInner,
-      backgroundColor: Romance.accent,
+      borderRadius: Shape.radiusPill,
+      backgroundColor: Romance.danger,
       alignItems: 'center',
       justifyContent: 'center',
     },
     cartBadgeText: { fontFamily: Fonts.labelBold, fontSize: Type.scale.timestamp.size, color: '#FFFFFF' },
     total: { fontFamily: Fonts.labelBold, fontSize: Type.scale.xl.size, color: '#FFFFFF' },
-    totalShort: { color: Romance.accent },
+    totalShort: { color: Romance.danger },
     totalLabel: { fontSize: Type.scale.timestamp.size, color: withAlpha('#FFFFFF', 0.7), marginTop: 1 },
-    submit: { minWidth: 96 },
+    // 下单：外卖黄的胶囊、黑字
+    submit: { minWidth: 96, backgroundColor: TINT, borderRadius: Shape.radiusPill },
+    submitText: { color: Romance.ink },
     empty: { fontSize: Type.scale.label.size, color: Romance.sub, paddingVertical: 10 },
     orderCard: { gap: 4 },
     orderTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
     orderShop: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.sub },
     orderWho: { fontSize: Type.scale.caption.size, color: Romance.sub },
     orderNote: { fontSize: Type.scale.label.size, color: Romance.ink },
-    eta: { fontFamily: Fonts.labelBold, fontSize: Type.scale.h1.size, color: Romance.accentStrong, marginTop: 6 },
+    eta: { fontFamily: Fonts.labelBold, fontSize: Type.scale.h1.size, color: Romance.ink, marginTop: 6 },
     etaUnit: { fontSize: Type.scale.label.size, color: Romance.sub },
-    // 配送进度：节点 10 方块、线 2px；走过的 primary，当前节点放大并描边
+    // 配送进度：节点小圆点、线 2px；走过的外卖黄，当前节点放大并描边
     track: { flexDirection: 'row', marginTop: 10 },
     trackStep: { flex: 1, alignItems: 'center', gap: 6 },
     trackNodeRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', height: 14 },
     trackLine: { flex: 1, height: 2, backgroundColor: Romance.line },
-    trackLineOn: { backgroundColor: Romance.accent },
+    trackLineOn: { backgroundColor: TINT },
     trackLineHidden: { backgroundColor: 'transparent' },
-    trackNode: { width: 10, height: 10, borderRadius: Shape.radiusTail, backgroundColor: Romance.line },
-    trackNodeOn: { backgroundColor: Romance.accent },
-    trackNodeNow: { width: 14, height: 14, borderRadius: Shape.radiusInner, borderWidth: Shape.stroke, borderColor: Romance.stroke },
+    trackNode: { width: 10, height: 10, borderRadius: Shape.radiusPill, backgroundColor: Romance.line },
+    trackNodeOn: { backgroundColor: TINT },
+    trackNodeNow: { width: 14, height: 14, borderRadius: Shape.radiusPill, borderWidth: Shape.border * 2, borderColor: Romance.ink },
     trackLabel: { fontSize: Type.scale.timestamp.size, color: Romance.sub },
     trackLabelNow: { color: Romance.ink, fontWeight: '600' },
   })

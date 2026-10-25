@@ -17,6 +17,7 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { Chip, Segmented } from '@/components/chip';
 import { MingCute } from '@/components/mingcute';
+import { appTint } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { FORTUNE_TEXTS } from '@/content/fortunes';
@@ -26,6 +27,8 @@ import { getLang, t } from '@/lib/i18n';
 import { drawFortune, fortuneDayKey, FORTUNES, spinWheel, WHEEL_BETS, WHEEL_SLICES } from '@/lib/wallet';
 import { useAppStore } from '@/store/app-store';
 
+/** 幸运签的颜色（D-231）：跟桌面图块一样的紫 */
+const TINT = appTint('fortune') ?? Romance.accent;
 const BALL = 220;
 /** 水晶球亮起来的时长（毫秒） */
 const REVEAL_MS = 1400;
@@ -114,7 +117,7 @@ function SignTab() {
         <Animated.View style={[styles.ball, { transform: [{ scale }] }]}>
           <Animated.View style={[styles.glow, { opacity: glow }]} />
           <View style={styles.result}>
-            <MingCute name="sparkles" size={44} color={drawn ? Romance.faint : Romance.accent} />
+            <MingCute name="sparkles" size={44} color={drawn ? Romance.faint : TINT} />
             <Text style={styles.hint}>{revealing ? t('…') : drawn ? t('明天再来') : t('今天的运势')}</Text>
           </View>
         </Animated.View>
@@ -220,7 +223,7 @@ function WheelTab({ balance }: { balance: number }) {
               <Path
                 key={i}
                 d={SLICE_PATHS[i]}
-                fill={m >= 5 ? Romance.accent : i % 2 === 0 ? Romance.accentSoft : Romance.card}
+                fill={m >= 5 ? TINT : i % 2 === 0 ? withAlpha(TINT, 0.14) : Romance.card}
                 stroke={Romance.stroke}
                 strokeWidth={Shape.stroke}
               />
@@ -261,9 +264,7 @@ const styles = themed(() =>
       height: BALL,
       borderRadius: BALL / 2,
       alignSelf: 'center',
-      backgroundColor: Romance.accentSoft,
-      borderWidth: Shape.stroke,
-      borderColor: Romance.stroke,
+      backgroundColor: withAlpha(TINT, 0.12),
       alignItems: 'center',
       justifyContent: 'center',
       overflow: 'hidden',
@@ -284,12 +285,12 @@ const styles = themed(() =>
       paddingVertical: 4,
       paddingHorizontal: 8,
       borderRadius: Shape.radiusInner,
-      borderWidth: Shape.stroke,
-      borderColor: Romance.accentStrong,
+      borderWidth: Shape.border * 1.5,
+      borderColor: TINT,
       transform: [{ rotate: '-8deg' }],
     },
-    amount: { fontFamily: Fonts.labelBold, fontSize: Type.scale.md.size, color: Romance.accentStrong },
-    actionBtn: { alignSelf: 'center', minWidth: 160 },
+    amount: { fontFamily: Fonts.labelBold, fontSize: Type.scale.md.size, color: TINT },
+    actionBtn: { alignSelf: 'center', minWidth: 160, backgroundColor: TINT, borderRadius: Shape.radiusPill },
     wheelWrap: { alignSelf: 'center', alignItems: 'center', paddingTop: 6 },
     pointer: {
       width: 0,
@@ -307,7 +308,7 @@ const styles = themed(() =>
     sliceLabelWrap: { position: 'absolute', top: 0, left: 0, width: WHEEL, height: WHEEL, alignItems: 'center', paddingTop: 14 },
     sliceLabel: { fontFamily: Fonts.labelBold, fontSize: Type.scale.label.size, color: Romance.ink },
     sliceLabelHot: { color: '#FFFFFF' },
-    outcome: { fontFamily: Fonts.labelBold, fontSize: Type.scale.lg.size, color: Romance.accentStrong, textAlign: 'center', minHeight: 24 },
+    outcome: { fontFamily: Fonts.labelBold, fontSize: Type.scale.lg.size, color: TINT, textAlign: 'center', minHeight: 24 },
     bets: { flexDirection: 'row', justifyContent: 'center', gap: Space.inline },
     betOff: { opacity: 0.4 },
   })
