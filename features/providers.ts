@@ -5,12 +5,18 @@
  */
 
 import { CONFIG } from '@/core/config';
-import { billingOf, chatProviders, type ChatProvider, type ChatRequest, type ChatTurn } from '@/core/providers';
+import { billingOf, chatProviders, type ChatProvider, type ChatRequest, type ChatTurn, type ChatUsage } from '@/core/providers';
 import { fetch as streamingFetch } from 'expo/fetch';
 
 import { postJsonWithTimeout, proxyJson, proxyStream, TIMEOUTS } from '@/lib/proxy';
 
-type AnthropicJson = { content: { type: string; text?: string }[]; stop_reason?: string; usage?: { input_tokens?: number; output_tokens?: number } };
+type AnthropicUsage = { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
+type AnthropicJson = { content: { type: string; text?: string }[]; stop_reason?: string; usage?: AnthropicUsage };
+
+/** Anthropic 的 usage → 我们的（缓存读 / 写单列，D-233） */
+function anthropicUsage(u: AnthropicUsage, outputTokens = u.output_tokens ?? 0): ChatUsage {
+  return { inputTokens: u.input_tokens ?? 0, outputTokens, cacheReadTokens: u.cache_read_input_tokens ?? 0, cacheWriteTokens: u.cache_creation_input_tokens ?? 0 };
+}
 type OpenAIJson = { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
 
 /** 默认就开着思考的 Claude 家族（Opus 5 / Fable / Sonnet 5.5 / Haiku 5.5）：思考 token 也算进 max_tokens，角色回话的 300 预算会被吃光 → 加余量、压低 effort（D-108 / D-205） */
@@ -44,7 +50,7 @@ function cachedTurns(req: ChatRequest): (ChatTurn | { role: ChatTurn['role']; co
 
 type SseEvent = {
   type?: string;
-  message?: { usage?: { input_tokens?: number } };
+  message?: { usage?: AnthropicUsage };
   delta?: { type?: string; text?: string; stop_reason?: string };
   usage?: { output_tokens?: number };
   error?: { message?: string };
@@ -72,7 +78,7 @@ export function takeSseEvents(buf: string): { events: SseEvent[]; rest: string }
 }
 
 /** 流式（D-232，通话）：边到边把累计的正文交给 onText，最后给整段与 usage；拒答 / 出错抛错 */
-async function streamAnthropic(body: Record<string, unknown>, route: 'direct' | 'proxy', req: ChatRequest): Promise<{ text: string; usage: { inputTokens: number; outputTokens: number } }> {
+async function streamAnthropic(body: Record<string, unknown>, route: 'direct' | 'proxy', req: ChatRequest): Promise<{ text: string; usage: ChatUsage }> {
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), TIMEOUTS.chat);
   try {
@@ -92,7 +98,7 @@ async function streamAnthropic(body: Record<string, unknown>, route: 'direct' | 
     const decoder = new TextDecoder();
     let buf = '';
     let text = '';
-    let inputTokens = 0;
+    let started: AnthropicUsage = {};
     let outputTokens = 0;
     let stop = '';
     for (;;) {
@@ -102,7 +108,7 @@ async function streamAnthropic(body: Record<string, unknown>, route: 'direct' | 
       const taken = takeSseEvents(buf);
       buf = taken.rest;
       for (const e of taken.events) {
-        if (e.type === 'message_start') inputTokens = e.message?.usage?.input_tokens ?? 0;
+        if (e.type === 'message_start') started = e.message?.usage ?? {};
         else if (e.type === 'content_block_delta' && e.delta?.type === 'text_delta' && e.delta.text) {
           text += e.delta.text;
           req.onText?.(text);
@@ -113,7 +119,7 @@ async function streamAnthropic(body: Record<string, unknown>, route: 'direct' | 
       }
     }
     if (stop === 'refusal') throw new Error('Anthropic refusal');
-    return { text: text.trim(), usage: { inputTokens, outputTokens } };
+    return { text: text.trim(), usage: anthropicUsage(started, outputTokens) };
   } finally {
     clearTimeout(timer);
   }
@@ -160,7 +166,7 @@ const anthropic: ChatProvider = {
       .join('')
       .trim();
     // D-133：真实 usage 报给流量（思考 token 也算在 output 里）
-    return data.usage ? { text, usage: { inputTokens: data.usage.input_tokens ?? 0, outputTokens: data.usage.output_tokens ?? 0 } } : text;
+    return data.usage ? { text, usage: anthropicUsage(data.usage) } : text;
   },
 };
 

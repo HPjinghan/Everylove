@@ -43,7 +43,15 @@ export type AiRoute = 'direct' | 'proxy' | 'none';
 /** 供应商返回：纯文本，或带上真实 usage（D-133 按 token 计流量；没有就按字数估） */
 export interface ChatResult {
   text: string;
-  usage?: { inputTokens: number; outputTokens: number };
+  usage?: ChatUsage;
+}
+
+/** 一次调用的 token（缓存读 / 写单列，D-233 按真实成本折流量） */
+export interface ChatUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
 }
 
 export interface ChatProvider {

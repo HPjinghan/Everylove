@@ -4,10 +4,10 @@
  *   她的回合（含 TA 回她的那句）、她按快门 / 生成立绘、她要看的照片、看图、她的语音识别（D-211：1 RB / 60 秒，麦克风人人可用）。TA 自己发起的（主动 / 召回 / 心跳 / 记事本 / 发帖 /
  *   评论区 / 身边的人 / 日程 / 周薪 / 外卖送到 / 爽约后说一句 / 主动发图）和工具调用（记忆提取、描述导入、台词）平台出，不扣她，
  *   只受每人每天的后台保险丝管（看不见，防失控）。底座在 core/usage 报用量并标账单归属，这里换算（features/traffic.ts 扣账）。
- * - 换算：聊天按 token——全部文字调用走 Claude Haiku 5.5（D-205），1 RB / 千 token；生图 20 RB / 张（D-219，不分画风）；看图 3 RB / 张。供应商没返回 usage 就按字数估。
+ * - 换算：聊天按真实成本——全部文字调用走 Claude Haiku 5.5（D-205），1 RB / 千 token 当量（D-233：缓存读 0.1、缓存写 1.25、输出 5）；生图 50 RB / 张（D-219 不分画风，D-233 定价）；看图 3 RB / 张。供应商没返回 usage 就按字数估。
  * - 流量来源：每天免费 100 RB（不累积）、订阅每月发（Pro 6000 / Max 不限）、流量包（不订阅也能买）。
  * - **TA 的声音单独按分钟算**（D-210）：TA 的语音、电话都不折流量。每天的额度 Free 0 / Pro 30 / Max 90 分钟（不累积）；
- *   用完了订阅用户能买语音分钟包（不过期）；新用户送 5 分钟只能打电话（不过期，用完为止）。
+ *   （D-233 起 Pro 15 / Max 60）；用完了订阅用户能买语音分钟包（不过期）；新用户送 5 分钟只能打电话（不过期，用完为止）。
  * - Coin（零钱）与流量、语音永不打通。数值是试装默认；价格待 Harper（OPEN_QUESTIONS #30）。
  * - **余额以服务器为准（D-217）**：数值与算法的唯一来源是 supabase/functions/_shared/economy.ts（代理按它扣账），这里 re-export；
  *   本机 store.traffic / voice / plan 只是服务器钱包的显示缓存（fromServerWallet），下面的本机扣账函数只在没有服务器的时候用（开发直连 / 测试）。
@@ -17,6 +17,7 @@ import type { UsageEvent } from '@/core/usage';
 import {
   ASR_SECONDS_PER_MB,
   CHAT_MB_PER_KTOK as MB_PER_KTOK,
+  costTokens,
   DAILY_FREE_MB,
   HOUSE_DAILY_IMAGES,
   HOUSE_DAILY_KTOK,
@@ -72,11 +73,16 @@ export const LOVE_MODEL_ORDER: LoveModelId[] = ['v1'];
 /** 聊天按供应商折算（D-205 起都是 1 MB / 千 token）；生图 / 看图按件 */
 export const CHAT_MB_PER_KTOK: Record<string, number> = { qianfan: MB_PER_KTOK, anthropic: MB_PER_KTOK };
 
+/** 一笔用量的 token 当量（D-233 按真实成本折，与服务端同一个 costTokens） */
+export function usageTokens(e: UsageEvent): number {
+  return costTokens({ input: e.inputTokens, output: e.outputTokens, cacheRead: e.cacheReadTokens, cacheWrite: e.cacheWriteTokens });
+}
+
 /** 一笔用量折多少 MB（TA 的语音按分钟另算，这里是 0，D-210）——与服务端同一个 mbFor */
 export function mbForUsage(e: UsageEvent): number {
   return mbFor({
     kind: e.kind,
-    tokens: (e.inputTokens ?? 0) + (e.outputTokens ?? 0),
+    tokens: usageTokens(e),
     images: e.images,
     seconds: e.seconds,
   });

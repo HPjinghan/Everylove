@@ -16,10 +16,25 @@ export const DAILY_FREE_MB = 100;
 /** 订阅每月发多少 MB；Max 不限（不扣也不发） */
 export const PLAN_MONTHLY_MB: Record<Plan, number> = { free: 0, pro: 6000, max: Infinity };
 export const PLAN_GRANT_PERIOD_DAYS = 30;
-/** 聊天每千 token 折几 MB（D-205：全部文字调用都是 Claude Haiku 5.5） */
+/** 聊天每千 token 当量折几 MB（D-205：全部文字调用都是 Claude Haiku 5.5；当量见 costTokens） */
 export const CHAT_MB_PER_KTOK = 1;
-/** 生图一张（D-219：不分画风、不看供应商怎么计费，一律按张） */
-export const IMAGE_MB = 20;
+/**
+ * 聊天按真实成本折（D-233）：一次调用折成「输入 token 当量」——缓存读 0.1、缓存写 1.25、输出 5（Haiku 5.5 的价目比），
+ * 缓存住的前缀也算（供应商的 input_tokens 只是没命中缓存的那一小段）。一千当量约 $0.0001。
+ */
+export const TOKEN_WEIGHT = { cacheRead: 0.1, cacheWrite: 1.25, output: 5 } as const;
+export interface TokenUsage {
+  input?: number;
+  output?: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+}
+export function costTokens(u: TokenUsage): number {
+  const n = (u.input ?? 0) + (u.cacheRead ?? 0) * TOKEN_WEIGHT.cacheRead + (u.cacheWrite ?? 0) * TOKEN_WEIGHT.cacheWrite + (u.output ?? 0) * TOKEN_WEIGHT.output;
+  return Math.round(n);
+}
+/** 生图一张（D-219：不分画风、不看供应商怎么计费，一律按张；D-233 起 50） */
+export const IMAGE_MB = 50;
 export const VISION_MB = 3;
 /** 她的语音识别（D-211）：按录音时长折流量 */
 export const ASR_SECONDS_PER_MB = 60;
@@ -33,7 +48,7 @@ export const TRAFFIC_PACKS: { id: string; mb: number }[] = [
 /* ── 语音时长（秒；TA 的语音 + 电话，D-210）── */
 
 /** 订阅每天给几分钟（不累积） */
-export const PLAN_VOICE_DAILY_MIN: Record<Plan, number> = { free: 0, pro: 30, max: 90 };
+export const PLAN_VOICE_DAILY_MIN: Record<Plan, number> = { free: 0, pro: 15, max: 60 };
 /** 新用户送几分钟通话（只能打电话，不过期） */
 export const NEW_USER_CALL_MIN = 5;
 /** 语音分钟包（订阅用户才能买，不过期；价格待 #30） */
@@ -45,7 +60,8 @@ export const VOICE_PACKS: { id: string; min: number }[] = [
 
 /* ── 后台保险丝（平台出的那些每人每天封顶，看不见）── */
 
-export const HOUSE_DAILY_KTOK = 400;
+/** 后台聊天每天封顶几千 token 当量（D-233 按成本折后约 $0.2 / 天） */
+export const HOUSE_DAILY_KTOK = 2000;
 /** TA 主动发图每天几张（D-219：按订阅档，后台成本里最大的一块） */
 export const HOUSE_DAILY_IMAGES: Record<Plan, number> = { free: 1, pro: 4, max: 8 };
 /** TA 自己发起的语音（主动消息里的语音、音色试听）每天封顶几秒（D-217） */

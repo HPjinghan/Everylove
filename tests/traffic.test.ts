@@ -66,8 +66,8 @@ const noPace = { pace: 'none' as const };
 
 describe('换算', () => {
   it('聊天按 token × 供应商倍率；生图按张；看图固定；TA 的语音不折流量（D-210）、她的语音识别按秒（D-211）', () => {
-    expect(mbForUsage({ kind: 'chat', provider: 'qianfan', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(3.08);
-    expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(3.08);
+    expect(mbForUsage({ kind: 'chat', provider: 'qianfan', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(3.4);
+    expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 3000, outputTokens: 80 })).toBeCloseTo(3.4);
     expect(mbForUsage({ kind: 'chat', provider: 'fake', inputTokens: 1000 })).toBe(1);
     expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 1 })).toBe(IMAGE_MB);
     expect(mbForUsage({ kind: 'image', provider: 'qwen-image', images: 2 })).toBe(IMAGE_MB * 2);
@@ -118,9 +118,9 @@ describe('扣账与闸门', () => {
     const scope = { mode: 'bonded' as const, bondId };
     const s = () => useAppStore.getState();
     await sendText(scope, '在吗', { ui: noPace });
-    // 假供应商不在换算表里按 1 MB / 千 token：3080 token → 3.08；流水记一笔
-    expect(s().traffic.freeUsed).toBeCloseTo(3.08);
-    expect(s().trafficLog.at(-1)).toMatchObject({ kind: 'reply', provider: 'fake-traffic', mb: 3.08, tokens: 3080, estimated: false });
+    // 假供应商不在换算表里按 1 MB / 千 token 当量：输入 3000 + 输出 80 × 5 = 3400 → 3.4；流水记一笔
+    expect(s().traffic.freeUsed).toBeCloseTo(3.4);
+    expect(s().trafficLog.at(-1)).toMatchObject({ kind: 'reply', provider: 'fake-traffic', mb: 3.4, tokens: 3400, estimated: false });
     usage = undefined;
     await sendText(scope, '今天好累', { ui: noPace });
     // 按字数估：系统 prompt 两千多 token
@@ -176,8 +176,8 @@ describe('D-210：只扣她发起的、语音按分钟、后台保险丝', () =>
   it('语音时长：今天的额度 → 送的通话（只给电话）→ 分钟包；Free 每天 0；跨天额度重置', () => {
     expect(voiceLeft(START_VOICE, 'free', 'message', NOW)).toBe(0);
     expect(voiceLeft(START_VOICE, 'free', 'call', NOW)).toBe(300);
-    expect(voiceLeft(START_VOICE, 'pro', 'message', NOW)).toBe(1800);
-    expect(voiceLeft(START_VOICE, 'max', 'call', NOW)).toBe(5400 + 300);
+    expect(voiceLeft(START_VOICE, 'pro', 'message', NOW)).toBe(900);
+    expect(voiceLeft(START_VOICE, 'max', 'call', NOW)).toBe(3600 + 300);
     // Free 打电话：只扣送的
     const a = voiceAfterUse(START_VOICE, 120, 'free', 'call', NOW);
     expect(a.charged).toBe(120);
@@ -186,11 +186,11 @@ describe('D-210：只扣她发起的、语音按分钟、后台保险丝', () =>
     expect(voiceAfterUse(a.voice, 30, 'free', 'message', NOW).charged).toBe(0);
     // Pro：先今天的，再送的，最后分钟包
     const v = { ...START_VOICE, packSec: 600 };
-    const b = voiceAfterUse(v, 1800 + 300 + 100, 'pro', 'call', NOW);
-    expect(b.voice).toMatchObject({ usedSec: 1800, callBonusSec: 0, packSec: 500 });
+    const b = voiceAfterUse(v, 900 + 300 + 100, 'pro', 'call', NOW);
+    expect(b.voice).toMatchObject({ usedSec: 900, callBonusSec: 0, packSec: 500 });
     const c = voiceAfterUse(b.voice, 1000, 'pro', 'message', NOW);
     expect(c.charged).toBe(500);
-    expect(voiceLeft(c.voice, 'pro', 'message', NOW + DAY)).toBe(1800);
+    expect(voiceLeft(c.voice, 'pro', 'message', NOW + DAY)).toBe(900);
     expect(estimateSpeechSeconds('今天好累啊，想你了')).toBe(2);
   });
 

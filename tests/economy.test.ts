@@ -16,6 +16,7 @@ import {
   MAX_DAILY_IMAGES,
   MAX_IMAGE_GAP_SEC,
   MAX_SLOW_IMAGES,
+  costTokens,
   mbFor,
   slowLaneOf,
   sqlEconomy,
@@ -44,7 +45,7 @@ const row = (over: Partial<WalletRow> = {}): WalletRow => ({
 describe('钱包视图', () => {
   it('今天免费的还剩 = 100 − 用掉的；语音额度按档位；数字串也认（PostgREST 的 numeric）', () => {
     const v = walletView(row({ plan: 'pro', free_used_mb: '30.5' as unknown as number, voice_used_sec: 600, balance_mb: 6000 }), false);
-    expect(v).toEqual({ plan: 'pro', balance: 6000, freeLeft: 69.5, voiceDailyLeft: 1200, packSec: 0, callBonusSec: 300, live: false });
+    expect(v).toEqual({ plan: 'pro', balance: 6000, freeLeft: 69.5, voiceDailyLeft: 300, packSec: 0, callBonusSec: 300, live: false });
     expect(walletView(row({ free_used_mb: 140 }), true).freeLeft).toBe(0);
   });
 });
@@ -105,11 +106,14 @@ describe('生成前的闸门（服务器照它拦）', () => {
 });
 
 describe('换算：客户端与服务端同一个 mbFor', () => {
-  it('聊天按 token、生图一律按张（20）、看图按件、识别按秒、TA 的语音不折流量', () => {
-    expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 1500, outputTokens: 500 })).toBe(mbFor({ kind: 'chat', tokens: 2000 }));
+  it('聊天按 token、生图一律按张（50）、看图按件、识别按秒、TA 的语音不折流量', () => {
+    expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 1500, outputTokens: 500 })).toBe(mbFor({ kind: 'chat', tokens: 4000 }));
+    // D-233：缓存住的前缀也算，按价目比折（实测一轮：没命中 4、缓存读 3512、缓存写 24、输出 11 → 440 当量）
+    expect(costTokens({ input: 4, cacheRead: 3512, cacheWrite: 24, output: 11 })).toBe(440);
+    expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 4, cacheReadTokens: 3512, cacheWriteTokens: 24, outputTokens: 11 })).toBe(0.44);
     expect(mbFor({ kind: 'chat', tokens: 2000 })).toBe(2);
-    expect(mbFor({ kind: 'image', images: 2 })).toBe(40);
-    expect(mbFor({ kind: 'image' })).toBe(20);
+    expect(mbFor({ kind: 'image', images: 2 })).toBe(100);
+    expect(mbFor({ kind: 'image' })).toBe(50);
     expect(mbFor({ kind: 'vision' })).toBe(3);
     expect(mbFor({ kind: 'asr', seconds: 1 })).toBe(0.1);
     expect(mbFor({ kind: 'asr', seconds: 90 })).toBe(1.5);
@@ -117,7 +121,7 @@ describe('换算：客户端与服务端同一个 mbFor', () => {
   });
 
   it('传给 SQL 的数值', () => {
-    expect(sqlEconomy()).toMatchObject({ daily_free_mb: 100, pro_monthly_mb: 6000, new_user_call_sec: 300, voice_daily_sec: { free: 0, pro: 1800, max: 5400 } });
+    expect(sqlEconomy()).toMatchObject({ daily_free_mb: 100, pro_monthly_mb: 6000, new_user_call_sec: 300, voice_daily_sec: { free: 0, pro: 900, max: 3600 } });
   });
 });
 
@@ -127,7 +131,7 @@ describe('服务器钱包 → 本机显示缓存', () => {
     const w = fromServerWallet(v, NOW);
     expect(w.plan).toBe('pro');
     expect(w.traffic).toEqual({ balance: 120, freeDay: trafficDayKey(NOW), freeUsed: 40 });
-    expect(voiceLeft(w.voice, 'pro', 'message', NOW)).toBe(1500 + 600);
-    expect(voiceLeft(w.voice, 'pro', 'call', NOW)).toBe(1500 + 600 + 120);
+    expect(voiceLeft(w.voice, 'pro', 'message', NOW)).toBe(600 + 600);
+    expect(voiceLeft(w.voice, 'pro', 'call', NOW)).toBe(600 + 600 + 120);
   });
 });

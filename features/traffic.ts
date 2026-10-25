@@ -25,6 +25,7 @@ import {
   mbForUsage,
   PLAN_MONTHLY_MB,
   planGrantsDue,
+  usageTokens,
   voiceLeft,
   type HouseUsage,
   type WalletView,
@@ -69,7 +70,7 @@ usageHooks.on((e) => {
   const s = useAppStore.getState();
   const billing = e.billing ?? 'user';
   if (billing === 'included') return;
-  const tokens = (e.inputTokens ?? 0) + (e.outputTokens ?? 0);
+  const tokens = usageTokens(e);
   // TA 的语音扣语音时长；她的语音识别（asr）跟聊天一样折流量（D-211）；服务器记过的这里不再扣（D-217）
   if (e.kind === 'tts') {
     if (billing === 'user' && !e.metered) s.useVoice(e.seconds ?? 0, 'message');

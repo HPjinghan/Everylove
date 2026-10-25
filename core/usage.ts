@@ -20,6 +20,9 @@ export interface UsageEvent {
   /** chat / vision：输入 / 输出 token；供应商没返回就按字数估（estimated = true） */
   inputTokens?: number;
   outputTokens?: number;
+  /** chat：命中缓存读的 / 写进缓存的 token（D-233 按真实成本折） */
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
   /** image：几张；tts：几个字；tts / asr：几秒（tts 按字数估） */
   images?: number;
   chars?: number;

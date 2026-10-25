@@ -30,6 +30,7 @@ import { createRemoteJWKSet, jwtVerify } from 'npm:jose@5.9.6';
 import {
   callAlive,
   estimateSpeechSeconds,
+  costTokens,
   estimateTokens,
   gateReason,
   slowLaneOf,
@@ -215,6 +216,8 @@ function relaySse(r: Response, meter?: Meter): Promise<Response> | Response {
       let buf = '';
       let input = 0;
       let output = 0;
+      let cacheRead = 0;
+      let cacheWrite = 0;
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -229,14 +232,19 @@ function relaySse(r: Response, meter?: Meter): Promise<Response> | Response {
             .join('');
           try {
             const e = JSON.parse(data);
-            if (e.type === 'message_start') input = Number(e.message?.usage?.input_tokens ?? 0);
+            if (e.type === 'message_start') {
+              const u = e.message?.usage ?? {};
+              input = Number(u.input_tokens ?? 0);
+              cacheRead = Number(u.cache_read_input_tokens ?? 0);
+              cacheWrite = Number(u.cache_creation_input_tokens ?? 0);
+            }
             if (e.type === 'message_delta') output = Number(e.usage?.output_tokens ?? output);
           } catch {
             /* 不是 JSON 的行跳过 */
           }
         }
       }
-      await chargeAfter(meter, { usage: { input_tokens: input, output_tokens: output } });
+      await chargeAfter(meter, { usage: { input_tokens: input, output_tokens: output, cache_read_input_tokens: cacheRead, cache_creation_input_tokens: cacheWrite } });
     })().catch((e) => console.error('[ai] 流式记账失败：', e));
     if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(charge);
   } else {
@@ -349,6 +357,8 @@ function meterKindOf(service: string, body: Rec): MeterKind | null {
 type Usage = {
   input_tokens?: number;
   output_tokens?: number;
+  cache_read_input_tokens?: number;
+  cache_creation_input_tokens?: number;
   prompt_tokens?: number;
   completion_tokens?: number;
   generated_images?: number;
@@ -370,13 +380,22 @@ async function chargeAfter(m: Meter, data: unknown): Promise<WalletView | null> 
     let tokens: number | undefined;
     let estimated = false;
     if (m.kind === 'chat' || m.kind === 'vision') {
-      const real = (u.input_tokens ?? u.prompt_tokens ?? 0) + (u.output_tokens ?? u.completion_tokens ?? 0);
+      // D-233：按真实成本折，缓存住的前缀也算
+      const real = costTokens({
+        input: u.input_tokens ?? u.prompt_tokens,
+        output: u.output_tokens ?? u.completion_tokens,
+        cacheRead: u.cache_read_input_tokens,
+        cacheWrite: u.cache_creation_input_tokens,
+      });
       if (real > 0) tokens = real;
       else {
         // 供应商没返回 usage：按字数估
         estimated = true;
         const d = data as Rec | null;
-        tokens = estimateTokens(JSON.stringify(m.body.system ?? '') + JSON.stringify(m.body.messages ?? '')) + estimateTokens(JSON.stringify(d?.content ?? d?.choices ?? ''));
+        tokens = costTokens({
+          input: estimateTokens(JSON.stringify(m.body.system ?? '') + JSON.stringify(m.body.messages ?? '')),
+          output: estimateTokens(JSON.stringify(d?.content ?? d?.choices ?? '')),
+        });
       }
       if (m.billing === 'user') {
         mb = mbFor({ kind: m.kind, tokens });
