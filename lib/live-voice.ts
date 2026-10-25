@@ -32,6 +32,37 @@ const PREROLL_SEC = 0.25;
 const CHUNK_SEC = 0.1;
 const LOCALE: Record<Lang, string> = { zh: 'zh-CN', en: 'en-US', ja: 'ja-JP', ko: 'ko-KR' };
 
+/* ── 临时诊断（TestFlight 实时通话没声音）：查清后整段删掉 ── */
+export const liveDiag = { bytes: 0, enq: 0, ended: 0, started: 0, settle: '', err: '', noEarWhileSpeaking: false };
+let diagCtx: AudioContext | null = null;
+
+/** 一行诊断：引擎时钟走没走、收到多少、播了几块、会话类别与出声口 */
+export async function liveDiagnostics(): Promise<string> {
+  const parts: string[] = [];
+  try {
+    const c = diagCtx;
+    parts.push(c ? `ctx=${c.state} t=${c.currentTime.toFixed(1)} sr=${c.sampleRate}` : 'ctx=none');
+  } catch (e) {
+    parts.push(`ctx!${String(e).slice(0, 40)}`);
+  }
+  parts.push(`kb=${Math.round(liveDiag.bytes / 1024)} enq=${liveDiag.enq} end=${liveDiag.ended} st=${liveDiag.started} r=${liveDiag.settle || '-'}`);
+  try {
+    const sess = speech().getAudioSessionCategoryAndOptionsIOS();
+    parts.push(`sess=${sess.category}/${sess.mode}/${sess.categoryOptions.join('+')}`);
+  } catch (e) {
+    parts.push(`sess!${String(e).slice(0, 40)}`);
+  }
+  try {
+    const info = await audioApi().AudioManager.getDevicesInfo();
+    parts.push(`out=${info.currentOutputs.map((d) => `${d.category}:${d.name}`).join('+') || '-'}`);
+  } catch (e) {
+    parts.push(`out!${String(e).slice(0, 40)}`);
+  }
+  parts.push(`ear=${liveDiag.noEarWhileSpeaking ? 'off-while-speaking' : 'on'}`);
+  if (liveDiag.err) parts.push(`err=${liveDiag.err}`);
+  return parts.join('\n');
+}
+
 /** 这个包里有实时通话要的两个原生模块 */
 export function liveVoiceReady(): boolean {
   if (Platform.OS !== 'ios') return false;
@@ -233,6 +264,7 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
 
   const context = (): AudioContext => {
     ctx ??= new api.AudioContext({ sampleRate: RATE });
+    diagCtx = ctx;
     return ctx;
   };
 
@@ -251,7 +283,7 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
   const begin = (): Utterance => {
     stopCurrent();
     const ac = context();
-    void ac.resume().catch(() => {});
+    void ac.resume().catch((e) => (liveDiag.err = `resume ${String(e).slice(0, 60)}`));
     const abort = new AbortController();
     const src = ac.createBufferQueueSource();
     src.connect(ac.destination);
@@ -266,6 +298,7 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
         settled = true;
         if (current === me) current = null;
         src.onBufferEnded = null;
+        liveDiag.settle = r;
         resolveResult(r);
       },
     };
@@ -285,6 +318,7 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
       if (ended && cursor >= segments.length && queued <= 0) me.settle(anyAudio ? 'done' : 'failed');
     };
     src.onBufferEnded = () => {
+      liveDiag.ended++;
       queued--;
       finishIfDone();
     };
@@ -300,6 +334,7 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
       const buf = ac.createBuffer(1, len, RATE);
       buf.copyToChannel(data, 0);
       src.enqueueBuffer(buf);
+      liveDiag.enq++;
       queued++;
       queuedSamples += len;
       anyAudio = true;
@@ -319,7 +354,12 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
       // 攒够一点再开播；整段都到了就直接播
       if (!started && (queuedSamples >= RATE * PREROLL_SEC || (ended && cursor >= segments.length && queuedSamples > 0))) {
         started = true;
-        src.start();
+        liveDiag.started++;
+        try {
+          src.start();
+        } catch (e) {
+          liveDiag.err = `start ${String(e).slice(0, 60)}`;
+        }
       }
       finishIfDone();
     };
@@ -347,12 +387,14 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
               const { done, value } = await reader.read();
               if (done || !alive()) break;
               if (value?.length) {
+                liveDiag.bytes += value.length;
                 seg.chunks.push(pcm16ToFloat(value, carry));
                 pump();
               }
             }
             reportUsage({ kind: 'tts', provider: fishConfigured() ? 'fish' : 'proxy', chars: tex.length, seconds: estimateSpeechSeconds(tex), billing, estimated: true, metered: !fishConfigured() });
           } catch (e) {
+            liveDiag.err = `tts ${String(e).slice(0, 60)}`;
             if (alive()) console.warn('[live-voice] 流式合成失败：', e);
           }
           seg.done = true;
