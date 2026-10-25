@@ -8,7 +8,7 @@
  * 用 ref 记当前选择，免得 speak 闭包拿到旧值。
  * 按分钟计（D-210）：接通后每 10 秒扣一次她的语音时长（features/call-meter）；剩不到一分钟 TA 自己收尾，用完了 TA 说完这句就挂。
  * 实时（D-232，有原生模块的包）：本机边听边认（她说的字当场出在字幕里，停顿 0.75 秒算说完）→ TA 回（不思考）→ 边合成边播；
- * TA 说话时也在听，她插话（字面上不是 TA 那句的回声）或点 TA 的头像就打断。识别这门语言不行时这通电话退回管线式。
+ * 半双工（D-237）：TA 说话时不听，点 TA 的头像就打断；她说话时播放器挂起。识别这门语言不行时这通电话退回管线式。
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -29,7 +29,7 @@ import { alertNoVoice } from '@/components/voice-gate';
 import { MingCute } from '@/components/mingcute';
 import { Shape, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
-import { VAD, callPickupLine, callReply, formatCallDuration, isBargeIn, LIVE, logCall, speakableText, takeSentences, utteranceDone } from '@/lib/call';
+import { VAD, callPickupLine, callReply, formatCallDuration, LIVE, logCall, speakableText, takeSentences, utteranceDone } from '@/lib/call';
 import { callSecondsLeft, chargeCall, endCallMeter, startCallMeter } from '@/features/call-meter';
 import { describeAiError } from '@/lib/chat';
 import { getLang, t } from '@/lib/i18n';
@@ -86,7 +86,6 @@ export default function CallScreen() {
   const heardText = useRef('');
   const lastTextAt = useRef(0);
   /** TA 正在说的这句（滤回声用） */
-  const saying = useRef('');
   /** 正在说的那段；被打断后旧回合的字不再往里送 */
   const activeUtt = useRef<Utterance | null>(null);
   const phaseRef = useRef<Phase>('dialing');
@@ -166,22 +165,19 @@ export default function CallScreen() {
     await l.ear.start(speakerRef.current);
   }, []);
 
-  /* ── 实时：TA 开口了——字幕跟上，同时听着她插不插话 ── */
+  /* ── 实时：TA 开口了——字幕跟上；这时不开识别（半双工，D-237：两台音频引擎同时跑会互相重启），打断靠点头像 ── */
   const enterSpeaking = useCallback(async (text: string) => {
     const l = live.current;
     setHimLine(text);
-    saying.current = text;
     if (!l || phaseRef.current === 'speaking') return;
     heardText.current = '';
     setPhaseSafe('speaking');
     await l.ear.stop();
-    await l.ear.start(speakerRef.current);
   }, []);
 
   /* ── 实时：TA 这段说完了（被打断的由 stopTA 接着听，这里不管） ── */
   const afterSpeech = useCallback(
     async (r: SayResult) => {
-      saying.current = '';
       if (!alive.current || r === 'stopped') return;
       if (r === 'failed') {
         setNote(t('语音没接通，TA 的话在字幕里'));
@@ -200,6 +196,7 @@ export default function CallScreen() {
     async (text: string) => {
       const l = live.current;
       if (!alive.current || !l) return;
+      await l.ear.stop();
       const u = l.mouth.begin();
       activeUtt.current = u;
       await enterSpeaking(text);
@@ -218,6 +215,8 @@ export default function CallScreen() {
     turnBusy.current = true;
     setPhaseSafe('thinking');
     setHerLine(text);
+    // 先关耳朵再开嘴：两台引擎不同时跑
+    await l.ear.stop();
     const u = l.mouth.begin();
     activeUtt.current = u;
     let raw = '';
@@ -232,7 +231,6 @@ export default function CallScreen() {
       if (u.pushed) void enterSpeaking(say.trim());
     };
     try {
-      await l.ear.stop();
       const reply = await callReply(bond.id, text, onPartial);
       if (activeUtt.current !== u) return;
       turnBusy.current = false;
@@ -252,13 +250,12 @@ export default function CallScreen() {
     }
   }, [bond, listenLive, enterSpeaking, afterSpeech]);
 
-  /** 实时：打断 TA（她插话 / 点头像）——掐掉这段，当场接着听 */
+  /** 实时：打断 TA（点头像）——掐掉这段，当场接着听 */
   const stopTA = useCallback(() => {
     const l = live.current;
     if (!l || (phaseRef.current !== 'speaking' && phaseRef.current !== 'thinking')) return;
     activeUtt.current = null;
     turnBusy.current = false;
-    saying.current = '';
     l.mouth.stop();
     void listenLive();
   }, [listenLive]);
@@ -411,11 +408,6 @@ export default function CallScreen() {
     const mouth = createMouth(character, 'included');
     const ear = createEar(getLang(), [bond.name, character.name], {
       text(tr) {
-        if (phaseRef.current === 'speaking') {
-          // 她插话了：TA 停下，这一段重新听
-          if (isBargeIn(tr, saying.current, getLang())) stopTA();
-          return;
-        }
         if (phaseRef.current !== 'listening' || tr === heardText.current) return;
         heardText.current = tr;
         lastTextAt.current = Date.now();

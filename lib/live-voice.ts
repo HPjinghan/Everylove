@@ -3,7 +3,9 @@
  *   耳朵 = iOS 本机语音识别（expo-speech-recognition）：边说边出字，她一停顿就有整句，不再录整段上传识别；
  *   嘴   = Fish 的 PCM 流（代理 fish.tts.stream / 本地 key 直连）→ react-native-audio-api 的缓冲队列边到边播，不等整段合成完。
  * 两个原生模块只在 0.3.0 起的包里有；Expo Go / 网页 / 老包 liveVoiceReady() 为假，通话页照旧走管线式（lib/call VAD）。
- * 音频会话由这里统一定：playAndRecord，免提 = defaultToSpeaker、听筒 = 不带；识别与播放同一套，免得两边互相改。
+ * 音频会话只归识别模块管（D-237）：playAndRecord，免提 = defaultToSpeaker、听筒 = 不带；react-native-audio-api 关掉会话管理。
+ * 两个原生模块各开一台音频引擎，同时跑会互相触发重启（音量条乱跳、麦克风收不到声），所以半双工：
+ * TA 说话时不开识别，她说话时播放器挂起。
  * 不开系统回声消除（voice processing 会把 TA 的声音也压小），回声靠 lib/call 的 novelSpeech 按字面滤掉。
  */
 
@@ -63,11 +65,16 @@ export async function requestLivePermissions(): Promise<boolean> {
 
 /** 通话的音频会话：免提 / 听筒；通话中切换立即生效 */
 export function setLiveRoute(speaker: boolean): void {
-  audioApi().AudioManager.setAudioSessionOptions({
-    iosCategory: 'playAndRecord',
-    iosMode: 'default',
-    iosOptions: speaker ? ['defaultToSpeaker', 'allowBluetoothHFP'] : ['allowBluetoothHFP'],
-  });
+  try {
+    speech().setCategoryIOS(liveCategory(speaker));
+    speech().setAudioSessionActiveIOS(true);
+  } catch (e) {
+    console.warn('[live-voice] 切音频会话失败：', e);
+  }
+}
+
+function liveCategory(speaker: boolean): NonNullable<ExpoSpeechRecognitionOptions['iosCategory']> {
+  return { category: 'playAndRecord', categoryOptions: speaker ? ['defaultToSpeaker', 'allowBluetooth'] : ['allowBluetooth'], mode: 'default' };
 }
 
 /* ── 耳朵 ── */
@@ -141,12 +148,8 @@ export function createEar(lang: Lang, hints: string[], on: EarEvents): LiveEar {
         addsPunctuation: true,
         requiresOnDeviceRecognition: await onDevice(locale),
         contextualStrings: hints.filter(Boolean).slice(0, 20),
-        // mode 与 setLiveRoute 一致；免提时出扬声器
-        iosCategory: {
-          category: 'playAndRecord',
-          categoryOptions: speaker ? ['defaultToSpeaker', 'allowBluetooth'] : ['allowBluetooth'],
-          mode: 'default',
-        },
+        // 与 setLiveRoute 同一套；免提时出扬声器
+        iosCategory: liveCategory(speaker),
         volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },
       };
       s.start(options);
@@ -232,8 +235,24 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
   let current: { abort: AbortController; src: AudioBufferQueueSourceNode; settle: (r: SayResult) => void } | null = null;
 
   const context = (): AudioContext => {
-    ctx ??= new api.AudioContext({ sampleRate: RATE });
+    if (!ctx) {
+      // 会话交给识别模块：audio-api 自己再设类别 / 激活会触发对方重启引擎（D-237）
+      api.AudioManager.disableSessionManagement();
+      ctx = new api.AudioContext({ sampleRate: RATE });
+    }
     return ctx;
+  };
+
+  // 没在说的时候挂起播放器（引擎停掉，让麦克风独占）；挂起 / 恢复排成一条队，后发的说了算
+  let power: Promise<void> = Promise.resolve();
+  const setPlaying = (on: boolean) => {
+    power = power
+      .then(() => {
+        if (!ctx) return;
+        if (on) return ctx.resume();
+        if (!current) return ctx.suspend();
+      })
+      .catch(() => {});
   };
 
   const stopCurrent = () => {
@@ -251,7 +270,7 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
   const begin = (): Utterance => {
     stopCurrent();
     const ac = context();
-    void ac.resume().catch(() => {});
+    setPlaying(true);
     const abort = new AbortController();
     const src = ac.createBufferQueueSource();
     src.connect(ac.destination);
@@ -266,6 +285,7 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
         settled = true;
         if (current === me) current = null;
         src.onBufferEnded = null;
+        setPlaying(false);
         resolveResult(r);
       },
     };
