@@ -33,7 +33,7 @@ import { VAD, callPickupLine, callReply, formatCallDuration, isBargeIn, LIVE, lo
 import { callSecondsLeft, chargeCall, endCallMeter, startCallMeter } from '@/features/call-meter';
 import { describeAiError } from '@/lib/chat';
 import { getLang, t } from '@/lib/i18n';
-import { createEar, createMouth, liveDiag, liveDiagnostics, liveVoiceReady, requestLivePermissions, setLiveRoute, type LiveEar, type LiveMouth, type SayResult, type Utterance } from '@/lib/live-voice';
+import { createEar, createMouth, liveVoiceReady, requestLivePermissions, setLiveRoute, type LiveEar, type LiveMouth, type SayResult, type Utterance } from '@/lib/live-voice';
 import { ASR_RECORDING, transcribeVoice } from '@/lib/media';
 import { synthesizeVoice } from '@/lib/tts';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -77,8 +77,6 @@ export default function CallScreen() {
   // 渲染只读 state：这两个是 connectedAt / speechStarted 的镜像，写 ref 的地方同步写它们（管线逻辑仍看 ref）
   const [connected, setConnected] = useState(false);
   const [heard, setHeard] = useState(false);
-  // 临时诊断（实时通话没声音）：查清后删
-  const [diag, setDiag] = useState('');
   const lastLoudAt = useRef(0);
   const turnBusy = useRef(false);
   /** 实时通道（D-232）：开着就用耳朵 + 嘴，识别不行时这通电话退回管线式 */
@@ -177,7 +175,6 @@ export default function CallScreen() {
     heardText.current = '';
     setPhaseSafe('speaking');
     await l.ear.stop();
-    if (liveDiag.noEarWhileSpeaking) return;
     await l.ear.start(speakerRef.current);
   }, []);
 
@@ -396,16 +393,6 @@ export default function CallScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [characterId]);
 
-  /* ── 临时诊断：每秒刷一次 ── */
-  useEffect(() => {
-    const id = setInterval(() => {
-      void liveDiagnostics().then((d) => {
-        if (alive.current) setDiag(`${liveOn.current ? 'live' : 'pipe'} · ${d}`);
-      });
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-
   /** 免提 / 听筒（D-091）：TA 正在说话时立刻重设音频类别，不然要等下一句 */
   const toggleSpeaker = () => {
     const next = !speakerRef.current;
@@ -527,13 +514,6 @@ export default function CallScreen() {
         {himLine ? <Text style={styles.himLine}>{himLine}</Text> : null}
         {herLine ? <Text style={styles.herLine}>{herLine}</Text> : null}
         {note ? <Text style={styles.note}>{note}</Text> : null}
-        {/* 临时诊断：长按切换「TA 说话时不听」 */}
-        <Pressable
-          onLongPress={() => {
-            liveDiag.noEarWhileSpeaking = !liveDiag.noEarWhileSpeaking;
-          }}>
-          <Text style={styles.diag}>{diag}</Text>
-        </Pressable>
         {phase === 'listening' ? (
           <View style={styles.meter}>
             <View style={[styles.meterDot, heard && styles.meterDotOn]} />
@@ -577,7 +557,6 @@ const styles = themed(() =>
     statusTime: { fontFamily: Fonts.label, fontSize: Type.scale.sub.size, color: withAlpha('#FFFFFF', 0.65) },
     spinner: { marginTop: 8 },
     captions: { flex: 1, justifyContent: 'flex-end', gap: 10, paddingVertical: 24 },
-    diag: { fontFamily: Fonts.label, fontSize: Type.scale.caption.size, color: withAlpha('#FFFFFF', 0.5) },
     himLine: { fontSize: Type.scale.screenTitle.size, lineHeight: 26, color: '#FFFFFF' },
     herLine: { fontSize: Type.scale.sub.size, lineHeight: 20, color: withAlpha('#FFFFFF', 0.55) },
     note: { fontSize: Type.scale.caption.size, color: Romance.accent },
