@@ -19,7 +19,7 @@ import { Card, Divider } from '@/components/card';
 import { DiamondBackground } from '@/components/paper-bg';
 import { WALLPAPERS } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
-import { Fonts, Romance, THEMES, themed } from '@/constants/theme';
+import { Fonts, PAPER_WALLPAPER, Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { buy as buyIap, iapState, iapVersion, restore as restoreIap, subscribeIap, type BuyOutcome } from '@/features/iap';
 import { billingLive, buyTrafficPack, buyVoicePack, choosePlan, gmGrant } from '@/features/traffic';
@@ -415,7 +415,7 @@ export default function MeScreen() {
 
         <Section title={t('主题')}>
           <View>
-            {/* 主题 = 壁纸（D-110）：纸面 + 换色，一步到位，主页和里面一起变 */}
+            {/* 壁纸（D-231）：纸面 + 五款浅底，只换桌面 */}
             {/* 一行横排，放不下就横向滑——不让最后一块单独掉到第二行 */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wallRow}>
               {WALLPAPERS.map((w) => {
@@ -423,8 +423,8 @@ export default function MeScreen() {
                 return (
                   <Pressable key={w.id} style={styles.wallItem} onPress={() => useAppStore.getState().setWallpaper(w.id)}>
                     <View style={[styles.wallRing, on && styles.wallRingOn]}>
-                      <View style={[styles.wallSwatch, { backgroundColor: w.color ?? THEMES.paper.colors.bg }]}>
-                        <DiamondBackground />
+                      <View style={[styles.wallSwatch, { backgroundColor: w.color ?? PAPER_WALLPAPER.bg }]}>
+                        <DiamondBackground color={PAPER_WALLPAPER.pattern} />
                       </View>
                     </View>
                     <Text style={[styles.wallLabel, on && styles.wallLabelOn]}>{t(w.label)}</Text>

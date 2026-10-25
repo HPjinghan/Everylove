@@ -42,7 +42,7 @@ export default function FortuneScreen() {
   const [tab, setTab] = useState<Tab>('sign');
 
   return (
-    <AppScreen title={t('幸运签')} pattern onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
+    <AppScreen title={t('幸运签')} onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
       <ScrollView contentContainerStyle={styles.body}>
         <Card style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>{t('零钱')}</Text>

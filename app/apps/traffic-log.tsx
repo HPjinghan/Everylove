@@ -34,7 +34,7 @@ export default function TrafficLogScreen() {
   const rows = [...log].reverse();
   const total = log.reduce((s, e) => s + e.mb, 0);
   return (
-    <AppScreen title={t('流水')} pattern onBack={() => (router.canGoBack() ? router.back() : router.replace('/apps/settings'))}>
+    <AppScreen title={t('流水')} onBack={() => (router.canGoBack() ? router.back() : router.replace('/apps/settings'))}>
       <ScrollView contentContainerStyle={styles.body}>
         <Card style={styles.sum}>
           <Text style={styles.sumLabel}>{t('最近 {n} 笔', { n: log.length })}</Text>

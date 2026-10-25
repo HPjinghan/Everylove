@@ -1,6 +1,6 @@
 /**
- * 内容卡片 primitive（D-084，设计系统）：白色表面、圆角 6、1.5px 墨色描边、无阴影。
- * 新界面的卡片一律用它；卡片内分区用同样的描边线分隔（Divider），不用阴影或灰底。
+ * 内容卡片 primitive（D-231）：浅灰底上的白卡、圆角 10、不描边不投影——手机 App 里的分组卡片。
+ * 新界面的卡片一律用它；卡片内分区用细分隔线（Divider）。
  */
 
 import type { ReactNode } from 'react';
@@ -21,7 +21,7 @@ export function Card({
   return <View style={[styles.card, padded && styles.padded, style]}>{children}</View>;
 }
 
-/** 分区线；soft = 同一组里行与行之间的浅线（D-229：长列表行行都是墨线会显得格子很密），卡片边框照旧是墨线 */
+/** 分区线（细线）；soft = 更浅一档，给同一组里行与行之间 */
 export function Divider({ style, soft }: { style?: StyleProp<ViewStyle>; soft?: boolean }) {
   return <View style={[styles.divider, soft && styles.dividerSoft, style]} />;
 }
@@ -31,8 +31,6 @@ const styles = themed(() =>
     card: {
       backgroundColor: Romance.card,
       borderRadius: Shape.radius,
-      borderWidth: Shape.stroke,
-      borderColor: Romance.stroke,
     },
     padded: { paddingVertical: Space.cardY, paddingHorizontal: Space.cardX },
     divider: { height: Shape.stroke, backgroundColor: Romance.stroke, alignSelf: 'stretch' },

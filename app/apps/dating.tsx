@@ -370,7 +370,7 @@ export default function DatingScreen() {
 
   return (
     // 新手流（D-058）：滑到心动就是入口；不想滑的逃生门 = 顶栏「‹ 桌面」（D-223 去掉重复的文字入口）
-    <AppScreen title={t('交友')} onBack={!introDone ? escapeIntro : undefined} pattern>
+    <AppScreen title={t('交友')} onBack={!introDone ? escapeIntro : undefined}>
       {/* 视图切换（D-049）+ 口味 chip（D-100）：并排居中；chip 直接显示当前口味，点开偏好卡 */}
       <View style={styles.controls}>
         <Segmented

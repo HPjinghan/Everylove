@@ -6,7 +6,7 @@
 
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { CONTROL_FONT_SCALE, Shape, Type } from '@/constants/design';
+import { CONTROL_FONT_SCALE, Elevation, Shape, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 
 export function Chip({
@@ -66,15 +66,17 @@ export function Segmented<T extends string>({
 
 const styles = themed(() =>
   StyleSheet.create({
-    chip: { backgroundColor: Romance.card, borderRadius: Shape.radius, paddingVertical: 8, paddingHorizontal: 14 },
+    // 胶囊 chip：浅底黑字，选中 = 强调色底白字（白卡上、灰底上都看得见）
+    chip: { backgroundColor: Romance.line, borderRadius: Shape.radiusPill, paddingVertical: 8, paddingHorizontal: 14 },
     chipOn: { backgroundColor: Romance.accent },
-    chipText: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.sub },
+    chipText: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.ink },
     chipTextOn: { color: '#FFFFFF', fontWeight: '600' },
-    seg: { flexDirection: 'row', backgroundColor: Romance.card, borderRadius: Shape.radius, padding: 3 },
-    segPaper: { backgroundColor: Romance.bg },
+    // 分段控件：浅灰轨道里一块白色选中块（带一点浮起）
+    seg: { flexDirection: 'row', backgroundColor: Romance.line, borderRadius: Shape.radius, padding: 2 },
+    segPaper: { backgroundColor: Romance.line },
     segItem: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: Shape.radiusInner },
-    segItemOn: { backgroundColor: Romance.accent },
+    segItemOn: { backgroundColor: Romance.card, ...Elevation.low },
     segText: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.sub },
-    segTextOn: { color: '#FFFFFF', fontWeight: '600' },
+    segTextOn: { color: Romance.ink, fontWeight: '600' },
   })
 );

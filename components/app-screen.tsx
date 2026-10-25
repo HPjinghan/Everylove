@@ -3,7 +3,6 @@ import { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { DiamondBackground } from '@/components/paper-bg';
 import { useGuardedPress } from '@/components/press-guard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { CONTROL_FONT_SCALE, Shape, Space, Type } from '@/constants/design';
@@ -14,31 +13,26 @@ import { t } from '@/lib/i18n';
 const LATIN = /^[A-Za-z0-9 .]+$/;
 
 /**
- * 手机壳内 App 的通用外框（D-021；D-100 纸面）：顶栏透底、居中中文标题 17/600、左「‹ 桌面」14/500、
- * 右动作槽（用 HeaderAction：14/600 primary）、下沿 1.5px ink；左右槽位各 70。
- * pattern：paper 底上铺菱格暗纹（交友 / 缔结这类浅内容页）。桌面制导航深度 +1，返回必须处处可达。
+ * 手机壳内 App 的通用外框（D-021；D-231 小手机）：白色顶栏、居中标题、左「‹ 桌面」强调色、
+ * 右动作槽（用 HeaderAction，强调色）、下沿一根细线；内容区浅灰底。桌面制导航深度 +1，返回必须处处可达。
  */
 export function AppScreen({
   title,
   children,
   right,
   onBack,
-  pattern,
 }: {
   title: string;
   children: ReactNode;
   right?: ReactNode;
   /** 覆盖返回行为（新手流逃生门等场景，D-058） */
   onBack?: () => void;
-  /** 底上铺菱格暗纹（Pattern.diamond） */
-  pattern?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   return (
     <View style={styles.screen}>
-      {pattern ? <DiamondBackground /> : null}
-      <View style={[styles.header, { marginTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable
           onPress={() =>
             onBack ? onBack() : router.canGoBack() ? router.back() : router.replace('/')
@@ -46,7 +40,7 @@ export function AppScreen({
           hitSlop={10}
           accessibilityLabel={t('返回')}
           style={styles.back}>
-          <IconSymbol name="chevron.left" size={16} color={Romance.ink} />
+          <IconSymbol name="chevron.left" size={18} color={Romance.accent} />
           <Text style={styles.backText} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>{t('桌面')}</Text>
         </Pressable>
         <Text style={[styles.title, LATIN.test(title) && styles.titleLatin]} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
@@ -89,18 +83,18 @@ const styles = themed(() =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: Space.screen,
-      paddingTop: 8,
       paddingBottom: 10,
-      // 顶栏透底、只有一条 1.5px 墨色下沿
+      // 顶栏白底、一条细分隔线下沿（D-231）
+      backgroundColor: Romance.card,
       borderBottomWidth: Shape.stroke,
       borderBottomColor: Romance.stroke,
     },
     back: { flexDirection: 'row', alignItems: 'center', width: Space.topBarSlot, gap: 2 },
-    backText: { fontSize: Type.scale.sub.size, fontWeight: '500', color: Romance.ink },
+    backText: { fontSize: Type.scale.nav.size, fontWeight: '400', color: Romance.accent },
     title: { flex: 1, textAlign: 'center', fontSize: Type.scale.screenTitle.size, fontWeight: '600', color: Romance.ink },
     titleLatin: { fontFamily: Fonts.labelBold, fontWeight: '400', fontSize: Type.scale.lg.size },
     right: { width: Space.topBarSlot, alignItems: 'flex-end' },
-    action: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.accent },
+    action: { fontSize: Type.scale.nav.size, fontWeight: '600', color: Romance.accent },
     actionDisabled: { color: Romance.sub },
     body: { flex: 1 },
   })

@@ -1,10 +1,11 @@
 /**
- * 按钮 primitive（D-100 纸面）：
- * - primary：primary 底 + 1.5px ink 描边、白字 600（主按钮）
- * - secondary：白底、无描边、ink 600（次按钮）
- * - paper：paper 底、无描边、ink 600（取消 / 次要）
- * - outline：白底 + 1.5px 描边、primary 字 600（「编辑」这类文字动作按钮）
- * size：lg 15 字 · 13×20 内距 / md 14 字 · 11×18 / sm 13 字 · 8×14。禁用 opacity .4。
+ * 按钮 primitive（D-231 小手机）：都不描边、不投影，圆角 12
+ * - primary：强调色实底、白字（主按钮）
+ * - secondary：强调色浅底、强调色字（次按钮）
+ * - paper：浅灰底、黑字（取消 / 次要）
+ * - outline：白底 + 细边、强调色字（「编辑」这类文字动作按钮）
+ * - danger：红底白字（删除）
+ * size：lg / md / sm 三档字号与内距。禁用 opacity .4。
  * 连点冷却 600 ms（D-121，`cooldownMs`，0 关闭）：异步动作按钮不会在 disabled 生效前被点第二次。
  */
 
@@ -71,18 +72,18 @@ const ICON_SIZE: Record<ButtonSize, number> = { lg: 20, md: 18, sm: 16 };
 
 function iconColor(variant: ButtonVariant): string {
   if (variant === 'primary' || variant === 'danger') return '#FFFFFF';
-  return variant === 'outline' ? Romance.accent : Romance.ink;
+  return variant === 'outline' || variant === 'secondary' ? Romance.accent : Romance.ink;
 }
 
 const styles = themed(() =>
   StyleSheet.create({
-    base: { borderRadius: Shape.radius, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-    primary: { backgroundColor: Romance.accent, borderWidth: Shape.stroke, borderColor: Romance.stroke },
+    base: { borderRadius: Shape.radiusButton, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+    primary: { backgroundColor: Romance.accent },
     // 破坏性动作（删除）：底色 danger（D-198）
-    danger: { backgroundColor: Romance.danger, borderWidth: Shape.stroke, borderColor: Romance.stroke },
-    secondary: { backgroundColor: Romance.card },
-    paper: { backgroundColor: Romance.bg },
-    outline: { backgroundColor: Romance.card, borderWidth: Shape.stroke, borderColor: Romance.stroke },
+    danger: { backgroundColor: Romance.danger },
+    secondary: { backgroundColor: Romance.accentSoft },
+    paper: { backgroundColor: Romance.line },
+    outline: { backgroundColor: Romance.card, borderWidth: Shape.border, borderColor: Romance.stroke },
     size_lg: { paddingVertical: 13, paddingHorizontal: 20 },
     size_md: { paddingVertical: 11, paddingHorizontal: 18 },
     size_sm: { paddingVertical: 8, paddingHorizontal: 14 },
@@ -92,7 +93,7 @@ const styles = themed(() =>
     text: { fontWeight: '600', flexShrink: 1 },
     text_primary: { color: '#FFFFFF' },
     text_danger: { color: '#FFFFFF' },
-    text_secondary: { color: Romance.ink },
+    text_secondary: { color: Romance.accent },
     text_paper: { color: Romance.ink },
     text_outline: { color: Romance.accent },
     textSize_lg: { fontSize: Type.scale.body.size },

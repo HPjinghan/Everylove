@@ -107,7 +107,10 @@ export function portraitFor(characterId: string): string | undefined {
   const own = useAppStore.getState().portraits[characterId];
   if (own) return own;
   const seed = seedPortrait(characterId);
-  return seed ? Image.resolveAssetSource(seed)?.uri : undefined;
+  if (!seed) return undefined;
+  // 网页预览里 require 的图片直接是地址（没有 resolveAssetSource）
+  if (typeof seed === 'string') return seed;
+  return Image.resolveAssetSource?.(seed)?.uri ?? (seed as { uri?: string }).uri;
 }
 
 /** 只生成、不入库：捏＋预览用（角色还没创建，先看一眼、可重生成） */

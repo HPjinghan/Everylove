@@ -10,8 +10,12 @@ import type { MingCuteName } from '@/components/mingcute';
 export interface DesktopApp {
   id: string;
   label: string;
-  /** MingCute 图标名（components/mingcute.tsx，D-026）；D-100 纸面：图块一律白底 r6、图标 ink，不再配色 */
+  /** MingCute 图标名（components/mingcute.tsx，D-026） */
   icon: MingCuteName;
+  /** 图块底色（D-231：像手机里一个个真 App，各有各的颜色）；图标默认白色 */
+  tile: string;
+  /** 图标颜色（浅色图块上用深色图标） */
+  glyphColor?: string;
   /** 字标（D-229）：有它就在图块上写这几个字母，不画图标 */
   glyph?: string;
   route: string;
@@ -19,31 +23,35 @@ export interface DesktopApp {
   badge?: 'unread';
 }
 
+// 日历图块（D-231）：白底，上面一行红色星期、下面大大的今天几号——跟真手机的日历图标一样每天变
 export const DESKTOP_APPS: DesktopApp[] = [
-  { id: 'messages', label: 'Messages', icon: 'chat', route: '/apps/messages', badge: 'unread' },
-  { id: 'phone', label: '电话', icon: 'phone', route: '/apps/phone' },
-  // X（D-053）：图块是 Fredoka 写的字标 X（D-229：✕ 读起来是「关闭」）
-  { id: 'moments', label: 'X', icon: 'close', glyph: 'X', route: '/apps/moments' },
-  { id: 'dating', label: '交友', icon: 'heart', route: '/apps/dating' },
-  { id: 'contacts', label: '通讯录', icon: 'contacts', route: '/apps/contacts' },
-  { id: 'album', label: '相册', icon: 'album', route: '/apps/album' },
-  { id: 'calendar', label: '日历', icon: 'calendar', route: '/apps/calendar' },
-  { id: 'outing', label: '外出', icon: 'location', route: '/apps/outing' },
-  { id: 'create', label: '创造', icon: 'magicHat', route: '/apps/create' },
+  { id: 'messages', label: 'Messages', icon: 'chat', tile: '#4CD07D', route: '/apps/messages', badge: 'unread' },
+  { id: 'phone', label: '电话', icon: 'phone', tile: '#4CD07D', route: '/apps/phone' },
+  // X（D-053）：黑底白字的字标 X（D-229：✕ 读起来是「关闭」）
+  { id: 'moments', label: 'X', icon: 'close', tile: '#16181C', glyph: 'X', route: '/apps/moments' },
+  { id: 'dating', label: '交友', icon: 'heart', tile: '#FF5A79', route: '/apps/dating' },
+  { id: 'contacts', label: '通讯录', icon: 'contacts', tile: '#A3A8AE', route: '/apps/contacts' },
+  { id: 'album', label: '相册', icon: 'album', tile: '#FFFFFF', glyphColor: '#FF7A59', route: '/apps/album' },
+  { id: 'calendar', label: '日历', icon: 'calendar', tile: '#FFFFFF', glyphColor: '#E5484D', route: '/apps/calendar' },
+  { id: 'outing', label: '外出', icon: 'location', tile: '#3BB6F5', route: '/apps/outing' },
+  { id: 'create', label: '创造', icon: 'magicHat', tile: '#9B6BF2', route: '/apps/create' },
   // 记事本（D-085）：她自己的本子，私密——只有她让 TA 看手机时 TA 才看得到
-  { id: 'notes', label: '记事本', icon: 'notebook', route: '/apps/notes' },
+  { id: 'notes', label: '记事本', icon: 'notebook', tile: '#FFC93C', route: '/apps/notes' },
   // 查手机（D-085）：所有缔结的 TA 各一部手机；也能让 TA 看我的手机
-  { id: 'phones', label: '查手机', icon: 'phoneEye', route: '/apps/phones' },
+  { id: 'phones', label: '查手机', icon: 'phoneEye', tile: '#2E2A33', route: '/apps/phones' },
   // 钱包（D-138）：她的零钱余额与 Coin 流水（红包 / 外卖 / 日签 / 转盘）
-  { id: 'wallet', label: '钱包', icon: 'wallet', route: '/apps/wallet' },
+  { id: 'wallet', label: '钱包', icon: 'wallet', tile: '#1F1F24', route: '/apps/wallet' },
   // 幸运签（D-128 / D-138）：日签每天一次水晶球抽签给零钱；转盘投零钱赌倍数
-  { id: 'fortune', label: '幸运签', icon: 'sparkles', route: '/apps/fortune' },
+  { id: 'fortune', label: '幸运签', icon: 'sparkles', tile: '#6F5CE6', route: '/apps/fortune' },
   // 外卖（D-129）：像一个外卖平台——给自己或给 TA 点、骑手进度、订单记录
-  { id: 'delivery', label: '外卖', icon: 'takeout', route: '/apps/delivery' },
+  { id: 'delivery', label: '外卖', icon: 'takeout', tile: '#FFC21A', glyphColor: '#211B1F', route: '/apps/delivery' },
   // 传记（D-149）：已缔结 TA 的故事，创作者按章写、每章设开放的羁绊等级；只看，编辑在创造里
-  { id: 'biography', label: '传记', icon: 'book', route: '/apps/biography' },
-  { id: 'settings', label: '设置', icon: 'settings', route: '/apps/settings' },
+  { id: 'biography', label: '传记', icon: 'book', tile: '#FF9F2E', route: '/apps/biography' },
+  { id: 'settings', label: '设置', icon: 'settings', tile: '#8E8E93', route: '/apps/settings' },
 ];
+
+/** 桌面小组件的底色（D-231）：天气是一块晴空蓝 */
+export const WIDGET_TINT = { weather: '#5AAEEB' } as const;
 
 export const DEFAULT_DESKTOP_ORDER = DESKTOP_APPS.map((a) => a.id);
 

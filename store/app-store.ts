@@ -1236,3 +1236,8 @@ export function meForCharacter(characterId: string): UserProfile | undefined {
   return s.meByCharacter[characterId] ?? s.me;
 }
 
+
+// 网页预览调试（只在开发构建、只在网页上）：浏览器控制台里用 __everylove.getState() 造数据看界面
+if (typeof __DEV__ !== 'undefined' && __DEV__ && typeof document !== 'undefined') {
+  (globalThis as { __everylove?: typeof useAppStore }).__everylove = useAppStore;
+}

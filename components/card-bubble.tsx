@@ -5,7 +5,7 @@
 
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker } from '@/components/maps';
 
 import { Shape, Type } from '@/constants/design';
 import { Romance, themed, withAlpha } from '@/constants/theme';

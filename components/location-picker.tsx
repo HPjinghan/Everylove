@@ -17,7 +17,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
-import MapView, { Marker, type Region } from 'react-native-maps';
+import MapView, { Marker, type Region } from '@/components/maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';

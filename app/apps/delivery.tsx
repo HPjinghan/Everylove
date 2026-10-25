@@ -109,7 +109,7 @@ export default function DeliveryScreen() {
   return (
     // 「留一句话」在屏幕最底下：整页随键盘让位（包在 AppScreen 外面，量的才是整屏、不漏算顶栏）
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <AppScreen title={t('外卖')} pattern onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
+    <AppScreen title={t('外卖')} onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
       <Segmented<Tab>
         options={[
           { key: 'order', label: t('点单') },

@@ -19,6 +19,16 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  // 网页预览用（App 只跑 iOS，走 SF Symbols）
+  'chevron.left': 'chevron-left',
+  'arrow.up': 'arrow-upward',
+  'delete.left': 'backspace',
+  'location.fill': 'place',
+  xmark: 'close',
+  'figure.walk': 'directions-walk',
+  'gift.fill': 'redeem',
+  iphone: 'smartphone',
+  'mappin.and.ellipse': 'place',
 } satisfies IconMapping;
 
 /**

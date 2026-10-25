@@ -30,20 +30,22 @@ export interface RomancePalette {
 }
 
 /**
- * 主题只有一套（D-110）：「纸面」= Claude Design「Everylove - Design System」的色彩 token 原样映射——
- * paper #FFD6E7 / primary #E8578A / accent #C2185B / ink #4A2B36 / muted #A97F8D / surface #FFFFFF / chat paper #FBE4EC。
- * faint 与 line 设计稿没给（它只用 muted 一档），按 paper→muted 之间取的浅色。
- * 换主题 = 换壁纸（设置 → 主题只剩壁纸一排）：壁纸给纸面换一块底色 + 配套的两档浅色（accentSoft / line），
- * ink / primary / accent 不动——主页与里面的每一屏跟着同一块纸走（constants/apps.ts WALLPAPERS）。
- * 蜜桃 / 苏打 / 抹茶 / 葡萄四套配色已下线。
+ * 界面配色（D-231：一部有自己特色的小手机）：App 里面像真手机里的 App——浅灰底、白卡片、近黑的字、细分隔线，
+ * 强调色是我们自己的粉（不照搬任何一款手机的系统色）。甜的地方是桌面壁纸（WallpaperTint，见下），壁纸不再给 App 里面换色。
+ * 键名沿用纸面时期的（bg / card / ink / sub / accent…），界面里的引用不用改。
+ * 第三方类 App（X / 交友 / 外卖 / 幸运签）各自的品牌色在 constants/apps.ts 的 APP_TINT。
  */
 export const THEMES: Record<'paper', { label: string; colors: RomancePalette }> = {
   paper: {
     label: '纸面',
     colors: {
-      bg: '#FFD6E7', card: '#FFFFFF', ink: '#4A2B36', sub: '#A97F8D', faint: '#C9A9B6',
-      accent: '#E8578A', accentSoft: '#FBE4EC', line: '#F3C4D5', stroke: '#4A2B36', accentStrong: '#C2185B',
-      gold: '#E0B98A', night: '#3A2A3E', bubbleHim: '#FFFFFF', bubbleMe: '#E8578A', danger: '#C2185B',
+      // 底 / 卡片 / 正文 / 次要字 / 占位字：中性、带一点点暖粉
+      bg: '#F6F3F5', card: '#FFFFFF', ink: '#211B1F', sub: '#8C8389', faint: '#C8C1C6',
+      // 强调色 = 品牌粉；浅底；浅线 / 占位底；结构性分隔线
+      accent: '#E8578A', accentSoft: '#FDECF2', line: '#EEE8EB', stroke: '#DED6DA',
+      accentStrong: '#C2185B', gold: '#E0B98A', night: '#1E1A1D',
+      // 聊天气泡：对方白底黑字（落在涂鸦聊天纸上）、自己粉底白字
+      bubbleHim: '#FFFFFF', bubbleMe: '#E8578A', danger: '#E5484D',
     },
   },
 };
@@ -51,12 +53,18 @@ export const THEMES: Record<'paper', { label: string; colors: RomancePalette }> 
 /** 唯一主题 id（D-083 / D-110）：store.themeId 只作旧存档兼容，代码不再读 */
 export const DEFAULT_THEME_ID = 'paper';
 
-/** 壁纸给纸面换的色（D-110）：底色 + 聊天纸 / 分隔线两档浅色；三者留空 = 纸面原色 */
+/** 壁纸（D-231）：只铺在桌面（与锁屏这类「手机本身」的地方）——底色 + 菱格暗纹的线色 */
 export interface PaperTint {
   bg?: string;
   accentSoft?: string;
   line?: string;
 }
+
+/** 纸面壁纸的原色（D-083 设计系统：paper #FFD6E7、暗纹 accent #C2185B）——「纸面」现在是壁纸之一 */
+export const PAPER_WALLPAPER = { bg: '#FFD6E7', pattern: '#C2185B' } as const;
+
+/** 当前壁纸：桌面读它；applyPaperTint 覆写 */
+export const WallpaperTint = { bg: PAPER_WALLPAPER.bg as string, pattern: PAPER_WALLPAPER.pattern as string };
 
 /** token 色的半透明版（D-100）：遮罩 / 暗场用它，不手写 rgba；只接受 #RRGGBB */
 export function withAlpha(hex: string, alpha: number): string {
@@ -70,15 +78,11 @@ export const Romance: RomancePalette = { ...THEMES[DEFAULT_THEME_ID].colors };
 let themeVersion = 0;
 
 /**
- * 应用壁纸（D-110）：纸面配色 + 壁纸的色。传空 = 纸面原色。
- * 桌面、Dock 图块、每个 App 的底、聊天纸都读 Romance，所以主页换了色，里面跟着换。
+ * 应用壁纸（D-231）：只换桌面那块纸的颜色（纸面 = 原色）；App 里面是界面配色，不跟着壁纸变。
+ * 版本号照旧 +1：桌面的 themed 样式按新壁纸重建。
  */
 export function applyPaperTint(tint: PaperTint = {}): void {
-  Object.assign(Romance, THEMES.paper.colors, {
-    bg: tint.bg ?? THEMES.paper.colors.bg,
-    accentSoft: tint.accentSoft ?? THEMES.paper.colors.accentSoft,
-    line: tint.line ?? THEMES.paper.colors.line,
-  });
+  WallpaperTint.bg = tint.bg ?? PAPER_WALLPAPER.bg;
   themeVersion++;
 }
 
@@ -105,7 +109,7 @@ export function themed<T extends object>(factory: () => T): T {
   });
 }
 
-/** 设计系统字体（D-084）：label = Fredoka 500（数字、标签、导航、时间戳）、labelBold = Fredoka 600（时钟、标题、按钮）；正文用系统字体。字体在 app/_layout.tsx 用 useFonts 加载 */
+/** 设计系统字体（D-084）：label = Fredoka 500（数字、标签、时间戳）、labelBold = Fredoka 600（时钟、大数字）；正文用系统字体——Fredoka 是这部小手机自己的字。字体在 app/_layout.tsx 用 useFonts 加载 */
 const FREDOKA = { label: 'Fredoka_500Medium', labelBold: 'Fredoka_600SemiBold' };
 /** 头像单字（D-100）：设计稿用 Noto Serif SC；iOS 不带它，用系统自带的宋体（Songti SC）代替，不另装 CJK 字体 */
 const INITIAL_IOS = 'Songti SC';

@@ -64,7 +64,7 @@ export default function WalletScreen() {
   const outSum = wallet.ledger.reduce((s, e) => (e.amount < 0 ? s - e.amount : s), 0);
 
   return (
-    <AppScreen title={t('钱包')} pattern onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
+    <AppScreen title={t('钱包')} onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
       <ScrollView contentContainerStyle={styles.body}>
         <Card style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>{t('零钱')}</Text>

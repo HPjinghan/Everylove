@@ -1,16 +1,16 @@
 /**
- * 手机壳桌面（D-020/D-021/D-034/D-044；D-100 纸面 + 翻页）：主页 = 一部手机的桌面。
- * - 底：壁纸只换底色不换纹——壁纸即主题（D-110）：选中的壁纸给纸面换色后写进 Romance.bg，桌面、Dock 图块与每个 App 的底同一块纸 + 同一套菱格暗纹（DiamondBackground），不渐变不分段（D-104）
- * - 图标网格：4 列、行高 Space.desktopRow，图块 60 白底无描边、MingCute 30 ink；长按进入编辑模式（抖动），
+ * 手机壳桌面（D-020/D-021/D-034/D-044；D-100 翻页；D-231 小手机）：主页 = 一部手机的桌面。
+ * - 底：壁纸（WallpaperTint）——纸面粉或另外五款浅底，同一套菱格暗纹（DiamondBackground），只铺在桌面
+ * - 图标网格：4 列、行高 Space.desktopRow，图块 60 圆润方块、每个 App 自己的颜色 + 白色图标（日历图块写今天几号）；长按进入编辑模式（抖动），
  *   **自由摆放**（D-034）——任意格位、允许留空格，拖到已占格位则交换；格位持久化（store.desktopSlots）
  * - **翻页**（D-100）：网格区水平分页，每页 rows × 4 格，slot 索引跨页连续（page = floor(slot / slotsPerPage)）；
  *   页码点在 Dock 上方，≥2 页才显示；编辑模式下多给一页空页，拖到屏幕左右边缘停留 600ms 自动翻页。
  *   时钟 / 天气 / 横幅 / Dock 不随页滑动。
- * - 底部 Dock（D-044）：白卡描边、图块 paper 底、无标签；编辑模式下可在网格与 Dock 之间拖入拖出（占位则交换）
+ * - 底部 Dock（D-044）：半透明白底的圆角托盘（不用毛玻璃）、无标签；编辑模式下可在网格与 Dock 之间拖入拖出（占位则交换）
  * - 拖拽中的图标画在网格容器的浮层里（不在分页 ScrollView 内），翻页时它不会跟着页滑走
  * - 退出编辑时抖动角度归零（wiggle 回 0.5 = 0deg，transform 常挂避免 native 残留）
- * - 大时钟 + 大天气显示真实时间与世界天气；状态栏已按 D-023 去掉
- * - Message 快捷路径：有未读时桌面顶部出现横幅——一人未读直达会话，多人未读合并后进 Message 列表
+ * - 大时钟 + 天气小组件（晴空蓝底白字）显示真实时间与世界天气；状态栏已按 D-023 去掉
+ * - Message 快捷路径：有未读时桌面顶部弹出通知横幅——一人未读直达会话，多人未读合并后进 Message 列表
  * - 壁纸：设置 → 主题 里换
  */
 
@@ -37,13 +37,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
-import { Card } from '@/components/card';
 import { MingCute, WEATHER_ICON } from '@/components/mingcute';
 import { DiamondBackground } from '@/components/paper-bg';
-import { appById, DEFAULT_DESKTOP_ORDER, type DesktopApp } from '@/constants/apps';
-import { CONTROL_FONT_SCALE, DISPLAY_FONT_SCALE, Shape, Space, Type } from '@/constants/design';
-import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
-import { t } from '@/lib/i18n';
+import { appById, DEFAULT_DESKTOP_ORDER, WIDGET_TINT, type DesktopApp } from '@/constants/apps';
+import { CONTROL_FONT_SCALE, DISPLAY_FONT_SCALE, Elevation, Shape, Space, Type } from '@/constants/design';
+import { Fonts, Romance, themed, WallpaperTint, withAlpha } from '@/constants/theme';
+import { localeOf, t } from '@/lib/i18n';
 import { tempNow, todayWeather, weatherCity } from '@/lib/weather';
 import { useAppStore, useHydrated } from '@/store/app-store';
 
@@ -158,13 +157,15 @@ function DesktopIcon({
       accessible
       accessibilityRole="button"
       accessibilityLabel={unread > 0 ? t('{app}，{n} 条未读', { app: t(app.label), n: unread }) : t(app.label)}>
-      <View style={[styles.iconTile, dock && styles.dockTile]}>
-        {app.glyph ? (
-          <Text style={styles.iconGlyph} maxFontSizeMultiplier={1}>
+      <View style={[styles.iconTile, { backgroundColor: app.tile }]}>
+        {app.id === 'calendar' ? (
+          <CalendarGlyph color={app.glyphColor} />
+        ) : app.glyph ? (
+          <Text style={[styles.iconGlyph, { color: app.glyphColor ?? '#FFFFFF' }]} maxFontSizeMultiplier={1}>
             {app.glyph}
           </Text>
         ) : (
-          <MingCute name={app.icon} size={Space.iconTile} color={Romance.ink} />
+          <MingCute name={app.icon} size={Space.iconTile} color={app.glyphColor ?? '#FFFFFF'} />
         )}
         {unread > 0 ? (
           <View style={styles.badge}>
@@ -183,6 +184,21 @@ function DesktopIcon({
   );
 }
 
+/** 日历图块（D-231）：上面一行星期（红）、下面今天几号——像真手机的日历图标，每天变 */
+function CalendarGlyph({ color }: { color?: string }) {
+  const [now] = useState(() => new Date());
+  return (
+    <View style={styles.calGlyph}>
+      <Text style={[styles.calWeekday, { color: color ?? Romance.danger }]} maxFontSizeMultiplier={1}>
+        {now.toLocaleDateString(localeOf(), { weekday: 'short' })}
+      </Text>
+      <Text style={styles.calDay} maxFontSizeMultiplier={1}>
+        {now.getDate()}
+      </Text>
+    </View>
+  );
+}
+
 function WeatherCard() {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -192,8 +208,8 @@ function WeatherCard() {
   const lineMax = width - Space.screen * 2 - WEATHER_FIXED_W;
   return (
     <Pressable style={styles.weatherWrap} onPress={() => router.push('/weather')}>
-      <Card padded={false} style={styles.weather}>
-        <MingCute name={WEATHER_ICON[w.id]} size={WEATHER_ICON_SIZE} color={Romance.accent} />
+      <View style={styles.weather}>
+        <MingCute name={WEATHER_ICON[w.id]} size={WEATHER_ICON_SIZE} color="#FFFFFF" />
         <Text style={styles.weatherTemp} maxFontSizeMultiplier={DISPLAY_FONT_SCALE}>
           {tempNow(w)}°
         </Text>
@@ -208,7 +224,7 @@ function WeatherCard() {
             {city ? city : t(w.line)}
           </Text>
         </View>
-      </Card>
+      </View>
     </Pressable>
   );
 }
@@ -578,7 +594,7 @@ export default function Desktop() {
 
   return (
     <View style={styles.screen}>
-      <DiamondBackground />
+      <DiamondBackground color={WallpaperTint.pattern} />
 
       <View style={{ paddingTop: insets.top }}>
         {/* Message 快捷路径：未读横幅——一人直达会话，多人合并进 Message。绝对定位叠在时钟上（D-136）：不挤压下面，网格行数不随它变 */}
@@ -593,9 +609,9 @@ export default function Desktop() {
                   })
                 : router.push('/apps/messages')
             }>
-            <Card style={styles.notif}>
-              <View style={styles.notifIconWrap}>
-                <MingCute name="chat" size={20} color={Romance.ink} />
+            <View style={styles.notif}>
+              <View style={[styles.notifIconWrap, { backgroundColor: appById('messages')?.tile }]}>
+                <MingCute name="chat" size={20} color="#FFFFFF" />
               </View>
               <View style={styles.notifBody}>
                 <Text style={styles.notifTitle} numberOfLines={1}>
@@ -605,7 +621,7 @@ export default function Desktop() {
                   {unreadTotal === 1 ? t('1 条新消息') : t('{n} 条新消息', { n: unreadTotal })}
                 </Text>
               </View>
-            </Card>
+            </View>
           </Pressable>
         ) : null}
 
@@ -672,8 +688,8 @@ export default function Desktop() {
           </View>
         ) : null}
 
-        {/* Dock（D-044）：白卡描边、图块 paper 底、无标签、不随页滑动 */}
-        <Card padded={false} style={[styles.dock, { bottom: dockBottom }]}>
+        {/* Dock（D-044 / D-231）：半透明白托盘、无标签、不随页滑动 */}
+        <View style={[styles.dock, { bottom: dockBottom }]}>
           {dock.map((id) => {
             const app = appById(id)!;
             return (
@@ -682,7 +698,7 @@ export default function Desktop() {
               </Pressable>
             );
           })}
-        </Card>
+        </View>
 
         {/* 拖拽浮层：跟手的那一个画在分页之外，翻页时留在原地 */}
         {dragging && dragApp ? (
@@ -725,10 +741,10 @@ export default function Desktop() {
 }
 
 /** 揭幕序列：一屏仪式文案 → 三张模块卡（Message / 创造 / 外出）→ 收尾放行 */
-const INTRO_CARDS: { icon: DesktopApp['icon']; title: string; line: string }[] = [
-  { icon: 'chat', title: 'TA 住进了 Messages', line: 'TA 的第一句话在等你。' },
-  { icon: 'magicHat', title: '创造', line: '捏一个只属于你的 TA。' },
-  { icon: 'location', title: '外出', line: '把相处从手机屏幕里拿出来。' },
+const INTRO_CARDS: { icon: DesktopApp['icon']; tile?: string; title: string; line: string }[] = [
+  { icon: 'chat', tile: appById('messages')?.tile, title: 'TA 住进了 Messages', line: 'TA 的第一句话在等你。' },
+  { icon: 'magicHat', tile: appById('create')?.tile, title: '创造', line: '捏一个只属于你的 TA。' },
+  { icon: 'location', tile: appById('outing')?.tile, title: '外出', line: '把相处从手机屏幕里拿出来。' },
 ];
 
 function IntroReveal() {
@@ -749,8 +765,8 @@ function IntroReveal() {
         </View>
       ) : card ? (
         <View style={styles.introCenter}>
-          <View style={styles.introTile}>
-            <MingCute name={card.icon} size={38} color={Romance.ink} />
+          <View style={[styles.introTile, { backgroundColor: card.tile }]}>
+            <MingCute name={card.icon} size={38} color="#FFFFFF" />
           </View>
           <Text style={styles.introTitle}>{t(card.title)}</Text>
           <Text style={styles.introLine}>{t(card.line)}</Text>
@@ -770,20 +786,24 @@ function IntroReveal() {
 
 const styles = themed(() =>
   StyleSheet.create({
-    screen: { flex: 1, backgroundColor: Romance.bg },
-    // 未读横幅：白卡描边，38 paper 图块 + chat 图标
+    screen: { flex: 1, backgroundColor: WallpaperTint.bg },
+    // 未读横幅（D-231）：手机的通知横幅——白色圆角条浮在桌面上，左边是 Messages 的图块
     // 叠在时钟上、不占布局（D-136）
-    notifWrap: { position: 'absolute', left: Space.screen, right: Space.screen, zIndex: 2 },
+    notifWrap: { position: 'absolute', left: Space.inline, right: Space.inline, zIndex: 2 },
     notif: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: Space.inlineLoose,
+      backgroundColor: Romance.card,
+      borderRadius: Shape.radiusWidget,
+      paddingVertical: Space.cardY,
+      paddingHorizontal: Space.screen,
+      ...Elevation.high,
     },
     notifIconWrap: {
       width: 38,
       height: 38,
       borderRadius: Shape.radius,
-      backgroundColor: Romance.bg,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -814,37 +834,40 @@ const styles = themed(() =>
       letterSpacing: 1,
       marginTop: 8,
     },
-    // 天气卡：白卡描边居中
+    // 天气小组件（D-231）：晴空蓝底、白字，圆角比图块大一号
     weatherWrap: { alignSelf: 'center' },
     weather: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: Space.screen,
-      paddingVertical: 8,
+      paddingVertical: 10,
       paddingHorizontal: 18,
+      borderRadius: Shape.radiusWidget,
+      backgroundColor: WIDGET_TINT.weather,
+      ...Elevation.low,
     },
     weatherTemp: {
       fontFamily: Fonts.labelBold,
       fontSize: 44,
-      color: Romance.ink,
+      color: '#FFFFFF',
     },
     weatherInfo: {},
     weatherLabel: {
       fontSize: Type.scale.label.size,
       lineHeight: 18,
       fontWeight: '600',
-      color: Romance.ink,
+      color: '#FFFFFF',
     },
     weatherRange: {
       fontFamily: Fonts.label,
       fontSize: Type.scale.label.size,
       lineHeight: 18,
-      color: Romance.sub,
+      color: withAlpha('#FFFFFF', 0.85),
     },
     weatherLine: {
       fontSize: Type.scale.label.size,
       lineHeight: 18,
-      color: Romance.sub,
+      color: withAlpha('#FFFFFF', 0.85),
     },
     grid: { flex: 1, marginTop: 10 },
     pager: { position: 'absolute', left: 0, right: 0, top: 0 },
@@ -871,12 +894,14 @@ const styles = themed(() =>
       backgroundColor: Romance.ink,
     },
     dotOff: { opacity: 0.3 },
-    // Dock：白卡描边、高 102；内图块 paper 底、间距 26
+    // Dock（D-231）：半透明白托盘、大圆角，不描边不模糊
     dock: {
       position: 'absolute',
       left: DOCK_INSET,
       right: DOCK_INSET,
       height: DOCK_H,
+      borderRadius: Shape.radiusDock,
+      backgroundColor: withAlpha('#FFFFFF', 0.5),
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -884,33 +909,36 @@ const styles = themed(() =>
     },
     icon: { alignItems: 'center', width: 76 },
     iconDock: { alignItems: 'center', width: TILE },
-    // 图块：60 白底 r6、无描边无阴影
+    // 图块（D-231）：60 圆润方块、App 自己的颜色、一点点浮起
     iconTile: {
       width: TILE,
       height: TILE,
-      borderRadius: Shape.radius,
-      backgroundColor: Romance.card,
+      borderRadius: Shape.radiusIcon,
       alignItems: 'center',
       justifyContent: 'center',
+      ...Elevation.low,
     },
-    dockTile: { backgroundColor: Romance.bg },
     // 字标图块（D-229：X 用 Fredoka 写一个 X，不借「关闭」的 ✕）
-    iconGlyph: { fontFamily: Fonts.labelBold, fontSize: Type.scale.display.size, lineHeight: Type.scale.display.size + 4, color: Romance.ink },
+    iconGlyph: { fontFamily: Fonts.labelBold, fontSize: Type.scale.display.size, lineHeight: Type.scale.display.size + 4 },
+    // 日历图块：星期一行 + 大日期
+    calGlyph: { alignItems: 'center' },
+    calWeekday: { fontSize: Type.scale.xs.size, fontWeight: '700', marginTop: 2 },
+    calDay: { fontFamily: Fonts.labelBold, fontSize: Type.scale.h1.size + 2, lineHeight: Type.scale.h1.size + 6, color: Romance.ink },
     iconLabel: {
       fontSize: Type.scale.caption.size,
       fontWeight: '500',
       color: Romance.ink,
       marginTop: 6,
     },
-    // 未读角标：primary r6、Fredoka 600 12 白字，图块右上
+    // 未读角标：红色胶囊、白字，图块右上
     badge: {
       position: 'absolute',
       top: -8,
       right: -8,
       minWidth: 22,
       height: 22,
-      borderRadius: Shape.radius,
-      backgroundColor: Romance.accent,
+      borderRadius: Shape.radiusPill,
+      backgroundColor: Romance.danger,
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 5,
@@ -944,7 +972,7 @@ const styles = themed(() =>
     introTile: {
       width: 76,
       height: 76,
-      borderRadius: Shape.radius,
+      borderRadius: Shape.radiusIcon + 4,
       backgroundColor: Romance.card,
       alignItems: 'center',
       justifyContent: 'center',

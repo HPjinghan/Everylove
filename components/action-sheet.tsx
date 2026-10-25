@@ -274,7 +274,7 @@ const styles = themed(() =>
     row: { paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center' },
     rowPressed: { backgroundColor: Romance.bg },
     rowText: { fontSize: Type.scale.body.size, fontWeight: '500', color: Romance.ink },
-    rowDanger: { color: Romance.accentStrong },
+    rowDanger: { color: Romance.danger },
     cancel: { marginTop: Space.inlineLoose },
     confirm: { padding: 16 },
     confirmTitle: { fontSize: Type.scale.md.size, fontWeight: '600', color: Romance.ink },
