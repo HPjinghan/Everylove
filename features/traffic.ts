@@ -143,7 +143,7 @@ export function gmGrant(what: 'traffic' | 'voice'): Promise<WalletView> {
   return wallet('wallet.sim', { gm: what });
 }
 
-/* ── 订阅每月发一笔（Pro 6000 MB；Max 不限不发；Free 不发）——没有服务器时本机发；有服务器由它发 ── */
+/* ── 订阅每月发一笔（Pro 5000 MB；Max 不限不发；Free 不发）——没有服务器时本机发；有服务器由它发 ── */
 export function grantPlanTraffic(now = Date.now()): number {
   const s = useAppStore.getState();
   const n = planGrantsDue(s.traffic, s.plan, now);

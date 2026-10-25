@@ -176,8 +176,8 @@ describe('D-210：只扣她发起的、语音按分钟、后台保险丝', () =>
   it('语音时长：今天的额度 → 送的通话（只给电话）→ 分钟包；Free 每天 0；跨天额度重置', () => {
     expect(voiceLeft(START_VOICE, 'free', 'message', NOW)).toBe(0);
     expect(voiceLeft(START_VOICE, 'free', 'call', NOW)).toBe(300);
-    expect(voiceLeft(START_VOICE, 'pro', 'message', NOW)).toBe(900);
-    expect(voiceLeft(START_VOICE, 'max', 'call', NOW)).toBe(3600 + 300);
+    expect(voiceLeft(START_VOICE, 'pro', 'message', NOW)).toBe(600);
+    expect(voiceLeft(START_VOICE, 'max', 'call', NOW)).toBe(2400 + 300);
     // Free 打电话：只扣送的
     const a = voiceAfterUse(START_VOICE, 120, 'free', 'call', NOW);
     expect(a.charged).toBe(120);
@@ -186,11 +186,11 @@ describe('D-210：只扣她发起的、语音按分钟、后台保险丝', () =>
     expect(voiceAfterUse(a.voice, 30, 'free', 'message', NOW).charged).toBe(0);
     // Pro：先今天的，再送的，最后分钟包
     const v = { ...START_VOICE, packSec: 600 };
-    const b = voiceAfterUse(v, 900 + 300 + 100, 'pro', 'call', NOW);
-    expect(b.voice).toMatchObject({ usedSec: 900, callBonusSec: 0, packSec: 500 });
+    const b = voiceAfterUse(v, 600 + 300 + 100, 'pro', 'call', NOW);
+    expect(b.voice).toMatchObject({ usedSec: 600, callBonusSec: 0, packSec: 500 });
     const c = voiceAfterUse(b.voice, 1000, 'pro', 'message', NOW);
     expect(c.charged).toBe(500);
-    expect(voiceLeft(c.voice, 'pro', 'message', NOW + DAY)).toBe(900);
+    expect(voiceLeft(c.voice, 'pro', 'message', NOW + DAY)).toBe(600);
     expect(estimateSpeechSeconds('今天好累啊，想你了')).toBe(2);
   });
 

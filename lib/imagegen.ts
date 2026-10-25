@@ -86,9 +86,13 @@ async function generateImage(prompt: string, subdir = 'portraits', model: string
 
 // 立绘 prompt（画风表 / system / 红线）在 content/prompts/portrait.ts（D-017/D-087）
 
-/** 外出拍照（D-051）：她主动按快门的场景照——非会话自动投放（D-037 纪律不变）；模型跟角色画风走（D-076）。TA 自己拍的传 house（D-210） */
+/** TA 自己拍的（平台出）一律走蒸汽机：一张约 $0.007，qwen-image 的五分之一（D-235） */
+const HOUSE_PHOTO_MODEL = 'musesteamer-air-image';
+
+/** 外出拍照（D-051）：她主动按快门的场景照——非会话自动投放（D-037 纪律不变）；模型跟角色画风走（D-076）。TA 自己拍的传 house（D-210），走便宜的那家（D-235） */
 export async function generateScenePhoto(prompt: string, character?: Pick<Character, 'artStyle'>, billing: Billing = 'user'): Promise<string> {
-  return generateImage(prompt, 'photos', character ? imageModelFor(character) : QIANFAN_IMAGE_MODEL, billing);
+  const model = billing === 'house' ? HOUSE_PHOTO_MODEL : character ? imageModelFor(character) : QIANFAN_IMAGE_MODEL;
+  return generateImage(prompt, 'photos', model, billing);
 }
 
 /* ────────────────────────────── 立绘（D-019） ────────────────────────────── */

@@ -45,7 +45,7 @@ const row = (over: Partial<WalletRow> = {}): WalletRow => ({
 describe('钱包视图', () => {
   it('今天免费的还剩 = 100 − 用掉的；语音额度按档位；数字串也认（PostgREST 的 numeric）', () => {
     const v = walletView(row({ plan: 'pro', free_used_mb: '30.5' as unknown as number, voice_used_sec: 600, balance_mb: 6000 }), false);
-    expect(v).toEqual({ plan: 'pro', balance: 6000, freeLeft: 69.5, voiceDailyLeft: 300, packSec: 0, callBonusSec: 300, live: false });
+    expect(v).toEqual({ plan: 'pro', balance: 6000, freeLeft: 69.5, voiceDailyLeft: 0, packSec: 0, callBonusSec: 300, live: false });
     expect(walletView(row({ free_used_mb: 140 }), true).freeLeft).toBe(0);
   });
 });
@@ -91,9 +91,9 @@ describe('生成前的闸门（服务器照它拦）', () => {
     expect(gate(row({ house_images: HOUSE_DAILY_IMAGES.free }), 'image', 'house')).toBe('house');
     // TA 主动发图按档位（D-219）：Free 1 / Pro 4 / Max 8
     expect(gate(row({ plan: 'pro', house_images: 1 }), 'image', 'house')).toBeNull();
-    expect(gate(row({ plan: 'pro', house_images: 4 }), 'image', 'house')).toBe('house');
-    expect(gate(row({ plan: 'max', house_images: 7 }), 'image', 'house')).toBeNull();
-    expect(gate(row({ plan: 'max', house_images: 8 }), 'image', 'house')).toBe('house');
+    expect(gate(row({ plan: 'pro', house_images: 2 }), 'image', 'house')).toBe('house');
+    expect(gate(row({ plan: 'max', house_images: 2 }), 'image', 'house')).toBeNull();
+    expect(gate(row({ plan: 'max', house_images: 3 }), 'image', 'house')).toBe('house');
     expect(gate(row({ house_tts_sec: HOUSE_DAILY_TTS_SEC }), 'tts', 'house')).toBe('house');
     expect(gate(row({ house_ktok: HOUSE_DAILY_KTOK }), 'asr', 'house')).toBeNull();
   });
@@ -122,7 +122,7 @@ describe('换算：客户端与服务端同一个 mbFor', () => {
   });
 
   it('传给 SQL 的数值', () => {
-    expect(sqlEconomy()).toMatchObject({ daily_free_mb: 100, pro_monthly_mb: 6000, new_user_call_sec: 300, voice_daily_sec: { free: 0, pro: 900, max: 3600 } });
+    expect(sqlEconomy()).toMatchObject({ daily_free_mb: 100, pro_monthly_mb: 5000, new_user_call_sec: 300, voice_daily_sec: { free: 0, pro: 600, max: 2400 } });
   });
 });
 
@@ -132,7 +132,7 @@ describe('服务器钱包 → 本机显示缓存', () => {
     const w = fromServerWallet(v, NOW);
     expect(w.plan).toBe('pro');
     expect(w.traffic).toEqual({ balance: 120, freeDay: trafficDayKey(NOW), freeUsed: 40 });
-    expect(voiceLeft(w.voice, 'pro', 'message', NOW)).toBe(600 + 600);
-    expect(voiceLeft(w.voice, 'pro', 'call', NOW)).toBe(600 + 600 + 120);
+    expect(voiceLeft(w.voice, 'pro', 'message', NOW)).toBe(300 + 600);
+    expect(voiceLeft(w.voice, 'pro', 'call', NOW)).toBe(300 + 600 + 120);
   });
 });

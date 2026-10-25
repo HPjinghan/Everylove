@@ -14,7 +14,7 @@ export type MeterKind = 'chat' | 'image' | 'vision' | 'asr' | 'tts';
 /** 每天免费多少 MB（不累积，按她所在时区的自然日） */
 export const DAILY_FREE_MB = 100;
 /** 订阅每月发多少 MB；Max 不限（不扣也不发） */
-export const PLAN_MONTHLY_MB: Record<Plan, number> = { free: 0, pro: 6000, max: Infinity };
+export const PLAN_MONTHLY_MB: Record<Plan, number> = { free: 0, pro: 5000, max: Infinity };
 export const PLAN_GRANT_PERIOD_DAYS = 30;
 /** 聊天每千 token 当量折几 MB（D-205：全部文字调用都是 Claude Haiku 5.5；当量见 costTokens） */
 export const CHAT_MB_PER_KTOK = 1;
@@ -53,7 +53,7 @@ export const TRAFFIC_PACKS: { id: string; mb: number }[] = [
 /* ── 语音时长（秒；TA 的语音 + 电话，D-210）── */
 
 /** 订阅每天给几分钟（不累积） */
-export const PLAN_VOICE_DAILY_MIN: Record<Plan, number> = { free: 0, pro: 15, max: 60 };
+export const PLAN_VOICE_DAILY_MIN: Record<Plan, number> = { free: 0, pro: 10, max: 40 };
 /** 新用户送几分钟通话（只能打电话，不过期） */
 export const NEW_USER_CALL_MIN = 5;
 /** 语音分钟包（订阅用户才能买，不过期；价格待 #30） */
@@ -67,24 +67,24 @@ export const VOICE_PACKS: { id: string; min: number }[] = [
 
 /** 后台聊天每天封顶几千 token 当量（D-233 按成本折后约 $0.2 / 天） */
 export const HOUSE_DAILY_KTOK = 2000;
-/** TA 主动发图每天几张（D-219：按订阅档，后台成本里最大的一块） */
-export const HOUSE_DAILY_IMAGES: Record<Plan, number> = { free: 1, pro: 4, max: 8 };
+/** TA 主动发图每天几张（D-219：按订阅档，后台成本里最大的一块；D-235 起走蒸汽机） */
+export const HOUSE_DAILY_IMAGES: Record<Plan, number> = { free: 1, pro: 2, max: 3 };
 /** TA 自己发起的语音（主动消息里的语音、音色试听）每天封顶几秒（D-217） */
 export const HOUSE_DAILY_TTS_SEC = 600;
 
 /*
  * ── Max 的合理使用（D-219 → D-220）：「不限」过了一道看不见的线以后降速，不拦——
  * 聊天：当天她发起的过 3000 千 token 两条至少隔 15 秒、过 6000 隔 60 秒（服务器先等够再生成，她只觉得 TA 回得慢）；
- * 生图：第 31 张起每 5 分钟一张（要等的不超过 45 秒就并进显影里，再久让她过会儿再拍），第 61 张起当天停（一张是真钱）。
+ * 生图：第 11 张起每 5 分钟一张（要等的不超过 45 秒就并进显影里，再久让她过会儿再拍），第 16 张起当天停（一张是真钱，D-235）。
  */
 
 export const MAX_SLOW_LANES: { ktok: number; gapSec: number }[] = [
   { ktok: 3000, gapSec: 15 },
   { ktok: 6000, gapSec: 60 },
 ];
-export const MAX_SLOW_IMAGES = 30;
+export const MAX_SLOW_IMAGES = 10;
 export const MAX_IMAGE_GAP_SEC = 300;
-export const MAX_DAILY_IMAGES = 60;
+export const MAX_DAILY_IMAGES = 15;
 /** 降速时服务器最多替她等几秒（聊天受客户端 90 秒超时管、生图还要留出生成的时间；Edge Function 一次最长约 150 秒） */
 export const SLOW_MAX_WAIT_SEC: Record<'chat' | 'image', number> = { chat: 65, image: 45 };
 
