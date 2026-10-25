@@ -397,7 +397,11 @@ export async function completeText(
  * 角色回一轮：暗面路由 → 装配系统 prompt → 供应商 → 拆气泡（条数与是否剥舞台提示由会话模式决定）→ 剥暗号。
  * 调用失败或没有取路时**抛错**，界面在会话里露出原因（D-069）。
  */
-export async function generateReply(ctx: EngineContext, providerId?: string, opts: { background?: boolean; billing?: Billing } = {}): Promise<EngineReply> {
+export async function generateReply(
+  ctx: EngineContext,
+  providerId?: string,
+  opts: { background?: boolean; billing?: Billing; onText?: (soFar: string) => void } = {}
+): Promise<EngineReply> {
   const dark = darkSideCheck(ctx.userText);
   if (dark) return dark;
 
@@ -416,6 +420,7 @@ export async function generateReply(ctx: EngineContext, providerId?: string, opt
       // 账单归属（D-210）：TA 自己发起的（外卖送到、爽约后说一句）平台出，通话含在分钟里
       ...(opts.billing ? { billing: opts.billing } : {}),
       ...(policy?.realtime ? { realtime: true } : {}),
+      ...(opts.onText ? { onText: opts.onText } : {}),
     },
     providerId
   );

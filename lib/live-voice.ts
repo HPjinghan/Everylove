@@ -178,8 +178,21 @@ export function createEar(lang: Lang, hints: string[], on: EarEvents): LiveEar {
 
 export type SayResult = 'done' | 'stopped' | 'failed';
 
+/** 一段话：句子一句一句推进来（模型边出字边推），每句一进来就开始合成，按顺序接着播 */
+export interface Utterance {
+  push(sentence: string): void;
+  /** 不会再有新句子了 */
+  end(): void;
+  /** 放完 / 被打断 / 一点声音都没出来时给 */
+  result: Promise<SayResult>;
+  /** 已经推进来过句子 */
+  readonly pushed: boolean;
+}
+
 export interface LiveMouth {
-  /** 说一句：边合成边播，放完 / 被打断 / 失败时返回 */
+  /** 开始一段话（会先停掉上一段） */
+  begin(): Utterance;
+  /** 说一整句：begin + push + end */
   say(text: string): Promise<SayResult>;
   /** 打断：掐掉合成、停播 */
   stop(): void;
@@ -216,7 +229,7 @@ export function pcm16ToFloat(bytes: Uint8Array, carry: number[]): Float32Array {
 export function createMouth(character: Character, billing: Billing): LiveMouth {
   const api = audioApi();
   let ctx: AudioContext | null = null;
-  let current: { abort: AbortController; src: AudioBufferQueueSourceNode | null; finish: (r: SayResult) => void } | null = null;
+  let current: { abort: AbortController; src: AudioBufferQueueSourceNode; settle: (r: SayResult) => void } | null = null;
 
   const context = (): AudioContext => {
     ctx ??= new api.AudioContext({ sampleRate: RATE });
@@ -229,108 +242,138 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
     current = null;
     c.abort.abort();
     try {
-      c.src?.stop();
+      c.src.stop();
     } catch {}
-    c.finish('stopped');
+    c.src.onBufferEnded = null;
+    c.settle('stopped');
+  };
+
+  const begin = (): Utterance => {
+    stopCurrent();
+    const ac = context();
+    void ac.resume().catch(() => {});
+    const abort = new AbortController();
+    const src = ac.createBufferQueueSource();
+    src.connect(ac.destination);
+    let settled = false;
+    let resolveResult: (r: SayResult) => void = () => {};
+    const result = new Promise<SayResult>((resolve) => (resolveResult = resolve));
+    const me = {
+      abort,
+      src,
+      settle: (r: SayResult) => {
+        if (settled) return;
+        settled = true;
+        if (current === me) current = null;
+        src.onBufferEnded = null;
+        resolveResult(r);
+      },
+    };
+    current = me;
+    const alive = () => current === me;
+
+    // 每句一段：合成回来的块先攒在段里，按顺序灌进同一个播放队列
+    const segments: { chunks: Float32Array[]; done: boolean }[] = [];
+    let cursor = 0;
+    let queued = 0;
+    let queuedSamples = 0;
+    let started = false;
+    let ended = false;
+    let anyAudio = false;
+
+    const finishIfDone = () => {
+      if (ended && cursor >= segments.length && queued <= 0) me.settle(anyAudio ? 'done' : 'failed');
+    };
+    src.onBufferEnded = () => {
+      queued--;
+      finishIfDone();
+    };
+    const enqueue = (chunks: Float32Array[]) => {
+      const len = chunks.reduce((n, c) => n + c.length, 0);
+      if (!len) return;
+      const data = new Float32Array(len);
+      let off = 0;
+      for (const c of chunks) {
+        data.set(c, off);
+        off += c.length;
+      }
+      const buf = ac.createBuffer(1, len, RATE);
+      buf.copyToChannel(data, 0);
+      src.enqueueBuffer(buf);
+      queued++;
+      queuedSamples += len;
+      anyAudio = true;
+    };
+    const pump = () => {
+      if (!alive()) return;
+      while (cursor < segments.length) {
+        const seg = segments[cursor];
+        const len = seg.chunks.reduce((n, c) => n + c.length, 0);
+        if (len >= RATE * CHUNK_SEC || (seg.done && len)) {
+          enqueue(seg.chunks);
+          seg.chunks = [];
+        }
+        if (!seg.done) break;
+        cursor++;
+      }
+      // 攒够一点再开播；整段都到了就直接播
+      if (!started && (queuedSamples >= RATE * PREROLL_SEC || (ended && cursor >= segments.length && queuedSamples > 0))) {
+        started = true;
+        src.start();
+      }
+      finishIfDone();
+    };
+
+    return {
+      get pushed() {
+        return segments.length > 0;
+      },
+      result,
+      push(sentence) {
+        const tex = sentence.trim();
+        if (!alive() || ended || !tex) return;
+        const seg = { chunks: [] as Float32Array[], done: false };
+        segments.push(seg);
+        if (generationBlocked('tts', billing)) {
+          seg.done = true;
+          pump();
+          return;
+        }
+        void (async () => {
+          try {
+            const reader = await pcmReader(tex, voiceFor(character, 'fish'), billing, abort.signal);
+            const carry: number[] = [];
+            for (;;) {
+              const { done, value } = await reader.read();
+              if (done || !alive()) break;
+              if (value?.length) {
+                seg.chunks.push(pcm16ToFloat(value, carry));
+                pump();
+              }
+            }
+            reportUsage({ kind: 'tts', provider: fishConfigured() ? 'fish' : 'proxy', chars: tex.length, seconds: estimateSpeechSeconds(tex), billing, estimated: true, metered: !fishConfigured() });
+          } catch (e) {
+            if (alive()) console.warn('[live-voice] 流式合成失败：', e);
+          }
+          seg.done = true;
+          pump();
+        })();
+      },
+      end() {
+        if (ended) return;
+        ended = true;
+        pump();
+      },
+    };
   };
 
   return {
-    async say(text) {
-      stopCurrent();
-      const tex = text.trim();
-      if (!tex || generationBlocked('tts', billing)) return 'failed';
-      const ac = context();
-      await ac.resume().catch(() => {});
-      const abort = new AbortController();
-      let settle: (r: SayResult) => void = () => {};
-      const finished = new Promise<SayResult>((resolve) => {
-        let done = false;
-        settle = (r) => {
-          if (done) return;
-          done = true;
-          resolve(r);
-        };
-      });
-      const me = { abort, src: null as AudioBufferQueueSourceNode | null, finish: settle };
-      current = me;
-
-      const src = ac.createBufferQueueSource();
-      src.connect(ac.destination);
-      me.src = src;
-      let queued = 0;
-      let pending: Float32Array[] = [];
-      let pendingLen = 0;
-      let started = false;
-      let streamDone = false;
-      src.onBufferEnded = () => {
-        queued--;
-        if (streamDone && queued <= 0) settle('done');
-      };
-      const flush = () => {
-        if (!pendingLen) return;
-        const buf = ac.createBuffer(1, pendingLen, RATE);
-        const data = new Float32Array(pendingLen);
-        let off = 0;
-        for (const p of pending) {
-          data.set(p, off);
-          off += p.length;
-        }
-        buf.copyToChannel(data, 0);
-        src.enqueueBuffer(buf);
-        queued++;
-        pending = [];
-        pendingLen = 0;
-      };
-      const begin = () => {
-        if (started || current !== me) return;
-        started = true;
-        src.start();
-      };
-
-      void (async () => {
-        let totalSamples = 0;
-        try {
-          const reader = await pcmReader(tex, voiceFor(character, 'fish'), billing, abort.signal);
-          const carry: number[] = [];
-          for (;;) {
-            const { done, value } = await reader.read();
-            if (done || current !== me) break;
-            if (!value?.length) continue;
-            const f = pcm16ToFloat(value, carry);
-            pending.push(f);
-            pendingLen += f.length;
-            totalSamples += f.length;
-            if (pendingLen >= RATE * CHUNK_SEC) flush();
-            if (!started && totalSamples >= RATE * PREROLL_SEC) begin();
-          }
-          if (current !== me) return;
-          flush();
-          streamDone = true;
-          reportUsage({ kind: 'tts', provider: fishConfigured() ? 'fish' : 'proxy', chars: tex.length, seconds: estimateSpeechSeconds(tex), billing, estimated: true, metered: !fishConfigured() });
-          if (!totalSamples) {
-            current = null;
-            settle('failed');
-            return;
-          }
-          begin();
-          if (queued <= 0) settle('done');
-        } catch (e) {
-          if (current !== me) return;
-          console.warn('[live-voice] 流式合成失败：', e);
-          current = null;
-          // 已经放出声的就让它放完；一点都没有才算失败
-          if (started) {
-            flush();
-            streamDone = true;
-            if (queued <= 0) settle('done');
-          } else settle('failed');
-        }
-      })();
-
-      const r = await finished;
-      if (current === me) current = null;
-      src.onBufferEnded = null;
-      return r;
+    begin,
+    say(text) {
+      const u = begin();
+      u.push(text);
+      u.end();
+      return u.result;
     },
     stop: stopCurrent,
     dispose() {

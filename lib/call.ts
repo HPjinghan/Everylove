@@ -63,6 +63,35 @@ export function isBargeIn(heard: string, said: string, lang: string): boolean {
   return novel >= need && novel * 2 >= total;
 }
 
+/**
+ * 边出字边合成（D-232）：模型吐出来的原文 → 能念的字（暗号 [..] 与（..）描写去掉；还没闭合的括号先扣着不念）。
+ * 原文只会往后长，所以结果也只会往后长，已经念过的前缀不会变。
+ */
+export function speakableText(raw: string): string {
+  let s = raw.replace(/\[[^\]]*\]/g, '').replace(/（[^）]*）|\([^)]*\)/g, '');
+  const open = s.search(/[[（(]/);
+  if (open >= 0) s = s.slice(0, open);
+  return s;
+}
+
+const SENTENCE_END = /[。！？!?…~～\n]+|[.](?=\s)/g;
+
+/** 从 from 往后取出已经说完整的句子（太短的并进下一句）；返回句子与新的游标 */
+export function takeSentences(text: string, from: number): { sentences: string[]; next: number } {
+  const sentences: string[] = [];
+  let start = from;
+  SENTENCE_END.lastIndex = from;
+  for (let m = SENTENCE_END.exec(text); m; m = SENTENCE_END.exec(text)) {
+    const end = m.index + m[0].length;
+    const piece = text.slice(start, end).trim();
+    if (piece.replace(/[\s\p{P}]/gu, '').length >= 2) {
+      sentences.push(piece);
+      start = end;
+    }
+  }
+  return { sentences, next: start };
+}
+
 /** 她这句说完了没有 */
 export function utteranceDone(o: { text: string; lastTextAt: number; lastLoudAt: number; now: number }): boolean {
   return Boolean(o.text.trim()) && o.now - Math.max(o.lastTextAt, o.lastLoudAt) >= LIVE.endMs;
@@ -85,9 +114,9 @@ export async function callPickupLine(bondId: string): Promise<string> {
   return reply.texts.join(' ').trim();
 }
 
-/** 她说了一句（已转写）：入会话 + XP → TA 回一句（入会话）；返回 TA 的话 */
-export async function callReply(bondId: string, herText: string): Promise<string> {
-  const { reply, error } = await sendText(callScope(bondId), herText, { ui: { pace: 'none' } });
+/** 她说了一句（已转写）：入会话 + XP → TA 回一句（入会话）；返回 TA 的话。onPartial = 边出字边给（实时通道拿去分句合成） */
+export async function callReply(bondId: string, herText: string, onPartial?: (soFar: string) => void): Promise<string> {
+  const { reply, error } = await sendText(callScope(bondId), herText, { ui: { pace: 'none', ...(onPartial ? { partial: onPartial } : {}) } });
   if (!reply) throw error ?? new Error('call: no reply');
   return reply.texts.join(' ').trim();
 }

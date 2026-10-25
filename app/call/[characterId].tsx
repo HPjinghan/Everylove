@@ -29,11 +29,11 @@ import { alertNoVoice } from '@/components/voice-gate';
 import { MingCute } from '@/components/mingcute';
 import { Shape, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
-import { VAD, callPickupLine, callReply, formatCallDuration, isBargeIn, LIVE, logCall, utteranceDone } from '@/lib/call';
+import { VAD, callPickupLine, callReply, formatCallDuration, isBargeIn, LIVE, logCall, speakableText, takeSentences, utteranceDone } from '@/lib/call';
 import { callSecondsLeft, chargeCall, endCallMeter, startCallMeter } from '@/features/call-meter';
 import { describeAiError } from '@/lib/chat';
 import { getLang, t } from '@/lib/i18n';
-import { createEar, createMouth, liveVoiceReady, requestLivePermissions, setLiveRoute, type LiveEar, type LiveMouth } from '@/lib/live-voice';
+import { createEar, createMouth, liveVoiceReady, requestLivePermissions, setLiveRoute, type LiveEar, type LiveMouth, type SayResult, type Utterance } from '@/lib/live-voice';
 import { ASR_RECORDING, transcribeVoice } from '@/lib/media';
 import { synthesizeVoice } from '@/lib/tts';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -87,6 +87,8 @@ export default function CallScreen() {
   const lastTextAt = useRef(0);
   /** TA 正在说的这句（滤回声用） */
   const saying = useRef('');
+  /** 正在说的那段；被打断后旧回合的字不再往里送 */
+  const activeUtt = useRef<Utterance | null>(null);
   const phaseRef = useRef<Phase>('dialing');
   const setPhaseSafe = (p: Phase) => {
     phaseRef.current = p;
@@ -164,33 +166,51 @@ export default function CallScreen() {
     await l.ear.start(speakerRef.current);
   }, []);
 
-  /* ── 实时：TA 说一句（边合成边播），同时听着她插不插话 ── */
-  const speakLive = useCallback(
-    async (text: string) => {
-      const l = live.current;
-      if (!alive.current || !l) return;
-      setHimLine(text);
-      saying.current = text;
-      heardText.current = '';
-      setPhaseSafe('speaking');
-      await l.ear.stop();
-      await l.ear.start(speakerRef.current);
-      const r = await l.mouth.say(text);
+  /* ── 实时：TA 开口了——字幕跟上，同时听着她插不插话 ── */
+  const enterSpeaking = useCallback(async (text: string) => {
+    const l = live.current;
+    setHimLine(text);
+    saying.current = text;
+    if (!l || phaseRef.current === 'speaking') return;
+    heardText.current = '';
+    setPhaseSafe('speaking');
+    await l.ear.stop();
+    await l.ear.start(speakerRef.current);
+  }, []);
+
+  /* ── 实时：TA 这段说完了（被打断的由 stopTA 接着听，这里不管） ── */
+  const afterSpeech = useCallback(
+    async (r: SayResult) => {
       saying.current = '';
-      if (!alive.current) return;
+      if (!alive.current || r === 'stopped') return;
       if (r === 'failed') {
         setNote(t('语音没接通，TA 的话在字幕里'));
         await new Promise((res) => setTimeout(res, 2500));
+        if (!alive.current) return;
       }
-      if (!alive.current) return;
-      if (outOfTime.current && r !== 'stopped') hangUp();
+      if (outOfTime.current) hangUp();
       else void listenLive();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [listenLive]
   );
 
-  /* ── 实时：她说完了 → TA 回 ── */
+  /* ── 实时：TA 说一整句（接起电话那句） ── */
+  const speakLive = useCallback(
+    async (text: string) => {
+      const l = live.current;
+      if (!alive.current || !l) return;
+      const u = l.mouth.begin();
+      activeUtt.current = u;
+      await enterSpeaking(text);
+      u.push(text);
+      u.end();
+      await afterSpeech(await u.result);
+    },
+    [enterSpeaking, afterSpeech]
+  );
+
+  /* ── 实时：她说完了 → TA 边想边说（模型每吐出一整句就送去合成，D-232） ── */
   const endTurnLive = useCallback(async () => {
     const l = live.current;
     const text = heardText.current.trim();
@@ -198,17 +218,50 @@ export default function CallScreen() {
     turnBusy.current = true;
     setPhaseSafe('thinking');
     setHerLine(text);
+    const u = l.mouth.begin();
+    activeUtt.current = u;
+    let raw = '';
+    let spoken = 0;
+    const onPartial = (soFar: string) => {
+      if (activeUtt.current !== u) return;
+      raw = soFar;
+      const say = speakableText(soFar);
+      const { sentences, next } = takeSentences(say, spoken);
+      spoken = next;
+      sentences.forEach((x) => u.push(x));
+      if (u.pushed) void enterSpeaking(say.trim());
+    };
     try {
       await l.ear.stop();
-      const reply = await callReply(bond.id, text);
+      const reply = await callReply(bond.id, text, onPartial);
+      if (activeUtt.current !== u) return;
       turnBusy.current = false;
-      await speakLive(reply);
+      const tail = speakableText(raw).slice(spoken).trim();
+      if (tail) u.push(tail);
+      if (!u.pushed) u.push(reply);
+      u.end();
+      await enterSpeaking(reply);
+      await afterSpeech(await u.result);
     } catch (e) {
+      if (activeUtt.current !== u) return;
       turnBusy.current = false;
+      activeUtt.current = null;
+      l.mouth.stop();
       setNote(__DEV__ ? `${t('TA 这条没回上')} · ${describeAiError(e)}` : t('TA 这条没回上'));
       if (alive.current) void listenLive();
     }
-  }, [bond, listenLive, speakLive]);
+  }, [bond, listenLive, enterSpeaking, afterSpeech]);
+
+  /** 实时：打断 TA（她插话 / 点头像）——掐掉这段，当场接着听 */
+  const stopTA = useCallback(() => {
+    const l = live.current;
+    if (!l || (phaseRef.current !== 'speaking' && phaseRef.current !== 'thinking')) return;
+    activeUtt.current = null;
+    turnBusy.current = false;
+    saying.current = '';
+    l.mouth.stop();
+    void listenLive();
+  }, [listenLive]);
 
   /* ── 她说完了：停录 → 识别 → TA 回 → 播放 ── */
   const endTurn = useCallback(async () => {
@@ -360,7 +413,7 @@ export default function CallScreen() {
       text(tr) {
         if (phaseRef.current === 'speaking') {
           // 她插话了：TA 停下，这一段重新听
-          if (isBargeIn(tr, saying.current, getLang())) mouth.stop();
+          if (isBargeIn(tr, saying.current, getLang())) stopTA();
           return;
         }
         if (phaseRef.current !== 'listening' || tr === heardText.current) return;
@@ -405,7 +458,7 @@ export default function CallScreen() {
 
   /** 点 TA 的头像 = 打断 TA（实时通道） */
   const interrupt = () => {
-    if (liveOn.current && phaseRef.current === 'speaking') live.current?.mouth.stop();
+    if (liveOn.current && phaseRef.current === 'speaking') stopTA();
   };
 
   function hangUp() {

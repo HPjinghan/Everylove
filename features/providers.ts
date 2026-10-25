@@ -6,7 +6,9 @@
 
 import { CONFIG } from '@/core/config';
 import { billingOf, chatProviders, type ChatProvider, type ChatRequest, type ChatTurn } from '@/core/providers';
-import { postJsonWithTimeout, proxyJson, TIMEOUTS } from '@/lib/proxy';
+import { fetch as streamingFetch } from 'expo/fetch';
+
+import { postJsonWithTimeout, proxyJson, proxyStream, TIMEOUTS } from '@/lib/proxy';
 
 type AnthropicJson = { content: { type: string; text?: string }[]; stop_reason?: string; usage?: { input_tokens?: number; output_tokens?: number } };
 type OpenAIJson = { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
@@ -40,6 +42,83 @@ function cachedTurns(req: ChatRequest): (ChatTurn | { role: ChatTurn['role']; co
   return [...req.turns.slice(0, -1), { role: last.role, content: [{ type: 'text', text: last.content, cache_control: EPHEMERAL }] }];
 }
 
+type SseEvent = {
+  type?: string;
+  message?: { usage?: { input_tokens?: number } };
+  delta?: { type?: string; text?: string; stop_reason?: string };
+  usage?: { output_tokens?: number };
+  error?: { message?: string };
+};
+
+/** 从 SSE 缓冲里取出完整的事件（data 行的 JSON），返回剩下没收完的部分 */
+export function takeSseEvents(buf: string): { events: SseEvent[]; rest: string } {
+  const events: SseEvent[] = [];
+  const parts = buf.replace(/\r\n/g, '\n').split('\n\n');
+  const rest = parts.pop() ?? '';
+  for (const part of parts) {
+    const data = part
+      .split('\n')
+      .filter((l) => l.startsWith('data:'))
+      .map((l) => l.slice(5).trim())
+      .join('');
+    if (!data) continue;
+    try {
+      events.push(JSON.parse(data) as SseEvent);
+    } catch {
+      /* 坏的一条跳过 */
+    }
+  }
+  return { events, rest };
+}
+
+/** 流式（D-232，通话）：边到边把累计的正文交给 onText，最后给整段与 usage；拒答 / 出错抛错 */
+async function streamAnthropic(body: Record<string, unknown>, route: 'direct' | 'proxy', req: ChatRequest): Promise<{ text: string; usage: { inputTokens: number; outputTokens: number } }> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), TIMEOUTS.chat);
+  try {
+    let reader: ReadableStreamDefaultReader<Uint8Array>;
+    if (route === 'direct') {
+      const res = await streamingFetch(LLMGATEWAY_MESSAGES, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${CONFIG.llmgatewayKey}`, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ ...body, stream: true }),
+        signal: abort.signal,
+      });
+      if (!res.ok || !res.body) throw new Error(`LLM Gateway ${res.status}`);
+      reader = res.body.getReader();
+    } else {
+      reader = (await proxyStream('anthropic.messages', { ...body, stream: true }, { billing: billingOf(req), signal: abort.signal })).reader;
+    }
+    const decoder = new TextDecoder();
+    let buf = '';
+    let text = '';
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let stop = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const taken = takeSseEvents(buf);
+      buf = taken.rest;
+      for (const e of taken.events) {
+        if (e.type === 'message_start') inputTokens = e.message?.usage?.input_tokens ?? 0;
+        else if (e.type === 'content_block_delta' && e.delta?.type === 'text_delta' && e.delta.text) {
+          text += e.delta.text;
+          req.onText?.(text);
+        } else if (e.type === 'message_delta') {
+          outputTokens = e.usage?.output_tokens ?? outputTokens;
+          stop = e.delta?.stop_reason ?? stop;
+        } else if (e.type === 'error') throw new Error(`Anthropic stream: ${e.error?.message ?? 'error'}`);
+      }
+    }
+    if (stop === 'refusal') throw new Error('Anthropic refusal');
+    return { text: text.trim(), usage: { inputTokens, outputTokens } };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const anthropic: ChatProvider = {
   id: 'anthropic',
   // 全部文字调用都走 Claude Haiku 5.5（D-205）：后台任务、没配 key 时走代理的默认也是它
@@ -58,6 +137,8 @@ const anthropic: ChatProvider = {
       ...(thinks && req.kind === 'reply' ? { output_config: { effort: 'low' } } : {}),
       ...(req.realtime && THINKING_ON_BY_DEFAULT.test(CONFIG.anthropicModel) ? { thinking: { type: 'disabled' } } : {}),
     };
+    // 通话要边出字边合成（D-232）
+    if (req.onText) return streamAnthropic(body, route, req);
     let data: AnthropicJson;
     if (route === 'direct') {
       const res = await postJsonWithTimeout(

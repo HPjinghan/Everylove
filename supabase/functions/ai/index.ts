@@ -73,6 +73,9 @@ const MESSAGES_MAX = 80;
 
 const JSON_HEADERS = { 'content-type': 'application/json' };
 
+/** Supabase Edge 的后台任务：响应发出去之后接着跑（记账） */
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
+
 function json(body: unknown, status = 200, wallet?: WalletView | null): Response {
   return new Response(JSON.stringify(body), { status, headers: wallet ? { ...JSON_HEADERS, 'x-wallet': JSON.stringify(wallet) } : JSON_HEADERS });
 }
@@ -115,6 +118,8 @@ function anthropicBody(b: Rec): Rec {
   if (typeof b.system === 'string' || Array.isArray(b.system)) out.system = b.system;
   if (isRec(b.output_config)) out.output_config = { effort: oneOf(b.output_config.effort, ['low', 'medium', 'high'], 'effort') };
   if (isRec(b.thinking)) out.thinking = b.thinking;
+  // 流式（D-232，通话边出字边合成）：SSE 原样流回
+  if (b.stream === true) out.stream = true;
   if (typeof b.temperature === 'number') out.temperature = Math.max(0, Math.min(1, b.temperature));
   return out;
 }
@@ -199,6 +204,46 @@ function audioUpload(b: Rec): { bytes: Uint8Array<ArrayBuffer>; mime: string; fi
 }
 
 /* ── 上游响应：成功原样透传；失败只带一句话（D-166：不透传上游原文）── */
+
+/** SSE 流（D-232）：原样流回；另一路边读边记 usage，流完再记账（不让她多等一趟库） */
+function relaySse(r: Response, meter?: Meter): Promise<Response> | Response {
+  if (!r.ok || !r.body) return relayJson(r, meter);
+  const [out, tap] = r.body.tee();
+  if (meter) {
+    const charge = (async () => {
+      const reader = tap.pipeThrough(new TextDecoderStream()).getReader();
+      let buf = '';
+      let input = 0;
+      let output = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += value;
+        const parts = buf.replace(/\r\n/g, '\n').split('\n\n');
+        buf = parts.pop() ?? '';
+        for (const part of parts) {
+          const data = part
+            .split('\n')
+            .filter((l) => l.startsWith('data:'))
+            .map((l) => l.slice(5).trim())
+            .join('');
+          try {
+            const e = JSON.parse(data);
+            if (e.type === 'message_start') input = Number(e.message?.usage?.input_tokens ?? 0);
+            if (e.type === 'message_delta') output = Number(e.usage?.output_tokens ?? output);
+          } catch {
+            /* 不是 JSON 的行跳过 */
+          }
+        }
+      }
+      await chargeAfter(meter, { usage: { input_tokens: input, output_tokens: output } });
+    })().catch((e) => console.error('[ai] 流式记账失败：', e));
+    if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(charge);
+  } else {
+    void tap.cancel();
+  }
+  return new Response(out, { status: 200, headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' } });
+}
 
 async function relayJson(r: Response, meter?: Meter): Promise<Response> {
   const text = await r.text();
@@ -479,7 +524,38 @@ async function caller(req: Request): Promise<{ id: string; is_anonymous: boolean
   return user ? { id: user.id, is_anonymous: Boolean(user.is_anonymous) } : null;
 }
 
-declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
+/** 发给模型网关的请求（普通 / 流式同一个） */
+function gatewayFetch(body: Rec, signal?: AbortSignal): Promise<Response> {
+  return fetch('https://api.llmgateway.io/v1/messages', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${LLMGATEWAY_KEY}`, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify(anthropicBody(body)),
+    signal,
+  });
+}
+
+/** 发给 Fish 的流式合成请求 */
+function fishStreamFetch(body: Rec, signal?: AbortSignal): Promise<Response> {
+  return fetch('https://api.fish.audio/v1/tts', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${Deno.env.get('FISH_API_KEY') ?? ''}`, model: Deno.env.get('FISH_MODEL') || 's2.1-pro' },
+    body: JSON.stringify(fishTtsStreamBody(body)),
+    signal,
+  });
+}
+
+/**
+ * 实时通话要快（D-232）：流式的模型请求与流式合成，上游请求和次数 / 记账闸门同时发出去（离库远的时候能省半秒到一秒），
+ * 闸门不放行就当场掐掉上游；被拦的极少，最多白花一点上游。参数不合规照样在这里就抛 400。
+ */
+function earlyUpstream(service: string, body: Rec): { response: Promise<Response>; abort: AbortController } | null {
+  const realtime = (service === 'anthropic.messages' && body.stream === true && LLMGATEWAY_KEY) || (service === 'fish.tts.stream' && Deno.env.get('FISH_API_KEY'));
+  if (!realtime) return null;
+  const abort = new AbortController();
+  const response = service === 'fish.tts.stream' ? fishStreamFetch(body, abort.signal) : gatewayFetch(body, abort.signal);
+  response.catch(() => {});
+  return { response, abort };
+}
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
@@ -499,18 +575,24 @@ Deno.serve(async (req) => {
     if (service.startsWith('wallet.')) return await walletService(user.id, tz, service, body);
 
     // 次数与记账闸门（D-217）一起问（D-232：并行省一趟）；不够花回 402，放行的带着计量上下文去调上游
-    const [limit, gated] = await Promise.all([underLimit(user.id, user.is_anonymous), gate(user.id, tz, service, body, parsed.billing)]);
+    const early = earlyUpstream(service, body);
+    let limit: Awaited<ReturnType<typeof underLimit>>;
+    let gated: Awaited<ReturnType<typeof gate>>;
+    try {
+      [limit, gated] = await Promise.all([underLimit(user.id, user.is_anonymous), gate(user.id, tz, service, body, parsed.billing)]);
+    } catch (e) {
+      early?.abort.abort();
+      throw e;
+    }
+    if (!limit.ok || gated instanceof Response) early?.abort.abort();
     if (!limit.ok) return json({ error: 'rate_limited', limit: limit.limit }, 429);
     if (gated instanceof Response) return gated;
     const meter = gated ?? undefined;
 
     if (service === 'anthropic.messages') {
       if (!LLMGATEWAY_KEY) return json({ error: 'llmgateway key not configured' }, 503);
-      const r = await fetch('https://api.llmgateway.io/v1/messages', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${LLMGATEWAY_KEY}`, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify(anthropicBody(body)),
-      });
+      const r = early ? await early.response : await gatewayFetch(body);
+      if (body.stream === true) return relaySse(r, meter);
       return relayJson(r, meter);
     }
 
@@ -555,13 +637,8 @@ Deno.serve(async (req) => {
 
     // 通话的流式合成（D-232）：PCM 边合成边回，记账放到流回之后（不让她多等一趟库）
     if (service === 'fish.tts.stream') {
-      const key = Deno.env.get('FISH_API_KEY') ?? '';
-      if (!key) return json({ error: 'fish not configured' }, 503);
-      const r = await fetch('https://api.fish.audio/v1/tts', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}`, model: Deno.env.get('FISH_MODEL') || 's2.1-pro' },
-        body: JSON.stringify(fishTtsStreamBody(body)),
-      });
+      if (!Deno.env.get('FISH_API_KEY')) return json({ error: 'fish not configured' }, 503);
+      const r = early ? await early.response : await fishStreamFetch(body);
       if (!r.ok || !r.body || (r.headers.get('content-type') ?? '').includes('application/json')) return relayJson(r, meter);
       if (meter) {
         const charge = chargeAfter(meter, null);

@@ -29,6 +29,8 @@ export interface ChatRequest {
   billing?: Billing;
   /** 实时（通话，D-232）：延迟优先，默认开思考的模型这一轮关掉思考 */
   realtime?: boolean;
+  /** 流式出字（D-232）：供应商支持就边到边回调累计的正文；不支持的照常一次给 */
+  onText?: (soFar: string) => void;
 }
 
 /** 一次请求的账算给谁（D-210）：显式写了按写的；后台写的回话与工具调用平台出，回话玩家出 */

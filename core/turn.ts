@@ -28,6 +28,8 @@ export interface TurnUi {
   unread?: boolean;
   /** 模型失败时不弹轻提示（调用方自己兜底，例：外出开场白回落模板） */
   quiet?: boolean;
+  /** TA 的话边出字边给（D-232，实时通话拿去分句合成）：参数是到现在为止的原文，暗号还没剥；落气泡仍等整段 */
+  partial?(soFar: string): void;
 }
 
 /** 模型失败的轻提示停留时长（D-169：只说「没回上」，原因记在她那条消息上；识别 / 看图失败的提示同样时长） */
@@ -202,7 +204,7 @@ async function runOne(
   const startedAt = Date.now();
   let reply: EngineReply;
   try {
-    reply = await generateReply(ctx, undefined, { billing });
+    reply = await generateReply(ctx, undefined, { billing, ...(ui.partial ? { onText: ui.partial } : {}) });
   } catch (e) {
     // 模型调用失败（D-169）：她那条标「没送到」可重发，轻提示只说没回上；原因记在消息上、开发者看 console（不写进会话，D-110）
     ui.typing?.(false);

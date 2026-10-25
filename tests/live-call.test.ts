@@ -3,7 +3,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { isBargeIn, LIVE, novelSpeech, utteranceDone } from '@/lib/call';
+import { isBargeIn, LIVE, novelSpeech, speakableText, takeSentences, utteranceDone } from '@/lib/call';
+import { takeSseEvents } from '@/features/providers';
 
 describe('断句', () => {
   it('有字、字不再变、也没声音满 endMs 才算说完', () => {
@@ -29,5 +30,28 @@ describe('打断', () => {
     const en = 'I just got off work and wanted to call you.';
     expect(isBargeIn('just got off work', en, 'en')).toBe(false);
     expect(isBargeIn('wait hold on a second', en, 'en')).toBe(true);
+  });
+});
+
+describe('边出字边合成', () => {
+  it('暗号与（）描写不念，没闭合的括号先扣着', () => {
+    expect(speakableText('好啊。[好奇 20]今天')).toBe('好啊。今天');
+    expect(speakableText('好啊。[发红')).toBe('好啊。');
+    expect(speakableText('嗯（笑）知道啦')).toBe('嗯知道啦');
+  });
+  it('只取说完整的句子，太短的并进下一句，游标往后走', () => {
+    const a = takeSentences('嗯。我刚下班，正好想你。今天', 0);
+    expect(a.sentences).toEqual(['嗯。我刚下班，正好想你。']);
+    const b = takeSentences('嗯。我刚下班，正好想你。今天怎么样？', a.next);
+    expect(b.sentences).toEqual(['今天怎么样？']);
+    expect(takeSentences('Hi there. How was', 0).sentences).toEqual(['Hi there.']);
+  });
+});
+
+describe('SSE', () => {
+  it('取出完整事件，半截留到下一次', () => {
+    const { events, rest } = takeSseEvents('event: a\ndata: {"type":"message_start"}\n\nevent: b\ndata: {"type":"content_bl');
+    expect(events.map((e) => e.type)).toEqual(['message_start']);
+    expect(rest).toBe('event: b\ndata: {"type":"content_bl');
   });
 });
