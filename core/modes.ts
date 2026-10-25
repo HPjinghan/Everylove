@@ -36,7 +36,7 @@ export interface ConversationMode {
   stripStage: boolean;
   /** 末尾句号留着（D-145 前端去句号的例外：通话的字要送去合成） */
   keepTrailingPeriod?: boolean;
-  /** 这一模式的回合账算给谁（D-210）；不写 = 按回合定。通话 = included（按分钟另算，不再扣流量） */
+  /** 这一模式的回合账算给谁（D-210）；不写 = 按回合定。通话 = included（按接通时长另扣，回话本身不再扣） */
   billing?: Billing;
   /** 实时（通话）：延迟优先，供应商不开思考（D-232） */
   realtime?: boolean;

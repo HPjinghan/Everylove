@@ -21,7 +21,7 @@ const KIND_LABEL: Record<TrafficEntry['kind'], string> = {
   // 回合管线里的非即时回合（让 TA 看手机、转给 TA 等）也是她发起的聊天
   task: '聊天',
   image: '生图',
-  tts: '语音合成',
+  tts: 'TA 的语音',
   asr: '语音识别',
   vision: '看图',
 };

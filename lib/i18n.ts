@@ -969,6 +969,11 @@ const en: Record<string, string> = {
   '1 章': '1 chapter', '{n} 章': '{n} chapters', 'Coin 不够了': 'Not enough Coin', '打赏 {n} Coin？': 'Tip {n} Coin?',
   // D-229：读屏
   '{app}，{n} 条未读': '{app}, {n} unread',
+  // D-236：TA 的声音扣流量
+  '每月 {n} · 能听 TA 的声音': '{n} a month · hear their voice',
+  '每分钟': 'Per minute',
+  '订阅后能听到 TA 的语音、打电话。': 'With a plan, you can hear their voice and call them.',
+  '现在的流量够听约 {n} 分钟。': 'Your data covers about {n} min.',
   // __EN_END__
 };
 
@@ -1905,6 +1910,11 @@ const ja: Record<string, string> = {
   '1 章': '1章', '{n} 章': '{n}章', 'Coin 不够了': 'Coinが足りない', '打赏 {n} Coin？': '{n} Coin を投げ銭する？',
   // D-229：読み上げ
   '{app}，{n} 条未读': '{app}、未読 {n} 件',
+  // D-236：声も通信量から
+  '每月 {n} · 能听 TA 的声音': '毎月 {n} · あの人の声が聞ける',
+  '每分钟': '1 分あたり',
+  '订阅后能听到 TA 的语音、打电话。': 'プランに入ると、相手の声が聞けて、通話もできます。',
+  '现在的流量够听约 {n} 分钟。': 'いまの通信量で約 {n} 分聞けます。',
   // __JA_END__
 };
 
@@ -2835,6 +2845,11 @@ const ko: Record<string, string> = {
   '1 章': '1장', '{n} 章': '{n}장', 'Coin 不够了': 'Coin이 부족해요', '打赏 {n} Coin？': '{n} Coin을 후원할까요?',
   // D-229：스크린 리더
   '{app}，{n} 条未读': '{app}, 읽지 않음 {n}개',
+  // D-236：목소리도 데이터에서
+  '每月 {n} · 能听 TA 的声音': '매월 {n} · 그 사람의 목소리',
+  '每分钟': '1분당',
+  '订阅后能听到 TA 的语音、打电话。': '구독하면 상대의 목소리를 듣고 통화할 수 있어요.',
+  '现在的流量够听约 {n} 分钟。': '지금 데이터로 약 {n}분 들을 수 있어요.',
   // __KO_END__
 };
 

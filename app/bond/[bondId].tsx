@@ -88,7 +88,7 @@ export default function BondScreen() {
 
   // 零钱余额（D-128）：红包面板看它；hooks 要在提前 return 之前
   const walletBalance = useAppStore((s) => s.wallet.balance);
-  // 「TA 发语音」开关看订阅档与语音分钟包（D-210）
+  // 「TA 发语音」开关看订阅档（D-210；老分钟包还有的 Free 也能开）
   const plan = useAppStore((s) => s.plan);
   const voice = useAppStore((s) => s.voice);
   // 查手机的密码第一次需要时生成——effect 里写 store，渲染期只读（D-197）
@@ -190,7 +190,7 @@ export default function BondScreen() {
       )}
     </InfoRow>
   );
-  // TA 发语音（D-210）：每段羁绊一个开关；没动过 = 订阅开、Free 关；Free 没买分钟包的开不了
+  // TA 发语音（D-210）：每段羁绊一个开关；没动过 = 订阅开、Free 关；Free 没有老分钟包的开不了
   infoRows.push(
     <InfoRow key="voice" label={t('TA 发语音')}>
       {voiceAllowed ? (

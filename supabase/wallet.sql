@@ -1,4 +1,4 @@
--- 流量 / 语音时长 / 订阅的服务器账（D-217）。幂等：在 SQL Editor 跑一遍，或经管理 API 执行。
+-- 流量 / 订阅的服务器账（D-217；D-236 起 TA 的声音也扣流量，语音分钟包下线、老的用完为止）。幂等：在 SQL Editor 跑一遍，或经管理 API 执行。
 -- 余额只在这里：客户端对两张表只能读自己的、不能写；所有写都经下面的 security definer 函数，只给 service_role 执行（Edge Function `ai` 调）。
 -- 数值不写死在 SQL 里：每个函数收一个 p_c jsonb（supabase/functions/_shared/economy.ts sqlEconomy()）。
 -- 钱的表不加指向 auth.users 的外键：删号时流水留作凭证（docs/revenuecat.md §3）。
@@ -86,7 +86,7 @@ declare
   w public.wallets;
   today date;
   period interval := make_interval(days => (p_c ->> 'grant_period_days')::int);
-  monthly numeric := (p_c ->> 'pro_monthly_mb')::numeric;
+  monthly numeric;
   n int;
 begin
   insert into public.wallets (user_id, call_bonus_sec) values (p_user, (p_c ->> 'new_user_call_sec')::numeric)
@@ -114,8 +114,9 @@ begin
     w.fair_ktok := 0;
     w.fair_images := 0;
   end if;
-  -- Pro 每 30 天发一笔（最多补 2 笔）；Max 不限不发；Free 不发
-  if w.plan = 'pro' and monthly > 0 then
+  -- Pro / Max 每 30 天发一笔（最多补 2 笔，D-236 起 Max 也发）；Free 不发
+  monthly := coalesce((p_c -> 'plan_monthly_mb' ->> w.plan)::numeric, case when w.plan = 'pro' then (p_c ->> 'pro_monthly_mb')::numeric else 0 end);
+  if w.plan in ('pro', 'max') and monthly > 0 then
     if w.plan_grant_at is null then
       n := 1;
       w.plan_grant_at := now();
@@ -134,16 +135,16 @@ begin
   return w;
 end $$;
 
--- 扣语音秒数（内存里）：先今天的订阅额度，电话再用送的，最后分钟包；扣到 0 为止
+-- 扣 TA 的声音（内存里，D-236）：电话先用送的，再用老的分钟包，剩下的按每分钟 voice_mb_per_min 扣流量（先今天免费的、再余额）；
+-- Free 不拿流量换声音（只有送的通话）。voice_used_sec 只记今天用了多少秒
 create or replace function public._wallet_voice(w public.wallets, p_sec numeric, p_use text, p_c jsonb)
 returns public.wallets language plpgsql immutable as $$
 declare
   rest numeric := greatest(0, p_sec);
   take numeric;
+  mb numeric;
 begin
-  take := least(rest, greatest(0, (p_c -> 'voice_daily_sec' ->> w.plan)::numeric - w.voice_used_sec));
-  w.voice_used_sec := w.voice_used_sec + take;
-  rest := rest - take;
+  w.voice_used_sec := w.voice_used_sec + rest;
   if p_use = 'call' then
     take := least(rest, w.call_bonus_sec);
     w.call_bonus_sec := w.call_bonus_sec - take;
@@ -151,10 +152,17 @@ begin
   end if;
   take := least(rest, w.voice_pack_sec);
   w.voice_pack_sec := w.voice_pack_sec - take;
+  rest := rest - take;
+  if rest > 0 and w.plan <> 'free' then
+    mb := round(rest / 60 * coalesce((p_c ->> 'voice_mb_per_min')::numeric, 20), 2);
+    take := least(mb, greatest(0, (p_c ->> 'daily_free_mb')::numeric - w.free_used_mb));
+    w.free_used_mb := w.free_used_mb + take;
+    w.balance_mb := w.balance_mb - least(mb - take, w.balance_mb);
+  end if;
   return w;
 end $$;
 
--- 一次生成之后记账：她的流量（先今天免费的、再余额，Max 不扣）/ TA 的语音秒数 / 后台保险丝 / 合理使用计数；p_entry 有就记一行流水
+-- 一次生成之后记账：她的流量（先今天免费的、再余额）/ TA 的语音（折流量）/ 后台保险丝 / 合理使用计数；p_entry 有就记一行流水
 -- D-219 加了两个带默认值的参数：先删旧签名再建（同一次执行里），没升级的代理按名字传参照样能调
 drop function if exists public.wallet_charge(uuid, text, jsonb, numeric, numeric, text, numeric, integer, numeric, jsonb);
 create or replace function public.wallet_charge(
@@ -168,8 +176,10 @@ declare
   w public.wallets := public.wallet_open(p_user, p_tz, p_c);
   free numeric := 0;
   bal numeric := 0;
+  free0 numeric := w.free_used_mb;
+  bal0 numeric := w.balance_mb;
 begin
-  if p_mb > 0 and w.plan <> 'max' then
+  if p_mb > 0 then
     free := least(p_mb, greatest(0, (p_c ->> 'daily_free_mb')::numeric - w.free_used_mb));
     bal := least(p_mb - free, w.balance_mb);
     w.free_used_mb := w.free_used_mb + free;
@@ -185,13 +195,15 @@ begin
   w.fair_images := w.fair_images + coalesce(p_fair_images, 0);
   perform public._wallet_save(w);
   if p_entry is not null then
-    insert into public.wallet_ledger (user_id, kind, mb, charged_mb, tokens, provider, estimated)
-    values (p_user, p_entry ->> 'kind', p_mb, free + bal, (p_entry ->> 'tokens')::int, p_entry ->> 'provider', coalesce((p_entry ->> 'estimated')::boolean, false));
+    -- 实际扣掉的含 TA 的语音折的流量
+    insert into public.wallet_ledger (user_id, kind, mb, charged_mb, sec, tokens, provider, estimated)
+    values (p_user, p_entry ->> 'kind', p_mb + greatest(0, (w.free_used_mb - free0) + (bal0 - w.balance_mb) - free - bal), (w.free_used_mb - free0) + (bal0 - w.balance_mb),
+            coalesce(p_voice_sec, 0), (p_entry ->> 'tokens')::int, p_entry ->> 'provider', coalesce((p_entry ->> 'estimated')::boolean, false));
   end if;
   return w;
 end $$;
 
--- 通话计时（服务器时钟）：距上次计时的秒数（封顶 call_tick_max_sec）从语音时长里扣；太久没动静的算新的一通、不往回补
+-- 通话计时（服务器时钟）：距上次计时的秒数（封顶 call_tick_max_sec）按接通时长扣（送的通话 → 老分钟包 → 流量）；太久没动静的算新的一通、不往回补
 create or replace function public.wallet_call_tick(p_user uuid, p_tz text, p_c jsonb, p_end boolean)
 returns public.wallets language plpgsql security definer set search_path = public as $$
 declare
@@ -209,12 +221,16 @@ begin
   return w;
 end $$;
 
--- 到账：流量包 / 语音分钟包 / 换订阅档 / GM（收费开关打开前点即到账；之后只给 RevenueCat 的入账用）
--- 换档位时这个月发没发过（D-218）：30 天内发过的不再发（来回切档白拿不了），更早的作废、换上去当场发一笔
+-- 到账：流量包 / 换订阅档 / GM（语音分钟包 D-236 下线，参数留给老的内购入账）（收费开关打开前点即到账；之后只给 RevenueCat 的入账用）
+-- 换档位时这个月发没发过（D-218）：30 天内发过的不再发（来回切档白拿不了），更早的作废、换上去当场发一笔；
+-- 升到额度更大的档（D-236：Pro → Max）当场发新档的一整笔
 create or replace function public._wallet_switch_plan(w public.wallets, p_plan text, p_c jsonb)
 returns public.wallets language plpgsql immutable as $$
 begin
   if w.plan_grant_at is not null and w.plan_grant_at <= now() - make_interval(days => (p_c ->> 'grant_period_days')::int) then
+    w.plan_grant_at := null;
+  end if;
+  if coalesce((p_c -> 'plan_monthly_mb' ->> p_plan)::numeric, 0) > coalesce((p_c -> 'plan_monthly_mb' ->> w.plan)::numeric, 0) then
     w.plan_grant_at := null;
   end if;
   w.plan := p_plan;

@@ -23,7 +23,7 @@ import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, PAPER_WALLPAPER, Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { buy as buyIap, iapState, iapVersion, restore as restoreIap, subscribeIap, type BuyOutcome } from '@/features/iap';
-import { billingLive, buyTrafficPack, buyVoicePack, choosePlan, gmGrant } from '@/features/traffic';
+import { billingLive, buyTrafficPack, choosePlan, gmGrant } from '@/features/traffic';
 import { aiRouteSync, engineLabel, engineOptions, enginePreference, setEnginePreference } from '@/lib/engine';
 import { ensurePortrait, imageKeyReady, portraitFor } from '@/lib/imagegen';
 import { updateBondMemory } from '@/lib/memory';
@@ -36,10 +36,9 @@ import {
   LOVE_MODELS,
   mb,
   PLAN_MONTHLY_MB,
-  PLAN_VOICE_DAILY_MIN,
   TRAFFIC_PACKS,
-  VOICE_PACKS,
-  voiceDailyLeft,
+  VOICE_MB_PER_MIN,
+  voiceLeft,
   voiceMinutes,
 } from '@/lib/traffic';
 import { deleteCloudData, restoreSnapshot, uploadSnapshot } from '@/lib/sync';
@@ -277,12 +276,8 @@ export default function MeScreen() {
   const voice = useAppStore((s) => s.voice);
   // 流量（D-132）：今天免费的按进页面那一刻算；扣费后 traffic 变了会重算
   const [trafficNow] = useState(() => Date.now());
-  /** 订阅档说明（D-210：槽位不限，订阅管流量与语音分钟） */
-  const planBlurb = (p: 'free' | 'pro' | 'max') =>
-    t('{traffic} · 每天 {n} 分钟语音', {
-      traffic: p === 'max' ? t('流量不限') : t('每月 {n}', { n: mb(PLAN_MONTHLY_MB[p]) }),
-      n: PLAN_VOICE_DAILY_MIN[p],
-    });
+  /** 订阅档说明（D-236：订阅管一份流量，聊天、生图、TA 的声音共用） */
+  const planBlurb = (p: 'free' | 'pro' | 'max') => t('每月 {n} · 能听 TA 的声音', { n: mb(PLAN_MONTHLY_MB[p]) });
 
   /** 钱包的事都经服务器（D-217）：成功了 store 已经是服务器的数，失败只说稍后再试 */
   const viaServer = async (run: () => Promise<unknown>, done?: string) => {
@@ -502,7 +497,7 @@ export default function MeScreen() {
         </Section>
 
         <Section title={t('流量')}>
-          <Row icon="traffic" label={t('剩余流量')} value={plan === 'max' ? '∞' : mb(traffic.balance)} numeric hint={plan === 'max' ? t('Max 不限流量') : t('今天免费的还剩 {n}', { n: mb(freeLeft(traffic, trafficNow)) })} />
+          <Row icon="traffic" label={t('剩余流量')} value={mb(traffic.balance)} numeric hint={t('今天免费的还剩 {n}', { n: mb(freeLeft(traffic, trafficNow)) })} />
           {/* 只剩一档时不给选（D-205） */}
           {LOVE_MODEL_ORDER.length > 1 && LOVE_MODEL_ORDER.map((id) => {
             const m = LOVE_MODELS[id];
@@ -535,40 +530,19 @@ export default function MeScreen() {
             : null}
         </Section>
 
-        {/* 语音时长（D-210）：TA 的语音、她的语音、电话都按分钟算；Free 没有（新用户送的只能打电话） */}
-        <Section title={t('语音时长')}>
+        {/* TA 的声音（D-236）：TA 的语音、电话从流量里扣；Free 没有（新用户送的只能打电话） */}
+        <Section title={t('TA 的声音')}>
           <Row
             icon="voice"
-            label={t('今天还剩')}
-            value={t('{n} 分钟', { n: voiceMinutes(voiceDailyLeft(voice, plan, trafficNow)) })}
-            hint={plan === 'free' ? t('订阅后每天都能听到 TA 的语音、打电话。') : t('每天的不累积。')}
+            label={t('每分钟')}
+            value={mb(VOICE_MB_PER_MIN)}
+            numeric
+            hint={plan === 'free' ? t('订阅后能听到 TA 的语音、打电话。') : t('现在的流量够听约 {n} 分钟。', { n: voiceMinutes(voiceLeft(voice, traffic, plan, 'message', trafficNow)) })}
           />
           {voice.callBonusSec > 0 ? (
             <Row label={t('送你的通话')} value={t('{n} 分钟', { n: voiceMinutes(voice.callBonusSec) })} hint={t('只能打电话，用完为止。')} />
           ) : null}
           {voice.packSec > 0 ? <Row label={t('分钟包')} value={t('{n} 分钟', { n: voiceMinutes(voice.packSec) })} hint={t('不过期。')} /> : null}
-          {plan !== 'free' && storeMode === 'real'
-            ? iap.items
-                .filter((i) => i.kind === 'voice')
-                .map((i) => (
-                  <Row
-                    key={i.productId}
-                    label={t('语音分钟包 {n} 分钟', { n: Math.round(i.voiceSec / 60) })}
-                    value={priceOf(i.productId, i.priceString)}
-                    onPress={() => void buyNow(i.productId)}
-                  />
-                ))
-            : null}
-          {plan !== 'free' && storeMode === 'sim'
-            ? VOICE_PACKS.map((p) => (
-                <Row
-                  key={p.id}
-                  label={t('语音分钟包 {n} 分钟', { n: p.min })}
-                  value={t('买')}
-                  onPress={() => void viaServer(() => buyVoicePack(p.id), t('{n} 分钟', { n: p.min }))}
-                />
-              ))
-            : null}
         </Section>
 
         {/* 勿扰时段（D-120）：分区标题即标签，两只步进器单独一行居中，不和标签抢宽 */}
@@ -597,12 +571,7 @@ export default function MeScreen() {
             label={t('GM：加 1000 RB')}
             value={mb(traffic.balance)}
             numeric
-            onPress={() => void viaServer(() => gmGrant('traffic'))}
-          />
-          <Row
-            label={t('GM：加 30 分钟语音')}
-            value={t('{n} 分钟', { n: voiceMinutes(voice.packSec) })}
-            onPress={() => void viaServer(() => gmGrant('voice'))}
+            onPress={() => void viaServer(() => gmGrant())}
           />
           <Row
             label={t('AI 引擎')}

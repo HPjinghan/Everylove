@@ -521,7 +521,7 @@ export const useAppStore = create<AppState>()(
         set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, extraFired: { count, at } } : b)) }),
 
       useTraffic: (cost) => {
-        const { traffic, charged } = trafficAfterUse(get().traffic, cost, get().plan);
+        const { traffic, charged } = trafficAfterUse(get().traffic, cost);
         set({ traffic });
         return charged;
       },
@@ -534,8 +534,8 @@ export const useAppStore = create<AppState>()(
       logTraffic: (e) => set({ trafficLog: [...get().trafficLog, { id: uid('tr'), at: Date.now(), ...e }].slice(-TRAFFIC_LOG_MAX) }),
 
       useVoice: (sec, use) => {
-        const { voice, charged } = voiceAfterUse(get().voice, sec, get().plan, use);
-        set({ voice });
+        const { voice, traffic, charged } = voiceAfterUse(get().voice, get().traffic, sec, get().plan, use);
+        set({ voice, traffic });
         return charged;
       },
 

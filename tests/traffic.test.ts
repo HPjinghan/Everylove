@@ -81,29 +81,28 @@ describe('换算', () => {
     expect(estimateTokens('hello world')).toBe(3);
   });
 
-  it('先用今天免费的 100 MB，再扣余额；Max 不扣；跨天免费的重置', () => {
+  it('先用今天免费的 100 MB，再扣余额（D-236 起 Max 也扣）；跨天免费的重置', () => {
     const t0 = { balance: 10, freeDay: '', freeUsed: 0 };
     expect(freeLeft(t0, NOW)).toBe(DAILY_FREE_MB);
-    const a = trafficAfterUse(t0, 5, 'free', NOW);
+    const a = trafficAfterUse(t0, 5, NOW);
     expect(a).toEqual({ traffic: { balance: 10, freeDay: trafficDayKey(NOW), freeUsed: 5 }, charged: 5 });
-    const b = trafficAfterUse({ ...a.traffic, freeUsed: 98 }, 5, 'free', NOW);
+    const b = trafficAfterUse({ ...a.traffic, freeUsed: 98 }, 5, NOW);
     expect(b.traffic.freeUsed).toBe(100);
     expect(b.traffic.balance).toBe(7);
-    expect(available({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 100 }, 'free', NOW)).toBe(0);
-    expect(available({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 100 }, 'max', NOW)).toBe(Infinity);
-    expect(trafficAfterUse({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 100 }, 5, 'max', NOW).charged).toBe(0);
+    expect(available({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 100 }, NOW)).toBe(0);
+    expect(trafficAfterUse({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 100 }, 5, NOW).charged).toBe(0);
     expect(freeLeft({ balance: 0, freeDay: trafficDayKey(NOW), freeUsed: 100 }, NOW + DAY)).toBe(DAILY_FREE_MB);
     expect(mb(1240)).toBe('1,240 RB');
     expect(mb(3.08)).toBe('3.1 RB');
     expect(mb(Infinity)).toBe('∞');
   });
 
-  it('订阅每月发一笔：Pro 6000 MB，最多补 2 笔；Free / Max 不发', () => {
+  it('订阅每月发一笔：Pro / Max 都发（D-236），最多补 2 笔；Free 不发', () => {
     expect(planGrantsDue({ balance: 0, freeDay: '', freeUsed: 0 }, 'pro', NOW)).toBe(1);
     expect(planGrantsDue({ balance: 0, freeDay: '', freeUsed: 0, planGrantAt: NOW - 10 * DAY }, 'pro', NOW)).toBe(0);
     expect(planGrantsDue({ balance: 0, freeDay: '', freeUsed: 0, planGrantAt: NOW - 100 * DAY }, 'pro', NOW)).toBe(2);
     expect(planGrantsDue({ balance: 0, freeDay: '', freeUsed: 0 }, 'free', NOW)).toBe(0);
-    expect(planGrantsDue({ balance: 0, freeDay: '', freeUsed: 0 }, 'max', NOW)).toBe(0);
+    expect(planGrantsDue({ balance: 0, freeDay: '', freeUsed: 0 }, 'max', NOW)).toBe(1);
     useAppStore.getState().setPlan('pro');
     expect(grantPlanTraffic(NOW)).toBe(1);
     expect(useAppStore.getState().traffic.balance).toBe(PLAN_MONTHLY_MB.pro);
@@ -173,28 +172,34 @@ describe('D-210：只扣她发起的、语音按分钟、后台保险丝', () =>
     expect(s().traffic.freeUsed).toBe(DAILY_FREE_MB);
   });
 
-  it('语音时长：今天的额度 → 送的通话（只给电话）→ 分钟包；Free 每天 0；跨天额度重置', () => {
-    expect(voiceLeft(START_VOICE, 'free', 'message', NOW)).toBe(0);
-    expect(voiceLeft(START_VOICE, 'free', 'call', NOW)).toBe(300);
-    expect(voiceLeft(START_VOICE, 'pro', 'message', NOW)).toBe(600);
-    expect(voiceLeft(START_VOICE, 'max', 'call', NOW)).toBe(2400 + 300);
-    // Free 打电话：只扣送的
-    const a = voiceAfterUse(START_VOICE, 120, 'free', 'call', NOW);
+  it('TA 的声音（D-236）：电话先用送的 → 老分钟包 → 流量（每分钟 20 RB）；Free 不拿流量换', () => {
+    // 今天免费的 100 RB = 5 分钟
+    const tr = { balance: 0, freeDay: '', freeUsed: 0 };
+    expect(voiceLeft(START_VOICE, tr, 'free', 'message', NOW)).toBe(0);
+    expect(voiceLeft(START_VOICE, tr, 'free', 'call', NOW)).toBe(300);
+    expect(voiceLeft(START_VOICE, tr, 'pro', 'message', NOW)).toBe(300);
+    expect(voiceLeft(START_VOICE, { ...tr, balance: 200 }, 'max', 'call', NOW)).toBe(900 + 300);
+    // Free 打电话：只扣送的，不碰流量
+    const a = voiceAfterUse(START_VOICE, tr, 120, 'free', 'call', NOW);
     expect(a.charged).toBe(120);
     expect(a.voice.callBonusSec).toBe(180);
-    // Free 语音消息：送的不能用，扣不动
-    expect(voiceAfterUse(a.voice, 30, 'free', 'message', NOW).charged).toBe(0);
-    // Pro：先今天的，再送的，最后分钟包
-    const v = { ...START_VOICE, packSec: 600 };
-    const b = voiceAfterUse(v, 600 + 300 + 100, 'pro', 'call', NOW);
-    expect(b.voice).toMatchObject({ usedSec: 600, callBonusSec: 0, packSec: 500 });
-    const c = voiceAfterUse(b.voice, 1000, 'pro', 'message', NOW);
-    expect(c.charged).toBe(500);
-    expect(voiceLeft(c.voice, 'pro', 'message', NOW + DAY)).toBe(600);
+    expect(a.chargedMb).toBe(0);
+    // Free 语音消息：送的不能用、流量不能换
+    expect(voiceAfterUse(a.voice, tr, 30, 'free', 'message', NOW).charged).toBe(0);
+    // Pro 打电话：先送的 300 秒，再老分钟包 100 秒，剩下 60 秒折 20 RB
+    const b = voiceAfterUse({ ...START_VOICE, packSec: 100 }, tr, 300 + 100 + 60, 'pro', 'call', NOW);
+    expect(b.voice).toMatchObject({ callBonusSec: 0, packSec: 0, usedSec: 460 });
+    expect(b.chargedMb).toBe(20);
+    expect(b.traffic.freeUsed).toBe(20);
+    expect(b.charged).toBe(460);
+    // 流量不够：扣到 0 为止
+    const c = voiceAfterUse(b.voice, { ...b.traffic, freeUsed: 100, balance: 10 }, 120, 'pro', 'message', NOW);
+    expect(c.chargedMb).toBe(10);
+    expect(c.charged).toBe(30);
     expect(estimateSpeechSeconds('今天好累啊，想你了')).toBe(2);
   });
 
-  it('她这一轮里 TA 的语音扣她的时长；TA 自己发起的、试听、通话里的不扣；她的语音识别扣流量（D-211）', () => {
+  it('她这一轮里 TA 的语音扣她的流量（D-236）；TA 自己发起的、试听、通话里的不扣；她的语音识别扣流量（D-211）', () => {
     const s = () => useAppStore.getState();
     s().setPlan('pro');
     reportUsage({ kind: 'tts', provider: 'fish', seconds: 12, billing: 'user' });
@@ -202,11 +207,13 @@ describe('D-210：只扣她发起的、语音按分钟、后台保险丝', () =>
     reportUsage({ kind: 'tts', provider: 'fish', seconds: 30, billing: 'included' });
     reportUsage({ kind: 'asr', provider: 'baidu', seconds: 30, billing: 'included' });
     expect(s().voice.usedSec).toBe(12);
-    expect(s().traffic.freeUsed).toBe(0);
-    // Free 也能说话：识别按秒折流量，不碰语音时长
+    // 12 秒 × 20 RB / 分钟 = 4 RB
+    expect(s().traffic.freeUsed).toBe(4);
+    expect(s().trafficLog.at(-1)).toMatchObject({ kind: 'tts', mb: 4 });
+    // Free 也能说话：识别按秒折流量
     s().setPlan('free');
     reportUsage({ kind: 'asr', provider: 'baidu', seconds: 30 });
-    expect(s().traffic.freeUsed).toBe(1);
+    expect(s().traffic.freeUsed).toBe(5);
     expect(s().voice.usedSec).toBe(12);
     expect(s().trafficLog.at(-1)).toMatchObject({ kind: 'asr', mb: 1 });
   });

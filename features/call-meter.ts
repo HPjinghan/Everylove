@@ -1,6 +1,6 @@
 /**
  * 通话按分钟计（D-210）：电话里的回话、识别、合成都含在通话分钟里（call 模式 billing = included），
- * 通话页按接通后的时长分段扣她的语音时长（先今天的额度、再新用户送的、最后分钟包）。
+ * 通话页按接通后的时长分段扣（D-236：先新用户送的、再老分钟包、再按每分钟 20 RB 扣流量）。
  * 剩不到一分钟时这一轮让 TA 自己收尾（prompt 末尾一句，content/prompts/call.ts CALL_WRAP_UP），用完了 TA 说完这句就挂。
  */
 
@@ -16,7 +16,7 @@ let wrappingUp: string | null = null;
 /** 这通电话还能打几秒 */
 export function callSecondsLeft(): number {
   const s = useAppStore.getState();
-  return voiceLeft(s.voice, s.plan, 'call');
+  return voiceLeft(s.voice, s.traffic, s.plan, 'call');
 }
 
 /**

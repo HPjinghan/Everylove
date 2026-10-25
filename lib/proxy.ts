@@ -145,7 +145,7 @@ function timeZone(): string | undefined {
 }
 
 /** 服务器拦下的原因 → 一句话（与本机闸门同一套文案） */
-const BLOCKED: Record<string, string> = { traffic: '流量用完了', voice: '语音时长用完了', house: '今天的后台生成到顶了', fair: '今天先到这里，明天再来', slow: '照片还在冲洗，过几分钟再拍', busy: 'TA 这会儿忙，等一下再说' };
+const BLOCKED: Record<string, string> = { traffic: '流量用完了', voice: '流量用完了', house: '今天的后台生成到顶了', fair: '今天先到这里，明天再来', slow: '照片还在冲洗，过几分钟再拍', busy: 'TA 这会儿忙，等一下再说' };
 
 /**
  * 调一个自有 Edge Function（带登录态；没有就建游客身份）：原样返回响应，带回来的最新钱包（x-wallet）交给监听者。
@@ -212,7 +212,7 @@ export async function proxyStream(
     try {
       reason = ((await res.json()) as { reason?: string }).reason ?? '';
     } catch {}
-    throw new GenerationBlockedError(t(BLOCKED[reason] ?? '语音时长用完了'));
+    throw new GenerationBlockedError(t(BLOCKED[reason] ?? '流量用完了'));
   }
   if (!res.ok || !res.body) throw new Error(`proxy ${res.status}: ${(await res.text()).slice(0, 160)}`);
   return { reader: res.body.getReader(), headers: res.headers };
