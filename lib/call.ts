@@ -5,9 +5,9 @@
  * 电话里说的话都进羁绊会话（viaCall，见 features/modes.ts 的 call 模式）并计 XP——TA 记得电话里说过什么；
  * 电话里答应让她看手机的暗号与聊天里同一套（features/phone-peek.tsx）；挂断后触发记忆提取与约定识别。
  *
- * 为什么不是端到端实时模型：百度已有「端到端语音语言大模型」（wss://aip.baidubce.com/ws/2.0/speech/v1/realtime，
- * audio-realtime-near/far 等，支持 instructions 人设与音色），OpenAI 也有 Realtime——但它们都要**实时 PCM 音频流**，
- * Expo Go 里 expo-audio 只能整段录音，拿不到流。等 dev build 再接（OPEN_QUESTIONS #26）；接口按 CallEngine 抽象预留。
+ * 实时（D-232，0.3.0 起的包）：本机边听边认 + Fish PCM 边合成边播（lib/live-voice），回话不开思考；她能打断 TA。
+ * 声音与脑子仍是同一个 TA（Fish 音色 + 同一套 Claude 人设与记忆），所以不接端到端语音模型。
+ * 没有这两个原生模块的包（Expo Go / 网页 / 老包）照旧走上面的管线式。
  */
 
 import { CALL_PICKUP_USER } from '@/content/prompts';
@@ -26,6 +26,47 @@ export const VAD = {
   maxTurnMs: 30_000,
   idleRestartMs: 25_000,
 };
+
+/**
+ * 实时通话的断句与打断（D-232）：
+ * - 她说完 = 听到了字，且字不再变、也没声音，满 endMs；
+ * - 打断 = TA 说话时她那边冒出来的字里，有够多是 TA 这句里没有的（免提时麦克风会把 TA 的声音也认出来，按字面滤掉）。
+ */
+export const LIVE = {
+  endMs: 750,
+  /** 音量（-2～10）高于它算在出声 */
+  loud: 1.5,
+  /** 中 / 日按字、英 / 韩按词：新冒出来的够这么多才算打断 */
+  bargeChars: 4,
+  bargeWords: 2,
+};
+
+const PUNCT = /[\s\p{P}\p{S}]+/gu;
+
+/** 听到的字里有多少不是 TA 这句里的（中 / 日按字，英 / 韩按词） */
+export function novelSpeech(heard: string, said: string, lang: string): { novel: number; total: number } {
+  if (lang === 'zh' || lang === 'ja') {
+    const pool = new Set(said.replace(PUNCT, ''));
+    const chars = [...heard.replace(PUNCT, '')];
+    return { novel: chars.filter((c) => !pool.has(c)).length, total: chars.length };
+  }
+  const words = (x: string) => x.toLowerCase().split(PUNCT).filter(Boolean);
+  const pool = new Set(words(said));
+  const w = words(heard);
+  return { novel: w.filter((x) => !pool.has(x)).length, total: w.length };
+}
+
+/** TA 说话时她这边听到的字算不算打断 */
+export function isBargeIn(heard: string, said: string, lang: string): boolean {
+  const { novel, total } = novelSpeech(heard, said, lang);
+  const need = lang === 'zh' || lang === 'ja' ? LIVE.bargeChars : LIVE.bargeWords;
+  return novel >= need && novel * 2 >= total;
+}
+
+/** 她这句说完了没有 */
+export function utteranceDone(o: { text: string; lastTextAt: number; lastLoudAt: number; now: number }): boolean {
+  return Boolean(o.text.trim()) && o.now - Math.max(o.lastTextAt, o.lastLoudAt) >= LIVE.endMs;
+}
 
 /** 能打电话 = 能合成语音 + 有聊天引擎取路（识别与合成同一把 key / 同一条代理） */
 export function callReady(): boolean {

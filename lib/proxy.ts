@@ -4,6 +4,8 @@
  * 协议见 supabase/functions/ai/index.ts。
  */
 
+import { fetch as streamingFetch } from 'expo/fetch';
+
 import { GenerationBlockedError, type Billing } from '@/core/usage';
 import { t } from '@/lib/i18n';
 import type { WalletView } from '@/supabase/functions/_shared/economy';
@@ -186,4 +188,32 @@ export async function proxyJson<T = unknown>(service: string, body: unknown, opt
   }
   if (!res.ok) throw new Error(`proxy ${res.status}: ${res.text.slice(0, 160)}`);
   return JSON.parse(res.text) as T;
+}
+
+/**
+ * 调一次代理的流式服务（D-232，现在只有 fish.tts.stream）：返回响应体的读取器，边到边读；
+ * 余额不够抛 GenerationBlockedError，其余失败抛错。signal 用来在她打断 TA 时掐掉。
+ */
+export async function proxyStream(
+  service: string,
+  body: unknown,
+  opts: { billing?: Billing; signal?: AbortSignal } = {}
+): Promise<{ reader: ReadableStreamDefaultReader<Uint8Array>; headers: Headers }> {
+  const session = (await currentSession()) ?? (await ensureGuestSession());
+  if (!session) throw new Error('没有登录态、也建不了游客身份，无法走服务端代理');
+  const res = await streamingFetch(`${SUPABASE_URL}/functions/v1/ai`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${session.access_token}`, apikey: SUPABASE_ANON_KEY },
+    body: JSON.stringify({ service, body, billing: opts.billing, tz: timeZone() }),
+    signal: opts.signal,
+  });
+  if (res.status === 402) {
+    let reason = '';
+    try {
+      reason = ((await res.json()) as { reason?: string }).reason ?? '';
+    } catch {}
+    throw new GenerationBlockedError(t(BLOCKED[reason] ?? '语音时长用完了'));
+  }
+  if (!res.ok || !res.body) throw new Error(`proxy ${res.status}: ${(await res.text()).slice(0, 160)}`);
+  return { reader: res.body.getReader(), headers: res.headers };
 }

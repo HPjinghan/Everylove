@@ -88,7 +88,7 @@ App Store Connect 的 App 记录已经手动建好（`6824664796`，见 §0.5）
 
   Expo Go 朋友那条同理，`--channel production` 换成 `--channel preview`。导出如果在 90% 左右报 worker 被 SIGTERM，多半是机器上还挂着别的 node 进程（如没退出的 vitest），杀掉再跑。
 
-- **动了 `app.json` 插件、原生依赖（新的 expo-* 原生模块、react-native-maps 之类）、SDK**：必须重新 `build` + `submit`，**不要**只推 update（runtimeVersion 用的是 sdkVersion 策略，同 runtime 的旧包会拿到不兼容的 JS）。
+- **动了 `app.json` 插件、原生依赖（新的 expo-* 原生模块、react-native-maps 之类）、SDK**：必须重新 `build` + `submit`，**不要**只推 update（runtimeVersion 用的是 sdkVersion 策略，同 runtime 的旧包会拿到不兼容的 JS）。新原生模块的 JS 要先查原生在不在再加载（如 `lib/live-voice.ts` 的 `liveVoiceReady`），旧包拿到新 JS 才不会崩、只是用不到新能力。
 - 朋友的 Expo Go 试装照旧 `--channel preview`，两个渠道互不影响。
 - **升过 SDK 之后（D-102，54 → 57）**：runtime 从 `exposdk:54.0.0` 变成 `exposdk:57.0.0`——TestFlight 必须新 `build` + `submit`；Expo Go 那边朋友的 Expo Go 也得是 57，再 `eas update --channel preview` 一次新 runtime 的包，老 runtime 的 update 他们看不到。
 

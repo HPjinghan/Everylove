@@ -47,7 +47,8 @@ const anthropic: ChatProvider = {
   label: `Claude · ${CONFIG.anthropicModel} · LLM Gateway`,
   localKey: () => CONFIG.llmgatewayKey,
   async complete(req, route) {
-    const thinks = THINKING_ON_BY_DEFAULT.test(CONFIG.anthropicModel);
+    // 通话（D-232）：关掉思考，首字快一两秒；Haiku 5.5 在 effort high 及以下允许 disabled
+    const thinks = THINKING_ON_BY_DEFAULT.test(CONFIG.anthropicModel) && !req.realtime;
     const body = {
       model: CONFIG.anthropicModel,
       max_tokens: thinks ? req.maxTokens + THINKING_HEADROOM : req.maxTokens,
@@ -55,6 +56,7 @@ const anthropic: ChatProvider = {
       messages: cachedTurns(req),
       // 回话要快要短：低 effort；任务类（记忆提取 / 解析）用默认 high
       ...(thinks && req.kind === 'reply' ? { output_config: { effort: 'low' } } : {}),
+      ...(req.realtime && THINKING_ON_BY_DEFAULT.test(CONFIG.anthropicModel) ? { thinking: { type: 'disabled' } } : {}),
     };
     let data: AnthropicJson;
     if (route === 'direct') {

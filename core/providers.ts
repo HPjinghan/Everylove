@@ -27,6 +27,8 @@ export interface ChatRequest {
   background?: boolean;
   /** 账单归属（D-210）；不写 = 后台 / task 算 house、回话算 user */
   billing?: Billing;
+  /** 实时（通话，D-232）：延迟优先，默认开思考的模型这一轮关掉思考 */
+  realtime?: boolean;
 }
 
 /** 一次请求的账算给谁（D-210）：显式写了按写的；后台写的回话与工具调用平台出，回话玩家出 */

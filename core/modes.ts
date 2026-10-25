@@ -38,6 +38,8 @@ export interface ConversationMode {
   keepTrailingPeriod?: boolean;
   /** 这一模式的回合账算给谁（D-210）；不写 = 按回合定。通话 = included（按分钟另算，不再扣流量） */
   billing?: Billing;
+  /** 实时（通话）：延迟优先，供应商不开思考（D-232） */
+  realtime?: boolean;
 }
 
 export const modes = createRegistry<ConversationMode>('modes', (m) => m.id);

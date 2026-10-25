@@ -46,6 +46,7 @@ vi.mock('react-native', () =>
 vi.mock('react-native-maps', () => stubModule({ default: () => null }));
 // 内购（D-218）：测试里没有原生模块 → purchasesSupported() 为假
 vi.mock('react-native-purchases', () => stubModule({ default: stubModule({}) }));
+vi.mock('expo/fetch', () => ({ fetch: globalThis.fetch }));
 vi.mock('expo-constants', () =>
   stubModule({
     default: { expoConfig: { ios: { bundleIdentifier: 'com.biibit.ringring' } }, executionEnvironment: 'bare' },

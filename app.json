@@ -2,7 +2,7 @@
   "expo": {
     "name": "ringring",
     "slug": "everylove",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "everylove",
@@ -71,7 +71,23 @@
           "iosAppGroupIdentifier": "group.com.biibit.ringring"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "用来录语音消息和打电话给 TA。",
+          "speechRecognitionPermission": "打电话时在手机上实时听清你说的话。"
+        }
+      ],
+      [
+        "react-native-audio-api",
+        {
+          "iosBackgroundMode": false,
+          "androidForegroundService": false,
+          "androidPermissions": [],
+          "disableFFmpeg": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

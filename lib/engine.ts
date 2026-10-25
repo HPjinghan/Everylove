@@ -402,6 +402,8 @@ export async function generateReply(ctx: EngineContext, providerId?: string, opt
   if (dark) return dark;
 
   const parts = buildChatSystemPromptParts(ctx);
+  // 拆几条 / 剥不剥（）/ 留不留句号 / 要不要实时都由模式声明（D-179 / D-232）；没注册的模式按最保守的来
+  const policy = modes.get(ctx.mode);
   const text = await completeChat(
     {
       system: joinPromptParts(parts),
@@ -413,13 +415,12 @@ export async function generateReply(ctx: EngineContext, providerId?: string, opt
       ...(opts.background ? { background: true } : {}),
       // 账单归属（D-210）：TA 自己发起的（外卖送到、爽约后说一句）平台出，通话含在分钟里
       ...(opts.billing ? { billing: opts.billing } : {}),
+      ...(policy?.realtime ? { realtime: true } : {}),
     },
     providerId
   );
   if (!text) throw new Error('empty reply');
 
-  // 拆几条 / 剥不剥（）/ 留不留句号都由模式声明（D-179）；没注册的模式按最保守的来
-  const policy = modes.get(ctx.mode);
   const stripStage = policy?.stripStage ?? true;
   // 说话节奏（D-155）：连发的人在亲密模式里最多四条，其余按模式的上限
   const style = bubbleStyleOf(ctx.character);

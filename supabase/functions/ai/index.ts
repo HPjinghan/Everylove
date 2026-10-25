@@ -9,6 +9,7 @@
  *   baidu.tts（百度短文本语音合成 tsn.baidu.com/text2audio，body 为表单字段对象；D-073）
  *   asr.transcribe（Whisper 协议识别，日 / 韩用；D-139。Secrets：ASR_BASE_URL / ASR_API_KEY / ASR_MODEL；没配返回 503「asr not configured」，客户端回落百度）
  *   fish.tts（Fish Audio 合成 api.fish.audio/v1/tts；D-139。Secrets：FISH_API_KEY / FISH_MODEL；没配返回 503「fish not configured」，客户端回落百度）
+ *   fish.tts.stream（同上，但边合成边回：24 kHz 16 bit 单声道 PCM 原样流回，打电话用；D-232）
  *   fish.asr（Fish transcribe-1 识别 api.fish.audio/v1/asr，multipart 字段 audio；同一把 FISH_API_KEY；D-139）
  * 返回：上游成功 → JSON 原样透传（二进制音频包成 { audio_base64 }）；上游失败 → { error: 'upstream', status, message }（只带上游的一句话，不带原文）；
  *      本函数出错 → { error: 'internal' }（细节只进函数日志）。
@@ -25,6 +26,7 @@
  */
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createRemoteJWKSet, jwtVerify } from 'npm:jose@5.9.6';
 import {
   callAlive,
   estimateSpeechSeconds,
@@ -64,6 +66,8 @@ const QIANFAN_IMAGE_MODELS = list('QIANFAN_IMAGE_MODELS', 'qwen-image,musesteame
 const BODY_MAX_BYTES = 4 * 1024 * 1024;
 const AUDIO_B64_MAX = 8 * 1024 * 1024;
 const TTS_TEXT_MAX = 1000;
+/** 通话流式合成的采样率（D-232）：客户端按响应头 x-sample-rate 播 */
+const TTS_STREAM_RATE = 24000;
 const IMAGE_PROMPT_MAX = 2000;
 const MESSAGES_MAX = 80;
 
@@ -145,6 +149,10 @@ function fishTtsBody(b: Rec): Rec {
   const ref = optStr(b.reference_id, 64, 'reference_id');
   if (ref) out.reference_id = ref;
   return out;
+}
+
+function fishTtsStreamBody(b: Rec): Rec {
+  return { ...fishTtsBody(b), format: 'pcm', sample_rate: TTS_STREAM_RATE };
 }
 
 function baiduTtsForm(b: Rec): Record<string, string> {
@@ -285,6 +293,7 @@ function meterKindOf(service: string, body: Rec): MeterKind | null {
     case 'fish.asr':
       return 'asr';
     case 'fish.tts':
+    case 'fish.tts.stream':
     case 'baidu.tts':
       return 'tts';
     default:
@@ -442,17 +451,40 @@ async function walletService(user: string, tz: string | null, service: string, b
   return json(view, 200, view);
 }
 
+/**
+ * 认人（D-232）：先用项目的公钥（JWKS，ES256，取一次缓存住）在本地验 JWT，省掉每次一趟 auth 服务器；
+ * 验不过（老的 HS256 令牌、换钥匙的空档）再回落 getUser 问 auth 服务器。只认已登录角色（含匿名游客），anon key 本身不算人。
+ */
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const JWKS = createRemoteJWKSet(new URL(`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`));
+
+async function caller(req: Request): Promise<{ id: string; is_anonymous: boolean } | null> {
+  const header = req.headers.get('Authorization') ?? '';
+  const token = header.replace(/^Bearer\s+/i, '');
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, JWKS, { audience: 'authenticated' });
+    if (payload.role === 'authenticated' && typeof payload.sub === 'string') return { id: payload.sub, is_anonymous: payload.is_anonymous === true };
+  } catch {
+    /* 回落 auth 服务器 */
+  }
+  // 用请求者的 JWT 建客户端只为认人（getUser），不用它碰任何表
+  const asUser = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY')!, {
+    global: { headers: { Authorization: header } },
+    auth: { persistSession: false },
+  });
+  const {
+    data: { user },
+  } = await asUser.auth.getUser();
+  return user ? { id: user.id, is_anonymous: Boolean(user.is_anonymous) } : null;
+}
+
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
   try {
-    // 用请求者的 JWT 建客户端只为认人（getUser），不用它碰任何表
-    const asUser = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
-      auth: { persistSession: false },
-    });
-    const {
-      data: { user },
-    } = await asUser.auth.getUser();
+    const user = await caller(req);
     if (!user) return json({ error: 'unauthorized' }, 401);
 
     const raw = await req.text();
@@ -466,11 +498,9 @@ Deno.serve(async (req) => {
     // 钱包服务不占 AI 次数
     if (service.startsWith('wallet.')) return await walletService(user.id, tz, service, body);
 
-    const limit = await underLimit(user.id, Boolean(user.is_anonymous));
+    // 次数与记账闸门（D-217）一起问（D-232：并行省一趟）；不够花回 402，放行的带着计量上下文去调上游
+    const [limit, gated] = await Promise.all([underLimit(user.id, user.is_anonymous), gate(user.id, tz, service, body, parsed.billing)]);
     if (!limit.ok) return json({ error: 'rate_limited', limit: limit.limit }, 429);
-
-    // 记账闸门（D-217）：不够花回 402；放行的带着计量上下文去调上游
-    const gated = await gate(user.id, tz, service, body, parsed.billing);
     if (gated instanceof Response) return gated;
     const meter = gated ?? undefined;
 
@@ -521,6 +551,23 @@ Deno.serve(async (req) => {
         body: JSON.stringify(fishTtsBody(body)),
       });
       return await audioOrJson(r, meter);
+    }
+
+    // 通话的流式合成（D-232）：PCM 边合成边回，记账放到流回之后（不让她多等一趟库）
+    if (service === 'fish.tts.stream') {
+      const key = Deno.env.get('FISH_API_KEY') ?? '';
+      if (!key) return json({ error: 'fish not configured' }, 503);
+      const r = await fetch('https://api.fish.audio/v1/tts', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}`, model: Deno.env.get('FISH_MODEL') || 's2.1-pro' },
+        body: JSON.stringify(fishTtsStreamBody(body)),
+      });
+      if (!r.ok || !r.body || (r.headers.get('content-type') ?? '').includes('application/json')) return relayJson(r, meter);
+      if (meter) {
+        const charge = chargeAfter(meter, null);
+        if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(charge);
+      }
+      return new Response(r.body, { status: 200, headers: { 'content-type': 'audio/pcm', 'x-sample-rate': String(TTS_STREAM_RATE) } });
     }
 
     // 千帆 v2 与百度语音同一把 bce-v3 key

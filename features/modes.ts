@@ -145,6 +145,8 @@ const call: ConversationMode = {
   keepTrailingPeriod: true,
   // 通话按分钟计（D-210）：电话里的回话、识别、合成都含在通话分钟里，不再扣流量
   billing: 'included',
+  // 电话要接得上话（D-232）：不开思考
+  realtime: true,
   context(scope, userText) {
     const ctx = bonded.context(scope, userText);
     return ctx ? { ...ctx, mode: 'call' } : null;

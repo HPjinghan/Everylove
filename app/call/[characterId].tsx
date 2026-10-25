@@ -7,6 +7,8 @@
  * 切换（D-091）：TA 正在说话就立刻重设音频类别（播放中切类别会当场改出声口），否则下一句开口时生效；
  * 用 ref 记当前选择，免得 speak 闭包拿到旧值。
  * 按分钟计（D-210）：接通后每 10 秒扣一次她的语音时长（features/call-meter）；剩不到一分钟 TA 自己收尾，用完了 TA 说完这句就挂。
+ * 实时（D-232，有原生模块的包）：本机边听边认（她说的字当场出在字幕里，停顿 0.75 秒算说完）→ TA 回（不思考）→ 边合成边播；
+ * TA 说话时也在听，她插话（字面上不是 TA 那句的回声）或点 TA 的头像就打断。识别这门语言不行时这通电话退回管线式。
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -27,10 +29,11 @@ import { alertNoVoice } from '@/components/voice-gate';
 import { MingCute } from '@/components/mingcute';
 import { Shape, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
-import { VAD, callPickupLine, callReply, formatCallDuration, logCall } from '@/lib/call';
+import { VAD, callPickupLine, callReply, formatCallDuration, isBargeIn, LIVE, logCall, utteranceDone } from '@/lib/call';
 import { callSecondsLeft, chargeCall, endCallMeter, startCallMeter } from '@/features/call-meter';
 import { describeAiError } from '@/lib/chat';
-import { t } from '@/lib/i18n';
+import { getLang, t } from '@/lib/i18n';
+import { createEar, createMouth, liveVoiceReady, requestLivePermissions, setLiveRoute, type LiveEar, type LiveMouth } from '@/lib/live-voice';
 import { ASR_RECORDING, transcribeVoice } from '@/lib/media';
 import { synthesizeVoice } from '@/lib/tts';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -76,6 +79,14 @@ export default function CallScreen() {
   const [heard, setHeard] = useState(false);
   const lastLoudAt = useRef(0);
   const turnBusy = useRef(false);
+  /** 实时通道（D-232）：开着就用耳朵 + 嘴，识别不行时这通电话退回管线式 */
+  const [liveMode, setLiveMode] = useState(() => liveVoiceReady());
+  const liveOn = useRef(liveMode);
+  const live = useRef<{ ear: LiveEar; mouth: LiveMouth } | null>(null);
+  const heardText = useRef('');
+  const lastTextAt = useRef(0);
+  /** TA 正在说的这句（滤回声用） */
+  const saying = useRef('');
   const phaseRef = useRef<Phase>('dialing');
   const setPhaseSafe = (p: Phase) => {
     phaseRef.current = p;
@@ -138,8 +149,70 @@ export default function CallScreen() {
     [character, listen]
   );
 
+  /* ── 实时：开始听她说（每次都是新的一段识别） ── */
+  const listenLive = useCallback(async () => {
+    const l = live.current;
+    if (!alive.current || !l) return;
+    await l.ear.stop();
+    if (!alive.current) return;
+    heardText.current = '';
+    lastTextAt.current = Date.now();
+    lastLoudAt.current = Date.now();
+    setHeard(false);
+    setNote('');
+    setPhaseSafe('listening');
+    await l.ear.start(speakerRef.current);
+  }, []);
+
+  /* ── 实时：TA 说一句（边合成边播），同时听着她插不插话 ── */
+  const speakLive = useCallback(
+    async (text: string) => {
+      const l = live.current;
+      if (!alive.current || !l) return;
+      setHimLine(text);
+      saying.current = text;
+      heardText.current = '';
+      setPhaseSafe('speaking');
+      await l.ear.stop();
+      await l.ear.start(speakerRef.current);
+      const r = await l.mouth.say(text);
+      saying.current = '';
+      if (!alive.current) return;
+      if (r === 'failed') {
+        setNote(t('语音没接通，TA 的话在字幕里'));
+        await new Promise((res) => setTimeout(res, 2500));
+      }
+      if (!alive.current) return;
+      if (outOfTime.current && r !== 'stopped') hangUp();
+      else void listenLive();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [listenLive]
+  );
+
+  /* ── 实时：她说完了 → TA 回 ── */
+  const endTurnLive = useCallback(async () => {
+    const l = live.current;
+    const text = heardText.current.trim();
+    if (turnBusy.current || phaseRef.current !== 'listening' || !l || !bond || !text) return;
+    turnBusy.current = true;
+    setPhaseSafe('thinking');
+    setHerLine(text);
+    try {
+      await l.ear.stop();
+      const reply = await callReply(bond.id, text);
+      turnBusy.current = false;
+      await speakLive(reply);
+    } catch (e) {
+      turnBusy.current = false;
+      setNote(__DEV__ ? `${t('TA 这条没回上')} · ${describeAiError(e)}` : t('TA 这条没回上'));
+      if (alive.current) void listenLive();
+    }
+  }, [bond, listenLive, speakLive]);
+
   /* ── 她说完了：停录 → 识别 → TA 回 → 播放 ── */
   const endTurn = useCallback(async () => {
+    if (liveOn.current) return endTurnLive();
     if (turnBusy.current || phaseRef.current !== 'listening' || !character || !bond) return;
     turnBusy.current = true;
     setPhaseSafe('thinking');
@@ -171,11 +244,20 @@ export default function CallScreen() {
       setNote(__DEV__ ? `${t('TA 这条没回上')} · ${describeAiError(e)}` : t('TA 这条没回上'));
       if (alive.current) void listen();
     }
-  }, [bond, character, listen, recorder, speak]);
+  }, [bond, character, listen, recorder, speak, endTurnLive]);
+
+  /* ── 实时断句：字不再变、也没声音满 0.75 秒 ── */
+  useEffect(() => {
+    if (!liveMode || phase !== 'listening') return;
+    const id = setInterval(() => {
+      if (utteranceDone({ text: heardText.current, lastTextAt: lastTextAt.current, lastLoudAt: lastLoudAt.current, now: Date.now() })) void endTurnLive();
+    }, 100);
+    return () => clearInterval(id);
+  }, [liveMode, phase, endTurnLive]);
 
   /* ── 音量计断句 ── */
   useEffect(() => {
-    if (phase !== 'listening' || !rec.isRecording) return;
+    if (liveMode || phase !== 'listening' || !rec.isRecording) return;
     const now = Date.now();
     const db = rec.metering ?? -160;
     if (db > VAD.speechDb) {
@@ -193,15 +275,15 @@ export default function CallScreen() {
         if (alive.current && phaseRef.current === 'listening') void listen();
       })();
     }
-  }, [rec.metering, rec.durationMillis, rec.isRecording, phase, endTurn, listen, recorder]);
+  }, [rec.metering, rec.durationMillis, rec.isRecording, phase, endTurn, listen, recorder, liveMode]);
 
   /* ── TA 说完 → 听她；时长用完了就挂 ── */
   useEffect(() => {
-    if (phase !== 'speaking' || !ps.didJustFinish) return;
+    if (liveMode || phase !== 'speaking' || !ps.didJustFinish) return;
     if (outOfTime.current) hangUp();
     else void listen();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ps.didJustFinish, phase, listen]);
+  }, [ps.didJustFinish, phase, listen, liveMode]);
 
   /* ── 拨号 → 接起 ── */
   useEffect(() => {
@@ -215,12 +297,13 @@ export default function CallScreen() {
         alertNoVoice();
         return;
       }
-      const perm = await AudioModule.requestRecordingPermissionsAsync();
-      if (!perm.granted) {
+      const granted = liveOn.current ? await requestLivePermissions() : (await AudioModule.requestRecordingPermissionsAsync()).granted;
+      if (!granted) {
         showAlert(t('需要麦克风权限'), t('在系统设置里允许录音后再试。'));
         router.back();
         return;
       }
+      if (liveOn.current) startLive();
       await new Promise((r) => setTimeout(r, 1600));
       if (cancelled) return;
       setPhaseSafe('connecting');
@@ -231,7 +314,7 @@ export default function CallScreen() {
         connectedAt.current = Date.now();
         chargedAt.current = connectedAt.current;
         setConnected(true);
-        await speak(line);
+        await (liveOn.current ? speakLive(line) : speak(line));
       } catch (e) {
         if (cancelled) return;
         showAlert(t('没打通'), __DEV__ ? describeAiError(e) : undefined);
@@ -249,6 +332,9 @@ export default function CallScreen() {
         player.pause();
       } catch {}
       void recorder.stop().catch(() => {});
+      live.current?.mouth.dispose();
+      live.current?.ear.dispose();
+      live.current = null;
       void audioSession.playback();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -259,9 +345,67 @@ export default function CallScreen() {
     const next = !speakerRef.current;
     speakerRef.current = next;
     setSpeaker(next);
-    if (phaseRef.current === 'speaking') {
+    if (liveOn.current) setLiveRoute(next);
+    else if (phaseRef.current === 'speaking') {
       void audioSession.call(next);
     }
+  };
+
+  /** 实时通道接上耳朵和嘴（D-232）；识别出了这门语言不行之类的错，这通电话退回管线式 */
+  function startLive() {
+    if (!character || !bond) return;
+    setLiveRoute(speakerRef.current);
+    const mouth = createMouth(character, 'included');
+    const ear = createEar(getLang(), [bond.name, character.name], {
+      text(tr) {
+        if (phaseRef.current === 'speaking') {
+          // 她插话了：TA 停下，这一段重新听
+          if (isBargeIn(tr, saying.current, getLang())) mouth.stop();
+          return;
+        }
+        if (phaseRef.current !== 'listening' || tr === heardText.current) return;
+        heardText.current = tr;
+        lastTextAt.current = Date.now();
+        setHerLine(tr);
+      },
+      level(v) {
+        if (phaseRef.current !== 'listening' || v <= LIVE.loud) return;
+        lastLoudAt.current = Date.now();
+        setHeard(true);
+      },
+      error(code) {
+        if (!alive.current) return;
+        if (code === 'not-allowed') {
+          showAlert(t('需要麦克风权限'), t('在系统设置里允许录音后再试。'));
+          hangUp();
+          return;
+        }
+        if (code === 'language-not-supported' || code === 'service-not-allowed') {
+          // 这台手机认不了这门语言：这通电话退回管线式
+          liveOn.current = false;
+          setLiveMode(false);
+          mouth.stop();
+          ear.dispose();
+          mouth.dispose();
+          live.current = null;
+          if (phaseRef.current === 'listening' || phaseRef.current === 'speaking') void listen();
+          return;
+        }
+        setNote(t('没听清，再说一遍？'));
+      },
+      ended() {
+        // 识别自己停了（到时长上限 / 出错之后）：听着的时候接着听，已经有字就当她说完了
+        if (!alive.current || phaseRef.current !== 'listening') return;
+        if (heardText.current.trim()) void endTurnLive();
+        else void listenLive();
+      },
+    });
+    live.current = { ear, mouth };
+  }
+
+  /** 点 TA 的头像 = 打断 TA（实时通道） */
+  const interrupt = () => {
+    if (liveOn.current && phaseRef.current === 'speaking') live.current?.mouth.stop();
   };
 
   function hangUp() {
@@ -295,7 +439,9 @@ export default function CallScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
       <View style={styles.top}>
-        <CharAvatar name={bond.name} color={character.color} size={132} characterId={character.id} />
+        <Pressable onPress={interrupt} disabled={!liveMode || phase !== 'speaking'} accessibilityRole="button" accessibilityLabel={bond.name}>
+          <CharAvatar name={bond.name} color={character.color} size={132} characterId={character.id} />
+        </Pressable>
         <Text style={styles.name}>{bond.name}</Text>
         <View style={styles.statusRow}>
           <Text style={styles.status}>{statusText}</Text>
