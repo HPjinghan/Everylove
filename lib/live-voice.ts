@@ -1,15 +1,16 @@
 /**
- * 实时通话的两件原生能力（D-232）：
- *   耳朵 = iOS 本机语音识别（expo-speech-recognition）：边说边出字，她一停顿就有整句，不再录整段上传识别；
- *   嘴   = Fish 的 PCM 流（代理 fish.tts.stream / 本地 key 直连）→ react-native-audio-api 的缓冲队列边到边播，不等整段合成完。
- * 两个原生模块只在 0.3.0 起的包里有；Expo Go / 网页 / 老包 liveVoiceReady() 为假，通话页照旧走管线式（lib/call VAD）。
- * 音频会话只归识别模块管（D-237）：playAndRecord，免提 = defaultToSpeaker、听筒 = 不带；react-native-audio-api 关掉会话管理。
- * 两个原生模块各开一台音频引擎，同时跑会互相触发重启（音量条乱跳、麦克风收不到声），所以半双工：
- * TA 说话时不开识别，她说话时播放器挂起。
- * 不开系统回声消除（voice processing 会把 TA 的声音也压小），回声靠 lib/call 的 novelSpeech 按字面滤掉。
+ * 实时通话的耳朵与嘴（D-232）：
+ *   耳朵 = iOS 本机语音识别：边说边出字，她一停顿就有整句，不再录整段上传识别；
+ *   嘴   = Fish 的 PCM 流（代理 fish.tts.stream / 本地 key 直连）边到边播，不等整段合成完。
+ * 两条通道，按包里有什么原生模块选：
+ * - 通话通道（D-238，modules/live-call）：一台引擎开着系统通话处理（回声消除），识别与播放都在里面——
+ *   TA 说话时也一直在听，她开口就能打断（liveDuplex() 为真）；
+ * - 老包（0.3.0 的第一批）：识别用 expo-speech-recognition、播放用 react-native-audio-api，两台引擎同时跑会互相触发重启，
+ *   所以半双工（D-237）：TA 说话时不听，她说话时播放器挂起，音频会话只归识别模块管。
+ * Expo Go / 网页 / 更老的包 liveVoiceReady() 为假，通话页走管线式（lib/call VAD）。
  */
 
-import { requireOptionalNativeModule } from 'expo';
+import { NativeModule, requireOptionalNativeModule } from 'expo';
 import { fetch as streamingFetch } from 'expo/fetch';
 import { Platform, TurboModuleRegistry } from 'react-native';
 import type { ExpoSpeechRecognitionModule as SpeechModuleValue, ExpoSpeechRecognitionOptions } from 'expo-speech-recognition';
@@ -25,6 +26,25 @@ import type { Character } from '@/lib/types';
 type SpeechModule = typeof SpeechModuleValue;
 type AudioApi = typeof import('react-native-audio-api');
 
+type ChannelEvents = {
+  onText(e: { text: string; final: boolean }): void;
+  onLevel(e: { value: number }): void;
+  onError(e: { code: string; message: string }): void;
+  onEnd(): void;
+  onPlayed(e: { generation: number }): void;
+};
+
+/** modules/live-call 的 JS 面（D-238） */
+declare class CallChannel extends NativeModule<ChannelEvents> {
+  open(speaker: boolean): Promise<void>;
+  listen(options: { locale: string; hints: string[] }): Promise<void>;
+  stopListening(): Promise<void>;
+  close(): Promise<void>;
+  enqueue(pcmBase64: string): number;
+  stopPlayback(): number;
+  setSpeaker(on: boolean): void;
+}
+
 const FISH_TTS_URL = 'https://api.fish.audio/v1/tts';
 /** PCM 采样率：与代理 fish.tts.stream 一致（24 kHz 16 bit 单声道） */
 const RATE = 24000;
@@ -34,9 +54,20 @@ const PREROLL_SEC = 0.25;
 const CHUNK_SEC = 0.1;
 const LOCALE: Record<Lang, string> = { zh: 'zh-CN', en: 'en-US', ja: 'ja-JP', ko: 'ko-KR' };
 
-/** 这个包里有实时通话要的两个原生模块 */
+function channel(): CallChannel | null {
+  if (Platform.OS !== 'ios') return null;
+  return requireOptionalNativeModule<CallChannel>('LiveCall');
+}
+
+/** 这个包有通话通道：全双工、能说话打断 TA */
+export function liveDuplex(): boolean {
+  return Boolean(channel());
+}
+
+/** 这个包能实时通话（通话通道，或老包的两个原生模块） */
 export function liveVoiceReady(): boolean {
   if (Platform.OS !== 'ios') return false;
+  if (channel()) return true;
   return Boolean(requireOptionalNativeModule('ExpoSpeechRecognition')) && Boolean(TurboModuleRegistry.get('AudioAPIModule'));
 }
 
@@ -63,9 +94,28 @@ export async function requestLivePermissions(): Promise<boolean> {
   }
 }
 
-/** 通话的音频会话：免提 / 听筒；通话中切换立即生效 */
+/** 接通：开音频通道（通话通道开引擎；老包只切会话类别）。开不了就抛错，调用方退回管线式 */
+export async function openLive(speaker: boolean): Promise<void> {
+  const ch = channel();
+  if (ch) await ch.open(speaker);
+  else setLiveRoute(speaker);
+}
+
+/** 挂断：关通话通道，把音频会话还回去 */
+export async function closeLive(): Promise<void> {
+  try {
+    await channel()?.close();
+  } catch {}
+}
+
+/** 免提 / 听筒；通话中切换立即生效 */
 export function setLiveRoute(speaker: boolean): void {
   try {
+    const ch = channel();
+    if (ch) {
+      ch.setSpeaker(speaker);
+      return;
+    }
     speech().setCategoryIOS(liveCategory(speaker));
     speech().setAudioSessionActiveIOS(true);
   } catch (e) {
@@ -97,6 +147,51 @@ export interface LiveEar {
   dispose(): void;
 }
 
+export function createEar(lang: Lang, hints: string[], on: EarEvents): LiveEar {
+  const ch = channel();
+  return ch ? channelEar(ch, lang, hints, on) : speechEar(lang, hints, on);
+}
+
+/** 通话通道的耳朵：引擎一直开着，每段话一个识别任务 */
+function channelEar(ch: CallChannel, lang: Lang, hints: string[], on: EarEvents): LiveEar {
+  let running = false;
+  let failed = false;
+  const subs = [
+    ch.addListener('onText', (e) => running && on.text(e.text)),
+    ch.addListener('onLevel', (e) => running && on.level(e.value)),
+    ch.addListener('onError', (e) => {
+      if (!running) return;
+      failed = true;
+      on.error(e.code, e.message);
+    }),
+    ch.addListener('onEnd', () => {
+      if (!running) return;
+      running = false;
+      // 出错收的尾：缓一秒再交给调用方重开，免得一直出错时原地空转
+      if (failed) setTimeout(() => !running && on.ended(), 1000);
+      else on.ended();
+    }),
+  ];
+  return {
+    async start() {
+      if (running) return;
+      running = true;
+      failed = false;
+      await ch.listen({ locale: LOCALE[lang], hints: hints.filter(Boolean) });
+    },
+    async stop() {
+      if (!running) return;
+      running = false;
+      await ch.stopListening();
+    },
+    dispose() {
+      subs.forEach((x) => x.remove());
+      if (running) void ch.stopListening();
+      running = false;
+    },
+  };
+}
+
 const onDeviceLocales = new Map<string, boolean>();
 
 async function onDevice(locale: string): Promise<boolean> {
@@ -114,7 +209,8 @@ async function onDevice(locale: string): Promise<boolean> {
   return ok;
 }
 
-export function createEar(lang: Lang, hints: string[], on: EarEvents): LiveEar {
+/** 老包的耳朵：expo-speech-recognition，每次 start 自己开一台引擎 */
+function speechEar(lang: Lang, hints: string[], on: EarEvents): LiveEar {
   const s = speech();
   const locale = LOCALE[lang];
   let running = false;
@@ -217,83 +313,180 @@ async function pcmReader(text: string, voiceId: string, billing: Billing, signal
   return (await proxyStream('fish.tts.stream', body, { billing, signal })).reader;
 }
 
-/** 16 bit 小端 PCM → [-1, 1) 浮点；奇数字节留到下一块 */
-export function pcm16ToFloat(bytes: Uint8Array, carry: number[]): Float32Array {
-  const all = carry.length ? Uint8Array.from([...carry, ...bytes]) : bytes;
-  const n = Math.floor(all.length / 2);
-  carry.length = 0;
-  if (all.length % 2) carry.push(all[all.length - 1]);
+/** 16 bit 小端 PCM → [-1, 1) 浮点 */
+export function pcm16ToFloat(bytes: Uint8Array): Float32Array<ArrayBuffer> {
+  const n = Math.floor(bytes.length / 2);
   const out = new Float32Array(n);
-  const view = new DataView(all.buffer, all.byteOffset, n * 2);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, n * 2);
   for (let i = 0; i < n; i++) out[i] = view.getInt16(i * 2, true) / 32768;
   return out;
 }
 
-export function createMouth(character: Character, billing: Billing): LiveMouth {
+function toBase64(bytes: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+/** 放 PCM 的那一头：通话通道，或老包的 audio-api 缓冲队列 */
+interface PcmSink {
+  /** 开一段新的话：之前排着的作废；每播完一块调一次 onPlayed */
+  open(onPlayed: () => void): void;
+  /** 排一块 16 bit PCM（偶数字节） */
+  play(pcm: Uint8Array): void;
+  /** 攒够了，开播；开不了给 false */
+  start(): boolean;
+  /** 掐掉正在放的 */
+  cut(): void;
+  /** 这段话完了 */
+  idle(): void;
+  dispose(): void;
+}
+
+/** 通话通道：块一排进去就放，所以开播前先攒在这里 */
+function channelSink(ch: CallChannel): PcmSink {
+  let gen = -1;
+  let held: Uint8Array[] | null = null;
+  let onPlayed: (() => void) | null = null;
+  const sub = ch.addListener('onPlayed', (e) => {
+    if (e.generation === gen) onPlayed?.();
+  });
+  return {
+    open(cb) {
+      gen = ch.stopPlayback();
+      held = [];
+      onPlayed = cb;
+    },
+    play(pcm) {
+      if (held) held.push(pcm);
+      else ch.enqueue(toBase64(pcm));
+    },
+    start() {
+      const h = held ?? [];
+      held = null;
+      h.forEach((pcm) => ch.enqueue(toBase64(pcm)));
+      return true;
+    },
+    cut() {
+      onPlayed = null;
+      held = null;
+      gen = ch.stopPlayback();
+    },
+    idle() {
+      onPlayed = null;
+    },
+    dispose() {
+      sub.remove();
+    },
+  };
+}
+
+/** 老包：react-native-audio-api；没在说的时候挂起（引擎停掉，让识别独占，D-237） */
+function audioApiSink(): PcmSink {
   const api = audioApi();
   let ctx: AudioContext | null = null;
-  let current: { abort: AbortController; src: AudioBufferQueueSourceNode; settle: (r: SayResult) => void } | null = null;
-
-  const context = (): AudioContext => {
-    if (!ctx) {
-      // 会话交给识别模块：audio-api 自己再设类别 / 激活会触发对方重启引擎（D-237）
-      api.AudioManager.disableSessionManagement();
-      ctx = new api.AudioContext({ sampleRate: RATE });
-    }
-    return ctx;
-  };
-
-  // 没在说的时候挂起播放器（引擎停掉，让麦克风独占）；挂起 / 恢复排成一条队，后发的说了算
+  let src: AudioBufferQueueSourceNode | null = null;
+  let active = false;
+  // 挂起 / 恢复排成一条队，后发的说了算
   let power: Promise<void> = Promise.resolve();
   const setPlaying = (on: boolean) => {
     power = power
       .then(() => {
         if (!ctx) return;
         if (on) return ctx.resume();
-        if (!current) return ctx.suspend();
+        if (!active) return ctx.suspend();
       })
       .catch(() => {});
   };
+  const cut = () => {
+    if (!src) return;
+    try {
+      src.stop();
+    } catch {}
+    src.onBufferEnded = null;
+    src = null;
+  };
+  return {
+    open(onPlayed) {
+      cut();
+      if (!ctx) {
+        // 会话交给识别模块：audio-api 自己再设类别 / 激活会触发对方重启引擎
+        api.AudioManager.disableSessionManagement();
+        ctx = new api.AudioContext({ sampleRate: RATE });
+      }
+      active = true;
+      setPlaying(true);
+      src = ctx.createBufferQueueSource();
+      src.connect(ctx.destination);
+      src.onBufferEnded = onPlayed;
+    },
+    play(pcm) {
+      if (!ctx || !src) return;
+      const data = pcm16ToFloat(pcm);
+      const buf = ctx.createBuffer(1, data.length, RATE);
+      buf.copyToChannel(data, 0);
+      src.enqueueBuffer(buf);
+    },
+    start() {
+      // offset 必须显式给 0：库的默认值是 -1，又被它自己的参数检查拒掉（抛错 = 一声不出）
+      try {
+        src?.start(0, 0);
+        return true;
+      } catch (e) {
+        console.warn('[live-voice] 开播失败：', e);
+        return false;
+      }
+    },
+    cut,
+    idle() {
+      if (src) src.onBufferEnded = null;
+      active = false;
+      setPlaying(false);
+    },
+    dispose() {
+      cut();
+      active = false;
+      void ctx?.close().catch(() => {});
+      ctx = null;
+    },
+  };
+}
+
+export function createMouth(character: Character, billing: Billing): LiveMouth {
+  const ch = channel();
+  const sink = ch ? channelSink(ch) : audioApiSink();
+  let current: { abort: AbortController; settle: (r: SayResult) => void } | null = null;
 
   const stopCurrent = () => {
     const c = current;
     if (!c) return;
     current = null;
     c.abort.abort();
-    try {
-      c.src.stop();
-    } catch {}
-    c.src.onBufferEnded = null;
+    sink.cut();
     c.settle('stopped');
   };
 
   const begin = (): Utterance => {
     stopCurrent();
-    const ac = context();
-    setPlaying(true);
     const abort = new AbortController();
-    const src = ac.createBufferQueueSource();
-    src.connect(ac.destination);
     let settled = false;
     let resolveResult: (r: SayResult) => void = () => {};
     const result = new Promise<SayResult>((resolve) => (resolveResult = resolve));
     const me = {
       abort,
-      src,
       settle: (r: SayResult) => {
         if (settled) return;
         settled = true;
         if (current === me) current = null;
-        src.onBufferEnded = null;
-        setPlaying(false);
+        sink.idle();
         resolveResult(r);
       },
     };
     current = me;
     const alive = () => current === me;
 
-    // 每句一段：合成回来的块先攒在段里，按顺序灌进同一个播放队列
-    const segments: { chunks: Float32Array[]; done: boolean }[] = [];
+    // 每句一段：合成回来的字节先攒在段里，按顺序灌进同一个播放队列
+    const segments: { chunks: Uint8Array[]; bytes: number; done: boolean }[] = [];
     let cursor = 0;
     let queued = 0;
     let queuedSamples = 0;
@@ -304,46 +497,40 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
     const finishIfDone = () => {
       if (ended && cursor >= segments.length && queued <= 0) me.settle(anyAudio ? 'done' : 'failed');
     };
-    src.onBufferEnded = () => {
+    sink.open(() => {
+      if (!alive()) return;
       queued--;
       finishIfDone();
-    };
-    const enqueue = (chunks: Float32Array[]) => {
-      const len = chunks.reduce((n, c) => n + c.length, 0);
-      if (!len) return;
-      const data = new Float32Array(len);
+    });
+    // 一段里的块拼起来交出去；16 bit 采样不能劈开，奇数字节留在段里等下一块
+    const flush = (seg: (typeof segments)[number]) => {
+      const all = new Uint8Array(seg.bytes);
       let off = 0;
-      for (const c of chunks) {
-        data.set(c, off);
+      for (const c of seg.chunks) {
+        all.set(c, off);
         off += c.length;
       }
-      const buf = ac.createBuffer(1, len, RATE);
-      buf.copyToChannel(data, 0);
-      src.enqueueBuffer(buf);
+      const even = all.length - (all.length % 2);
+      seg.chunks = even < all.length ? [all.subarray(even)] : [];
+      seg.bytes = all.length - even;
+      if (!even) return;
+      sink.play(all.subarray(0, even));
       queued++;
-      queuedSamples += len;
+      queuedSamples += even / 2;
       anyAudio = true;
     };
     const pump = () => {
       if (!alive()) return;
       while (cursor < segments.length) {
         const seg = segments[cursor];
-        const len = seg.chunks.reduce((n, c) => n + c.length, 0);
-        if (len >= RATE * CHUNK_SEC || (seg.done && len)) {
-          enqueue(seg.chunks);
-          seg.chunks = [];
-        }
+        if (seg.bytes >= RATE * CHUNK_SEC * 2 || (seg.done && seg.bytes > 1)) flush(seg);
         if (!seg.done) break;
         cursor++;
       }
       // 攒够一点再开播；整段都到了就直接播
       if (!started && (queuedSamples >= RATE * PREROLL_SEC || (ended && cursor >= segments.length && queuedSamples > 0))) {
         started = true;
-        // offset 必须显式给 0：库的默认值是 -1，又被它自己的参数检查拒掉（抛错 = 一声不出、这段话永远放不完）
-        try {
-          src.start(0, 0);
-        } catch (e) {
-          console.warn('[live-voice] 开播失败：', e);
+        if (!sink.start()) {
           me.settle('failed');
           return;
         }
@@ -359,7 +546,7 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
       push(sentence) {
         const tex = sentence.trim();
         if (!alive() || ended || !tex) return;
-        const seg = { chunks: [] as Float32Array[], done: false };
+        const seg = { chunks: [] as Uint8Array[], bytes: 0, done: false };
         segments.push(seg);
         if (generationBlocked('tts', billing)) {
           seg.done = true;
@@ -369,12 +556,12 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
         void (async () => {
           try {
             const reader = await pcmReader(tex, voiceFor(character, 'fish'), billing, abort.signal);
-            const carry: number[] = [];
             for (;;) {
               const { done, value } = await reader.read();
               if (done || !alive()) break;
               if (value?.length) {
-                seg.chunks.push(pcm16ToFloat(value, carry));
+                seg.chunks.push(value);
+                seg.bytes += value.length;
                 pump();
               }
             }
@@ -405,8 +592,7 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
     stop: stopCurrent,
     dispose() {
       stopCurrent();
-      void ctx?.close().catch(() => {});
-      ctx = null;
+      sink.dispose();
     },
   };
 }

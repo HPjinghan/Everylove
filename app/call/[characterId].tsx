@@ -8,7 +8,8 @@
  * 用 ref 记当前选择，免得 speak 闭包拿到旧值。
  * 按分钟计（D-210）：接通后每 10 秒扣一次她的语音时长（features/call-meter）；剩不到一分钟 TA 自己收尾，用完了 TA 说完这句就挂。
  * 实时（D-232，有原生模块的包）：本机边听边认（她说的字当场出在字幕里，停顿 0.75 秒算说完）→ TA 回（不思考）→ 边合成边播；
- * 半双工（D-237）：TA 说话时不听，点 TA 的头像就打断；她说话时播放器挂起。识别这门语言不行时这通电话退回管线式。
+ * 通话通道（D-238）：同一台引擎开着回声消除，TA 说话时也在听，她插话或点 TA 的头像就打断；老包半双工（D-237），只能点头像。
+ * 通道开不了 / 识别这门语言不行时这通电话退回管线式。
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -29,11 +30,11 @@ import { alertNoVoice } from '@/components/voice-gate';
 import { MingCute } from '@/components/mingcute';
 import { Shape, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
-import { VAD, callPickupLine, callReply, formatCallDuration, LIVE, logCall, speakableText, takeSentences, utteranceDone } from '@/lib/call';
+import { VAD, callPickupLine, callReply, formatCallDuration, isBargeIn, LIVE, logCall, speakableText, takeSentences, utteranceDone } from '@/lib/call';
 import { callSecondsLeft, chargeCall, endCallMeter, startCallMeter } from '@/features/call-meter';
 import { describeAiError } from '@/lib/chat';
 import { getLang, t } from '@/lib/i18n';
-import { createEar, createMouth, liveVoiceReady, requestLivePermissions, setLiveRoute, type LiveEar, type LiveMouth, type SayResult, type Utterance } from '@/lib/live-voice';
+import { closeLive, createEar, createMouth, liveDuplex, liveVoiceReady, openLive, requestLivePermissions, setLiveRoute, type LiveEar, type LiveMouth, type SayResult, type Utterance } from '@/lib/live-voice';
 import { ASR_RECORDING, transcribeVoice } from '@/lib/media';
 import { synthesizeVoice } from '@/lib/tts';
 import { findCharacter, useAppStore } from '@/store/app-store';
@@ -86,6 +87,7 @@ export default function CallScreen() {
   const heardText = useRef('');
   const lastTextAt = useRef(0);
   /** TA 正在说的这句（滤回声用） */
+  const saying = useRef('');
   /** 正在说的那段；被打断后旧回合的字不再往里送 */
   const activeUtt = useRef<Utterance | null>(null);
   const phaseRef = useRef<Phase>('dialing');
@@ -165,19 +167,22 @@ export default function CallScreen() {
     await l.ear.start(speakerRef.current);
   }, []);
 
-  /* ── 实时：TA 开口了——字幕跟上；这时不开识别（半双工，D-237：两台音频引擎同时跑会互相重启），打断靠点头像 ── */
+  /* ── 实时：TA 开口了——字幕跟上。通话通道（D-238）同时听着她插不插话；老包半双工（D-237），这时不听，打断靠点头像 ── */
   const enterSpeaking = useCallback(async (text: string) => {
     const l = live.current;
     setHimLine(text);
+    saying.current = text;
     if (!l || phaseRef.current === 'speaking') return;
     heardText.current = '';
     setPhaseSafe('speaking');
     await l.ear.stop();
+    if (liveDuplex()) await l.ear.start(speakerRef.current);
   }, []);
 
   /* ── 实时：TA 这段说完了（被打断的由 stopTA 接着听，这里不管） ── */
   const afterSpeech = useCallback(
     async (r: SayResult) => {
+      saying.current = '';
       if (!alive.current || r === 'stopped') return;
       if (r === 'failed') {
         setNote(t('语音没接通，TA 的话在字幕里'));
@@ -250,12 +255,13 @@ export default function CallScreen() {
     }
   }, [bond, listenLive, enterSpeaking, afterSpeech]);
 
-  /** 实时：打断 TA（点头像）——掐掉这段，当场接着听 */
+  /** 实时：打断 TA（她插话 / 点头像）——掐掉这段，当场接着听 */
   const stopTA = useCallback(() => {
     const l = live.current;
     if (!l || (phaseRef.current !== 'speaking' && phaseRef.current !== 'thinking')) return;
     activeUtt.current = null;
     turnBusy.current = false;
+    saying.current = '';
     l.mouth.stop();
     void listenLive();
   }, [listenLive]);
@@ -353,7 +359,7 @@ export default function CallScreen() {
         router.back();
         return;
       }
-      if (liveOn.current) startLive();
+      if (liveOn.current) await startLive();
       await new Promise((r) => setTimeout(r, 1600));
       if (cancelled) return;
       setPhaseSafe('connecting');
@@ -385,7 +391,8 @@ export default function CallScreen() {
       live.current?.mouth.dispose();
       live.current?.ear.dispose();
       live.current = null;
-      void audioSession.playback();
+      // 先关通话通道再把会话切回播放档
+      void closeLive().then(() => audioSession.playback());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [characterId]);
@@ -401,13 +408,34 @@ export default function CallScreen() {
     }
   };
 
-  /** 实时通道接上耳朵和嘴（D-232）；识别出了这门语言不行之类的错，这通电话退回管线式 */
-  function startLive() {
+  /** 实时通道退回管线式（开不了通道 / 这门语言认不了） */
+  function dropLive() {
+    liveOn.current = false;
+    setLiveMode(false);
+    live.current?.mouth.dispose();
+    live.current?.ear.dispose();
+    live.current = null;
+    return closeLive();
+  }
+
+  /** 实时通道接上耳朵和嘴（D-232）；通道开不了、识别出了这门语言不行之类的错，这通电话退回管线式 */
+  async function startLive() {
     if (!character || !bond) return;
-    setLiveRoute(speakerRef.current);
+    try {
+      await openLive(speakerRef.current);
+    } catch (e) {
+      console.warn('[call] 通话通道开不了，退回管线式：', e);
+      await dropLive();
+      return;
+    }
     const mouth = createMouth(character, 'included');
     const ear = createEar(getLang(), [bond.name, character.name], {
       text(tr) {
+        if (phaseRef.current === 'speaking') {
+          // 她插话了（通话通道才会在 TA 说话时听）：TA 停下，这一段重新听
+          if (isBargeIn(tr, saying.current, getLang())) stopTA();
+          return;
+        }
         if (phaseRef.current !== 'listening' || tr === heardText.current) return;
         heardText.current = tr;
         lastTextAt.current = Date.now();
@@ -427,13 +455,9 @@ export default function CallScreen() {
         }
         if (code === 'language-not-supported' || code === 'service-not-allowed') {
           // 这台手机认不了这门语言：这通电话退回管线式
-          liveOn.current = false;
-          setLiveMode(false);
-          mouth.stop();
-          ear.dispose();
-          mouth.dispose();
-          live.current = null;
-          if (phaseRef.current === 'listening' || phaseRef.current === 'speaking') void listen();
+          void dropLive().then(() => {
+            if (alive.current && (phaseRef.current === 'listening' || phaseRef.current === 'speaking')) void listen();
+          });
           return;
         }
         setNote(t('没听清，再说一遍？'));
