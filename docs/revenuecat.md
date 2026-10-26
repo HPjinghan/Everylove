@@ -32,8 +32,8 @@
 
 ### E3 · 动手前还要开发者 / Harper 给的
 
-- 价格（**已定 D-221**）：Pro $9.99 / ¥1,500、Max $24.99 / ¥3,800 每月；流量包 1000 / 3000 / 10000 RB = $1.99 / $4.99 / $14.99（¥300 / ¥750 / ¥2,200）。**语音分钟包 D-236 停售**（TA 的声音改扣流量，20 RB / 分钟）：App Store Connect 里的 `ringring.voice.*` 不提交 / 下架，RevenueCat 的 offering 里也去掉；服务器照旧能给老交易入账。
-- **商品 ID**（原手册第 18 条，一旦提交就改不了；**已定 D-218**）：`ringring.pro.monthly`、`ringring.max.monthly`（自动续期订阅，放同一个订阅群组，升降级由苹果处理）、`ringring.traffic.s` / `.m` / `.l`、`ringring.voice.s` / `.m` / `.l`（消耗型）。ID 里不写数量，入账数只写在服务器商品表 `iap_products`。App Store Connect 里的显示名用 RingBit 的单位（如「流量 1000 RB」，D-219），不写 MB。
+- 价格（**已定 D-221 / D-239**）：Pro $9.99 / ¥1,500、Max $24.99 / ¥3,800 每月；流量包 2500 / 5500 / 12000 / 32000 / 65000 RB = $4.99 / $9.99 / $19.99 / $49.99 / $99.99（¥750 / ¥1,500 / ¥3,000 / ¥7,500 / ¥15,000）（s / m / l 沿用原商品 ID、只改价格与服务器入账数，xl / xxl 新建）。**语音分钟包 D-236 停售**（TA 的声音改扣流量，20 RB / 分钟）：App Store Connect 里的 `ringring.voice.*` 不提交 / 下架，RevenueCat 的 offering 里也去掉；服务器照旧能给老交易入账。
+- **商品 ID**（原手册第 18 条，一旦提交就改不了；**已定 D-218**）：`ringring.pro.monthly`、`ringring.max.monthly`（自动续期订阅，放同一个订阅群组，升降级由苹果处理）、`ringring.traffic.s` / `.m` / `.l` / `.xl` / `.xxl`、`ringring.voice.s` / `.m` / `.l`（消耗型）。ID 里不写数量，入账数只写在服务器商品表 `iap_products`。App Store Connect 里的显示名用 RingBit 的单位（如「流量 1000 RB」，D-219），不写 MB。
 - **创作者分成要不要按买家实付分**（OPEN_QUESTIONS #38）：要的话原手册 §9 的店面 / 当地价格要在第一笔正式购买之前开始存。
 - 上架市场：日本 + 中文先行之外，欧盟上不上（上的话先申报 DSA 交易者身份）。
 - 后台清单（原手册 §6）：付费 App 协议与税务银行、小企业计划、两把苹果密钥、App Store 服务器通知 V2 指向 RevenueCat、RevenueCat 恢复行为保持默认、Refund Control 先选不回应——这些只有账户持有人能点。

@@ -43,11 +43,13 @@ export function imageModelOf(name: string): ImageModel {
 export const VISION_MB = 3;
 /** 她的语音识别（D-211）：按录音时长折流量，2 RB / 分钟（D-234） */
 export const ASR_SECONDS_PER_MB = 30;
-/** 流量包（价格待 #30；收费开关打开前点即到账） */
+/** 流量包（D-239：$4.99～$99.99 五档，越大送得越多，但每美元都不如订阅；收费开关打开前点即到账） */
 export const TRAFFIC_PACKS: { id: string; mb: number }[] = [
-  { id: 'pack-1000', mb: 1000 },
-  { id: 'pack-3000', mb: 3000 },
-  { id: 'pack-10000', mb: 10000 },
+  { id: 'pack-2500', mb: 2500 },
+  { id: 'pack-5500', mb: 5500 },
+  { id: 'pack-12000', mb: 12000 },
+  { id: 'pack-32000', mb: 32000 },
+  { id: 'pack-65000', mb: 65000 },
 ];
 
 /* ── TA 的声音（D-236：TA 的语音 + 电话也扣流量；订阅用户才能用，Free 只有送的通话）── */
