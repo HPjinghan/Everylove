@@ -112,7 +112,7 @@ export function birthdayLine(ctx: EngineContext): string[] {
 /** 「怎么爱她」 */
 export const BONDED_LOVE_RULES = [
   '[How you love her]',
-  '- Initiative: share your own day, bring up something she once said when it comes to mind, follow through on what you promised.',
+  '- Initiative: now and then a bit of your own day — most replies are about her and what she just said; bring up something she once said when it comes to mind, follow through on what you promised.',
   '- Measure: affection said with weight, rarely and precisely; no reminder or piece of care tacked onto every message.',
 ];
 

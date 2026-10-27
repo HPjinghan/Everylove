@@ -5,12 +5,14 @@ import { describe, expect, it } from 'vitest';
 
 import '@/features';
 
-import { buildCircleSystem, buildHerContactNameSystem, buildPhoneNoticedUser, parseHerContactName } from '@/content/prompts';
+import { buildCircleSystem, buildHerContactNameSystem, buildPhoneNoticedUser, circleBlock, parseHerContactName, phoneBlock } from '@/content/prompts';
+import { passcodeWillingChance, passcodeWillingToday } from '@/lib/phone';
 import { callLog, herContactName, hisPhotos, hisWallpaper, newSince, noticeChance } from '@/lib/his-phone';
-import type { AlbumShot, Bond } from '@/lib/types';
+import type { AlbumShot, Bond, EngineContext } from '@/lib/types';
 import { bondBase, history, NOW, seed } from './fixtures';
 
 const T = NOW.getTime();
+const BR = String.fromCharCode(10);
 const DAY = 86_400_000;
 
 const bond = (patch: Partial<Bond> = {}): Bond =>
@@ -96,5 +98,38 @@ describe('生成类 prompt：她是你的谁按羁绊阶段（D-242）', () => {
   it('备注名与察觉的 prompt', () => {
     expect(buildHerContactNameSystem(seed, bondBase, '小满')).toMatchSnapshot();
     expect(buildPhoneNoticedUser({ nickname: '小满', looked: ['your notebook', 'your chat with 老周'], guessed: true })).toMatchSnapshot();
+  });
+});
+
+describe('密码给不给（D-244）：一天一个答案，按等级 × 分量', () => {
+  it('概率随等级走，分量调一档，LV6 必给', () => {
+    expect(passcodeWillingChance(1, 'balanced')).toBe(0.15);
+    expect(passcodeWillingChance(1, 'independent')).toBe(0.05);
+    expect(passcodeWillingChance(3, 'devoted')).toBeCloseTo(0.65);
+    expect(passcodeWillingChance(6, 'independent')).toBeCloseTo(0.85);
+    expect(passcodeWillingChance(6, 'balanced')).toBe(1);
+  });
+
+  it('同一天同一个答案；LV1 大多数日子不给', () => {
+    const at = (d: number) => T + d * DAY;
+    expect(passcodeWillingToday('4821', 1, 'balanced', at(0))).toBe(passcodeWillingToday('4821', 1, 'balanced', at(0) + 3600_000));
+    const yes = Array.from({ length: 200 }, (_, d) => passcodeWillingToday('4821', 1, 'balanced', at(d))).filter(Boolean).length;
+    expect(yes).toBeGreaterThan(10);
+    expect(yes).toBeLessThan(60);
+  });
+
+  it('不给的那天 prompt 里没有密码', () => {
+    const ctx = (code: string) => ({ mode: 'bonded', character: seed, bond: { ...bondBase, affinity: 0, phoneCode: code }, history: [], userText: '' }) as EngineContext;
+    const codes = Array.from({ length: 40 }, (_, i) => String(1000 + i));
+    const refused = codes.find((c) => !passcodeWillingToday(c, 1, 'balanced', T))!;
+    const lines = phoneBlock(ctx(refused), NOW);
+    expect(lines.join(BR)).not.toContain(refused);
+    expect(lines).toMatchSnapshot();
+  });
+
+  it('身边的人：对她说话时提醒她一个都没见过', () => {
+    const circle = [{ id: 'p1', name: '老周', relation: '同事' }];
+    expect(circleBlock(circle, true).join(BR)).toContain('She has never met any of them');
+    expect(circleBlock(circle).join(BR)).not.toContain('She has never met');
   });
 });

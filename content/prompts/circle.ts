@@ -182,11 +182,17 @@ export function buildCircleRefreshUser(input: CircleRefreshInput): string {
   return lines.join('\n');
 }
 
-/** 【你身边的人】：进记事本 / 发帖 / 亲密聊天——一旦生成，提到时前后一致 */
-export function circleBlock(circle: CirclePerson[] | undefined): string[] {
+/**
+ * 【你身边的人】：进记事本 / 发帖 / 亲密聊天——一旦生成，提到时前后一致。
+ * 对她说话时（D-244）：她一个都没见过——少提，提就说清是谁，不甩一个她不认识的光名字。
+ */
+export function circleBlock(circle: CirclePerson[] | undefined, toHer = false): string[] {
   if (!circle?.length) return [];
   return [
     "[People around you] These people are really in your life; stay consistent when you mention them (same names, same relations), and don't invent additional family or friends out of nowhere:",
+    ...(toHer
+      ? ["- She has never met any of them. Bring one up only when it really connects to what you two are talking about, and then say who they are (\"my colleague…\", \"an old friend from college\") — never a bare name as if she knew them."]
+      : []),
     ...circle.map((p) => `- ${p.name} (${p.relation})${p.note ? `: ${p.note}` : ''}`),
   ];
 }

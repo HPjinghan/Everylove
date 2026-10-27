@@ -9,6 +9,8 @@ import '@/features';
 import { chatProviders, type ChatRequest } from '@/core/providers';
 import { landReply, resendTurn, sendText, turnHooks } from '@/core/turn';
 import { HEART_FALLBACK, HEART_FULL, heartPaceOf } from '@/lib/bond';
+import { herShareTier } from '@/lib/her-share';
+import { passcodeWillingToday } from '@/lib/phone';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
 // vitest 会把 vi.mock 提升到文件顶部，写在 import 之后只是为了过 import/first
@@ -70,8 +72,10 @@ describe('亲密会话', () => {
       ['him', '看完记得给我说一声'],
       ['system', 'TA 同意让你看手机了'],
     ]);
-    // 模型看到的：系统 prompt 带手机密码；最后一轮是她这句
-    expect(lastReq?.system).toContain(`Your phone passcode is ${bond.phoneCode}`);
+    // 模型看到的：今天肯给才带密码（D-244，一天一个答案）；最后一轮是她这句
+    const willing = passcodeWillingToday(bond.phoneCode!, 1, herShareTier(findCharacter(bond.characterId)!), Date.now());
+    expect(lastReq?.system.includes(`Your phone passcode is ${bond.phoneCode}`)).toBe(willing);
+    expect(lastReq?.system).toContain('[Your phone]');
     expect(lastReq?.turns.at(-1)).toEqual({ role: 'user', content: '你的手机密码多少呀' });
     expect(lastReq?.kind).toBe('reply');
   });

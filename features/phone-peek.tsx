@@ -19,15 +19,19 @@ import { himMsg, respond, sendCard, sysMsg, type TurnUi } from '@/core/turn';
 import { BONDED_CHAT } from '@/features/prompts';
 import { bondScope } from '@/lib/chat';
 import { darkSideCheck } from '@/lib/engine';
+import { levelOf } from '@/lib/bond';
+import { herShareTier } from '@/lib/her-share';
 import { lookedLabel, noticeChance } from '@/lib/his-phone';
+import { passcodeWillingToday } from '@/lib/phone';
 import { createInflight } from '@/lib/inflight';
 import { t } from '@/lib/i18n';
 import { absorbNotesMemory, addMemoryFact } from '@/lib/memory';
 import type { ChatMessage } from '@/lib/types';
-import { useAppStore } from '@/store/app-store';
+import { findCharacter, useAppStore } from '@/store/app-store';
 
 /* ── prompt：TA 知道自己的密码，她要看时由 TA 决定 ── */
-promptSections.register({ name: 'phone', stable: true, modes: BONDED_CHAT, order: ORDER.gameplay, lines: (ctx) => phoneBlock(ctx) });
+// stable：给不给一天才变一次（D-244），缓存前缀一天最多失效一次
+promptSections.register({ name: 'phone', stable: true, modes: BONDED_CHAT, order: ORDER.gameplay, lines: (ctx, env) => phoneBlock(ctx, env.now) });
 
 /* ── 暗号：[解锁手机] → 解锁 + 系统条（聊天里、电话里都一样） ── */
 replyMarkers.register({
@@ -49,16 +53,21 @@ cardKinds.register({
   render: (c, dark) => <CardShell emoji="📱" kicker={t('查手机')} title={c.title} subtitle={c.subtitle} dark={dark} />,
 });
 
-/** 锁屏上的「问 TA 要密码」：发一张卡片，TA 按性格决定给不给（给就说出密码并写暗号） */
+/** 锁屏上的「问 TA 要密码」：发一张卡片；给不给是今天定好的（D-244，同聊天里问），给就说出密码并写暗号 */
 export async function askPasscode(bondId: string, ui?: TurnUi): Promise<void> {
   const store = useAppStore.getState();
   const bond = store.bonds.find((b) => b.id === bondId);
-  if (!bond) return;
+  const character = bond && findCharacter(bond.characterId);
+  if (!bond || !character) return;
   const code = store.ensurePhoneCode(bond.id);
+  const now = Date.now();
+  const willing = passcodeWillingToday(code, levelOf(bond, now), herShareTier(character), now);
   await sendCard(
     { mode: 'bonded', bondId },
     { type: 'phoneRequest', title: t('想看看你的手机') },
-    `(She tapped "ask for the passcode": ${bond.nickname} wants to look at your phone. Decide as yourself, by your character and how close you are now: if you let her, tell her the passcode ${code} and write ${PHONE_UNLOCK_MARK} alone on the final line; if not, say why or tease her — no mark.)`,
+    willing
+      ? `(She tapped "ask for the passcode": ${bond.nickname} wants to look at your phone. Today you'll let her: tell her the passcode ${code} your way and write ${PHONE_UNLOCK_MARK} alone on the final line.)`
+      : `(She tapped "ask for the passcode": ${bond.nickname} wants to look at your phone. Not today: turn her down your own way — tease, deflect, "maybe later" — no digits, no mark, no fight.)`,
     ui
   );
 }

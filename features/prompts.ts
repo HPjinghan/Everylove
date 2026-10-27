@@ -88,7 +88,7 @@ promptSections.register({ name: 'pursuit', stable: true, modes: TALK, order: ORD
 promptSections.register({ name: 'love-style-talk', stable: true, modes: TALK, order: ORDER.pursuit, lines: (ctx) => loveStyleTalkLines(ctx.character) });
 promptSections.register({ name: 'profile', stable: true, modes: 'all', order: ORDER.profile, lines: (ctx) => characterProfileBlock(ctx.character) });
 // 身边的人（D-110）只在羁绊层（陌生人偶遇没有）
-promptSections.register({ name: 'circle', stable: true, modes: [...BONDED_FAMILY, 'post', 'outing'], when: notStranger, order: ORDER.circle, lines: (ctx) => circleBlock(ctx.bond?.circle) });
+promptSections.register({ name: 'circle', stable: true, modes: [...BONDED_FAMILY, 'post', 'outing'], when: notStranger, order: ORDER.circle, lines: (ctx, env) => circleBlock(ctx.bond?.circle, env.mode !== 'note') });
 // TA 自己的作息（D-119）：羁绊层都知道自己接下来要干嘛
 promptSections.register({ name: 'his-schedule', modes: [...BONDED_FAMILY, 'outing'], when: notStranger, order: ORDER.circle, lines: (ctx, env) => hisScheduleBlock(ctx.bond?.hisEvents, dateKey(env.now)) });
 // TA 自己最近的日子（D-158）：记事本 + 帖子，紧跟日程；聊天 / 通话 / 外出熟人——记事本模式不带（写本子时另走用户消息）

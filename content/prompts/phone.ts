@@ -4,6 +4,9 @@
  */
 
 import { scriptFor } from '@/content/characters';
+import { levelOf } from '@/lib/bond';
+import { herShareTier } from '@/lib/her-share';
+import { passcodeWillingToday } from '@/lib/phone';
 import type { Bond, Character, ChatMessage, EngineContext } from '@/lib/types';
 
 import { type HerBond } from './circle';
@@ -15,7 +18,18 @@ import { characterProfileBlock, herToYouZh, langName, memoryBlockFor, todayLine,
  */
 export const PHONE_UNLOCK_MARK = '[解锁手机]';
 
-export function phoneBlock(ctx: EngineContext): string[] {
+/** 今天给不给（D-244，lib/phone.ts）：一天一个答案，聊天里问、锁屏上问一样 */
+export function passcodeWilling(ctx: EngineContext, now: Date): boolean {
+  const code = ctx.bond?.phoneCode;
+  if (!code || !ctx.bond) return false;
+  return passcodeWillingToday(code, levelOf(ctx.bond, now.getTime()), herShareTier(ctx.character), now.getTime());
+}
+
+/** 不给的那天：没有密码，按自己的方式拒绝（不吵架、不吐数字） */
+const PHONE_NOT_TODAY =
+  "[Your phone] She doesn't have your passcode, and today you're not handing it over — too soon between you, something on it you'd be embarrassed by, or you just feel like teasing her. If she asks, say no your own way (tease, deflect, \"maybe later\", ask what she's after) — don't make it a fight, and never give out any digits.";
+
+export function phoneBlock(ctx: EngineContext, now: Date): string[] {
   const code = ctx.bond?.phoneCode;
   if (!code) return [];
   // 她自己猜开的（D-242）：TA 察觉之前以为手机还锁着，照锁着的写；察觉之后 TA 知道她会自己开
@@ -24,8 +38,9 @@ export function phoneBlock(ctx: EngineContext): string[] {
   } else if (ctx.bond?.phoneUnlocked) {
     return [`[Your phone] She knows your passcode (${code}); you've agreed to let her look.`];
   }
+  if (!passcodeWilling(ctx, now)) return [PHONE_NOT_TODAY];
   return [
-    `[Your phone] Your phone passcode is ${code}. If she wants to look at your phone or asks for it, decide as yourself, by how close you are — hand it over, tease her first, hold off, or give a hint.`,
+    `[Your phone] Your phone passcode is ${code}. Today, if she wants to look at your phone, you'll let her — your way: straight away, after teasing her a little, or after making her say why.`,
     `- Once you let her (you say the passcode or clearly agree), write ${PHONE_UNLOCK_MARK} on a separate final line (she can't see it); never write it otherwise.`,
   ];
 }
