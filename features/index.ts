@@ -19,6 +19,7 @@ import '@/features/iap';
 import '@/features/location';
 import '@/features/phone-peek';
 import '@/features/share';
+import '@/features/x-post';
 
 import '@/features/voice-reply';
 import '@/features/memory';

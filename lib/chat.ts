@@ -14,7 +14,6 @@ import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { describeImage, transcribeVoice } from '@/lib/media';
 import type { Bond, ChatMessage, EngineContext } from '@/lib/types';
-import { useAppStore } from '@/store/app-store';
 
 export { resendTurn, respond, runTurn, sendCard, sendText };
 export type { TurnResult, TurnScope, TurnUi };

@@ -33,7 +33,6 @@ import type { Bond, Character, CircleLine, CirclePerson } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, useAppStore } from '@/store/app-store';
 import { createInflight } from '@/lib/inflight';
-import { parseJsonObject } from '@/lib/json';
 import { mbtiAxis } from '@/lib/schedule';
 
 const inflight = createInflight();

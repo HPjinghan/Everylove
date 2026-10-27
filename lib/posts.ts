@@ -14,6 +14,9 @@
 import {
   buildCharacterPostSystem,
   buildCharacterPostUserPrompt,
+  buildHisPhotoPrompt,
+  POST_PHOTO_PATTERN,
+  type PostForm,
   buildPostReactionsSystem,
   buildPostReactionsUserPrompt,
   parseReactionsJSON,
@@ -22,9 +25,12 @@ import {
 import { backgroundAwake, levelOf } from '@/lib/bond';
 import { ensureCircle } from '@/lib/circle';
 import { completeText, splitBubbles, stripStageDirections } from '@/lib/engine';
+import { generateScenePhoto, imageKeyReady } from '@/lib/imagegen';
 import { uid } from '@/lib/format';
 import { rollAboutHer } from '@/lib/her-share';
 import { getLang, type Lang } from '@/lib/i18n';
+import { useEffect, useState } from 'react';
+
 import type { Character, Post, PostComment } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
 import { jitteredIntervalMs, perDayOf } from '@/lib/schedule';
@@ -67,33 +73,83 @@ export async function deliverDuePosts(now = Date.now()): Promise<number> {
     if (!backgroundAwake(bond, now)) continue;
     // 先排下一次的钟：生成失败也不会在每次回前台时反复重试轰炸
     useAppStore.getState().setPostDue(character.id, now + postIntervalMs(character));
-    const text = await generatePostText(character, bond.id, new Date(due));
-    if (text) {
-      useAppStore.getState().addCharacterPost(character.id, bond.id, text, due);
+    const post = await generatePostText(character, bond.id, new Date(due));
+    if (post) {
+      const id = useAppStore.getState().addCharacterPost(character.id, bond.id, post.text, due, post.photo ? { imageStatus: 'pending' } : undefined);
+      if (post.photo) void developPostPhoto(character, id, post.photo);
       delivered++;
     }
   }
   return delivered;
 }
 
-/** 引擎生成一条帖子文本；不可用/失败返回 null（这次不发） */
-async function generatePostText(character: Character, bondId: string, at: Date = new Date()): Promise<string | null> {
+/** 帖子的样子（D-252）：大多是生活切片，偶尔换一种；接着上一条说要有上一条 */
+const POST_FORM_WEIGHTS: [PostForm, number][] = [
+  ['daily', 0.6],
+  ['ask', 0.1],
+  ['tiny', 0.1],
+  ['followup', 0.1],
+  ['murmur', 0.1],
+];
+/** 配图的概率（D-252）：约四条一张；生图与「TA 主动发图」共用每天的平台额度，超了就只发文字 */
+export const POST_PHOTO_CHANCE = 0.25;
+
+export function pickPostForm(hasRecent: boolean, rand = Math.random()): PostForm {
+  let acc = 0;
+  for (const [form, w] of POST_FORM_WEIGHTS) {
+    acc += w;
+    if (rand < acc) return form === 'followup' && !hasRecent ? 'daily' : form;
+  }
+  return 'daily';
+}
+
+/** 引擎生成一条帖子（文字 + 可能的配图描述）；不可用/失败返回 null（这次不发） */
+async function generatePostText(character: Character, bondId: string, at: Date = new Date()): Promise<{ text: string; photo?: string } | null> {
   const { bonds, posts } = useAppStore.getState();
   const bond = bonds.find((b) => b.id === bondId);
   const recentPosts = posts.filter((p) => p.characterId === character.id).slice(-POST_RECENT).map((p) => p.text);
   const recentNotes = (bond?.notes ?? []).slice(-POST_RECENT).map((n) => n.text);
+  const wantPhoto = imageKeyReady() && Math.random() < POST_PHOTO_CHANCE;
   try {
     const raw = await completeText(
       buildCharacterPostSystem(character, bond),
-      buildCharacterPostUserPrompt(at, { aboutHer: rollAboutHer(character, bond ? levelOf(bond, at.getTime()) : undefined), recentPosts, recentNotes }),
-      200
+      buildCharacterPostUserPrompt(at, {
+        aboutHer: rollAboutHer(character, bond ? levelOf(bond, at.getTime()) : undefined),
+        recentPosts,
+        recentNotes,
+        form: pickPostForm(recentPosts.length > 0),
+        photo: wantPhoto,
+      }),
+      240
     );
-    const line = stripStageDirections(splitBubbles(raw, 1, character.name))[0];
-    return line ? line.slice(0, 140) : null;
+    const photo = raw.match(POST_PHOTO_PATTERN)?.[1]?.trim();
+    const line = stripStageDirections(splitBubbles(raw.replace(POST_PHOTO_PATTERN, ''), 1, character.name))[0];
+    if (!line) return null;
+    return { text: line.slice(0, 140), ...(wantPhoto && photo ? { photo } : {}) };
   } catch (e) {
     console.warn('[posts] 帖子生成失败，本周期跳过：', e);
     return null;
   }
+}
+
+/** 配图（D-252）：TA 自己拍的，平台出（D-210，和 TA 主动发图同一个每天额度）；没洗出来就只剩文字 */
+async function developPostPhoto(character: Character, postId: string, desc: string): Promise<void> {
+  try {
+    const uri = await generateScenePhoto(buildHisPhotoPrompt(character, { desc }), character, 'house');
+    useAppStore.getState().patchPost(postId, { imageUri: uri, imageStatus: undefined });
+  } catch (e) {
+    console.warn('[posts] 配图没洗出来：', e);
+    useAppStore.getState().patchPost(postId, { imageStatus: 'failed' });
+  }
+}
+
+/** 点赞数随时间涨（D-252）：刚发出时三成，一天里涨满；她自己的赞另算 */
+export function likesAt(post: Pick<Post, 'likes' | 'liked' | 'at' | 'mine'>, now: number): number {
+  if (post.mine) return post.likes;
+  const mine = post.liked ? 1 : 0;
+  const base = Math.max(0, post.likes - mine);
+  const grown = Math.min(1, Math.max(0, now - post.at) / (24 * 3600_000));
+  return Math.round(base * (0.3 + 0.7 * Math.sqrt(grown))) + mine;
 }
 
 /* ── 别人的互动（D-110） ── */
@@ -192,4 +248,30 @@ async function reactToPost(post: Post): Promise<void> {
     }
   }
   useAppStore.getState().addPostComments(post.id, comments);
+}
+
+/* ── 桌面 X 图块的角标（D-252） ── */
+
+/** 上次打开 X 之后：缔结的 TA 们新发的帖 + 她帖子底下到点了的新评论；从没打开过不标 */
+export function xNewCount(posts: Post[], bondedCharIds: Set<string>, seenAt: number | undefined, now: number): number {
+  if (seenAt === undefined) return 0;
+  let n = 0;
+  for (const p of posts) {
+    if (p.mine) n += p.comments.filter((c) => c.from !== 'me' && c.at > seenAt && c.at <= now).length;
+    else if (bondedCharIds.has(p.characterId) && p.at > seenAt && p.at <= now) n++;
+  }
+  return n;
+}
+
+/** 桌面用：每分钟走一次（她帖子底下的评论是陆续到点的） */
+export function useXNewCount(): number {
+  const posts = useAppStore((s) => s.posts);
+  const bonds = useAppStore((s) => s.bonds);
+  const seenAt = useAppStore((s) => s.xSeenAt);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return xNewCount(posts, new Set(bonds.map((b) => b.characterId)), seenAt, now);
 }

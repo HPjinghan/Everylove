@@ -12,6 +12,7 @@
  * 上次合上之后新有的带角标与小圆点；LV4 起桌面换成合影；合上时把她看过哪些交给 onClose（TA 可能察觉）。
  */
 
+import { Image } from 'expo-image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,6 +27,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { placeById } from '@/content/places';
 import { characterSecrets, messageContextText, unlockedSecretCount } from '@/content/prompts';
 import { appById } from '@/constants/apps';
+import { avatarFor } from '@/content/avatars';
 import { Elevation, NOTE_PAPER, Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { planTimeLabel } from '@/lib/appointments';
@@ -81,13 +83,9 @@ function dateLine(d: Date): string {
   }
 }
 
-/** 一个人的首字头像（身边的人没有立绘）：line 底 ink 衬线字 */
-function InitialAvatar({ name, size = 40 }: { name: string; size?: number }) {
-  return (
-    <View style={[styles.initial, { width: size, height: size }]}>
-      <Text style={[styles.initialText, { fontSize: size * 0.42 }]}>{name.slice(0, 1)}</Text>
-    </View>
-  );
+/** 身边的人的头像（D-252）：配角头像池里按「TA + 名字」固定取一张，和 X 评论区里是同一张 */
+function CircleAvatar({ characterId, name, size = 40 }: { characterId: string; name: string; size?: number }) {
+  return <Image source={avatarFor(`${characterId}:${name}`)} style={[styles.initial, { width: size, height: size }]} />;
 }
 
 /** 桌面图块（网格与 Dock 共用）：新东西的角标在右上 */
@@ -291,7 +289,7 @@ export function PhoneSheet({
                           <Text style={styles.herAvatarText}>{c.name.slice(0, 1)}</Text>
                         </View>
                       ) : (
-                        <InitialAvatar name={c.name} />
+                        <CircleAvatar characterId={character.id} name={c.name} />
                       )}
                       <View style={styles.convText}>
                         <View style={styles.convHead}>
@@ -365,7 +363,7 @@ export function PhoneSheet({
               </View>
               {circle.map((p) => (
                 <View key={p.id} style={[styles.convRow, styles.convLine]}>
-                  <InitialAvatar name={p.name} />
+                  <CircleAvatar characterId={character.id} name={p.name} />
                   <View style={styles.convText}>
                     <Text style={styles.convName}>
                       {p.name}
@@ -593,7 +591,6 @@ const styles = themed(() =>
     herAvatar: { width: 40, height: 40, borderRadius: Shape.radius, backgroundColor: Romance.accentSoft, alignItems: 'center', justifyContent: 'center' },
     herAvatarText: { fontFamily: Fonts.initial, fontSize: Type.scale.screenTitle.size, fontWeight: '600', color: Romance.accentStrong },
     initial: { borderRadius: Shape.radius, backgroundColor: Romance.line, alignItems: 'center', justifyContent: 'center' },
-    initialText: { fontFamily: Fonts.initial, fontWeight: '600', color: Romance.ink },
     // 会话（TA 视角：TA 在右）
     threadBody: { padding: Space.screen, gap: 6, paddingBottom: 40 },
     bubbleRow: { maxWidth: '80%', gap: 2 },

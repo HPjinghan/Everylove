@@ -43,6 +43,7 @@ import { appById, DEFAULT_DESKTOP_ORDER, WIDGET_TINT, type DesktopApp } from '@/
 import { CONTROL_FONT_SCALE, DISPLAY_FONT_SCALE, Elevation, Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, WallpaperTint, withAlpha } from '@/constants/theme';
 import { localeOf, t } from '@/lib/i18n';
+import { useXNewCount } from '@/lib/posts';
 import { tempNow, todayWeather, weatherCity } from '@/lib/weather';
 import { useAppStore, useHydrated } from '@/store/app-store';
 
@@ -398,8 +399,9 @@ export default function Desktop() {
     []
   );
 
+  const xNew = useXNewCount();
   const unreadOf = (app: DesktopApp) =>
-    app.badge === 'unread' ? bonds.reduce((n, b) => n + b.unread, 0) : 0;
+    app.badge === 'unread' ? bonds.reduce((n, b) => n + b.unread, 0) : app.badge === 'x' ? xNew : 0;
 
   // 未读横幅：一人未读直达会话；多人合并「A、B · N 条新消息」进 Message 列表
   const unreadBonds = bonds.filter((b) => b.unread > 0);

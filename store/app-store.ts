@@ -94,6 +94,8 @@ interface AppState {
   /** 订阅计划（D-063 试装模拟）：free 1 槽 / pro 5 槽 / max 不限 */
   plan: 'free' | 'pro' | 'max';
   posts: Post[];
+  /** 她上次打开 X 的时刻（D-252）：之后 TA 们新发的帖与她帖子底下新来的评论算「新」，桌面图块带角标 */
+  xSeenAt?: number;
   /** 角色立绘（本机文件 URI），按角色 id；作为后续所有生图的参考图（D-019） */
   portraits: Record<string, string>;
   /** 手机壳桌面（D-020/D-021）：图标顺序（旧模型，作迁移源保留）与壁纸 id */
@@ -237,11 +239,18 @@ interface AppState {
   /** 归档（D-201）：去掉最早的 n 条，记忆的两个下标一起往前挪 */
   trimBondMessages: (bondId: string, n: number) => void;
   toggleLike: (postId: string) => void;
-  addMyComment: (postId: string, text: string) => void;
+  addMyComment: (postId: string, text: string, to?: string) => void;
+  /** 她发一条帖（D-252）；评论由 features/x-post 生成后用 appendPostComments 落（带未来的时刻，到点才显示） */
+  addMyPost: (text: string) => string;
+  /** 往帖子底下追加评论（不改 reacted） */
+  appendPostComments: (postId: string, comments: PostComment[]) => void;
+  /** 改帖子的配图 / 状态（D-252） */
+  patchPost: (postId: string, patch: Partial<Pick<Post, 'imageUri' | 'imageStatus'>>) => void;
+  markXSeen: (at: number) => void;
   /** 发帖调度（D-055） */
   setPostDue: (characterId: string, at: number) => void;
   /** TA 发一条帖；`at` = 补投时到点的那一刻（D-162），缺省现在 */
-  addCharacterPost: (characterId: string, bondId: string, text: string, at?: number) => void;
+  addCharacterPost: (characterId: string, bondId: string, text: string, at?: number, extra?: Partial<Pick<Post, 'imageStatus'>>) => string;
   /** TA 的回帖（D-053）：文本由调用方生成（模型或台词库回落），可多次回复 */
   addHisReply: (postId: string, text: string) => void;
   addCustomCharacter: (c: Character) => void;
@@ -797,7 +806,7 @@ export const useAppStore = create<AppState>()(
         set({
           posts: get().posts.map((p) =>
             p.id === postId
-              ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) }
+              ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1), likedAt: p.liked ? undefined : Date.now() }
               : p
           ),
         }),
@@ -805,12 +814,14 @@ export const useAppStore = create<AppState>()(
       setPostDue: (characterId, at) =>
         set({ postSchedule: { ...get().postSchedule, [characterId]: at } }),
 
-      addCharacterPost: (characterId, bondId, text, at) =>
+      addCharacterPost: (characterId, bondId, text, at, extra) => {
+        const id = uid('p');
         set({
           posts: [
             ...get().posts,
             {
-              id: uid('p'),
+              ...extra,
+              id,
               characterId,
               bondId,
               text,
@@ -821,9 +832,11 @@ export const useAppStore = create<AppState>()(
               comments: [],
             },
           ],
-        }),
+        });
+        return id;
+      },
 
-      addMyComment: (postId, text) =>
+      addMyComment: (postId, text, to) =>
         set({
           posts: get().posts.map((p) =>
             p.id === postId
@@ -831,7 +844,7 @@ export const useAppStore = create<AppState>()(
                   ...p,
                   comments: [
                     ...p.comments,
-                    { id: uid('c'), from: 'me' as const, text, at: Date.now() },
+                    { id: uid('c'), from: 'me' as const, text, at: Date.now(), ...(to ? { to } : {}) },
                   ],
                 }
               : p
@@ -907,6 +920,15 @@ export const useAppStore = create<AppState>()(
         }),
       setCircleChats: (bondId, chats) =>
         set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, circleChats: chats } : b)) }),
+      addMyPost: (text) => {
+        const id = uid('p');
+        set({ posts: [...get().posts, { id, characterId: '', mine: true, text, at: Date.now(), likes: 0, liked: false, comments: [], reacted: true }] });
+        return id;
+      },
+      appendPostComments: (postId, comments) =>
+        set({ posts: get().posts.map((p) => (p.id === postId ? { ...p, comments: [...p.comments, ...comments] } : p)) }),
+      patchPost: (postId, patch) => set({ posts: get().posts.map((p) => (p.id === postId ? { ...p, ...patch } : p)) }),
+      markXSeen: (at) => set({ xSeenAt: at }),
       addPostComments: (postId, comments) =>
         set({
           posts: get().posts.map((p) =>

@@ -7,11 +7,11 @@
 import { scriptFor } from '@/content/characters';
 import { ON_TIME_TOLERANCE_MIN } from '@/lib/appointments';
 import { getLang, type Lang } from '@/lib/i18n';
-import { levelInfo, levelInfoFor, levelOf } from '@/lib/bond';
+import { levelOf } from '@/lib/bond';
 import type { EngineContext } from '@/lib/types';
 
 import { CLOSE_VOICE_LEVEL } from './chat';
-import { stageNameOf, voiceLines } from './shared';
+import { voiceLines } from './shared';
 
 /** 外出的第一行：此刻真的在同一个地方；赴约 / 偶遇带关系，陌生人不带 */
 export function outingIntroLine(ctx: EngineContext): string {

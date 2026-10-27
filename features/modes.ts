@@ -9,6 +9,7 @@ import { buildPostThreadUser, HIS_POSTS_POOL } from '@/content/prompts';
 import { modes, type ConversationMode, type TurnScope } from '@/core/modes';
 import { appointmentAtLabel } from '@/lib/appointments';
 import { anniversaryToday, type UtteranceKind } from '@/lib/bond';
+import { xActivityFor } from '@/features/x-post';
 import { cancelRecall } from '@/lib/recall';
 import type { Bond, ChatMessage, EngineContext } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
@@ -119,6 +120,8 @@ const bonded: ConversationMode = {
       mode: 'bonded',
       bond: bondPick(bond, { phone: true }),
       hisPosts: hisPostsOf(character.id),
+      // 她最近在 X 上和 TA 的来往（D-252）
+      xActivity: xActivityFor(character.id),
       me: meForCharacter(character.id),
       history: bond.messages,
       userText,
@@ -225,7 +228,19 @@ const post: ConversationMode = {
     const bond = bondOf(scope);
     const character = bond && findCharacter(bond.characterId);
     if (!target || !bond || !character) return null;
-    const thread = { text: target.text, comments: target.comments.map((c) => ({ from: c.from, text: c.text, name: c.name })) };
+    // 她自己的帖子（D-252）：这位 TA 在她帖子底下的评论算「你」的；还没到点的评论不算；她回给别人的带上对象
+    const now = Date.now();
+    const thread = {
+      text: target.text,
+      mine: target.mine,
+      comments: target.comments
+        .filter((c) => c.at <= now)
+        .map((c) => ({
+          from: target.mine && c.from === 'other' && c.characterId === character.id ? ('him' as const) : c.from,
+          text: c.from === 'me' && c.to ? `(to ${c.to}) ${c.text}` : c.text,
+          name: c.name,
+        })),
+    };
     return {
       character,
       mode: 'post',
@@ -240,7 +255,16 @@ const post: ConversationMode = {
   append(scope, msgs) {
     if (!scope.postId) return;
     const s = useAppStore.getState();
+    const target = s.posts.find((p) => p.id === scope.postId);
+    const bond = bondOf(scope);
     for (const m of msgs) {
+      // 她自己的帖子（D-252）：她这句是回给这位 TA 的；TA 的回复落成带头像的「别人」
+      if (target?.mine && bond) {
+        if (m.from === 'me') s.addMyComment(scope.postId, m.text, bond.name);
+        else if (m.from === 'him')
+          s.appendPostComments(scope.postId, [{ id: m.id, from: 'other', name: bond.name, characterId: bond.characterId, text: m.text, at: m.at }]);
+        continue;
+      }
       if (m.from === 'me') s.addMyComment(scope.postId, m.text);
       else if (m.from === 'him') s.addHisReply(scope.postId, m.text);
     }

@@ -30,6 +30,8 @@ export interface Character {
   styleLabel?: string;
   /** 卡片上的一句话情境钩子 */
   hook: string;
+  /** X 账号名（D-252，不带 @）：种子按语言各起一个；自创的没有就用名字 */
+  handle?: string;
   /** 3 秒语音自介的文字版（语音供应商未定，先以文字承载） */
   intro: string;
   /** 身份一句话 */
@@ -460,6 +462,8 @@ export interface PostComment {
   name?: string;
   /** from === 'other' 且是另一位缔结的 TA 时：那位的角色 id（头像用立绘） */
   characterId?: string;
+  /** 她回复的是谁（D-252，她自己的帖子底下点了某位 TA 的评论回复） */
+  to?: string;
 }
 
 /** 动态帖：广场公开帖为静态种子，领养后帖在领养时物化 */
@@ -475,6 +479,13 @@ export interface Post {
   comments: PostComment[];
   /** 别人的互动已生成过（D-110：TA 身边的人与其他 TA 的评论，每帖一次） */
   reacted?: boolean;
+  /** 她自己发的（D-252）：characterId 为空，评论全是 TA 们（from = other + characterId），1 小时内陆续出现 */
+  mine?: boolean;
+  /** TA 帖子的配图（D-252）：TA 随手拍的，先「冲洗中」再回填；没洗出来就只剩文字 */
+  imageUri?: string;
+  imageStatus?: 'pending' | 'failed';
+  /** 她点赞的时刻（D-252）：TA 在聊天里可能提一句 */
+  likedAt?: number;
 }
 
 /** 日历用户层日程（D-020/D-021；关系层与世界层运行时推导，不入库） */
@@ -614,7 +625,10 @@ export interface EngineContext {
     appointment?: { atLabel: string; lateMinutes: number };
   };
   /** post 模式（D-178）：她评论的那条帖子与评论线 */
-  post?: { text: string; comments: { from: 'me' | 'him' | 'other'; text: string; name?: string }[] };
+  /** X 回帖（D-178）；mine = 她自己的帖子、TA 是在她帖子底下被她回复（D-252） */
+  post?: { text: string; mine?: boolean; comments: { from: 'me' | 'him' | 'other'; text: string; name?: string }[] };
+  /** 她最近在 X 上和 TA 的来往（D-252）：点赞 / 评论 TA 的帖、她发的帖 TA 回了什么；进亲密聊天，TA 可以自然提一句 */
+  xActivity?: string[];
   history: ChatMessage[];
   userText: string;
 }

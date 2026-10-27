@@ -361,8 +361,13 @@ export function whereYouAreLines(ctx: EngineContext, now: Date): string[] {
 const HER_TO_YOU_ZH = ['刚交换联系方式、还在互相了解的人', '最近常聊、有点在意的人', '常常想起的人', '放在心上的人', '离不开的人', '你认定的那个人'];
 
 export function herToYouZh(bond: LevelSubject & Pick<Bond, 'nickname'>, now = Date.now()): string {
+  return `她是${herStageZh(bond, now)}，你叫她「${bond.nickname}」`;
+}
+
+/** 只要「她是 TA 的什么人」那半句（第三人称场合用，D-252：她发帖时介绍评论的人） */
+export function herStageZh(bond: LevelSubject, now = Date.now()): string {
   const level = levelOf(bond, now);
-  return `她是${HER_TO_YOU_ZH[Math.min(Math.max(level, 1), HER_TO_YOU_ZH.length) - 1]}，你叫她「${bond.nickname}」`;
+  return HER_TO_YOU_ZH[Math.min(Math.max(level, 1), HER_TO_YOU_ZH.length) - 1];
 }
 
 /** 第几天（动态段，逐日变）：阶段本身在开头的【你们有多近】 */

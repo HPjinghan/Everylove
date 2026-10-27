@@ -21,8 +21,8 @@ export interface DesktopApp {
   /** 字标（D-229）：有它就在图块上写这几个字母，不画图标 */
   glyph?: string;
   route: string;
-  /** 显示未读角标（目前只有 Message） */
-  badge?: 'unread';
+  /** 角标：unread = Message 的未读；x = 上次打开 X 之后的新帖与她帖子底下新来的评论（D-252） */
+  badge?: 'unread' | 'x';
 }
 
 // 日历图块（D-231）：白底，上面一行红色星期、下面大大的今天几号——跟真手机的日历图标一样每天变
@@ -30,7 +30,7 @@ export const DESKTOP_APPS: DesktopApp[] = [
   { id: 'messages', label: 'Messages', icon: 'chat', tile: '#4CD07D', route: '/apps/messages', badge: 'unread' },
   { id: 'phone', label: '电话', icon: 'phone', tile: '#4CD07D', route: '/apps/phone' },
   // X（D-053）：黑底白字的字标 X（D-229：✕ 读起来是「关闭」）
-  { id: 'moments', label: 'X', icon: 'close', tile: '#16181C', glyph: 'X', route: '/apps/moments' },
+  { id: 'moments', label: 'X', icon: 'close', tile: '#16181C', glyph: 'X', route: '/apps/moments', badge: 'x' },
   { id: 'dating', label: '交友', icon: 'heart', tile: '#FF5A79', route: '/apps/dating' },
   { id: 'contacts', label: '通讯录', icon: 'contacts', tile: '#A3A8AE', route: '/apps/contacts' },
   { id: 'album', label: '相册', icon: 'album', tile: '#FFFFFF', glyphColor: '#FF7A59', route: '/apps/album' },

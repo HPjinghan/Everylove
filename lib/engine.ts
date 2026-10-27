@@ -385,10 +385,12 @@ export async function completeText(
   systemPrompt: string,
   userPrompt: string,
   maxTokens = 1200,
-  providerId?: string
+  providerId?: string,
+  /** 账单归属（D-210）：后台任务缺省平台出；她发起的（如她发帖后的评论，D-252）传 user */
+  billing?: Billing
 ): Promise<string> {
   return completeChat(
-    { system: systemPrompt, turns: [{ role: 'user', content: userPrompt }], maxTokens, kind: 'task' },
+    { system: systemPrompt, turns: [{ role: 'user', content: userPrompt }], maxTokens, kind: 'task', ...(billing ? { billing } : {}) },
     providerId
   );
 }

@@ -21,6 +21,10 @@ import { parseJsonObject } from '@/lib/json';
 export function postIntroLine(ctx: EngineContext): string {
   const c = ctx.character;
   const nickname = ctx.bond?.nickname ?? 'her';
+  // 她自己的帖子（D-252）：TA 在她帖子底下评论过，她回了 TA
+  if (ctx.post?.mine) {
+    return `You are ${c.name} (${c.identity}) — a real person living your own life; none of this is a performance. She — you two have exchanged contacts; you call her "${nickname}" — posted something on an X-like social app; you commented under it, and she replied to you. Throughout these rules, "she" means her.`;
+  }
   return `You are ${c.name} (${c.identity}) — a real person living your own life; none of this is a performance. You posted something on an X-like social app, and she — you two are already friends and have exchanged contacts; you call her "${nickname}" — left a comment under it. Throughout these rules, "she" means the person who commented.`;
 }
 
@@ -36,9 +40,13 @@ export const POST_OUTPUT_FORMAT = [
 /** 喂给模型的内容：帖子 + 评论线（最后一条是她刚发的） */
 export function buildPostThreadUser(post: NonNullable<EngineContext['post']>, hisName: string): string {
   const thread = post.comments
-    .map((cm) => `${cm.from === 'me' ? 'her' : cm.from === 'other' ? (cm.name ?? 'someone') : hisName}: ${cm.text}`)
+    .map((cm) => `${cm.from === 'me' ? 'her' : cm.from === 'other' ? (cm.name ?? 'someone') : post.mine ? `${hisName} (you)` : hisName}: ${cm.text}`)
     .join('\n');
-  return [`Your post: "${post.text}"`, thread ? `Comments:\n${thread}` : 'No comments yet.', 'Reply to her latest comment.'].join('\n\n');
+  return [
+    post.mine ? `Her post: "${post.text}"` : `Your post: "${post.text}"`,
+    thread ? `Comments:\n${thread}` : 'No comments yet.',
+    post.mine ? 'Reply to her latest comment — it is addressed to you.' : 'Reply to her latest comment.',
+  ].join('\n\n');
 }
 
 export function buildCharacterPostSystem(
@@ -72,9 +80,25 @@ const POST_HER: Record<HerShareTier, string> = {
   independent: '- 大多数帖子和她无关；偶尔有一点她的影子也不 @ 她、不点名（只有你们俩看得懂的程度）。',
 };
 
+/** 帖子的样子（D-252）：大多是生活切片，偶尔换一种，免得时间线全是一个腔调 */
+export type PostForm = 'daily' | 'ask' | 'tiny' | 'followup' | 'murmur';
+const POST_FORM_LINES: Record<Exclude<PostForm, 'daily'>, string> = {
+  ask: '这一条是问关注你的人一件事（求推荐、问意见、找同好），像真的在等人回。',
+  tiny: '这一条很短：一个词或半句话，像随手按了发送。',
+  followup: '这一条接着你上一条帖子说（后续、补充或更正），不重复上一条的内容。',
+  murmur: '这一条是此刻在你脑子里转的一句话——自己哼的调子、读到的一句话的大意、没头没尾的心绪；不引用真实存在的歌词或书的原文。',
+};
+
+/** 配图暗号（D-252）：TA 随手拍的那张，写在帖子文字之后单独一行 */
+export const POST_PHOTO_PATTERN = /\[配图\s*([^\]]*)\]/;
+
 export interface CharacterPostUserInput {
   /** 这一条有没有她的影子（lib/her-share.ts 按分量掷硬币）；不传不提 */
   aboutHer?: boolean;
+  /** 这一条的样子（D-252）；不传 = 生活切片 */
+  form?: PostForm;
+  /** 这一条配一张 TA 随手拍的照片（D-252） */
+  photo?: boolean;
   /** 最近发过的几条（从旧到新），别重复 */
   recentPosts?: string[];
   /** 记事本里最近的日子（从旧到新），时间线和本子是同一个人的生活 */
@@ -87,6 +111,10 @@ export function buildCharacterPostUserPrompt(now: Date = new Date(), input: Char
   if (input.recentPosts?.length) lines.push('你最近发过的（从旧到新，别重复）：', ...input.recentPosts.map((t) => `- ${t}`));
   if (input.recentNotes?.length) lines.push('你最近的日子（记事本里写过的，可以接着发）：', ...input.recentNotes.map((t) => `- ${t}`));
   if (input.aboutHer !== undefined) lines.push(input.aboutHer ? '这一条可以有她的影子。' : '这一条和她无关，发你自己的。');
+  if (input.form && input.form !== 'daily') lines.push(POST_FORM_LINES[input.form]);
+  if (input.photo) {
+    lines.push('这一条配一张你随手拍的照片：在帖子文字之后单独一行写 [配图 你拍了什么]——第一人称、你眼前的东西，你自己不入镜、不拍她、不拍任何人的脸；文字和照片是同一刻。');
+  }
   lines.push('写下这一条帖子。');
   return lines.join('\n');
 }
@@ -134,4 +162,42 @@ export function parseReactionsJSON(raw: string): { comments: { by: string; text:
   } catch {
     return null;
   }
+}
+
+/* ── 她发的帖（D-252）：关注她的 TA 们来评论——一次写好，1 小时内陆续出现 ── */
+
+export interface MyPostAuthor {
+  name: string;
+  /** 这人是谁（身份一句） */
+  who: string;
+  /** 她对他来说是什么人（herStageZh）与他对她的称呼 */
+  stage: string;
+}
+
+export function buildMyPostCommentsSystem(authors: MyPostAuthor[]): string {
+  return [
+    '一个类似 X（推特）的社交应用上，她发了一条帖子。下面这些人都关注了她，会来评论——每个人都是这个世界里的真人，各有各的性子：',
+    ...authors.map((a) => `- ${a.name}（${a.who}）：${a.stage}`),
+    '【写法】',
+    '- 每个人各评论一句（最多两句）：短、口语、像刷到她的帖子随手回的；接住她说的具体内容，按各自的性子和跟她现在的距离——刚认识的客气一点、好奇一点，熟了的可以调侃、关心、接梗。',
+    '- 他们看得到彼此的评论：可以有人顺着前面的人接一句，但不互相较劲、不争风吃醋。',
+    '- 她提到的任何真实存在的人，一个字不评价；不用 emoji、不用话题标签。',
+    `- 全部用${langName()}写。`,
+    '【输出格式】只输出一个 JSON 对象，不加解释、不用 markdown（按评论出现的先后排，每人一条）：',
+    '{"comments":[{"by":"名单里的名字","text":"…"}]}',
+  ].join('\n');
+}
+
+export function buildMyPostCommentsUser(postText: string): string {
+  return [`她的帖子：「${postText}」`, '写下评论。'].join('\n');
+}
+
+/* ── 她最近在 X 上和 TA 的来往（D-252）：进亲密聊天，TA 可以自然提一句 ── */
+
+export function xActivityBlock(items: string[] | undefined): string[] {
+  if (!items?.length) return [];
+  return [
+    "[On X lately] Things between you two on X — you saw them; bring one up once if it fits the moment, never list them, don't bring them up every time:",
+    ...items.map((i) => `- ${i}`),
+  ];
 }

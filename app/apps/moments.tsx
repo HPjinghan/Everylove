@@ -1,214 +1,99 @@
 /**
- * X（原朋友圈，D-053 推特模式改版；D-231 黑白时间线、圆头像）：缔结契约（领养）的 TA 们的时间线（D-027 口径不变）。
- * - 白通栏、行间 1px line：头像 40、名 15/600 + @handle 13 muted、正文 15/21、动作行 Fredoka 12 muted（已赞 primary）
- * - 回复缩进、头像 26；「我的头像」= paper 底 accent 首字（不是角色色）；评论输入框 paper r6
- * - 回复走回合管线的 post 模式（D-053 / D-178）：她评论 → TA 用当前引擎真的回一条（亲密背景 + 回帖写法），
- *   暗面路由、失败口径与会话一样（不弹提示，没有脚本回落，D-243）
- * - 加好友前的公开帖只能看（免费层口径不变）；在广场见过的 TA 的公开帖带「在广场见过」（D-110）
- * - 评论区不只有她（D-110）：TA 身边的人与其他缔结的 TA 会来评论（lib/posts.ts deliverDueReactions，进页补投），TA 可回一句
- * - 点头像打开 TA 的资料页（components/character-sheet.tsx）；回帖失败走轻提示，不弹窗
- * - 点赞（D-207）：心形弹一下（1 → 1.35 → 1）并轻点震动；取消赞不弹
+ * X（原朋友圈，D-053 推特模式改版；D-231 黑白时间线、圆头像）：缔结的 TA 们的时间线（D-027）+ 她自己发的帖（D-252）。
+ * - 一条帖子的样子与评论都在 components/x-post-row.tsx（时间线与 TA 的主页共用）
+ * - 回复走回合管线的 post 模式（D-053 / D-178）：她评论 → TA 用当前引擎真的回一条；暗面路由、失败口径与会话一样
+ * - 评论区不只有她（D-110）：TA 身边的人与其他缔结的 TA 会来评论（lib/posts.ts deliverDueReactions，进页补投）
+ * - D-252：右下「+」她自己发帖，关注她的 TA 们 1 小时内陆续来评论（features/x-post.ts）；点 TA 的头像进 TA 的主页；
+ *   上次打开之后新发的帖带小圆点（桌面图块的角标同一个口径）；时间线每半分钟走一次，到点的评论与涨上去的赞自己出现
  */
 
-import { useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import { useEffect, useRef, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppScreen } from '@/components/app-screen';
-import { CharAvatar } from '@/components/char-avatar';
-import { CharacterSheet } from '@/components/character-sheet';
+import { Button } from '@/components/button';
 import { MingCute } from '@/components/mingcute';
+import { XProfile } from '@/components/x-profile';
+import { PostRow } from '@/components/x-post-row';
 import { runJobs } from '@/core/jobs';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { appTint } from '@/constants/apps';
-import { Shape, Space, Type } from '@/constants/design';
+import { Elevation, Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
-import { sendText } from '@/lib/chat';
-import { compactAgo } from '@/lib/format';
-import { haptic } from '@/lib/haptics';
+import { MY_POST_MAX, publishMyPost } from '@/features/x-post';
 import { t } from '@/lib/i18n';
-import type { Character, Post } from '@/lib/types';
-import { findCharacter, useAppStore } from '@/store/app-store';
+import { useAppStore } from '@/store/app-store';
 
-/** X 的颜色（D-231）：黑白，发送键是黑的；点赞仍是粉红 */
+/** X 的颜色（D-231）：黑白 */
 const TINT = appTint('moments') ?? Romance.ink;
+/** 时间线多久走一次（到点的评论、涨的赞） */
+const TICK_MS = 30_000;
 
-/** @handle：种子角色用 id 转推特腔；自创的 id 是 c_17xxx 这种时间戳，用名字（D-197） */
-function handleFor(c: Character): string {
-  const fromId = c.id.replace(/[^a-zA-Z0-9_]/g, '_');
-  return `@${c.custom || /^c_\d+/.test(c.id) ? c.name.replace(/\s+/g, '_') : fromId}`;
-}
-
-/** 点赞键：赞上时心形弹一下 + 轻震 */
-function LikeButton({ liked, count, onToggle }: { liked: boolean; count: number; onToggle: () => void }) {
-  const scale = useSharedValue(1);
-  const pop = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
-  return (
-    <Pressable
-      style={styles.action}
-      accessibilityLabel={t('赞')}
-      onPress={() => {
-        if (!liked) {
-          scale.set(withSequence(withTiming(1.35, { duration: 110 }), withSpring(1, { damping: 8, stiffness: 260 })));
-          haptic.tap();
-        }
-        onToggle();
-      }}>
-      <Animated.View style={pop}>
-        <MingCute name="heart" size={15} color={liked ? Romance.accent : Romance.sub} />
-      </Animated.View>
-      <Text style={[styles.actionCount, liked && styles.actionCountOn]}>{count || ''}</Text>
-    </Pressable>
-  );
-}
-
-function PostRow({ post, onOpenCharacter }: { post: Post; onOpenCharacter: (id: string) => void }) {
-  const [commentDraft, setCommentDraft] = useState('');
-  const [commentOpen, setCommentOpen] = useState(false);
-  const [replying, setReplying] = useState(false);
-  const character = findCharacter(post.characterId);
-  const bond = useAppStore((s) => s.bonds.find((b) => b.id === post.bondId));
-  const me = useAppStore((s) => s.me);
-  const met = useAppStore((s) => !!s.squareChats[post.characterId]?.encounters?.length);
-  if (!character) return null;
-  const displayName = bond?.name ?? character.name;
-  const canComment = !!post.bondId;
-  const myName = me?.nickname || t('你');
-  // 推文串（D-206）：帖子下有回复时，头像下垂一条串线连到最后一条回复
-  const threaded = post.comments.length > 0 || replying || commentOpen;
-
-  // 回帖走 post 模式（D-178）：她的评论落评论线 + 记账 → TA 回一句；失败同会话口径（轻提示）
-  const submitComment = () => {
-    const text = commentDraft.trim();
-    if (!text || replying || !post.bondId) return;
-    setCommentDraft('');
-    void sendText({ mode: 'post', bondId: post.bondId, postId: post.id }, text, { ui: { pace: 'none', typing: setReplying } });
+function Composer({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const [text, setText] = useState('');
+  const sending = useRef(false);
+  const close = () => {
+    setText('');
+    onClose();
   };
-
+  const publish = () => {
+    if (sending.current || !text.trim()) return;
+    sending.current = true;
+    const ok = publishMyPost(text);
+    sending.current = false;
+    if (ok) close();
+  };
   return (
-    <View style={styles.row}>
-      <View style={styles.avatarCol}>
-        <Pressable onPress={() => onOpenCharacter(character.id)} hitSlop={6}>
-          <CharAvatar name={displayName} color={character.color} size={40} characterId={character.id} round />
-        </Pressable>
-        {threaded ? <View style={styles.threadLine} /> : null}
-      </View>
-      <View style={styles.rowBody}>
-        <View style={styles.headLine}>
-          <Text style={styles.name} numberOfLines={1}>
-            {displayName}
-          </Text>
-          <Text style={styles.handle} numberOfLines={1}>
-            {handleFor(character)}
-          </Text>
-          <Text style={styles.ago}>· {compactAgo(post.at)}</Text>
-        </View>
-        {/* 在广场见过的 TA 标一下（D-110）；加好友前的帖子不再另写说明，评论键置灰即可 */}
-        {!post.bondId && met ? <Text style={styles.lockedMeta}>{t('在广场见过')}</Text> : null}
-        <Text style={styles.body}>{post.text}</Text>
-
-        <View style={styles.actions}>
-          <Pressable
-            style={styles.action}
-            hitSlop={8}
-            accessibilityLabel={t('评论')}
-            onPress={() => canComment && setCommentOpen((v) => !v)}
-            disabled={!canComment}>
-            <MingCute name="chat" size={15} color={canComment ? Romance.sub : Romance.faint} />
-            {canComment ? <Text style={styles.actionCount}>{post.comments.length || ''}</Text> : null}
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
+      <KeyboardAvoidingView style={styles.composer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.composerHead}>
+          <Pressable onPress={close} hitSlop={10}>
+            <Text style={styles.cancel}>{t('取消')}</Text>
           </Pressable>
-          <LikeButton
-            liked={!!post.liked}
-            count={post.likes}
-            onToggle={() => {
-              const s = useAppStore.getState();
-              // 点赞（不是取消）TA 的帖子 = 亲密度来源（D-126）
-              if (!post.liked && post.bondId) s.creditBond(post.bondId, 'like');
-              s.toggleLike(post.id);
-            }}
-          />
+          <Button label={t('发帖')} size="sm" variant="primary" disabled={!text.trim()} onPress={publish} style={styles.postBtn} />
         </View>
-
-        {/* 回复线（推特式缩进） */}
-        {post.comments.map((cm) => {
-          // 别人（D-110）：另一位缔结的 TA 用立绘头像、可点开资料页；TA 身边的人 = line 底首字
-          const other = cm.from === 'other' ? (cm.characterId ? findCharacter(cm.characterId) : undefined) : undefined;
-          const otherName = cm.from === 'other' ? (cm.name ?? other?.name ?? '') : '';
-          return (
-            <View key={cm.id} style={styles.reply}>
-              {cm.from === 'him' ? (
-                <CharAvatar name={displayName} color={character.color} size={26} characterId={character.id} round />
-              ) : cm.from === 'other' ? (
-                other ? (
-                  <Pressable onPress={() => onOpenCharacter(other.id)} hitSlop={6}>
-                    <CharAvatar name={otherName} color={other.color} size={26} characterId={other.id} round />
-                  </Pressable>
-                ) : (
-                  <View style={styles.otherAvatar}>
-                    <Text style={styles.otherAvatarText}>{otherName.slice(0, 1)}</Text>
-                  </View>
-                )
-              ) : (
-                <View style={styles.myAvatar}>
-                  <Text style={styles.myAvatarText}>{myName.slice(0, 1)}</Text>
-                </View>
-              )}
-              <View style={styles.replyBody}>
-                <Text style={styles.replyName}>
-                  {cm.from === 'me' ? myName : cm.from === 'other' ? otherName : displayName}
-                  <Text style={styles.replyHandle}>
-                    {'  '}
-                    {cm.from === 'me' ? '@me' : cm.from === 'other' ? (other ? handleFor(other) : `@${otherName}`) : handleFor(character)}
-                  </Text>
-                </Text>
-                <Text style={styles.replyText}>{cm.text}</Text>
-              </View>
-            </View>
-          );
-        })}
-        {replying ? (
-          <View style={styles.reply}>
-            <CharAvatar name={displayName} color={character.color} size={26} characterId={character.id} round />
-            <Text style={styles.replyTyping}>{t('{name} 正在回复…', { name: displayName })}</Text>
-          </View>
-        ) : null}
-
-        {commentOpen && canComment && (
-          <View style={styles.commentBar}>
-            <TextInput
-              style={styles.commentInput}
-              value={commentDraft}
-              onChangeText={setCommentDraft}
-              placeholder={t('发布你的回复')}
-              placeholderTextColor={Romance.sub}
-              onSubmitEditing={submitComment}
-              returnKeyType="send"
-            />
-            <Pressable onPress={submitComment} hitSlop={8} disabled={replying}>
-              <IconSymbol
-                name="arrow.up.circle.fill"
-                size={28}
-                color={commentDraft.trim() && !replying ? TINT : Romance.sub}
-              />
-            </Pressable>
-          </View>
-        )}
-      </View>
-    </View>
+        <TextInput
+          style={styles.composerInput}
+          value={text}
+          onChangeText={(v) => setText(v.slice(0, MY_POST_MAX))}
+          placeholder={t('有什么新鲜事？')}
+          placeholderTextColor={Romance.sub}
+          multiline
+          autoFocus
+        />
+        <Text style={[styles.counter, { marginBottom: insets.bottom + 8 }]}>
+          {text.length}/{MY_POST_MAX}
+        </Text>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
 export default function FeedScreen() {
   const posts = useAppStore((s) => s.posts);
   const bonds = useAppStore((s) => s.bonds);
-  const [sheetId, setSheetId] = useState<string | null>(null);
-  // 进页补一次别人的互动（D-110）：缔结时铺的帖也会有人来评论
+  const insets = useSafeAreaInsets();
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [composing, setComposing] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  // 上次打开 X 的时刻（进页那一刻读出来，这次看的时候不变）：之后新发的帖带小圆点
+  const [seenBefore] = useState(() => useAppStore.getState().xSeenAt);
+
   useEffect(() => {
+    // 进页补一次别人的互动（D-110）；记下「看过了」，离开时再记一次（看的时候进来的评论也算看过）
     void runJobs('screen:x');
+    useAppStore.getState().markXSeen(Date.now());
+    const id = setInterval(() => setNow(Date.now()), TICK_MS);
+    return () => {
+      clearInterval(id);
+      useAppStore.getState().markXSeen(Date.now());
+    };
   }, []);
-  // 只看缔结契约的 TA（D-027）：领养后帖 + 这些角色的公开帖
+
+  // 只看缔结的 TA（D-027）+ 她自己的帖
   const bondedCharIds = new Set(bonds.map((b) => b.characterId));
-  const sorted = posts.filter((p) => bondedCharIds.has(p.characterId)).sort((a, b) => b.at - a.at);
+  const sorted = posts.filter((p) => (p.mine || bondedCharIds.has(p.characterId)) && p.at <= now).sort((a, b) => b.at - a.at);
 
   return (
     <AppScreen title="X">
@@ -220,7 +105,14 @@ export default function FeedScreen() {
         // 评论框在列表里：键盘弹起时把列表往上推，回复靠下的帖子也看得见输入框
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
-        renderItem={({ item }) => <PostRow post={item} onOpenCharacter={setSheetId} />}
+        renderItem={({ item }) => (
+          <PostRow
+            post={item}
+            now={now}
+            isNew={!item.mine && seenBefore !== undefined && item.at > seenBefore}
+            onOpenProfile={setProfileId}
+          />
+        )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -228,7 +120,14 @@ export default function FeedScreen() {
           </View>
         }
       />
-      <CharacterSheet characterId={sheetId} visible={!!sheetId} onClose={() => setSheetId(null)} />
+      <Pressable
+        style={[styles.fab, { bottom: insets.bottom + 20 }]}
+        onPress={() => setComposing(true)}
+        accessibilityLabel={t('发帖')}>
+        <MingCute name="plus" size={24} color="#FFFFFF" />
+      </Pressable>
+      <Composer visible={composing} onClose={() => setComposing(false)} />
+      <XProfile characterId={profileId} now={now} onClose={() => setProfileId(null)} />
     </AppScreen>
   );
 }
@@ -237,65 +136,27 @@ const styles = themed(() =>
   StyleSheet.create({
     // 白通栏：列表底白、行间 1px line
     feed: { flex: 1, backgroundColor: Romance.card },
-    list: { paddingBottom: 24 },
+    list: { paddingBottom: 96 },
     separator: { height: 1, backgroundColor: Romance.line },
-    row: {
-      flexDirection: 'row',
-      gap: Space.inlineLoose,
-      paddingHorizontal: Space.screen,
-      paddingVertical: 12,
-    },
-    avatarCol: { alignItems: 'center' },
-    // 推文串线：line 色 2px，从头像下沿垂到这条帖子的最后一条回复
-    threadLine: { flex: 1, width: 2, borderRadius: 1, backgroundColor: Romance.line, marginTop: 6 },
-    rowBody: { flex: 1, minWidth: 0 },
-    headLine: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
-    name: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, flexShrink: 1 },
-    handle: { fontSize: Type.scale.label.size, color: Romance.sub, flexShrink: 1 },
-    ago: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.sub },
-    lockedMeta: { fontSize: Type.scale.timestamp.size, color: Romance.faint, marginTop: 1 },
-    body: { fontSize: Type.scale.body.size, lineHeight: 21, color: Romance.ink, marginTop: 3 },
-    actions: { flexDirection: 'row', gap: 46, marginTop: 10 },
-    action: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 34, paddingVertical: 6 },
-    actionCount: { fontFamily: Fonts.label, fontSize: Type.scale.caption.size, color: Romance.sub },
-    actionCountOn: { color: Romance.accent },
-    reply: { flexDirection: 'row', gap: Space.inline, marginTop: 12 },
-    replyBody: { flex: 1 },
-    replyName: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.ink },
-    replyHandle: { fontSize: Type.scale.caption.size, fontWeight: '400', color: Romance.sub },
-    replyText: { fontSize: Type.scale.sub.size, lineHeight: 20, color: Romance.ink, marginTop: 1 },
-    replyTyping: { fontSize: Type.scale.label.size, color: Romance.sub, alignSelf: 'center' },
-    // 我的头像：浅底圆头像 + 黑色首字（不是角色色）
-    myAvatar: {
-      width: 26,
-      height: 26,
-      borderRadius: Shape.radiusPill,
-      backgroundColor: Romance.bg,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    myAvatarText: { fontSize: Type.scale.caption.size, fontWeight: '600', color: Romance.ink },
-    // 别人的头像（TA 身边的人，D-110）：line 底 ink 首字
-    otherAvatar: {
-      width: 26,
-      height: 26,
-      borderRadius: Shape.radiusPill,
-      backgroundColor: Romance.line,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    otherAvatarText: { fontFamily: Fonts.initial, fontSize: Type.scale.caption.size, fontWeight: '600', color: Romance.ink },
-    commentBar: { flexDirection: 'row', alignItems: 'center', gap: Space.inline, marginTop: 10 },
-    commentInput: {
-      flex: 1,
-      height: 36,
-      borderRadius: Shape.radiusPill,
-      backgroundColor: Romance.bg,
-      paddingHorizontal: 14,
-      fontSize: Type.scale.sub.size,
-      color: Romance.ink,
-    },
     empty: { alignItems: 'center', paddingVertical: 70 },
     emptyText: { fontSize: Type.scale.label.size, color: Romance.sub, textAlign: 'center', lineHeight: 20 },
+    // 发帖键：X 的黑色圆键
+    fab: {
+      position: 'absolute',
+      right: Space.screen,
+      width: 56,
+      height: 56,
+      borderRadius: Shape.radiusPill,
+      backgroundColor: TINT,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...Elevation.high,
+    },
+    composer: { flex: 1, backgroundColor: Romance.card, paddingHorizontal: Space.screen },
+    composerHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
+    cancel: { fontSize: Type.scale.body.size, color: Romance.ink },
+    postBtn: { backgroundColor: TINT },
+    composerInput: { flex: 1, fontSize: Type.scale.md.size, lineHeight: 24, color: Romance.ink, textAlignVertical: 'top', paddingTop: 8 },
+    counter: { alignSelf: 'flex-end', fontFamily: Fonts.label, fontSize: Type.scale.caption.size, color: Romance.sub },
   })
 );

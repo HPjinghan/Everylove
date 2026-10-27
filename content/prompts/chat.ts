@@ -7,11 +7,10 @@
  */
 
 import { scriptFor } from '@/content/characters';
-import { levelInfo, levelInfoFor, levelOf } from '@/lib/bond';
-import { daysTogether } from '@/lib/format';
+import { levelOf } from '@/lib/bond';
 import type { EngineContext } from '@/lib/types';
 
-import { countUserTurns, stageNameOf, voiceLines } from './shared';
+import { countUserTurns, voiceLines } from './shared';
 
 /** 输出格式：初识/亲密两种聊天模式共用（长度要求各模式自己写；外出模式有自己的一套）。D-089：像真人打字，短句、不成段 */
 export const CHAT_OUTPUT_FORMAT = [
