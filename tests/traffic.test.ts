@@ -172,48 +172,47 @@ describe('D-210：只扣她发起的、语音按分钟、后台保险丝', () =>
     expect(s().traffic.freeUsed).toBe(DAILY_FREE_MB);
   });
 
-  it('TA 的声音（D-236）：电话先用送的 → 老分钟包 → 流量（每分钟 20 RB）；Free 不拿流量换', () => {
-    // 今天免费的 100 RB = 5 分钟
-    const tr = { balance: 0, freeDay: '', freeUsed: 0 };
-    expect(voiceLeft(START_VOICE, tr, 'free', 'message', NOW)).toBe(0);
-    expect(voiceLeft(START_VOICE, tr, 'free', 'call', NOW)).toBe(300);
-    expect(voiceLeft(START_VOICE, tr, 'pro', 'message', NOW)).toBe(300);
-    expect(voiceLeft(START_VOICE, { ...tr, balance: 200 }, 'max', 'call', NOW)).toBe(900 + 300);
-    // Free 打电话：只扣送的，不碰流量
-    const a = voiceAfterUse(START_VOICE, tr, 120, 'free', 'call', NOW);
+  it('TA 的声音（D-240）：按分钟、不扣流量——电话先用送的 → 这一期订阅的 → 分钟包', () => {
+    const pro = { ...START_VOICE, planSec: 6000 };
+    expect(voiceLeft(START_VOICE, 'free', 'message')).toBe(0);
+    expect(voiceLeft(START_VOICE, 'free', 'call')).toBe(300);
+    expect(voiceLeft(pro, 'pro', 'message')).toBe(6000);
+    expect(voiceLeft({ ...pro, packSec: 600 }, 'max', 'call')).toBe(6000 + 600 + 300);
+    // 回到 Free：订阅那一期的不再能用
+    expect(voiceLeft(pro, 'free', 'message')).toBe(0);
+    // Free 打电话：只扣送的
+    const a = voiceAfterUse(START_VOICE, 120, 'free', 'call', NOW);
     expect(a.charged).toBe(120);
     expect(a.voice.callBonusSec).toBe(180);
-    expect(a.chargedMb).toBe(0);
-    // Free 语音消息：送的不能用、流量不能换
-    expect(voiceAfterUse(a.voice, tr, 30, 'free', 'message', NOW).charged).toBe(0);
-    // Pro 打电话：先送的 300 秒，再老分钟包 100 秒，剩下 60 秒折 20 RB
-    const b = voiceAfterUse({ ...START_VOICE, packSec: 100 }, tr, 300 + 100 + 60, 'pro', 'call', NOW);
-    expect(b.voice).toMatchObject({ callBonusSec: 0, packSec: 0, usedSec: 460 });
-    expect(b.chargedMb).toBe(20);
-    expect(b.traffic.freeUsed).toBe(20);
+    // Free 语音消息：送的不能用；买了分钟包就能用
+    expect(voiceAfterUse(a.voice, 30, 'free', 'message', NOW).charged).toBe(0);
+    expect(voiceAfterUse({ ...a.voice, packSec: 60 }, 30, 'free', 'message', NOW).voice.packSec).toBe(30);
+    // Pro 打电话：先送的 300 秒，再订阅的 100 秒，最后分钟包 60 秒
+    const b = voiceAfterUse({ ...START_VOICE, planSec: 100, packSec: 100 }, 300 + 100 + 60, 'pro', 'call', NOW);
+    expect(b.voice).toMatchObject({ callBonusSec: 0, planSec: 0, packSec: 40, usedSec: 460 });
     expect(b.charged).toBe(460);
-    // 流量不够：扣到 0 为止
-    const c = voiceAfterUse(b.voice, { ...b.traffic, freeUsed: 100, balance: 10 }, 120, 'pro', 'message', NOW);
-    expect(c.chargedMb).toBe(10);
-    expect(c.charged).toBe(30);
+    // 不够：扣到 0 为止
+    const c = voiceAfterUse(b.voice, 120, 'pro', 'message', NOW);
+    expect(c.charged).toBe(40);
+    expect(c.voice.packSec).toBe(0);
     expect(estimateSpeechSeconds('今天好累啊，想你了')).toBe(2);
   });
 
-  it('她这一轮里 TA 的语音扣她的流量（D-236）；TA 自己发起的、试听、通话里的不扣；她的语音识别扣流量（D-211）', () => {
+  it('她这一轮里 TA 的语音扣她的分钟、不扣流量（D-240）；TA 自己发起的、试听、通话里的不扣；她的语音识别扣流量（D-211）', () => {
     const s = () => useAppStore.getState();
     s().setPlan('pro');
+    s().setPlanVoice(600);
     reportUsage({ kind: 'tts', provider: 'fish', seconds: 12, billing: 'user' });
     reportUsage({ kind: 'tts', provider: 'fish', seconds: 30, billing: 'house' });
     reportUsage({ kind: 'tts', provider: 'fish', seconds: 30, billing: 'included' });
     reportUsage({ kind: 'asr', provider: 'baidu', seconds: 30, billing: 'included' });
     expect(s().voice.usedSec).toBe(12);
-    // 12 秒 × 20 RB / 分钟 = 4 RB
-    expect(s().traffic.freeUsed).toBe(4);
-    expect(s().trafficLog.at(-1)).toMatchObject({ kind: 'tts', mb: 4 });
+    expect(s().voice.planSec).toBe(588);
+    expect(s().traffic.freeUsed).toBe(0);
     // Free 也能说话：识别按秒折流量
     s().setPlan('free');
     reportUsage({ kind: 'asr', provider: 'baidu', seconds: 30 });
-    expect(s().traffic.freeUsed).toBe(5);
+    expect(s().traffic.freeUsed).toBe(1);
     expect(s().voice.usedSec).toBe(12);
     expect(s().trafficLog.at(-1)).toMatchObject({ kind: 'asr', mb: 1 });
   });

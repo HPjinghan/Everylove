@@ -1,12 +1,12 @@
 /**
- * 流量与语音计量（D-132 / D-133 → D-210）：core/usage 报上来的每一笔按账单归属分流——
- * - user（她发起的）：聊天 / 生图 / 看图 / 她的语音识别 / TA 的语音都折成 RB 扣流量（识别 D-211，TA 的语音 D-236）；
+ * 流量与语音计量（D-132 / D-133 → D-210 → D-240）：core/usage 报上来的每一笔按账单归属分流——
+ * - user（她发起的）：聊天 / 生图 / 看图 / 她的语音识别折成 RB 扣流量（识别 D-211）；TA 的语音按秒扣分钟、不扣流量（D-240）；
  * - house（TA 自己发起的、工具调用）：不扣她，记进后台保险丝（每人每天封顶，到顶静默跳过）；
  * - included（通话）：通话按接通时长另扣（features/call-meter），这里不再记。
  * 一个玩法一个文件：回合闸门（她要开口先看还有没有）+ 生成闸门（真要花钱前再问一声）+ 用量 → 扣账 + 模型档 → 供应商同步
  * + 订阅每月发流量（启动 / 回前台任务）。
  * **余额以服务器为准（D-217）**：走代理的调用由服务器扣账（UsageEvent.metered），这里只记流水；代理每次响应带回最新钱包写进 store。
- * 订阅 / 流量包 / GM 都经服务器（wallet.*）；本机扣账与本机发放只在没有服务器时用（开发直连 / 测试）。
+ * 订阅 / 流量包 / 分钟包 / GM 都经服务器（wallet.*）；本机扣账与本机发放只在没有服务器时用（开发直连 / 测试）。
  */
 
 import { jobs } from '@/core/jobs';
@@ -24,6 +24,7 @@ import {
   LOVE_MODELS,
   mbForUsage,
   PLAN_MONTHLY_MB,
+  PLAN_VOICE_MONTHLY_MIN,
   planGrantsDue,
   usageTokens,
   voiceLeft,
@@ -45,7 +46,7 @@ function left(): number {
 /** TA 的语音还剩几秒（她这一轮里的；D-211 起她的语音识别改走流量） */
 export function voiceMessageLeft(): number {
   const s = useAppStore.getState();
-  return voiceLeft(s.voice, s.traffic, s.plan, 'message');
+  return voiceLeft(s.voice, s.plan, 'message');
 }
 
 /** 平台出的那些今天用了多少（只在内存里：保险丝，不是账，重启清零无妨） */
@@ -60,7 +61,7 @@ turnGates.register({
 /* ── 生成闸门：真要花钱前再问一声（用完 = 这次不做，各自静默跳过） ── */
 setGenerationGate((kind, billing) => {
   if (billing === 'included') return null;
-  if (kind === 'tts') return billing === 'house' || voiceMessageLeft() > 0 ? null : t('流量用完了');
+  if (kind === 'tts') return billing === 'house' || voiceMessageLeft() > 0 ? null : t('语音时长用完了');
   if (billing === 'house') return kind !== 'asr' && houseBlocked(house, kind, useAppStore.getState().plan) ? t('今天的后台生成到顶了') : null;
   return left() > 0 ? null : t('流量用完了');
 });
@@ -71,11 +72,9 @@ usageHooks.on((e) => {
   const billing = e.billing ?? 'user';
   if (billing === 'included') return;
   const tokens = usageTokens(e);
-  // TA 的语音按秒折流量（D-236，先用老分钟包）；她的语音识别（asr）跟聊天一样折流量（D-211）；服务器记过的这里不再扣（D-217）
+  // TA 的语音按秒扣分钟（D-240）；她的语音识别（asr）跟聊天一样折流量（D-211）；服务器记过的这里不再扣（D-217）
   if (e.kind === 'tts') {
-    if (billing !== 'user') return;
-    if (!e.metered) s.useVoice(e.seconds ?? 0, 'message');
-    s.logTraffic({ kind: 'tts', provider: e.provider, mb: mbForUsage(e), estimated: true });
+    if (billing === 'user' && !e.metered) s.useVoice(e.seconds ?? 0, 'message');
     return;
   }
   if (billing === 'house') {
@@ -137,17 +136,22 @@ export function choosePlan(plan: 'free' | 'pro' | 'max'): Promise<WalletView> {
 export function buyTrafficPack(id: string): Promise<WalletView> {
   return wallet('wallet.sim', { traffic_pack: id });
 }
-/** 开发者 GM：加 1000 RB（服务器在收费开关打开后拒绝） */
-export function gmGrant(): Promise<WalletView> {
-  return wallet('wallet.sim', { gm: 'traffic' });
+/** 语音分钟包（D-240：所有人都能买） */
+export function buyVoicePack(id: string): Promise<WalletView> {
+  return wallet('wallet.sim', { voice_pack: id });
+}
+/** 开发者 GM：加 1000 RB / 加 30 分钟语音（服务器在收费开关打开后拒绝） */
+export function gmGrant(what: 'traffic' | 'voice'): Promise<WalletView> {
+  return wallet('wallet.sim', { gm: what });
 }
 
-/* ── 订阅每月发一笔（Pro 8000 / Max 30000 MB；Free 不发）——没有服务器时本机发；有服务器由它发 ── */
+/* ── 订阅每 30 天发一笔（Pro 5000 / Max 20000 MB + 这一期的语音分钟；Free 不发）——没有服务器时本机发；有服务器由它发 ── */
 export function grantPlanTraffic(now = Date.now()): number {
   const s = useAppStore.getState();
   const n = planGrantsDue(s.traffic, s.plan, now);
   if (!n) return 0;
   s.addTraffic(n * PLAN_MONTHLY_MB[s.plan], now);
+  s.setPlanVoice(PLAN_VOICE_MONTHLY_MIN[s.plan] * 60);
   return n;
 }
 jobs.register({

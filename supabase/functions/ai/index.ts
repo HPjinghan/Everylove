@@ -21,7 +21,7 @@
  * 记账（D-217）：余额只在服务器（public.wallets，supabase/wallet.sql）。每次生成前按 billing（user 她发起的 / house 平台出的 / included 通话里的；
  * 不写 = house，老包只受后台保险丝管）问 gateReason，不够回 402 { error: 'blocked', reason }；上游成功后按真实用量 wallet_charge，
  * 最新钱包放在响应头 x-wallet（WalletView JSON）。数值与算法在 _shared/economy.ts（客户端同一份）。
- *   wallet.get（可带一次性 import）/ wallet.call（通话计时，服务器时钟）/ wallet.sim（收费开关 BILLING_LIVE 打开前：订阅 / 流量包 / GM 点即到账）
+ *   wallet.get（可带一次性 import）/ wallet.call（通话计时，服务器时钟）/ wallet.sim（收费开关 BILLING_LIVE 打开前：订阅 / 流量包 / 分钟包 / GM 点即到账）
  * 建表与函数：docs/supabase-setup.sql、supabase/wallet.sql。部署：supabase functions deploy ai（verify_jwt 开启——平台先验 JWT，函数内再取 user 限流）。
  */
 
@@ -38,6 +38,7 @@ import {
   mbFor,
   sqlEconomy,
   TRAFFIC_PACKS,
+  VOICE_PACKS,
   walletView,
   type Billing,
   type MeterKind,
@@ -431,7 +432,7 @@ async function chargeAfter(m: Meter, data: unknown): Promise<WalletView | null> 
       p_house_tts: houseTts,
       p_fair_ktok: fairKtok,
       p_fair_images: fairImages,
-      // TA 的语音（D-236）按秒交给 SQL 折流量，流水照记
+      // TA 的语音按秒扣分钟（D-240），流水照记
       p_entry: mb > 0 || voiceSec > 0 ? { kind: m.kind, tokens, provider: m.service, estimated: estimated || voiceSec > 0 } : null,
     });
     return walletView(w, BILLING_LIVE);
@@ -495,10 +496,16 @@ async function walletService(user: string, tz: string | null, service: string, b
       const p = TRAFFIC_PACKS.find((x) => x.id === body.traffic_pack);
       if (!p) throw new BadRequest('traffic_pack not allowed');
       w = await grant(p.mb, null, null, 'pack');
+    } else if (body.voice_pack !== undefined) {
+      const p = VOICE_PACKS.find((x) => x.id === body.voice_pack);
+      if (!p) throw new BadRequest('voice_pack not allowed');
+      // 分钟包所有人都能买（D-240）
+      w = await grant(null, p.min * 60, null, 'voice-pack');
     } else if (body.gm === 'traffic') {
       w = await grant(1000, null, null, 'gm');
+    } else if (body.gm === 'voice') {
+      w = await grant(null, 30 * 60, null, 'gm');
     } else {
-      // 语音分钟包 D-236 下线（TA 的声音改扣流量）
       throw new BadRequest('nothing to grant');
     }
   } else {

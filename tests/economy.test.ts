@@ -31,6 +31,7 @@ const row = (over: Partial<WalletRow> = {}): WalletRow => ({
   balance_mb: 0,
   free_used_mb: 0,
   voice_used_sec: 0,
+  plan_voice_sec: 0,
   voice_pack_sec: 0,
   call_bonus_sec: 300,
   house_ktok: 0,
@@ -43,11 +44,10 @@ const row = (over: Partial<WalletRow> = {}): WalletRow => ({
 });
 
 describe('钱包视图', () => {
-  it('今天免费的还剩 = 100 − 用掉的；流量能换几秒 TA 的声音（Free 0）；数字串也认（PostgREST 的 numeric）', () => {
-    const v = walletView(row({ plan: 'pro', free_used_mb: '30.5' as unknown as number, voice_used_sec: 600, balance_mb: 6000 }), false);
-    // (69.5 + 6000) RB ÷ 20 RB / 分钟 × 60
-    expect(v).toEqual({ plan: 'pro', balance: 6000, freeLeft: 69.5, voiceDailyLeft: 18208, packSec: 0, callBonusSec: 300, live: false });
-    expect(walletView(row({ plan: 'free', balance_mb: 6000 }), false).voiceDailyLeft).toBe(0);
+  it('今天免费的还剩 = 100 − 用掉的；这一期订阅的分钟（Free 没有）；数字串也认（PostgREST 的 numeric）', () => {
+    const v = walletView(row({ plan: 'pro', free_used_mb: '30.5' as unknown as number, voice_used_sec: 600, plan_voice_sec: '5400' as unknown as number, balance_mb: 6000 }), false);
+    expect(v).toEqual({ plan: 'pro', balance: 6000, freeLeft: 69.5, planVoiceSec: 5400, packSec: 0, callBonusSec: 300, live: false });
+    expect(walletView(row({ plan: 'free', plan_voice_sec: 5400 }), false).planVoiceSec).toBe(0);
     expect(walletView(row({ free_used_mb: 140 }), true).freeLeft).toBe(0);
   });
 });
@@ -55,14 +55,15 @@ describe('钱包视图', () => {
 describe('生成前的闸门（服务器照它拦）', () => {
   const gate = (w: WalletRow, kind: Parameters<typeof gateReason>[2], billing: Parameters<typeof gateReason>[3]) => gateReason(w, walletView(w, false), kind, billing);
 
-  it('她发起的：免费的 + 余额还有就放行；Max 也看余额（D-236）；TA 的语音 Free 不能用流量换', () => {
+  it('她发起的：免费的 + 余额还有就放行；Max 也看余额；TA 的语音看分钟、不看流量（D-240）', () => {
     expect(gate(row(), 'chat', 'user')).toBeNull();
     expect(gate(row({ free_used_mb: 100 }), 'chat', 'user')).toBe('traffic');
     expect(gate(row({ free_used_mb: 100, balance_mb: 0.2 }), 'image', 'user')).toBeNull();
     expect(gate(row({ plan: 'max', free_used_mb: 100 }), 'vision', 'user')).toBe('traffic');
     expect(gate(row({ plan: 'max', free_used_mb: 100, balance_mb: 50 }), 'vision', 'user')).toBeNull();
-    expect(gate(row({ plan: 'free' }), 'tts', 'user')).toBe('voice');
-    expect(gate(row({ plan: 'pro' }), 'tts', 'user')).toBeNull();
+    expect(gate(row({ plan: 'free', balance_mb: 6000 }), 'tts', 'user')).toBe('voice');
+    expect(gate(row({ plan: 'pro', balance_mb: 6000 }), 'tts', 'user')).toBe('voice');
+    expect(gate(row({ plan: 'pro', plan_voice_sec: 60 }), 'tts', 'user')).toBeNull();
   });
 
   it('Max 过线降速不拦（D-220）：聊天 3000 千 token 起隔 15 秒、6000 起隔 60 秒；生图 31 张起 5 分钟一张、61 张起当天停', () => {
@@ -82,10 +83,10 @@ describe('生成前的闸门（服务器照它拦）', () => {
     expect(gate(row({ plan: 'pro', balance_mb: 50, fair_images: 99 }), 'image', 'user')).toBeNull();
   });
 
-  it('TA 的语音看语音时长：Free 没有，送的通话只能打电话', () => {
+  it('TA 的语音看分钟：Free 买了分钟包也能用，送的通话只能打电话', () => {
     expect(gate(row(), 'tts', 'user')).toBe('voice');
     expect(gate(row({ voice_pack_sec: 60 }), 'tts', 'user')).toBeNull();
-    expect(gate(row({ plan: 'pro' }), 'tts', 'user')).toBeNull();
+    expect(gate(row({ plan: 'max', plan_voice_sec: 60 }), 'tts', 'user')).toBeNull();
     expect(gate(row(), 'chat', 'included')).toBeNull();
     expect(gate(row({ call_bonus_sec: 0 }), 'chat', 'included')).toBe('voice');
   });
@@ -111,7 +112,7 @@ describe('生成前的闸门（服务器照它拦）', () => {
 });
 
 describe('换算：客户端与服务端同一个 mbFor', () => {
-  it('聊天按 token、生图按张（qwen 60 / 动漫 50）、看图按件、识别按秒、TA 的语音每分钟 20', () => {
+  it('聊天按 token、生图按张（qwen 60 / 动漫 50）、看图按件、识别按秒；TA 的语音不折流量（D-240）', () => {
     expect(mbForUsage({ kind: 'chat', provider: 'anthropic', inputTokens: 1500, outputTokens: 500 })).toBe(mbFor({ kind: 'chat', tokens: 4000 }));
     // D-233：缓存住的前缀也算，按价目比折（实测一轮：没命中 4、缓存读 3512、缓存写 24、输出 11 → 440 当量）
     expect(costTokens({ input: 4, cacheRead: 3512, cacheWrite: 24, output: 11 })).toBe(440);
@@ -123,15 +124,15 @@ describe('换算：客户端与服务端同一个 mbFor', () => {
     expect(mbFor({ kind: 'vision' })).toBe(3);
     expect(mbFor({ kind: 'asr', seconds: 1 })).toBe(0.1);
     expect(mbFor({ kind: 'asr', seconds: 90 })).toBe(3);
-    expect(mbFor({ kind: 'tts', seconds: 30 })).toBe(10);
+    expect(mbFor({ kind: 'tts', seconds: 30 })).toBe(0);
   });
 
   it('传给 SQL 的数值', () => {
     expect(sqlEconomy()).toMatchObject({
       daily_free_mb: 100,
-      pro_monthly_mb: 8000,
-      plan_monthly_mb: { free: 0, pro: 8000, max: 30000 },
-      voice_mb_per_min: 20,
+      pro_monthly_mb: 5000,
+      plan_monthly_mb: { free: 0, pro: 5000, max: 20000 },
+      plan_voice_sec: { free: 0, pro: 6000, max: 18000 },
       new_user_call_sec: 300,
     });
   });
@@ -139,12 +140,12 @@ describe('换算：客户端与服务端同一个 mbFor', () => {
 
 describe('服务器钱包 → 本机显示缓存', () => {
   it('换成 store 的形状，本机闸门读出来和服务器一样', () => {
-    const v = walletView(row({ plan: 'pro', free_used_mb: 40, balance_mb: 120, voice_used_sec: 300, voice_pack_sec: 600, call_bonus_sec: 120 }), false);
+    const v = walletView(row({ plan: 'pro', free_used_mb: 40, balance_mb: 120, voice_used_sec: 300, plan_voice_sec: 540, voice_pack_sec: 600, call_bonus_sec: 120 }), false);
     const w = fromServerWallet(v, NOW);
     expect(w.plan).toBe('pro');
     expect(w.traffic).toEqual({ balance: 120, freeDay: trafficDayKey(NOW), freeUsed: 40 });
-    // 流量 (100 − 40) + 120 = 180 RB → 540 秒，加老分钟包 600 秒；电话再加送的 120 秒
-    expect(voiceLeft(w.voice, w.traffic, 'pro', 'message', NOW)).toBe(540 + 600);
-    expect(voiceLeft(w.voice, w.traffic, 'pro', 'call', NOW)).toBe(540 + 600 + 120);
+    // 这一期订阅的 540 秒 + 分钟包 600 秒；电话再加送的 120 秒
+    expect(voiceLeft(w.voice, 'pro', 'message')).toBe(540 + 600);
+    expect(voiceLeft(w.voice, 'pro', 'call')).toBe(540 + 600 + 120);
   });
 });

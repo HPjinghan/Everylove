@@ -194,6 +194,8 @@ interface AppState {
   useVoice: (sec: number, use: VoiceUse) => number;
   /** 买语音分钟包（分钟） */
   addVoiceMinutes: (min: number) => void;
+  /** 这一期订阅的分钟（本机发放，没有服务器时用） */
+  setPlanVoice: (sec: number) => void;
   /** 服务器钱包落到本机显示缓存（D-217：余额以服务器为准，features/traffic.ts 调） */
   setServerWallet: (w: { plan: 'free' | 'pro' | 'max'; traffic: Traffic; voice: VoiceTime }) => void;
   /** 「TA 发语音」开关（每段羁绊，D-210） */
@@ -534,12 +536,13 @@ export const useAppStore = create<AppState>()(
       logTraffic: (e) => set({ trafficLog: [...get().trafficLog, { id: uid('tr'), at: Date.now(), ...e }].slice(-TRAFFIC_LOG_MAX) }),
 
       useVoice: (sec, use) => {
-        const { voice, traffic, charged } = voiceAfterUse(get().voice, get().traffic, sec, get().plan, use);
-        set({ voice, traffic });
+        const { voice, charged } = voiceAfterUse(get().voice, sec, get().plan, use);
+        set({ voice });
         return charged;
       },
 
       addVoiceMinutes: (min) => set({ voice: { ...get().voice, packSec: get().voice.packSec + min * 60 } }),
+      setPlanVoice: (sec) => set({ voice: { ...get().voice, planSec: sec } }),
 
       setServerWallet: (w) => set({ plan: w.plan, traffic: { ...w.traffic, planGrantAt: get().traffic.planGrantAt }, voice: w.voice }),
 

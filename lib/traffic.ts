@@ -1,13 +1,13 @@
 /**
- * 流量与后台保险丝（D-132 → D-133 → D-210 → D-236）。
+ * 流量、TA 的声音与后台保险丝（D-132 → D-133 → D-210 → D-240）。
  * - 「流量」= 真实消耗的包装，单位 RingBit（RB，D-219；代码字段沿用 mb）：**只记她发起的**（D-210，Harper：「主动找我这些生成不扣流量，在其他的地方多做溢价」）——
  *   她的回合（含 TA 回她的那句）、她按快门 / 生成立绘、她要看的照片、看图、她的语音识别（D-211：麦克风人人可用；D-234：2 RB / 分钟）。TA 自己发起的（主动 / 召回 / 心跳 / 记事本 / 发帖 /
  *   评论区 / 身边的人 / 日程 / 周薪 / 外卖送到 / 爽约后说一句 / 主动发图）和工具调用（记忆提取、描述导入、台词）平台出，不扣她，
  *   只受每人每天的后台保险丝管（看不见，防失控）。底座在 core/usage 报用量并标账单归属，这里换算（features/traffic.ts 扣账）。
  * - 换算：聊天按真实成本——全部文字调用走 Claude Haiku 5.5（D-205），1 RB / 千 token 当量（D-233：缓存读 0.1、缓存写 1.25、输出 5）；生图按张（D-219）：qwen-image 60 RB、动漫（蒸汽机）50 RB（D-234）；看图 3 RB / 张。供应商没返回 usage 就按字数估。
- * - 流量来源：每天免费 100 RB（不累积）、订阅每月发（Pro 8000 / Max 30000，D-236）、流量包（不订阅也能买）。
- * - **TA 的声音也扣流量**（D-236）：每分钟 20 RB，TA 的语音按字数估的秒数、电话按接通时长；订阅用户才能用流量换，
- *   Free 只有新用户送的 5 分钟（只能打电话，不过期，用完为止）。语音分钟包下线，老的用完为止。
+ * - 流量来源：每天免费 100 RB（不累积）、订阅每 30 天发（Pro 5000 / Max 20000）、流量包（不订阅也能买）。
+ * - **TA 的声音按分钟，不扣流量**（D-240）：TA 的语音按字数估的秒数、电话按接通时长；订阅每 30 天给 Pro 100 / Max 300 分钟（下一期清零重给），
+ *   新用户送 5 分钟（只能打电话，不过期），分钟包所有人都能买（不过期）。
  * - Coin（零钱）与流量、语音永不打通。数值是试装默认；价格待 Harper（OPEN_QUESTIONS #30）。
  * - **余额以服务器为准（D-217）**：数值与算法的唯一来源是 supabase/functions/_shared/economy.ts（代理按它扣账），这里 re-export；
  *   本机 store.traffic / voice / plan 只是服务器钱包的显示缓存（fromServerWallet），下面的本机扣账函数只在没有服务器的时候用（开发直连 / 测试）。
@@ -27,9 +27,10 @@ import {
   NEW_USER_CALL_MIN,
   PLAN_GRANT_PERIOD_DAYS,
   PLAN_MONTHLY_MB,
+  PLAN_VOICE_MONTHLY_MIN,
   TRAFFIC_PACKS,
   VISION_MB,
-  VOICE_MB_PER_MIN,
+  VOICE_PACKS,
   type WalletView,
 } from '@/supabase/functions/_shared/economy';
 
@@ -41,9 +42,10 @@ export {
   IMAGE_MB,
   NEW_USER_CALL_MIN,
   PLAN_MONTHLY_MB,
+  PLAN_VOICE_MONTHLY_MIN,
   TRAFFIC_PACKS,
   VISION_MB,
-  VOICE_MB_PER_MIN,
+  VOICE_PACKS,
 };
 export type { WalletView };
 
@@ -77,7 +79,7 @@ export function usageTokens(e: UsageEvent): number {
   return costTokens({ input: e.inputTokens, output: e.outputTokens, cacheRead: e.cacheReadTokens, cacheWrite: e.cacheWriteTokens });
 }
 
-/** 一笔用量折多少 MB（TA 的语音每分钟 20，D-236）——与服务端同一个 mbFor */
+/** 一笔用量折多少 MB（TA 的语音按分钟另算、这里是 0，D-240）——与服务端同一个 mbFor */
 export function mbForUsage(e: UsageEvent): number {
   return mbFor({
     kind: e.kind,
@@ -113,7 +115,7 @@ export function freeLeft(tr: Traffic, now = Date.now()): number {
   return tr.freeDay === trafficDayKey(now) ? Math.max(0, DAILY_FREE_MB - tr.freeUsed) : DAILY_FREE_MB;
 }
 
-/** 还能花的（免费 + 余额；D-236 起 Max 也是一个数） */
+/** 还能花的（免费 + 余额；Max 也是一个数） */
 export function available(tr: Traffic, now = Date.now()): number {
   return freeLeft(tr, now) + tr.balance;
 }
@@ -141,70 +143,64 @@ export function planGrantsDue(tr: Traffic, plan: 'free' | 'pro' | 'max', now = D
   return Math.min(2, Math.floor((now - last) / PLAN_GRANT_PERIOD_MS));
 }
 
-/* ═══ TA 的声音（D-236）：TA 的语音 + 电话扣流量，每分钟 VOICE_MB_PER_MIN；订阅用户才能用流量换，Free 只有送的通话 ═══ */
+/* ═══ TA 的声音（D-240）：按分钟、不扣流量——订阅每期给的分钟（Pro 100 / Max 300，下一期清零重给）+ 新用户送的通话 + 分钟包 ═══ */
 
 /** 通话剩这么多秒时让 TA 收尾 */
 export const CALL_WRAP_UP_SEC = 60;
 
-/** TA 的声音的零头（store.voice）：送的通话、老的分钟包；其余从流量里扣 */
+/** 她的语音时长（store.voice） */
 export interface VoiceTime {
   /** 今天 TA 的声音用了多少秒（只做统计） */
   day: string;
   usedSec: number;
-  /** 老的分钟包还剩几秒（D-236 起不再卖，先用它再扣流量） */
+  /** 这一期订阅给的分钟还剩几秒（随订阅发流量时重给） */
+  planSec?: number;
+  /** 分钟包还剩几秒（不过期） */
   packSec: number;
   /** 新用户送的通话（秒，只能打电话） */
   callBonusSec: number;
 }
 
-export const START_VOICE: VoiceTime = { day: '', usedSec: 0, packSec: 0, callBonusSec: NEW_USER_CALL_MIN * 60 };
+export const START_VOICE: VoiceTime = { day: '', usedSec: 0, planSec: 0, packSec: 0, callBonusSec: NEW_USER_CALL_MIN * 60 };
 
 /** message = TA 的语音；call = 电话（多一笔新用户送的） */
 export type VoiceUse = 'message' | 'call';
 
-/** 流量还能换几秒 TA 的声音（Free 不能换） */
-export function voiceFromTraffic(tr: Traffic, plan: 'free' | 'pro' | 'max', now = Date.now()): number {
-  return plan === 'free' ? 0 : Math.floor((available(tr, now) / VOICE_MB_PER_MIN) * 60);
+/** 这一期订阅的分钟还剩几秒（Free 没有） */
+export function planVoiceLeft(v: VoiceTime, plan: 'free' | 'pro' | 'max'): number {
+  return plan === 'free' ? 0 : (v.planSec ?? 0);
 }
 
 /** 这种用途一共还能用几秒（电话多一笔送的） */
-export function voiceLeft(v: VoiceTime, tr: Traffic, plan: 'free' | 'pro' | 'max', use: VoiceUse, now = Date.now()): number {
-  return voiceFromTraffic(tr, plan, now) + v.packSec + (use === 'call' ? v.callBonusSec : 0);
+export function voiceLeft(v: VoiceTime, plan: 'free' | 'pro' | 'max', use: VoiceUse): number {
+  return planVoiceLeft(v, plan) + v.packSec + (use === 'call' ? v.callBonusSec : 0);
 }
 
-/** 扣一笔：电话先用送的，再用老的分钟包，剩下的折流量扣（订阅用户才扣，扣到 0 为止）。返回扣完的两份状态、扣了几秒、折了多少流量 */
-export function voiceAfterUse(
-  v: VoiceTime,
-  tr: Traffic,
-  sec: number,
-  plan: 'free' | 'pro' | 'max',
-  use: VoiceUse,
-  now = Date.now()
-): { voice: VoiceTime; traffic: Traffic; charged: number; chargedMb: number } {
-  if (sec <= 0) return { voice: v, traffic: tr, charged: 0, chargedMb: 0 };
+/** 扣一笔：电话先用送的，然后这一期订阅的分钟，最后分钟包（扣到 0 为止）。返回扣完的状态与实际扣了几秒 */
+export function voiceAfterUse(v: VoiceTime, sec: number, plan: 'free' | 'pro' | 'max', use: VoiceUse, now = Date.now()): { voice: VoiceTime; charged: number } {
+  if (sec <= 0) return { voice: v, charged: 0 };
   const round = (n: number) => Math.round(n * 10) / 10;
   const day = trafficDayKey(now);
   let rest = sec;
   const bonus = use === 'call' ? Math.min(rest, v.callBonusSec) : 0;
   rest -= bonus;
+  const planned = Math.min(rest, planVoiceLeft(v, plan));
+  rest -= planned;
   const pack = Math.min(rest, v.packSec);
-  rest -= pack;
-  let traffic = tr;
-  let chargedMb = 0;
-  if (rest > 0 && plan !== 'free') {
-    const r = trafficAfterUse(tr, Math.round((rest / 60) * VOICE_MB_PER_MIN * 100) / 100, now);
-    traffic = r.traffic;
-    chargedMb = r.charged;
-  }
   return {
-    voice: { ...v, day, usedSec: round((v.day === day ? v.usedSec : 0) + sec), callBonusSec: round(v.callBonusSec - bonus), packSec: round(v.packSec - pack) },
-    traffic,
-    charged: round(bonus + pack + (chargedMb / VOICE_MB_PER_MIN) * 60),
-    chargedMb,
+    voice: {
+      ...v,
+      day,
+      usedSec: round((v.day === day ? v.usedSec : 0) + sec),
+      callBonusSec: round(v.callBonusSec - bonus),
+      planSec: round(planVoiceLeft(v, plan) - planned),
+      packSec: round(v.packSec - pack),
+    },
+    charged: round(bonus + planned + pack),
   };
 }
 
-/** 「TA 发语音」开关（每段羁绊一个）：没动过 = 订阅开、Free 关；Free 又没有老分钟包的打不开 */
+/** 「TA 发语音」开关（每段羁绊一个）：没动过 = 订阅开、Free 关；Free 没买分钟包的打不开 */
 export function voiceRepliesAllowed(plan: 'free' | 'pro' | 'max', v: VoiceTime): boolean {
   return plan !== 'free' || v.packSec > 0;
 }
@@ -246,8 +242,7 @@ export function fromServerWallet(v: WalletView, now = Date.now()): { plan: 'free
   return {
     plan: v.plan,
     traffic: { balance: v.balance, freeDay: day, freeUsed: Math.max(0, DAILY_FREE_MB - v.freeLeft) },
-    // TA 的声音能用多久本机按流量算（D-236），这里只带零头
-    voice: { day, usedSec: 0, packSec: v.packSec, callBonusSec: v.callBonusSec },
+    voice: { day, usedSec: 0, planSec: v.planVoiceSec ?? 0, packSec: v.packSec, callBonusSec: v.callBonusSec },
   };
 }
 

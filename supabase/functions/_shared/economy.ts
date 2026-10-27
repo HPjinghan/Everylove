@@ -1,5 +1,5 @@
 /**
- * 流量 / 订阅 / TA 的声音的数值与算法（D-132 → D-210 → D-217 → D-236）——**唯一来源**：
+ * 流量 / 订阅 / TA 的声音的数值与算法（D-132 → D-210 → D-217 → D-240）——**唯一来源**：
  * 服务端代理（supabase/functions/ai）按它扣账，客户端（lib/traffic.ts）按它显示与预判，两边 import 同一个文件。
  * 纯函数、零依赖（Deno 与 Metro 都能直接 import）；改数值只改这里，tests/economy.test.ts 锁住。
  * 界面上的单位是 RingBit（缩写 RB，D-219）；代码与表里的字段仍叫 mb，1 mb = 1 RB。
@@ -13,8 +13,8 @@ export type MeterKind = 'chat' | 'image' | 'vision' | 'asr' | 'tts';
 
 /** 每天免费多少 MB（不累积，按她所在时区的自然日） */
 export const DAILY_FREE_MB = 100;
-/** 订阅每月发多少 MB（D-236：Max 也是一个数，聊天 / 生图 / TA 的声音共用这一份） */
-export const PLAN_MONTHLY_MB: Record<Plan, number> = { free: 0, pro: 8000, max: 30000 };
+/** 订阅每 30 天发多少 MB（聊天、生图共用；TA 的声音另按分钟算，D-240） */
+export const PLAN_MONTHLY_MB: Record<Plan, number> = { free: 0, pro: 5000, max: 20000 };
 export const PLAN_GRANT_PERIOD_DAYS = 30;
 /** 聊天每千 token 当量折几 MB（D-205：全部文字调用都是 Claude Haiku 5.5；当量见 costTokens） */
 export const CHAT_MB_PER_KTOK = 1;
@@ -52,12 +52,18 @@ export const TRAFFIC_PACKS: { id: string; mb: number }[] = [
   { id: 'pack-65000', mb: 65000 },
 ];
 
-/* ── TA 的声音（D-236：TA 的语音 + 电话也扣流量；订阅用户才能用，Free 只有送的通话）── */
+/* ── TA 的声音（D-240：按分钟，不扣流量；TA 的语音按字数估的秒数、电话按接通时长）── */
 
-/** 一分钟扣几 MB：TA 的语音按字数估的秒数，电话按接通时长 */
-export const VOICE_MB_PER_MIN = 20;
-/** 新用户送几分钟通话（只能打电话，不过期；先扣它再扣流量） */
+/** 订阅每 30 天给几分钟（随流量一起发，到下一期清零重给、不累积；Free 没有） */
+export const PLAN_VOICE_MONTHLY_MIN: Record<Plan, number> = { free: 0, pro: 100, max: 300 };
+/** 新用户送几分钟通话（只能打电话，不过期；电话先扣它） */
 export const NEW_USER_CALL_MIN = 5;
+/** 语音分钟包（所有人都能买，不过期；$2.99 / $4.99 / $12.99，D-240） */
+export const VOICE_PACKS: { id: string; min: number }[] = [
+  { id: 'voice-30', min: 30 },
+  { id: 'voice-60', min: 60 },
+  { id: 'voice-180', min: 180 },
+];
 
 /* ── 后台保险丝（平台出的那些每人每天封顶，看不见）── */
 
@@ -69,7 +75,7 @@ export const HOUSE_DAILY_IMAGES: Record<Plan, number> = { free: 1, pro: 2, max: 
 export const HOUSE_DAILY_TTS_SEC = 600;
 
 /*
- * ── Max 的合理使用（D-219 → D-220；D-236 起 Max 也有额度，这两道线留着兜底）：过了一道看不见的线以后降速，不拦——
+ * ── Max 的合理使用（D-219 → D-220；Max 也有额度，这两道线留着兜底）：过了一道看不见的线以后降速，不拦——
  * 聊天：当天她发起的过 3000 千 token 两条至少隔 15 秒、过 6000 隔 60 秒（服务器先等够再生成，她只觉得 TA 回得慢）；
  * 生图：第 11 张起每 5 分钟一张（要等的不超过 45 秒就并进显影里，再久让她过会儿再拍），第 16 张起当天停（一张是真钱，D-235）。
  */
@@ -111,7 +117,7 @@ function isCjk(ch: string): boolean {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** 一笔用量折多少 MB（TA 的语音按秒折，D-236） */
+/** 一笔用量折多少 MB（TA 的语音按分钟另算，这里是 0） */
 export function mbFor(u: { kind: MeterKind; tokens?: number; images?: number; model?: ImageModel; seconds?: number }): number {
   switch (u.kind) {
     case 'chat':
@@ -123,7 +129,7 @@ export function mbFor(u: { kind: MeterKind; tokens?: number; images?: number; mo
     case 'asr':
       return round2(Math.max(0.1, (u.seconds ?? 0) / ASR_SECONDS_PER_MB));
     case 'tts':
-      return round2(((u.seconds ?? 0) / 60) * VOICE_MB_PER_MIN);
+      return 0;
   }
 }
 
@@ -133,6 +139,8 @@ export interface WalletRow {
   balance_mb: number;
   free_used_mb: number;
   voice_used_sec: number;
+  /** 这一期订阅给的分钟还剩几秒（D-240） */
+  plan_voice_sec: number;
   voice_pack_sec: number;
   call_bonus_sec: number;
   house_ktok: number;
@@ -152,9 +160,9 @@ export interface WalletView {
   balance: number;
   /** 今天免费的还剩多少 MB */
   freeLeft: number;
-  /** 流量还能换几秒 TA 的声音（D-236；Free = 0）。字段名沿用老版本的「今天的语音额度」，老包照旧能读 */
-  voiceDailyLeft: number;
-  /** 老的分钟包还剩几秒（D-236 起不再卖，先用它再扣流量） */
+  /** 这一期订阅给的分钟还剩几秒 */
+  planVoiceSec: number;
+  /** 分钟包（秒） */
   packSec: number;
   /** 新用户送的通话（秒） */
   callBonusSec: number;
@@ -163,13 +171,11 @@ export interface WalletView {
 }
 
 export function walletView(w: WalletRow, live: boolean): WalletView {
-  const balance = round2(Number(w.balance_mb));
-  const freeLeft = round2(Math.max(0, DAILY_FREE_MB - Number(w.free_used_mb)));
   return {
     plan: w.plan,
-    balance,
-    freeLeft,
-    voiceDailyLeft: w.plan === 'free' ? 0 : Math.floor(((freeLeft + balance) / VOICE_MB_PER_MIN) * 60),
+    balance: round2(Number(w.balance_mb)),
+    freeLeft: round2(Math.max(0, DAILY_FREE_MB - Number(w.free_used_mb))),
+    planVoiceSec: w.plan === 'free' ? 0 : Number(w.plan_voice_sec ?? 0),
     packSec: Number(w.voice_pack_sec),
     callBonusSec: Number(w.call_bonus_sec),
     live,
@@ -183,7 +189,7 @@ export function callAlive(w: Pick<WalletRow, 'call_tick_at'>, now: number): bool
 
 /** 还能用几秒语音：message = TA 的语音；call = 电话（多一笔新用户送的） */
 export function voiceLeftOf(v: WalletView, use: 'message' | 'call'): number {
-  return v.voiceDailyLeft + v.packSec + (use === 'call' ? v.callBonusSec : 0);
+  return v.planVoiceSec + v.packSec + (use === 'call' ? v.callBonusSec : 0);
 }
 
 /** 还能花的流量（今天免费的 + 余额） */
@@ -231,8 +237,8 @@ export function sqlEconomy() {
     daily_free_mb: DAILY_FREE_MB,
     pro_monthly_mb: PLAN_MONTHLY_MB.pro,
     plan_monthly_mb: { free: PLAN_MONTHLY_MB.free, pro: PLAN_MONTHLY_MB.pro, max: PLAN_MONTHLY_MB.max },
+    plan_voice_sec: { free: 0, pro: PLAN_VOICE_MONTHLY_MIN.pro * 60, max: PLAN_VOICE_MONTHLY_MIN.max * 60 },
     grant_period_days: PLAN_GRANT_PERIOD_DAYS,
-    voice_mb_per_min: VOICE_MB_PER_MIN,
     new_user_call_sec: NEW_USER_CALL_MIN * 60,
     call_tick_max_sec: CALL_TICK_MAX_SEC,
     call_alive_sec: CALL_ALIVE_SEC,

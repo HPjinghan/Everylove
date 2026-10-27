@@ -11,7 +11,7 @@ create table if not exists public.iap_products (
   plan text check (plan in ('pro', 'max')),
   active boolean not null default true
 );
--- 流量包五档（D-239）；语音分钟包停售（D-236）：不再列给 app，老交易照旧能入账（iap_apply 不看 active）。重跑以本文件为准
+-- 流量包五档（D-239）；语音分钟包 30 / 60 / 180 分钟所有人都能买（D-240）。下架的商品不再列给 app，老交易照旧能入账（iap_apply 不看 active）。重跑以本文件为准
 insert into public.iap_products (product_id, kind, mb, voice_sec, plan, active) values
   ('ringring.pro.monthly', 'plan', 0, 0, 'pro', true),
   ('ringring.max.monthly', 'plan', 0, 0, 'max', true),
@@ -20,9 +20,9 @@ insert into public.iap_products (product_id, kind, mb, voice_sec, plan, active) 
   ('ringring.traffic.l', 'traffic', 12000, 0, null, true),
   ('ringring.traffic.xl', 'traffic', 32000, 0, null, true),
   ('ringring.traffic.xxl', 'traffic', 65000, 0, null, true),
-  ('ringring.voice.s', 'voice', 0, 1800, null, false),
-  ('ringring.voice.m', 'voice', 0, 3600, null, false),
-  ('ringring.voice.l', 'voice', 0, 10800, null, false)
+  ('ringring.voice.s', 'voice', 0, 1800, null, true),
+  ('ringring.voice.m', 'voice', 0, 3600, null, true),
+  ('ringring.voice.l', 'voice', 0, 10800, null, true)
 on conflict (product_id) do update set
   kind = excluded.kind, mb = excluded.mb, voice_sec = excluded.voice_sec, plan = excluded.plan, active = excluded.active;
 

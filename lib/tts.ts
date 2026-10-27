@@ -183,7 +183,7 @@ async function synthesize(text: string, voices: { fish: string; baidu: string },
 
   const cached = await FileSystem.getInfoAsync(local).catch(() => null);
   if (cached?.exists) return local;
-  // 生成闸门（D-133 → D-236）：她的流量换不出 TA 的声音了就不合成（缓存过的照放）
+  // 生成闸门（D-133 → D-240）：她的语音分钟用完了就不合成（缓存过的照放）
   if (generationBlocked('tts', billing)) return undefined;
   const pending = inflight.get(cacheKey);
   if (pending) return pending;
