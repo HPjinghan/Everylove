@@ -308,7 +308,6 @@ export function PhoneSheet({
                 </View>
                 <View style={styles.convText}>
                   <Text style={styles.convName}>{bond.nickname}</Text>
-                  <Text style={styles.convPreview}>{t('恋人')}</Text>
                 </View>
               </View>
               {circle.map((p) => (
