@@ -29,6 +29,10 @@ const MAPPING = {
   'gift.fill': 'redeem',
   iphone: 'smartphone',
   'mappin.and.ellipse': 'place',
+  trash: 'delete',
+  lock: 'lock',
+  'lock.open': 'lock-open',
+  paperplane: 'send',
 } satisfies IconMapping;
 
 /**

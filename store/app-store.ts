@@ -296,6 +296,10 @@ interface AppState {
   addNote: (n: Note) => void;
   updateNote: (id: string, text: string) => void;
   removeNote: (id: string) => void;
+  /** 上锁 / 解锁（D-253）：改锁不算改内容，不动 updatedAt */
+  setNoteLocked: (id: string, locked: boolean) => void;
+  /** 这些记事被某位 TA 看过了（D-253） */
+  markNotesRead: (ids: string[], reader: { bondId: string; name: string }, at: number) => void;
   setNoteDue: (characterId: string, at: number) => void;
   /** TA 往自己的记事本里写一条（lib/his-notes.ts） */
   /** TA 写一条记事本；`at` = 补写时到点的那一刻（D-162），缺省现在 */
@@ -1000,6 +1004,13 @@ export const useAppStore = create<AppState>()(
       updateNote: (id, text) =>
         set({ notes: get().notes.map((n) => (n.id === id ? { ...n, text, updatedAt: Date.now() } : n)) }),
       removeNote: (id) => set({ notes: get().notes.filter((n) => n.id !== id) }),
+      setNoteLocked: (id, locked) => set({ notes: get().notes.map((n) => (n.id === id ? { ...n, locked } : n)) }),
+      markNotesRead: (ids, reader, at) =>
+        set({
+          notes: get().notes.map((n) =>
+            ids.includes(n.id) ? { ...n, readBy: [...(n.readBy ?? []).filter((r) => r.bondId !== reader.bondId), { ...reader, at }] } : n
+          ),
+        }),
       setNoteDue: (characterId, at) => set({ noteSchedule: { ...get().noteSchedule, [characterId]: at } }),
       addHisNote: (bondId, text, at) =>
         set({

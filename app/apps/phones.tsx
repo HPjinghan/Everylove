@@ -106,7 +106,7 @@ export default function PhonesScreen() {
       <ConfirmSheet
         visible={!!confirming}
         title={t('让{name}看你的手机？', { name: confirming?.name ?? '' })}
-        body={t('TA 会读到：记事本的全部内容、日历里的安排、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。')}
+        body={t('TA 会读到：记事本（上了锁的除外）、日历里的安排、你和其他人最近的聊天。看完 TA 会给你发消息。这一步不能撤回。')}
         confirmLabel={t('让{name}看', { name: confirming?.name ?? '' })}
         onConfirm={() => confirming && invitePeek(confirming.id)}
         onClose={() => setConfirmId(null)}

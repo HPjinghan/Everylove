@@ -167,7 +167,7 @@ export type MessageKind = 'text' | 'voice' | 'system' | 'image' | 'card';
 /** 「+」面板发出的卡片消息（D-081/D-084）：外出邀请 / 红包 / 位置 / 想看手机 */
 export interface ChatCard {
   /** 卡片种类（core/cards 注册表；新种类在 features/ 里注册时把名字加进这个联合，D-193 封闭） */
-  type: 'invite' | 'redpacket' | 'location' | 'phoneRequest' | 'delivery' | 'share';
+  type: 'invite' | 'redpacket' | 'location' | 'phoneRequest' | 'delivery' | 'share' | 'note';
   title: string;
   subtitle?: string;
   /** 红包金额（试装游戏币） */
@@ -545,6 +545,12 @@ export interface Note {
   text: string;
   at: number;
   updatedAt: number;
+  /** 上了锁（D-253）：她让 TA 看手机时这条不给看 */
+  locked?: boolean;
+  /** 哪些 TA 看过（D-253）：看手机时读到的、她单独给看的；同一位只留最近一次 */
+  readBy?: { bondId: string; name: string; at: number }[];
+  /** 写下时的天气（D-253）：天气条件的中文原文键（界面用 t() 显示） */
+  weather?: string;
 }
 
 /** TA 日历里自己的一条安排（D-119） */

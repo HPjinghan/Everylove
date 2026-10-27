@@ -113,3 +113,16 @@ export function buildPhoneNoticedUser(input: { nickname: string; looked: string[
     "Send her a message, 1–2 short lines, the way you usually text, and react as yourself — by your character and how close you are now: embarrassed, amused, teasing, secretly pleased she's curious, a little sulky, pretending not to mind… Don't interrogate her, don't make her feel guilty, don't lecture about privacy.)",
   ].join(' ');
 }
+
+/* ── 她单独给 TA 看一页记事本（D-253）：卡片进会话，这句是舞台提示 ── */
+
+/** 给模型看的一页最长几个字 */
+export const SHOW_NOTE_MAX = 600;
+
+export function buildShowNoteUser(text: string): string {
+  return [
+    "(She chose to show you one page of her private notebook — she never has to; this one she wanted you to read:",
+    `"""${text.slice(0, SHOW_NOTE_MAX)}"""`,
+    "Reply as yourself, 1–3 short lines, by how close you are now: answer what she wrote, not the fact that she showed you; speak only of your own feelings; if it mentions any other real person, not one word about them.)",
+  ].join('\n');
+}

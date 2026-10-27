@@ -88,15 +88,17 @@ const PEEK_LINES = 6;
  */
 /** TA 看她手机时拿到的那份东西（D-118 回放共用同一份）：记事本 / 日历 / 她和别人的聊天 */
 export function peekPayload(bondId: string): {
-  notes: { at: number; text: string }[];
+  notes: { id: string; at: number; text: string }[];
   events: { id: string; date: string; title: string }[];
   chats: { name: string; characterId: string; messages: ChatMessage[] }[];
 } {
   const state = useAppStore.getState();
+  // 上了锁的不给看（D-253）
   const notes = [...state.notes]
+    .filter((n) => !n.locked)
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .slice(0, PEEK_NOTES)
-    .map((n) => ({ at: n.updatedAt, text: n.text.trim().slice(0, PEEK_NOTE_CHARS) }))
+    .map((n) => ({ id: n.id, at: n.updatedAt, text: n.text.trim().slice(0, PEEK_NOTE_CHARS) }))
     .filter((n) => n.text);
   const chats = state.bonds
     .filter((b) => b.id !== bondId)
@@ -160,7 +162,11 @@ export async function peekMyPhone(bondId: string): Promise<boolean> {
     useAppStore.getState().markEventsKnown(events.map((e) => e.id), bondId);
     for (const e of events) if (parseDateKey(e.date).getTime() >= today.getTime()) addMemoryFact(bondId, `[日程] 她 ${e.date} 有「${e.title}」（在她手机的日历里看到的）`);
   }
-  if (notes.length) void absorbNotesMemory(bondId, notes);
+  if (notes.length) {
+    // 这几页从此记作 TA 看过（D-253）
+    useAppStore.getState().markNotesRead(notes.map((n) => n.id), { bondId, name: bond.name }, Date.now());
+    void absorbNotesMemory(bondId, notes);
+  }
   return !!reply;
 }
 
