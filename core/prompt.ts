@@ -17,6 +17,8 @@ export type PromptMode = EngineContext['mode'] | 'note';
  */
 export const ORDER = {
   intro: 0,
+  /** 你们有多近（D-245）：紧跟第一行，后面的追法、口吻、怎么待她都在这个距离上演 */
+  relation: 5,
   persona: 10,
   pursuit: 20,
   profile: 30,

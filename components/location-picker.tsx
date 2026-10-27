@@ -15,7 +15,6 @@ import {
   Text,
   TextInput,
   View,
-  type LayoutChangeEvent,
 } from 'react-native';
 import MapView, { Marker, type Region } from '@/components/maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -98,7 +97,6 @@ export function LocationPicker({
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<Hit[]>([]);
   const [busy, setBusy] = useState<'locate' | 'search' | null>(null);
-  const [mapH, setMapH] = useState(0);
 
   // 打开时：已授权过定位就直接落到当前位置；没授权不打扰（她可以点定位按钮再要）
   useEffect(() => {
@@ -174,7 +172,6 @@ export function LocationPicker({
           ref={map}
           style={StyleSheet.absoluteFill}
           initialRegion={region}
-          onLayout={(e: LayoutChangeEvent) => setMapH(e.nativeEvent.layout.height)}
           onPress={(e) => void choose(e.nativeEvent.coordinate.latitude, e.nativeEvent.coordinate.longitude)}
           showsUserLocation
           showsMyLocationButton={false}>
@@ -252,7 +249,7 @@ export function LocationPicker({
               <Button label={t('发送位置')} disabled={!label} onPress={send} />
             </>
           ) : (
-            <Text style={styles.hintText}>{mapH ? t('点地图上的一个地方') : ' '}</Text>
+            <Text style={styles.hintText}> </Text>
           )}
         </View>
       </View>

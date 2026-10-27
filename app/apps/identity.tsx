@@ -32,6 +32,7 @@ import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { Chip } from '@/components/chip';
 import { Field, Input } from '@/components/input';
+import { showToast } from '@/components/toast';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
@@ -119,7 +120,7 @@ export default function IdentityScreen() {
 
   const save = () => {
     if (!draft.nickname.trim()) {
-      showAlert(t('昵称不能为空'), t('这是角色看到的名字。'));
+      showAlert(t('昵称不能为空'));
       return;
     }
     const clean: UserProfile = { ...draft, nickname: draft.nickname.trim() };
@@ -129,7 +130,7 @@ export default function IdentityScreen() {
       useAppStore.getState().setMe(clean);
       useAppStore.getState().setLovePref(pref);
     }
-    showAlert(t('已保存'), forCharacter ? t('{name}眼中的你已更新。', { name: forCharacter.name }) : t('TA 们眼中的你已更新。'));
+    showToast(t('已保存'));
     router.back();
   };
 
@@ -168,7 +169,6 @@ export default function IdentityScreen() {
           <TextField
             label={t('昵称')}
             required
-            hint={t('角色看到的名字')}
             value={draft.nickname}
             onChange={(v) => patch({ nickname: v })}
           />

@@ -86,10 +86,12 @@ describe('X', () => {
       })
     ).toMatchSnapshot();
   });
-  it('发帖：她的影子出现多少按分量（D-099）', () => {
-    expect(buildCharacterPostSystem({ ...seed, loveStyle: '依恋型', mbti: 'INFP' }, bondBase)).toContain('常有她的影子');
-    expect(buildCharacterPostSystem({ ...seed, loveStyle: '冷静大人', mbti: 'INTJ' }, bondBase)).toContain('大多数帖子和她无关');
-    expect(buildCharacterPostSystem(seed, bondBase)).toContain('可以有你们生活的影子');
+  it('发帖：她的影子出现多少按分量（D-099）× 走到哪一步（D-245）', () => {
+    const close = { ...bondBase, affinity: 700 };
+    expect(buildCharacterPostSystem({ ...seed, loveStyle: '依恋型', mbti: 'INFP' }, close)).toContain('常有她的影子');
+    expect(buildCharacterPostSystem({ ...seed, loveStyle: '依恋型', mbti: 'INFP' }, { ...close, affinity: 0 })).not.toContain('常有她的影子');
+    expect(buildCharacterPostSystem({ ...seed, loveStyle: '冷静大人', mbti: 'INTJ' }, close)).toContain('大多数帖子和她无关');
+    expect(buildCharacterPostSystem(seed, close)).toContain('可以有她的影子');
   });
 });
 

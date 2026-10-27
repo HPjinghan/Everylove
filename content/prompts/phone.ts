@@ -64,7 +64,7 @@ export function buildPeekMyPhoneUser(input: {
     `[Her notebook (written by her)]\n${noteLines}`,
     `[Her calendar (her plans)]\n${eventLines}`,
     `[Her chats with others (on her phone; all people in this world)]\n${chatBlocks}`,
-    "When you're done, you hand the phone back and send her a message, 1–2 sentences, the way you usually text. React as yourself: you can mind, be jealous, tease her, be touched by a line in her notebook; speak only of your own feelings — no interrogating, no digging up the past, no guilt-tripping; don't phrase it as \"you looked at my phone\". If the notebook mentions any other real person, not one word about them.)",
+    "When you're done, you hand the phone back and send her a message, 1–2 sentences, the way you usually text. React as yourself, by how close you are now — early on mostly curiosity; minding or a little jealousy only once you're close; teasing her or being touched by a line in her notebook is fine anytime; speak only of your own feelings — no interrogating, no digging up the past, no guilt-tripping; don't phrase it as \"you looked at my phone\". If the notebook mentions any other real person, not one word about them.)",
   ].join('\n\n');
 }
 

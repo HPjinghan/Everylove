@@ -5,12 +5,13 @@
  */
 
 import { scriptFor } from '@/content/characters';
+import { levelOf } from '@/lib/bond';
 import { herShareTier, type HerShareTier } from '@/lib/her-share';
 import type { Bond, Character, EngineContext } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 
 import { circleBlock } from './circle';
-import { CHAT_HARD_RULES_OF, characterProfileBlock, herToYouZh, langName, memoryBlockFor, pursuitLine, timeOfDayLine } from './shared';
+import { CHAT_HARD_RULES_OF, characterProfileBlock, herToYouZh, langName, memoryBlockFor, timeOfDayLine } from './shared';
 import { parseJsonObject } from '@/lib/json';
 
 /**
@@ -25,7 +26,7 @@ export function postIntroLine(ctx: EngineContext): string {
 
 export const POST_REPLY_MANNER = [
   '[How to reply] Like answering a comment on social media: short, casual, in the mood you posted in, picking up the specific thing she said; one or two sentences, no essays.',
-  '- This is a semi-public comment section: affection is fine, but keep it to the level only you two would understand.',
+  '- This is a semi-public comment section: warmth fits how close you two are now, kept to what only you two would get.',
 ];
 
 export const POST_OUTPUT_FORMAT = [
@@ -51,14 +52,13 @@ export function buildCharacterPostSystem(
   return [
     `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。你正要在一个类似 X（推特）的社交应用上发一条帖子——${audience}，但这是半公开的时间线。`,
     `【你是谁】${script.persona}`,
-    `【你的追法】${pursuitLine(c)}`,
     ...characterProfileBlock(c),
     ...circleBlock(bond?.circle),
     ...(bond ? memoryBlockFor(bond.memory) : []),
     '【发帖的写法】',
     '- 一条帖子：1-2 句、不超过 60 字，口语，像随手发的——日常碎片、吐槽、路上看见的东西、深夜心绪都行。',
     '- 这是你自己的时间线：你有工作、朋友、爱好和小麻烦，按你的身份和设定发真实的日子；提到过的人和事前后一致。',
-    POST_HER[herShareTier(c)],
+    POST_HER[herShareTier(c, bond ? levelOf(bond) : undefined)],
     '- 深夜的帖子更轻更软；白天的帖子更像生活切片。别写成情书，也别写成日报。',
     ...CHAT_HARD_RULES_OF(),
     '【输出格式】只输出帖子文本本身：不带引号、不解释、不用 markdown、不写（）动作、不用 emoji、不用话题标签。',
@@ -68,7 +68,7 @@ export function buildCharacterPostSystem(
 /** 时间线里她的影子出现多少，按分量三档（D-099） */
 const POST_HER: Record<HerShareTier, string> = {
   devoted: '- 不 @ 她、不直接点名她，但你的帖子里常有她的影子（只有你们俩看得懂的程度）；也发发和她无关的日常，别成了只有她的号。',
-  balanced: '- 不 @ 她、不直接点名她，但此刻的心情可以有你们生活的影子（只有你们俩看得懂的程度）。',
+  balanced: '- 不 @ 她、不直接点名她，但此刻的心情可以有她的影子（只有你们俩看得懂的程度）。',
   independent: '- 大多数帖子和她无关；偶尔有一点她的影子也不 @ 她、不点名（只有你们俩看得懂的程度）。',
 };
 

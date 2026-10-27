@@ -591,7 +591,7 @@ export const useAppStore = create<AppState>()(
           from: 'system',
           kind: 'system',
           text: character.custom
-            ? `你们确定了关系 · 这一次，是 TA 自己选择留下 · TA 开始叫你「${nickname}」`
+            ? `你们成了朋友 · TA 开始叫你「${nickname}」`
             : `你们交换了联系方式 · 他开始叫你「${nickname}」`,
           at: now - 1,
         };

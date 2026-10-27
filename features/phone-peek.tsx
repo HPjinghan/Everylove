@@ -8,7 +8,6 @@
  */
 
 import { CardShell } from '@/components/card-bubble';
-import { showToast } from '@/components/toast';
 import { parseDateKey } from '@/content/calendar';
 import { buildPeekMyPhoneUser, buildPhoneNoticedUser, PHONE_UNLOCK_MARK, phoneBlock, todayLine } from '@/content/prompts';
 import { cardKinds } from '@/core/cards';
@@ -135,7 +134,6 @@ export async function peekMyPhone(bondId: string): Promise<boolean> {
   today.setHours(0, 0, 0, 0);
 
   mode.append(scope, [sysMsg(t('TA 看了你的手机'))]);
-  showToast(t('TA 拿起了你的手机'));
 
   // 暗面路由前置（红线 3 / D-167）：记事本、日历标题、她和别人聊天里她说的话，任一处有危机内容 → 温柔模式，不入戏
   const herWords = [

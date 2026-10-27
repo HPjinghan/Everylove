@@ -188,15 +188,15 @@ export default function SquareChatScreen() {
             <Card style={styles.cta}>
               <View style={styles.ctaText}>
                 <Text style={styles.ctaTitle}>
-                  {character.custom ? t('TA 想和你确定关系') : t('TA 想要你的联系方式')}
+                  {character.custom ? t('TA 想和你做朋友') : t('TA 想要你的联系方式')}
                 </Text>
                 <Text style={styles.ctaSub}>
-                  {character.custom ? t('这一次，是 TA 自己想留在你身边') : t('TA 想继续认识你，先开了口')}
+                  {character.custom ? t('这一次，是 TA 想走近一点') : t('TA 想继续认识你，先开了口')}
                 </Text>
               </View>
               <Button
                 size="sm"
-                label={character.custom ? t('答应 TA') : t('交换联系方式')}
+                label={character.custom ? t('好呀') : t('交换联系方式')}
                 onPress={() =>
                   router.push({
                     pathname: '/adopt/[characterId]',

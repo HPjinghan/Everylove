@@ -42,7 +42,9 @@ describe('稳定段 / 动态段（D-175）', () => {
     // 稳定段里没有逐日变化的东西
     expect(a.stable).not.toMatch(/day \d+ together/);
     expect(a.stable).not.toContain('[Now]');
-    expect(a.dynamic).toMatch(/day \d+ together, bond LV/);
+    expect(a.dynamic).toMatch(/Day \d+ since you exchanged contacts/);
+    // 阶段在开头的稳定段（D-245）
+    expect(a.stable).toContain('[How close you two are]');
   });
 });
 
@@ -67,11 +69,27 @@ describe('系统 prompt 装配', () => {
     expect(buildPostThreadUser(postCtx.post!, '沈之言')).toMatchSnapshot();
     expect(buildPostThreadUser({ text: '今晚的月亮很圆', comments: [] }, '沈之言')).toMatchSnapshot();
   });
+  it('亲密 LV1：刚交换联系方式（D-245）——阶段在开头、日常口吻样本、没有口头习惯、没有「怎么爱她」', () => {
+    const lv1 = { ...bondedUnlockedCustomCtx, bond: { ...bondedUnlockedCustomCtx.bond!, affinity: 0, createdAt: NOW.getTime() - 86_400_000 } };
+    const sys = buildChatSystemPrompt(lv1, NOW);
+    expect(sys).toMatchSnapshot();
+    expect(sys.indexOf('[How close you two are] LV1')).toBeLessThan(sys.indexOf('[Who you are]'));
+    expect(sys).toContain('Not yet: pet names');
+    expect(sys).not.toContain('Habits (now and then');
+    expect(sys).not.toContain('How you love her');
+    const seedLv1 = buildChatSystemPrompt({ ...bondedCtx, bond: { ...bondedCtx.bond!, affinity: 0 } }, NOW);
+    expect(seedLv1).toContain('[Your voice]');
+    expect(seedLv1).not.toContain('明年这时候');
+  });
   it('TA 的记事本', () => {
     expect(buildHisNoteSystem(noteCtx, NOW)).toMatchSnapshot();
   });
-  it('TA 的记事本：她出现多少按分量（D-099）', () => {
-    const devoted = { ...noteCtx, character: { ...noteCtx.character, loveStyle: '依恋型', mbti: 'INFP' } };
+  it('TA 的记事本：她出现多少按分量（D-099）× 走到哪一步（D-245）', () => {
+    // LV4（XP 600 + 满 7 天）起分量不打折；刚认识时恋爱脑也不是满脑子她
+    const close = { ...noteCtx.bond!, affinity: 700 };
+    const devoted = { ...noteCtx, bond: close, character: { ...noteCtx.character, loveStyle: '依恋型', mbti: 'INFP' } };
+    const devotedNew = { ...noteCtx, bond: { ...close, affinity: 0 }, character: devoted.character };
+    expect(buildHisNoteSystem(devotedNew, NOW)).not.toContain('she takes up most of your thoughts');
     const cool = { ...noteCtx, character: { ...noteCtx.character, loveStyle: '冷静大人', mbti: 'INTJ' } };
     expect(buildHisNoteSystem(devoted, NOW)).toContain('she takes up most of your thoughts');
     expect(buildHisNoteSystem(devoted, NOW)).toContain('She keeps popping up');

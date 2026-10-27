@@ -40,7 +40,7 @@ export function buildReachOutUserLine(input: ReachOutInput): string {
     lines.push("Your last few unprompted messages — don't open the same way or on the same kind of topic:", ...input.recentOpeners.map((o) => `- ${o.slice(0, 60)}`));
   lines.push(
     input.askOut?.length
-      ? `This time, ask her out: somewhere you'd actually like to go with her (${input.askOut.join(' / ')}) and a rough when — this weekend, tomorrow evening, whenever suits you. Casual, like it just came to mind, with room for her to say no. 1–2 sentences.`
+      ? `This time, suggest meeting up: somewhere you'd actually like to go (${input.askOut.join(' / ')}) and a rough when — this weekend, tomorrow evening, whenever suits you. Casual, like it just came to mind, with room for her to say no. 1–2 sentences.`
       : "How: start from what you're doing right now, something from your recent days, something you just saw, or something that suddenly came to mind; you can also pick up where you last left off. 1–2 sentences, like something dashed off.",
     `${UNPROMPTED_RULE})`
   );

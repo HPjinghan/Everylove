@@ -69,7 +69,7 @@ export default function WeatherScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        showAlert(t('没拿到定位权限'), t('没关系——在下面直接搜索你的地区也一样。'));
+        showAlert(t('没拿到定位权限'));
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
@@ -82,7 +82,7 @@ export default function WeatherScreen() {
       applyPlace(name || t('当前位置'), pos.coords.latitude, pos.coords.longitude);
     } catch (e) {
       console.warn('[weather] 定位失败：', e);
-      showAlert(t('定位失败'), t('在下面手动搜索你的地区吧。'));
+      showAlert(t('定位失败'));
     } finally {
       setBusy(false);
     }

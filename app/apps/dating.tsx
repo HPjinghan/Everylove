@@ -388,7 +388,7 @@ export default function DatingScreen() {
       {/* 配对列表：滑到即配对；3 天不聊过期 */}
       {matches.length > 0 && (
         <View style={styles.matchesWrap}>
-          <Text style={styles.matchesTitle}>{t('配对 · 3 天不聊会过期')}</Text>
+          <Text style={styles.matchesTitle}>{t('配对')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.matchesRow}>
             {matches.map((c) => (
               <Pressable

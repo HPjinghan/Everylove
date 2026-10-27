@@ -6,7 +6,7 @@
  *   和「这一条写不写她」——按她在 TA 心里的分量掷硬币（lib/her-share.ts，D-099）。AI 不可用 / 失败 = 这次不写
  */
 
-import { backgroundAwake } from '@/lib/bond';
+import { backgroundAwake, levelOf } from '@/lib/bond';
 import { buildHisNoteSystem, buildHisNoteUserPrompt, HIS_NOTE_USER } from '@/content/prompts';
 import { bondedContext } from '@/lib/chat';
 import { completeText, splitBubbles, stripStageDirections } from '@/lib/engine';
@@ -68,7 +68,7 @@ async function generateNote(character: Character, bond: Bond, now: Date = new Da
     now,
     weather: weatherLine(now),
     recent: (bond.notes ?? []).slice(-HIS_NOTE_RECENT),
-    aboutHer: rollAboutHer(character),
+    aboutHer: rollAboutHer(character, levelOf(bond, now.getTime())),
   });
   try {
     const raw = await completeText(buildHisNoteSystem(ctx, now), user, 240);

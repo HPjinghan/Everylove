@@ -168,7 +168,7 @@ export default function OutingScreen() {
                 ? (bondOf(live.characterId)?.name ?? findCharacter(live.characterId)?.name)
                 : undefined;
             const badge = liveName
-              ? t('和{name}在一起', { name: liveName })
+              ? t('{name} 在这儿', { name: liveName })
               : planBond
                 ? t('和{name}有约', { name: planBond.name })
                 : null;

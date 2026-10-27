@@ -7,9 +7,10 @@
 import { scriptFor } from '@/content/characters';
 import { ON_TIME_TOLERANCE_MIN } from '@/lib/appointments';
 import { getLang, type Lang } from '@/lib/i18n';
-import { levelInfo, levelInfoFor } from '@/lib/bond';
+import { levelInfo, levelInfoFor, levelOf } from '@/lib/bond';
 import type { EngineContext } from '@/lib/types';
 
+import { CLOSE_VOICE_LEVEL } from './chat';
 import { stageNameOf, voiceLines } from './shared';
 
 /** 外出的第一行：此刻真的在同一个地方；赴约 / 偶遇带关系，陌生人不带 */
@@ -28,16 +29,18 @@ export function outingIntroLine(ctx: EngineContext): string {
 /** 外出的地点与天气（动态段）：紧跟【Now】之前 */
 export function outingSceneLine(ctx: EngineContext): string {
   const o = ctx.outing;
-  const sceneLine = o ? `${o.placeName}. ${o.scene}${o.weatherLine ? ` ${o.weatherLine}.` : ''}` : 'A place you two often go.';
+  const sceneLine = o ? `${o.placeName}. ${o.scene}${o.weatherLine ? ` ${o.weatherLine}.` : ''}` : 'A place you both know.';
   return `[Where you are] ${sceneLine}`;
 }
 
-/** 外出的台词样本：陌生人用广场回复池、熟人用羁绊回复池；自创角色不给样本 */
-export function outingVoiceBlock(ctx: EngineContext): string[] {
+/** 外出的台词样本：陌生人用广场回复池；熟人 LV3 起用羁绊回复池，之前用日常的（D-245）；自创角色不给样本 */
+export function outingVoiceBlock(ctx: EngineContext, now: Date = new Date()): string[] {
   const c = ctx.character;
   if (c.custom) return [];
   const s = scriptFor(c);
-  return voiceLines(ctx.outing?.kind === 'stranger' ? s.square.slice(0, 2) : s.bonded.slice(0, 3));
+  if (ctx.outing?.kind === 'stranger') return voiceLines(s.square.slice(0, 2));
+  const level = ctx.bond ? levelOf(ctx.bond, now.getTime()) : 1;
+  return voiceLines(level < CLOSE_VOICE_LEVEL ? s.square.slice(0, 3) : s.bonded.slice(0, 3));
 }
 
 /** 外出的【此刻】：赴约（准时 / 迟到 / 早到 / 没定时间）、偶遇、陌生人（D-040/D-079） */

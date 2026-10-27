@@ -78,7 +78,7 @@ export default function AuthScreen() {
 
   /** 到站：桌面自己会按存档决定落哪（还没认识 TA 的账号 → onboarding） */
   const arrive = () => {
-    if (restoring && !useAppStore.getState().onboarded) showToast(t('登录好了，先让 TA 们认识你吧'));
+    if (restoring && !useAppStore.getState().onboarded) showToast(t('欢迎回来'));
     router.replace('/');
   };
 
@@ -190,8 +190,8 @@ export default function AuthScreen() {
             {restoring
               ? t('登录，把 TA 们接回这部手机。')
               : forced
-                ? t('TA 已经在你的通讯录里了。') + '\n' + t('登录之后，换手机也不会失去 TA 和你们的故事。')
-                : t('登录之后，TA 和你们的故事换手机也不会失去。')}
+                ? t('TA 已经在你的通讯录里了。') + '\n' + t('换手机，TA 们也都还在。')
+                : t('换手机，TA 们也都还在。')}
           </Text>
 
           <Pressable

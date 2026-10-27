@@ -81,7 +81,7 @@ export function StoryEditor({
 
   return (
     <View>
-      <Text style={styles.sectionHint}>{t('TA 从哪来、TA 是谁——按章写，每章定一个开放的阶段。')}</Text>
+      <Text style={styles.sectionHint}>{t('TA 从哪来、TA 是谁')}</Text>
       {chapters.length === 0 ? <Text style={styles.empty}>{t('还没有章节')}</Text> : null}
       {chapters.map((c, i) =>
         openId === c.id ? (

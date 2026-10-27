@@ -231,7 +231,7 @@ function VoiceBubble({
         <Pressable onPress={() => setOpen(true)} hitSlop={6}>
           <Text style={styles.voiceHint}>
             {status === 'failed'
-              ? t('语音暂时没接通 · 点这里看文字')
+              ? t('语音暂时没接通')
               : canSpeak && status === 'loading'
                 ? t('TA 在开嗓…')
                 : t('看文字')}

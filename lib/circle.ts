@@ -25,6 +25,7 @@ import {
 } from '@/content/prompts';
 import { completeText } from '@/lib/engine';
 import { uid } from '@/lib/format';
+import { levelOf } from '@/lib/bond';
 import { herShareTier } from '@/lib/her-share';
 import { upcomingHisEvents } from '@/lib/his-schedule';
 import { getLang, type Lang } from '@/lib/i18n';
@@ -238,7 +239,7 @@ export async function refreshCircleChats(bondId: string, now = Date.now()): Prom
           .map((e) => `${e.date.slice(5)}${e.time ? ` ${e.time}` : ''} ${e.title}`),
         tails,
         hisName: bond.name,
-        herTier: herShareTier(character),
+        herTier: herShareTier(character, levelOf(bond, now)),
       }),
       1200
     );

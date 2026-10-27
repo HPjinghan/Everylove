@@ -132,7 +132,7 @@ export async function shootPhoto(
       { id: uid('m'), from: 'me', kind: 'image', text: caption, imageUri: uri, polaroid: true, at },
     ]);
   }
-  if (sceneSessionId !== session.id) showToast(t('照片洗好了，已存进相册'));
+  if (sceneSessionId !== session.id) showToast(t('照片洗好了'));
 }
 
 /* ── 约定：从对话里识别 ── */

@@ -33,8 +33,8 @@ describe('她在 TA 心里的分量', () => {
   it('掷硬币按分量', () => {
     const devoted = { archetype: 'gentle' as const, loveStyle: '病娇（尺度内）' };
     const cool = { archetype: 'ceo' as const, loveStyle: '冷静大人' };
-    expect(rollAboutHer(devoted, 0.85)).toBe(true);
-    expect(rollAboutHer(cool, 0.3)).toBe(false);
-    expect(rollAboutHer(cool, 0.2)).toBe(true);
+    expect(rollAboutHer(devoted, undefined, 0.85)).toBe(true);
+    expect(rollAboutHer(cool, undefined, 0.3)).toBe(false);
+    expect(rollAboutHer(cool, undefined, 0.2)).toBe(true);
   });
 });

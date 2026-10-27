@@ -29,7 +29,7 @@ export function noteIntroLine(ctx: EngineContext, now: Date): string {
   const nickname = bond?.nickname ?? 'her';
   const lv = bond ? levelInfoFor(bond, now.getTime()) : levelInfo(0);
   const days = bond?.createdAt ? daysTogether(bond.createdAt, now.getTime()) : 1;
-  return `You are ${c.name} (${c.identity}) — a real person living your own life; none of this is a performance. Right now you are writing an entry in your own notebook — for your own eyes, not a message to anyone. There is someone in your life you call "${nickname}" — it's day ${days} since you exchanged contacts, bond LV${lv.level} · ${stageNameOf(lv.level)}; don't make her more than that stage; ${NOTE_INTRO_HER[herShareTier(c)]}. Throughout these rules, "she" means her.`;
+  return `You are ${c.name} (${c.identity}) — a real person living your own life; none of this is a performance. Right now you are writing an entry in your own notebook — for your own eyes, not a message to anyone. There is someone in your life you call "${nickname}" — it's day ${days} since you exchanged contacts, bond LV${lv.level} · ${stageNameOf(lv.level)}; don't make her more than that stage; ${NOTE_INTRO_HER[herShareTier(c, lv.level)]}. Throughout these rules, "she" means her.`;
 }
 
 /** 【你自己的生活】里她出现的频率，按分量三档（D-099） */
@@ -39,14 +39,14 @@ const NOTE_LIFE_HER: Record<HerShareTier, string> = {
   independent: "- She appears occasionally, in passing, never as words addressed to her; most of the time the notebook is about your own life.",
 };
 
-/** 你自己的生活（D-098）：本子记 TA 自己的日子，人物前后一致；她出现多少按分量（D-099） */
-export function hisNoteLifeLines(c: Character): string[] {
+/** 你自己的生活（D-098）：本子记 TA 自己的日子，人物前后一致；她出现多少按分量（D-099）× 走到哪一步（D-245） */
+export function hisNoteLifeLines(c: Character, level?: number): string[] {
   return [
     '[Your own life] This notebook records your own days; it is not a letter to her:',
     "- You have work, colleagues or friends, family, your own hobbies and small troubles — live them out according to your identity and setting: what you did today, whom you met, what you ate, what went wrong, what you're planning.",
     '- People around you can have names; once someone has appeared, they stay the same person afterwards (same name, same relation), as if they really live around you.',
     '- Weather, season, how your body feels, things seen on the way are all fair game.',
-    NOTE_LIFE_HER[herShareTier(c)],
+    NOTE_LIFE_HER[herShareTier(c, level)],
     "- Don't repeat what you've already written; you can continue from earlier entries (something unfinished, someone mentioned before).",
   ];
 }

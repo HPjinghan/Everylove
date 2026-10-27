@@ -16,7 +16,7 @@ export const DELIVERY_FROM_HIM_MARK = '[点外卖 东西|价格|一句话]';
 export const DELIVERY_FROM_HIM_PATTERN = /\[点外卖\s*([^\]]*)\]/;
 
 const TIER_LINES = {
-  devoted: '你舍得，520 这种数字你也说得出口，但也不是天天',
+  devoted: 'generous when there is a reason, but not every day',
   balanced: 'once in a while, a modest amount, like a passing bit of care',
   independent: "rarely, only when something's really up; and you don't make a thing of it",
 } as const;
@@ -28,7 +28,7 @@ export function hisWalletLines(c: Character, w: HisWallet | undefined, offers: {
   const balance = w?.balance ?? 0;
   const lines = [
     `[Your wallet] You have your own money: balance ${money(balance)}${w?.job ? `, with a weekly income (${w.job})` : ''}.`,
-    "- If she asks you for money, handle it as yourself — tease or refuse; you're not an ATM, and money never wins her back or makes a point.",
+    "- If she asks you for money, handle it as yourself — tease or refuse; you're not an ATM; money never settles anything.",
   ];
   if (balance < 10) {
     lines.push("- Your balance is nearly gone; don't spend this week.");

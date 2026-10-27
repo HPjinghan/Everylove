@@ -1,5 +1,5 @@
 /**
- * 领养流：缔结关系的仪式（交友配对 = 交换联系方式；自创角色 = 确定关系，D-052；D-100 纸面）。
+ * 领养流：缔结关系的仪式（交友配对 = 交换联系方式；自创角色 = 成为朋友，D-052 / D-245；D-100 纸面）。
  * 给 TA 起名（兼确认，D-223 并掉了只有一个按钮的开场）→ 迁移仪式动画 → 直接开聊（开门/推送步已随 D-046 下线；称呼与生日不再问，D-088：
  * TA 叫她的名字 = 她的昵称，生日在「我的身份」里）。
  * 槽位不限（D-210）：缔结不再判定槽位，订阅管流量、语音分钟与「他在」的密度。
@@ -113,9 +113,9 @@ export default function AdoptScreen() {
                 placeholder={character.name}
                 maxLength={12}
               />
-              {/* 按钮跟着这条路走：交友配对 = 交换联系方式；自创 = 确定关系（D-052） */}
+              {/* 按钮跟着这条路走：交友配对 = 交换联系方式；自创 = 做朋友 */}
               <Button
-                label={character.custom ? t('确定关系') : t('交换联系方式')}
+                label={character.custom ? t('和 TA 做朋友') : t('交换联系方式')}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   setStep('ceremony');
@@ -144,7 +144,7 @@ export default function AdoptScreen() {
 }
 
 /** 迁移仪式：两行文字依次显影（D-223：「TA 给你的备注是」那行删了——昵称是她自己起的，不用再念给她听） + 心跳（自创角色有自己的仪式文案，D-052）。
- * D-208：TA 的立绘放大到 168，开场盖着一层墨色相纸、跟着两行字慢慢褪掉——TA 像一张拍立得一样显影出来，褪尽时 success 震动 + 心跳 */
+ * D-208：TA 的立绘放大到 168，开场盖着一层墨色相纸、跟着两行字慢慢褪掉——TA 像一张拍立得一样显影出来，褪尽时 success 震动（缔结时不画心） */
 function Ceremony({
   hisName,
   color,
@@ -161,17 +161,16 @@ function Ceremony({
   const lines = custom
     ? [
         t('{name}不再只是你创造的角色', { name: hisName }),
-        t('这一次，是 TA 自己选择留下'),
+        t('这一次，是 TA 想认识你'),
       ]
     : [
         t('TA 存下了你的号码'),
         t('你出现在了 TA 的通讯录里'),
       ];
-  // 两行显影各一只 Animated 值（仪式固定两行，hook 个数固定）+ 心跳一只
+  // 两行显影各一只 Animated 值（仪式固定两行，hook 个数固定）
   const fade0 = useAnimatedValue(0);
   const fade1 = useAnimatedValue(0);
   const fades = [fade0, fade1];
-  const heart = useAnimatedValue(0);
   // 盖在立绘上的墨色相纸：1 → 0，和两行字一起走完
   const film = useAnimatedValue(1);
   const [done, setDone] = useState(false);
@@ -185,9 +184,7 @@ function Ceremony({
       Animated.timing(film, { toValue: 0, duration: 1500, easing: Easing.out(Easing.quad), useNativeDriver: true }),
     ]).start(() => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Animated.timing(heart, { toValue: 1, duration: 500, useNativeDriver: true }).start(() =>
-        setDone(true)
-      );
+      setDone(true);
     });
     const timers = lines.map((_, i) =>
       setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light), i * 900 + 300)
@@ -209,17 +206,7 @@ function Ceremony({
           </Animated.Text>
         ))}
       </View>
-      <Animated.Text
-        style={[
-          styles.ceremonyHeart,
-          {
-            opacity: heart,
-            transform: [{ scale: heart.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }],
-          },
-        ]}>
-        ♥
-      </Animated.Text>
-      {done && <Button label={t('去看看你们的手机')} onPress={onDone} style={styles.primaryBtn} />}
+      {done && <Button label={t('去看看')} onPress={onDone} style={styles.primaryBtn} />}
     </View>
   );
 }
@@ -258,6 +245,5 @@ const styles = themed(() =>
     },
     ceremonyLines: { marginTop: 30, gap: 14, alignItems: 'center' },
     ceremonyLine: { fontSize: Type.scale.md.size, color: Romance.ink, textAlign: 'center' },
-    ceremonyHeart: { fontSize: 34, color: Romance.accent, marginTop: 22 },
   })
 );

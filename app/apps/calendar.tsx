@@ -1,7 +1,7 @@
 /**
  * 日历（D-020；D-100 纸面）：内嵌真实日历，三层——
  * 世界层：真实日期 + 节假日，跟着界面语言走市场（中文 → 中国 / English → 美国 / 日本語 → 日本 / 한국어 → 韩国，content/calendar.ts）；
- * 关系层：自动记录（每一位 TA 的「交换了联系方式」/ 自创角色的「确定了关系」纪念日、一百天、TA 的生日、你的生日、带时间的约定），不用用户动手；条目都带名字、写成已经发生的事（D-110）；
+ * 关系层：自动记录（每一位 TA 的「交换了联系方式」/ 自创角色的「成了朋友」纪念日、一百天、TA 的生日、你的生日、带时间的约定），不用用户动手；条目都带名字、写成已经发生的事（D-110）；
  * 用户层：手动添加日程（考试/面试/出差）——私密（D-113）：只有她让 TA 看过手机、TA 读到过的日程才会触发心跳三段式（lib/heartbeat.ts），没看过的 TA 不知道。
  * 三层圆点：节日 ink / 纪念 primary / 日程 accent，网格下方一行图例（D-110）；选中日 primary 底白字，今天没被选中时描一圈 primary 细边。
  * 月份标题按界面语言本地化（localeOf：October 2026 / 2026年10月 / 2026년 10월），数字用 Fredoka。
@@ -67,17 +67,17 @@ export default function CalendarScreen() {
     for (const bond of bonds) {
       const character = findCharacter(bond.characterId);
       const created = new Date(bond.createdAt);
-      // 交友缔结 = 交换了联系方式；自创角色缔结 = 确定了关系（同缔结仪式的分法）
+      // 交友缔结 = 交换了联系方式；自创角色缔结 = 成了朋友（同缔结仪式的分法）
       push(
         dateKey(created),
         character?.custom
-          ? t('和{name}确定了关系', { name: bond.name })
+          ? t('和{name}成了朋友', { name: bond.name })
           : t('和{name}交换了联系方式', { name: bond.name }),
         'relation'
       );
       const hundred = new Date(bond.createdAt);
       hundred.setDate(hundred.getDate() + 99);
-      push(dateKey(hundred), t('和{name}的一百天', { name: bond.name }), 'relation');
+      push(dateKey(hundred), t('认识{name}一百天', { name: bond.name }), 'relation');
       if (character?.birthday) {
         const [mm, dd] = character.birthday.split('-').map(Number);
         if (mm && dd) push(dateKey(new Date(ym.y, mm - 1, dd)), t('{name}的生日', { name: bond.name }), 'relation');
@@ -124,7 +124,7 @@ export default function CalendarScreen() {
     const title = draft.trim();
     if (!title) return;
     if (parseDateKey(selected).getTime() < new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) {
-      showAlert(t('这天已经过去了'), t('选今天或以后的日子吧。'));
+      showAlert(t('这天已经过去了'));
       return;
     }
     useAppStore.getState().addUserEvent({ id: uid('ev'), date: selected, title });
@@ -277,7 +277,7 @@ export default function CalendarScreen() {
                 style={styles.addInput}
                 value={draft}
                 onChangeText={setDraft}
-                placeholder={t('添加日程：考试 / 面试 / 出差…')}
+                placeholder={t('考试 / 面试 / 出差…')}
                 maxLength={20}
                 returnKeyType="done"
                 onSubmitEditing={addEvent}

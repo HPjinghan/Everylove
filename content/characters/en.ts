@@ -331,6 +331,8 @@ export const CHARACTERS_EN: Character[] = [
     adoptedCount: 96200,
     color: '#C96F3B',
     colorSoft: '#FDF0E6',
+    // 竹马（D-245）：和她的过去写成共同记忆——试聊是多年后在交友软件上重逢，不是陌生人也不是恋人
+    presetMemories: 'You grew up next door to each other — your bedroom windows faced each other; then both families moved and you lost touch for years.\nMatching on a dating app is the first time you\'ve talked in years.',
   },
   {
     id: 'su-cheng-en',

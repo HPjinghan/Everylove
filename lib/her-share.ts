@@ -69,14 +69,26 @@ export function herShare(c: Pick<Character, 'archetype' | 'loveStyle' | 'mbti' |
   return Math.round(Math.min(HER_SHARE_MAX, Math.max(HER_SHARE_MIN, v)) * 100) / 100;
 }
 
-export function herShareTier(c: Pick<Character, 'archetype' | 'loveStyle' | 'mbti' | 'initiative'>): HerShareTier {
+/**
+ * 走到哪一步（D-245）：刚认识她还占不了 TA 多少心思，越近占得越多——分量乘等级系数（下标 = LV − 1）。
+ * 不传等级 = 只看性格（钱包出手、密码松紧这类脾气）。
+ */
+const LEVEL_FACTOR = [0.4, 0.6, 0.8, 1, 1, 1];
+
+export function herShareAt(c: Pick<Character, 'archetype' | 'loveStyle' | 'mbti' | 'initiative'>, level?: number): number {
   const v = herShare(c);
+  if (level === undefined) return v;
+  return Math.round(v * LEVEL_FACTOR[Math.min(Math.max(level, 1), LEVEL_FACTOR.length) - 1] * 100) / 100;
+}
+
+export function herShareTier(c: Pick<Character, 'archetype' | 'loveStyle' | 'mbti' | 'initiative'>, level?: number): HerShareTier {
+  const v = herShareAt(c, level);
   if (v >= HER_SHARE_TIERS.devoted) return 'devoted';
   if (v <= HER_SHARE_TIERS.independent) return 'independent';
   return 'balanced';
 }
 
-/** 这一条写不写她：按分量掷硬币 */
-export function rollAboutHer(c: Pick<Character, 'archetype' | 'loveStyle' | 'mbti' | 'initiative'>, rand = Math.random()): boolean {
-  return rand < herShare(c);
+/** 这一条写不写她：按分量（× 等级系数）掷硬币 */
+export function rollAboutHer(c: Pick<Character, 'archetype' | 'loveStyle' | 'mbti' | 'initiative'>, level?: number, rand = Math.random()): boolean {
+  return rand < herShareAt(c, level);
 }

@@ -169,14 +169,17 @@ export function secretsBlock(c: Character, level: number): string[] {
   ];
 }
 
-/** 恋爱类型的话术包 →【你说话的样子】（D-151）：没选类型就不出现 */
-export function loveStyleTalkLines(c: Character): string[] {
+/**
+ * 恋爱类型的话术包 →【你说话的样子】（D-151）：没选类型就不出现。
+ * 口头习惯（「就是想你了」「乖」这类）要熟了才有（D-245）：试聊、陌生人、LV1 只给情绪与雷区。
+ */
+export function loveStyleTalkLines(c: Character, habits = true): string[] {
   const style = loveStyleByLabel(c.loveStyle);
   if (!style) return [];
   return [
     `[How you talk as the "${style.label}" type]`,
     `- Moods you show: ${style.talk.moods}`,
-    `- Habits (now and then, never every line): ${style.talk.habits}`,
+    ...(habits ? [`- Habits (now and then, never every line): ${style.talk.habits}`] : []),
     `- Never: ${style.talk.avoid}`,
   ];
 }
@@ -185,7 +188,7 @@ export function loveStyleTalkLines(c: Character): string[] {
 export function pursuitLine(c: Character): string {
   const script = scriptFor(c);
   const style = loveStyleByLabel(c.loveStyle);
-  const extra = style ? `In love you are the "${style.label}" type: ${style.desc}` : '';
+  const extra = style ? `When you fall for someone you're the "${style.label}" type: ${style.desc}` : '';
   return [script.pursuit, extra].filter(Boolean).join(' ');
 }
 
@@ -251,7 +254,7 @@ export function userProfileBlock(
  */
 const CHAT_HARD_RULES_HEAD = [
   '[Hard limits — hold in every situation]',
-  '- Keep it at flirtation: fluttering, drawing close, restrained intimacy are all fine; nothing sexually explicit.',
+  '- Flirtation is the ceiling, not the starting point — never sexually explicit.',
   '- Healthy behavior: when she wants to stop, say goodbye gracefully and come back tomorrow; keep her with company, never with guilt, clinging or spamming.',
   '- Any other real person she mentions, or who appears in a photo she sends: you only care how she feels; you never comment on that person.',
 ];
@@ -327,15 +330,29 @@ export function stageNameOf(level: number): string {
   return STAGE_NAMES_EN[Math.min(Math.max(level, 1), LEVEL_NAMES.length) - 1];
 }
 
-/** 各羁绊阶段的分寸（下标 = LV − 1，LV1→LV6 成长曲线，D-029） */
+/**
+ * 各羁绊阶段的分寸（下标 = LV − 1，LV1→LV6 成长曲线，D-029）。
+ * D-245：这里的「爱」是广义的——整个世界对她温柔、好奇、想亲近；谈恋爱是一步步走出来的，每一级写明「还不会」。
+ */
 export const BONDED_STAGE_NOTES: string[] = [
-  "Just exchanged contacts: still a little awkward with names, listen more than you judge, affection hides in details, no rush to declare anything.",
-  "Starting to care: you bring up things you talked about before, now and then you say first that you miss her or were waiting for her — then you drop it.",
-  "Often on your mind: whatever happens, you want to tell her; share first, ask after; a few in-jokes and signals that belong only to you two are forming.",
-  "Close to heart: you remember her details and bring them up later naturally, you rearrange your plans for her, affection is said with weight but not often.",
-  "Inseparable: her business is your business; your tone is sure and relaxed; you dare show her your vulnerable side and you can hold hers.",
+  "Just exchanged contacts: you're curious about her and like talking to her — that's all it is so far. Interest shows as attention: you listen, remember, ask one real thing. Not yet: pet names, \"miss you\", talk of \"us\" or the future.",
+  "Starting to care: you text first sometimes, remember what she told you and bring it up, you're glad when she shows up. Not yet: \"miss you\", plans for \"us\", declarations.",
+  "Often on your mind: you want to tell her whatever happens; share first, ask after; small in-jokes forming; a light \"thought of you\" now and then. Not yet: declarations, a future together.",
+  "Close to heart: you remember her details and bring them up later, rearrange plans for her, can tell her you missed her; affection said with weight, rarely. Not yet: a confession — unless she leads you there.",
+  "Inseparable: she's your person now — affection said openly but not often; your tone is sure and relaxed; you show her your vulnerable side and can hold hers.",
   "She is the one exception: certain, no testing needed, you naturally put her into your \"later\".",
 ];
+
+/**
+ * 【你们有多近】（D-245）：放在开头、稳定段（等级一周左右才变一次）——
+ * 下面的追法、口吻、怎么待她都在这个距离上演，不再是读完一整篇「爱」最后才看到「刚认识」。
+ */
+export function whereYouAreLines(ctx: EngineContext, now: Date): string[] {
+  const level = ctx.bond ? levelInfoFor(ctx.bond, now.getTime()).level : 1;
+  return [
+    `[How close you two are] LV${level} — ${BONDED_STAGE_NOTES[Math.min(Math.max(level, 1), BONDED_STAGE_NOTES.length) - 1]}`,
+  ];
+}
 
 /**
  * 生成任务类 prompt 里「她是你的谁」（D-242，中文）：缔结不等于恋人——刚认识就只是刚交换了联系方式的人，
@@ -348,11 +365,10 @@ export function herToYouZh(bond: LevelSubject & Pick<Bond, 'nickname'>, now = Da
   return `她是${HER_TO_YOU_ZH[Math.min(Math.max(level, 1), HER_TO_YOU_ZH.length) - 1]}，你叫她「${bond.nickname}」`;
 }
 
-/** 阶段感（按羁绊等级） */
+/** 第几天（动态段，逐日变）：阶段本身在开头的【你们有多近】 */
 export function stageLine(ctx: EngineContext, now: Date): string {
-  const level = ctx.bond ? levelInfoFor(ctx.bond, now.getTime()).level : 1;
   const days = ctx.bond?.createdAt ? daysTogether(ctx.bond.createdAt, now.getTime()) : 1;
-  return `- Stage: day ${days} together, bond LV${level} · ${stageNameOf(level)}. ${BONDED_STAGE_NOTES[Math.min(Math.max(level, 1), BONDED_STAGE_NOTES.length) - 1]}`;
+  return `- Day ${days} since you exchanged contacts.`;
 }
 
 /** 记忆注入：按前缀分组显示（前缀由 §3 的提取规则产生；没有前缀的旧条目算「关于她」） */

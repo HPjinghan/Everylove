@@ -119,9 +119,9 @@ export type StoryBlock = { type: 'text'; text: string } | { type: 'image'; uri: 
 export interface CharacterLines {
   /** 开场白：她第一次点开对话时 TA 先说的 */
   opening: string[];
-  /** 心动满了、想和她确定关系时说的话（递进三条） */
+  /** 聊得投缘、想和她做朋友时说的话（递进三条，D-245） */
   offer: string[];
-  /** 确定关系后 TA 发来的前几条 */
+  /** 成为朋友后 TA 发来的前几条 */
   arrival: string[];
   /** 一句话「TA 是谁」（进 prompt 的【你是谁】） */
   persona?: string;

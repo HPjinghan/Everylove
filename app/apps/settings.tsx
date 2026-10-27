@@ -403,7 +403,7 @@ export default function MeScreen() {
             <Row
               icon="cloud"
               label={t('登录 / 开通云端')}
-              hint={t('换手机也不会失去 TA 和你们的故事。')}
+              hint={t('换手机，TA 们也都还在。')}
               onPress={() => router.push('/auth')}
             />
           )}

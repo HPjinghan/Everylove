@@ -127,7 +127,7 @@ export default function OnboardingScreen() {
           keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>{t('先让 TA 们认识你')}</Text>
 
-          <Field label={t('昵称')} hint={t('角色看到的名字')} required>
+          <Field label={t('昵称')} required>
             <Input
               value={nickname}
               onChangeText={setNickname}

@@ -143,12 +143,12 @@ export default function BondScreen() {
     <InfoRow key="nick" label={t('TA 叫你')}>
       <Text style={styles.infoValue}>{t('「{x}」', { x: bond.nickname })}</Text>
     </InfoRow>,
-    <InfoRow key="anniversary" label={t('纪念日')}>
+    <InfoRow key="anniversary" label={t('认识那天')}>
       <Text style={styles.infoNum}>
         {anniversary.getMonth() + 1}/{anniversary.getDate()}
       </Text>
-      {/* 写成「哪一天」而不是动作（D-223）；自创角色那天是确定关系 */}
-      <Text style={styles.infoValue}> · {character.custom ? t('确定关系的那天') : t('交换联系方式的那天')}</Text>
+      {/* 写成「哪一天」而不是动作（D-223）；自创角色那天就是认识那天，不再重复说 */}
+      {character.custom ? null : <Text style={styles.infoValue}> · {t('交换联系方式的那天')}</Text>}
     </InfoRow>,
   ];
   if (myBirthday) {
@@ -339,7 +339,7 @@ export default function BondScreen() {
               </Card>
               <Card style={[styles.stat, styles.statCenter]}>
                 <Text style={styles.statNum}>{daysTogether(bond.createdAt)}</Text>
-                <Text style={styles.statLabel}>{t('在一起的天数')}</Text>
+                <Text style={styles.statLabel}>{t('认识的天数')}</Text>
               </Card>
             </View>
 

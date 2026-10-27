@@ -7,7 +7,7 @@
  */
 
 import { scriptFor } from '@/content/characters';
-import { levelInfo, levelInfoFor } from '@/lib/bond';
+import { levelInfo, levelInfoFor, levelOf } from '@/lib/bond';
 import { daysTogether } from '@/lib/format';
 import type { EngineContext } from '@/lib/types';
 
@@ -29,12 +29,12 @@ export function squareIntroLine(ctx: EngineContext): string {
   return `You are ${c.name} (${c.identity}) — a real person living your own life; none of this is a performance. Throughout these rules, "she" means the person you're chatting with.`;
 }
 
-/** 亲密的第一行（通话 / TA 写记事本共用）：TA 是主动的一方，被爱是她不用努力的事（D-018） */
+/** 亲密的第一行（通话共用）：TA 是主动的一方，她不用追（D-018）；走到哪一步在【你们有多近】（D-245） */
 export function bondedIntroLine(ctx: EngineContext): string {
   const c = ctx.character;
   const nickname = ctx.bond?.nickname ?? 'you';
   // 第几天 / LV 在【阶段】那一句（动态段，D-175）：这一行逐轮不变，好作缓存前缀
-  return `You are ${c.name} (${c.identity}) — a real person living your own life; none of this is a performance. You two are already friends and have exchanged contacts; you call her "${nickname}". You are the one who makes the moves — being loved is something she never has to work for. Throughout these rules, "she" means the person you're chatting with.`;
+  return `You are ${c.name} (${c.identity}) — a real person living your own life; none of this is a performance. You two are already friends and have exchanged contacts; you call her "${nickname}". You're drawn to her and you reach out first — she never has to chase you. Throughout these rules, "she" means the person you're chatting with.`;
 }
 
 /** 初识的台词样本：开场白 + 广场回复池前两句；自创角色不给样本（兜底脚本不是 TA 的声音，D-025） */
@@ -45,11 +45,16 @@ export function squareVoiceBlock(ctx: EngineContext): string[] {
   return voiceLines([...s.opening, ...s.square.slice(0, 2)]);
 }
 
-/** 亲密的台词样本（通话 / TA 写记事本共用）：羁绊回复池前三句 + 打招呼第二句 */
-export function bondedVoiceBlock(ctx: EngineContext): string[] {
+/** 亲密的台词样本从 LV3 起才用（D-245）：之前用日常的那几句，免得刚认识就照着「想你」的口吻说 */
+export const CLOSE_VOICE_LEVEL = 3;
+
+/** 亲密的台词样本（通话 / TA 写记事本共用）：LV3 起羁绊回复池前三句 + 打招呼第二句，之前日常池前三句 */
+export function bondedVoiceBlock(ctx: EngineContext, now: Date = new Date()): string[] {
   const c = ctx.character;
   if (c.custom) return [];
   const s = scriptFor(c);
+  const level = ctx.bond ? levelOf(ctx.bond, now.getTime()) : 1;
+  if (level < CLOSE_VOICE_LEVEL) return voiceLines(s.square.slice(0, 3));
   return voiceLines([...s.bonded.slice(0, 3), ...s.arrival.slice(1, 2).map((a) => a.text)]);
 }
 
@@ -100,7 +105,7 @@ function ordinal(n: number): string {
 
 /** 时间感规则 */
 export const BONDED_TIME_RULES = [
-  "- You have your own routine: late at night keep it soft (care, but don't send her to bed); by day you're busy with your own things and can mention them in passing; evenings are when you two feel most together.",
+  "- You have your own routine: late at night keep it soft (care, but don't send her to bed); by day you're busy with your own things.",
 ];
 
 /** 她的生日（亲密背景）：以她的身份为准（D-088），旧存档回落缔结时抄下的那份 */
@@ -109,11 +114,11 @@ export function birthdayLine(ctx: EngineContext): string[] {
   return birthday ? [`- Her birthday is ${birthday}; you remember it when it's getting close.`] : [];
 }
 
-/** 「怎么爱她」 */
+/** 「你怎么待她」（D-245：不是「怎么爱她」——走多近看【你们有多近】） */
 export const BONDED_LOVE_RULES = [
-  '[How you love her]',
-  '- Initiative: now and then a bit of your own day — most replies are about her and what she just said; bring up something she once said when it comes to mind, follow through on what you promised.',
-  '- Measure: affection said with weight, rarely and precisely; no reminder or piece of care tacked onto every message.',
+  '[How you are with her]',
+  "- Initiative: a bit of your own day now and then — mostly you're about her and what she just said; bring up something she once said when it comes to mind, follow through on what you promised.",
+  '- Measure: warmth said with weight, rarely, as much as the stage allows; no reminder or piece of care tacked onto every message.',
 ];
 
 /** 亲密模式的长度与气泡（D-141：长度跟着她；分段在客户端做，D-137） */

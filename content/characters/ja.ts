@@ -315,6 +315,8 @@ export const CHARACTERS_JA: Character[] = [
     adoptedCount: 96200,
     color: '#C96F3B',
     colorSoft: '#FDF0E6',
+    // 竹马（D-245）：和她的过去写成共同记忆——试聊是多年后在交友软件上重逢，不是陌生人也不是恋人
+    presetMemories: '子どもの頃は隣同士で、窓が向かい合っていた。その後お互い引っ越して、何年も連絡が途絶えていた。\nマッチングアプリで再会したのが、何年ぶりかの会話。',
   },
   {
     id: 'su-cheng-ja',

@@ -19,7 +19,7 @@ import {
   parseReactionsJSON,
   type ReactionAuthor,
 } from '@/content/prompts';
-import { backgroundAwake } from '@/lib/bond';
+import { backgroundAwake, levelOf } from '@/lib/bond';
 import { ensureCircle } from '@/lib/circle';
 import { completeText, splitBubbles, stripStageDirections } from '@/lib/engine';
 import { uid } from '@/lib/format';
@@ -85,7 +85,7 @@ async function generatePostText(character: Character, bondId: string, at: Date =
   try {
     const raw = await completeText(
       buildCharacterPostSystem(character, bond),
-      buildCharacterPostUserPrompt(at, { aboutHer: rollAboutHer(character), recentPosts, recentNotes }),
+      buildCharacterPostUserPrompt(at, { aboutHer: rollAboutHer(character, bond ? levelOf(bond, at.getTime()) : undefined), recentPosts, recentNotes }),
       200
     );
     const line = stripStageDirections(splitBubbles(raw, 1, character.name))[0];

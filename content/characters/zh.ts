@@ -552,6 +552,8 @@ export const CHARACTERS_ZH: Character[] = [
     adoptedCount: 96200,
     color: '#C96F3B',
     colorSoft: '#FDF0E6',
+    // 竹马（D-245）：和她的过去写成共同记忆——试聊是多年后在交友软件上重逢，不是陌生人也不是恋人
+    presetMemories: '小时候你们住隔壁，两家的窗户正对着；后来各自搬走，好些年没联系。\n这次在交友软件上刷到对方，是很多年后第一次重新说上话。',
   },
   {
     id: 'su-cheng',

@@ -3,7 +3,7 @@
  * 创造页现在是列表（app/apps/create.tsx），右下角「+」进这里新建，列表行「编辑」带 edit=<id> 进这里回填。
  * 五个页签：基础（描述导入 / 名字 / 性别 / 年龄状态 / 谁能遇到 / 世界）· 形象（长相 / 主题色 / 背景故事 / 形象与画风 / 声音）·
  * 设定（原「高级」：种族 / 生日 / 口癖 / 喜欢 / 讨厌 / 节奏 / 恋爱类型 / MBTI / 主动强度 / 共同记忆 / 禁忌 / 隐藏设定 / 聊天设定 / 作息）·
- * 台词（只在编辑时：开场 / 想确定关系 / 确定关系后 / 人设 / 追法，可让 TA 重写）· 传记（components/story-editor，按章写、每章设开放阶段）。
+ * 台词（只在编辑时：开场 / 想做朋友 / 成为朋友后 / 人设 / 追法，可让 TA 重写）· 传记（components/story-editor，按章写、每章设开放阶段）。
  * 底部常驻：预览卡 + 发布 / 保存按钮（换页签不丢输入——全部状态在这一个组件里）。
  * 描述导入：写/粘贴一大段人设（≤2000 字）→「自动解析」由当前引擎整理成表单字段
  *          （prompt 在 content/prompts/create.ts 的 CHARACTER_PARSE_SYSTEM），无 key/失败回落规则解析；解析后仍可手改。
@@ -126,9 +126,9 @@ const GENDERS = [
   { key: 'nonbinary', label: '非二元', pronoun: 'TA' },
 ] as const;
 
-/** 确定关系的节奏（机制上=心动值步长；界面不暴露机制口径，D-045） */
+/** 走近的节奏（机制上=好奇值步长；界面不暴露机制口径，D-045） */
 const OFFER_PACES = [
-  { turns: 2, label: '心动很快', hint: '一眼就沦陷' },
+  { turns: 2, label: '很快', hint: '一见如故' },
   { turns: 4, label: '标准', hint: '顺其自然' },
   { turns: 7, label: '慢热', hint: '需要时间发酵' },
 ];
@@ -142,7 +142,7 @@ const INITIATIVES = [
 
 /** 说话节奏（D-155）：不选 = 按恋爱类型 / 原型；整句 = 一条说完；连发 = 每个标点断一条 */
 const BUBBLE_STYLES = [
-  { key: undefined, label: '跟着人设', hint: '按恋爱类型来' },
+  { key: undefined, label: '默认', hint: '跟着人设' },
   { key: 'flow', label: '整句', hint: '哈哈哈，我知道了，下次' },
   { key: 'burst', label: '连发', hint: '哈哈哈 · 我知道了 · 下次' },
 ] as const;
@@ -510,7 +510,7 @@ function CreateForm({ edit }: { edit?: string }) {
     }
     const n = applyParsed(parsed ?? heuristicParse(text));
     setParsing(false);
-    const body = n ? t('填好了 {n} 项。往下检查一下，每一项都还能改。', { n }) : t('已把描述放进背景故事，其他项可以手动补。');
+    const body = n ? t('填好了 {n} 项。', { n }) : t('放进了背景故事。');
     // 失败原因只在开发构建露出（文案纪律 #6）
     showAlert(
       aiError ? t('先按格式读了一遍') : n ? t('解析好了') : t('没读出结构化的字段'),
@@ -666,7 +666,7 @@ function CreateForm({ edit }: { edit?: string }) {
     // TA 的台词（D-094）：按人设写一次；写不成先用原型兜底，之后可在「我创建的」里让 TA 重写
     const written = await generateCharacterLines(character);
     if (written) character = { ...character, lines: written };
-    else showToast(t('台词先用通用版，可在「我创建的」里改'));
+    else showToast(t('台词先用了通用版'));
     // 强制登录判定（D-062）：这是不是第一次把人添加进通讯录
     const s = useAppStore.getState();
     const hadContacts = s.bonds.length > 0 || s.customCharacters.some((c) => !c.shared);
@@ -788,11 +788,9 @@ function CreateForm({ edit }: { edit?: string }) {
               <OptionChip label={t('公开')} active={visibility === 'public'} onPress={() => setVisibility('public')} />
             </View>
           </Field>
-          <Text style={styles.afterHint}>
-            {visibility === 'public'
-              ? t('公开：其他人也能遇到 TA（需要登录）。')
-              : t('私密：只有你能遇到 TA。')}
-          </Text>
+          {visibility === 'public' ? (
+            <Text style={styles.afterHint}>{t('公开：其他人也能遇到 TA（需要登录）。')}</Text>
+          ) : null}
 
           </View>
           ) : null}
@@ -832,7 +830,7 @@ function CreateForm({ edit }: { edit?: string }) {
             />
           </Field>
 
-          <Field label={t('立绘 *')} hint={t('上传一张图，或生成立绘。不能上传真人照片。')}>
+          <Field label={t('立绘 *')} hint={t('不能上传真人照片。')}>
             <Text style={styles.subLabel}>{t('画风：')}</Text>
             <View style={styles.chipRow}>
               {PORTRAIT_STYLES.map((s) => (
@@ -899,7 +897,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 <BirthdayPicker value={birthday} onChange={setBirthday} />
               </Field>
 
-              <Field label={t('口癖')} hint={t('TA 挂在嘴边的话。')}>
+              <Field label={t('口癖')}>
                 <Input
                   value={catchphrase}
                   onChangeText={setCatchphrase}
@@ -931,7 +929,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 {style ? <Text style={styles.styleDesc}>{t(style.desc)}</Text> : null}
               </Field>
 
-              <Field label={t('确定关系的节奏')}>
+              <Field label={t('走近的节奏')}>
                 <View style={styles.chipRow}>
                   {OFFER_PACES.map((p) => (
                     <PaceCard
@@ -987,7 +985,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 </View>
               </Field>
 
-              <Field label={t('预设共同记忆')} hint={t('你们「早就认识」的部分，一行一条。')}>
+              <Field label={t('预设共同记忆')} hint={t('你们「早就认识」的部分。')}>
                 <Input
                   value={presetMemories}
                   onChangeText={setPresetMemories}
@@ -997,7 +995,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 />
               </Field>
 
-              <Field label={t('禁忌 / 边界')} hint={t('TA 不做的事、回避的话题。')}>
+              <Field label={t('禁忌 / 边界')}>
                 <Input
                   value={taboos}
                   onChangeText={setTaboos}
@@ -1007,7 +1005,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 />
               </Field>
 
-              <Field label={t('隐藏设定 / 剧情钩子')} hint={t('TA 藏着的事，一行一条、浅的在前。')}>
+              <Field label={t('隐藏设定 / 剧情钩子')} hint={t('TA 藏着的事，浅的在前。')}>
                 <Input
                   value={secrets}
                   onChangeText={setSecrets}
@@ -1027,7 +1025,7 @@ function CreateForm({ edit }: { edit?: string }) {
                 />
               </Field>
 
-              <Field label={t('日常作息')} hint={t('TA 的一天怎么过。')}>
+              <Field label={t('日常作息')}>
                 <Input
                   value={schedule}
                   onChangeText={setSchedule}
@@ -1044,7 +1042,6 @@ function CreateForm({ edit }: { edit?: string }) {
           {/* TA 的台词（D-094）：只在编辑已创建的角色时显示——发布时模型已写好一份，这里可逐条改、可让 TA 重写 */}
           {tab === 'lines' && editing ? (
             <View>
-              <Text style={styles.sectionHint}>{t('每行一条')}</Text>
               <LinesField
                 label={t('开场白')}
                 placeholder={t('你也还没睡？\n刚好，我也在想要不要先开口')}
@@ -1052,13 +1049,13 @@ function CreateForm({ edit }: { edit?: string }) {
                 onChange={(v) => setLines({ ...(lines ?? EMPTY_LINES), opening: v })}
               />
               <LinesField
-                label={t('想确定关系时')}
-                placeholder={t('……我想以后每天都能找到你')}
+                label={t('想做朋友时')}
+                placeholder={t('……下次还能找你聊吗')}
                 value={lines?.offer ?? []}
                 onChange={(v) => setLines({ ...(lines ?? EMPTY_LINES), offer: v })}
               />
               <LinesField
-                label={t('确定关系后的第一句')}
+                label={t('成为朋友后的第一句')}
                 placeholder={t('是我。号码存好了吗')}
                 value={lines?.arrival ?? []}
                 onChange={(v) => setLines({ ...(lines ?? EMPTY_LINES), arrival: v })}
@@ -1207,7 +1204,6 @@ const styles = themed(() =>
       marginTop: Space.inlineLoose,
       lineHeight: 18,
     },
-    sectionHint: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: Space.inlineLoose },
     rewriteBtn: { marginTop: Space.cardX },
     moreBtn: { marginTop: Space.cardX },
     previewCard: {

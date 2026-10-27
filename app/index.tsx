@@ -740,11 +740,9 @@ export default function Desktop() {
   );
 }
 
-/** 揭幕序列：一屏仪式文案 → 三张模块卡（Message / 创造 / 外出）→ 收尾放行 */
+/** 揭幕序列：一屏仪式文案 → 一张模块卡（Message）→ 收尾放行 */
 const INTRO_CARDS: { icon: DesktopApp['icon']; tile?: string; title: string; line: string }[] = [
   { icon: 'chat', tile: appById('messages')?.tile, title: 'TA 住进了 Messages', line: 'TA 的第一句话在等你。' },
-  { icon: 'magicHat', tile: appById('create')?.tile, title: '创造', line: '捏一个只属于你的 TA。' },
-  { icon: 'location', tile: appById('outing')?.tile, title: '外出', line: '把相处从手机屏幕里拿出来。' },
 ];
 
 function IntroReveal() {
@@ -757,9 +755,9 @@ function IntroReveal() {
       {step === 'reveal' ? (
         <View style={styles.introCenter}>
           <Text style={styles.introBig}>
-            {t('这部手机，')}
+            {t('这部手机里，')}
             {'\n'}
-            {t('现在是你们的了')}
+            {t('多了一个人')}
           </Text>
           <Button label={t('看看里面有什么')} onPress={() => setStep(0)} style={styles.introBtn} />
         </View>

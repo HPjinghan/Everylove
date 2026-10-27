@@ -28,7 +28,7 @@ export function buildRecallUserLine(input: RecallInput): string {
       ? 'How: start from one small thing in your own last few days, like something dashed off; one sentence is enough.'
       : input.nth === 2
         ? 'How: mention one concrete thing that reminded you of her (a place, a food, a line); one sentence, dashed off.'
-        : "How: no lead-in — one line you genuinely want to say to her right now; one sentence, neither heavy nor light.",
+        : "How: no lead-in — one line you genuinely want to say to her right now, as close as you two really are; one sentence, neither heavy nor light.",
     `${UNPROMPTED_RULE} Don't ask where she went; no sulking, no blaming her in a coaxing way.)`
   );
   return lines.join('\n');

@@ -316,6 +316,8 @@ export const CHARACTERS_KO: Character[] = [
     adoptedCount: 96200,
     color: '#C96F3B',
     colorSoft: '#FDF0E6',
+    // 竹马（D-245）：和她的过去写成共同记忆——试聊是多年后在交友软件上重逢，不是陌生人也不是恋人
+    presetMemories: '어릴 때 옆집에 살아서 창문이 마주 보고 있었다. 이후 각자 이사 가면서 몇 년 동안 연락이 끊겼다.\n데이팅 앱에서 매칭된 게 몇 년 만에 처음 나누는 대화다.',
   },
   {
     id: 'su-cheng-ko',

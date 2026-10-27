@@ -114,4 +114,4 @@ export function defaultVoiceId(
 }
 
 /** 试听句（创造 ⑧）：没有开场白时用；中文键，显示 / 合成前 t() */
-export const VOICE_SAMPLE_LINE = '今天也在想你。';
+export const VOICE_SAMPLE_LINE = '是我。今天过得怎么样？';
