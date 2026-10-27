@@ -15,7 +15,7 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { memo, useMemo, useRef, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -443,8 +443,6 @@ function CreateForm({ edit }: { edit?: string }) {
 
   const finalRace = race === '其他' ? raceCustom.trim() : race;
   const style = loveStyleByLabel(loveStyle);
-  // 音色推荐的线索（D-198）：只在这几项变了才换引用，VoicePicker 才不每次击键重画
-  const voiceHints = useMemo(() => [loveStyle, race === '其他' ? raceCustom : race], [loveStyle, race, raceCustom]);
   const allText = [
     desc, name, look, story, raceCustom, catchphrase, likes, dislikes,
     presetMemories, taboos, secrets, chatNotes, schedule,
@@ -861,15 +859,6 @@ function CreateForm({ edit }: { edit?: string }) {
             </View>
           </Field>
 
-          <VoicePicker
-            lang={getLang()}
-            gender={gender}
-            hints={voiceHints}
-            value={voiceId}
-            onChange={setVoiceId}
-            sampleText={lines?.opening?.[0] ?? t(VOICE_SAMPLE_LINE)}
-            pronoun={GENDERS.find((x) => x.key === gender)!.pronoun}
-          />
           </View>
           ) : null}
 
@@ -928,6 +917,17 @@ function CreateForm({ edit }: { edit?: string }) {
                 <ChipGroup options={LOVE_STYLE_LABELS} value={loveStyle} onChange={setLoveStyle} />
                 {style ? <Text style={styles.styleDesc}>{t(style.desc)}</Text> : null}
               </Field>
+
+              {/* 声音放在恋爱类型下面：不选就跟着恋爱类型走（D-250） */}
+              <VoicePicker
+                lang={getLang()}
+                gender={gender}
+                loveStyle={style?.label}
+                value={voiceId}
+                onChange={setVoiceId}
+                sampleText={lines?.opening?.[0] ?? t(VOICE_SAMPLE_LINE)}
+                pronoun={GENDERS.find((x) => x.key === gender)!.pronoun}
+              />
 
               <Field label={t('走近的节奏')}>
                 <View style={styles.chipRow}>

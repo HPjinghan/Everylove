@@ -52,7 +52,7 @@ export function inVoicePool(id: string | undefined): id is string {
 }
 
 /** 角色的性别归一（推荐与默认音色用）：没填按 loveTag 推，人外按人称（她 = 女声） */
-export function voiceGenderOf(c: Pick<Character, 'gender' | 'loveTag' | 'pronoun'>): VoiceOption['gender'] {
+export function voiceGenderOf(c: Partial<Pick<Character, 'gender' | 'loveTag' | 'pronoun'>>): VoiceOption['gender'] {
   if (c.gender) return c.gender;
   if (c.loveTag === 'male') return 'male';
   if (c.loveTag === 'female') return 'female';
@@ -60,9 +60,6 @@ export function voiceGenderOf(c: Pick<Character, 'gender' | 'loveTag' | 'pronoun
   if (c.pronoun === '她') return 'female';
   return 'nonbinary';
 }
-
-/** 一轮推荐几把 */
-export const VOICE_PICK = 3;
 
 /** 没填恋爱类型时按原型取声 */
 const ARCHETYPE_STYLE: Record<ArchetypeId, string> = {
@@ -77,31 +74,9 @@ export function voiceStyleOf(c: { id: string; loveStyle?: string; archetype?: Ar
   return SEED_STYLES[seedBaseId(c.id)] ?? c.loveStyle ?? (c.archetype ? ARCHETYPE_STYLE[c.archetype] : undefined);
 }
 
-/**
- * 按角色推荐音色：同语言、同性别（nonbinary 不限性别）；对应角色恋爱类型的那把排第一，
- * 其余按提示词（恋爱类型 / 种族）命中排；round 每加一就换下一批（池子转完循环）。池子不够三把就全给。
- */
-export function recommendVoices(
-  opts: { lang: Lang; gender: VoiceOption['gender']; hints?: string[] },
-  round = 0
-): VoiceOption[] {
-  const pool = voicesFor(opts.lang).filter((v) => opts.gender === 'nonbinary' || v.gender === opts.gender || v.gender === 'nonbinary');
-  if (pool.length <= VOICE_PICK) return pool;
-  const hints = (opts.hints ?? []).map((h) => h.trim()).filter(Boolean);
-  const score = (v: VoiceOption) => hints.reduce((s, h) => s + (v.styles.includes(h) ? 1 : 0), 0);
-  const ranked = pool
-    .map((v, i) => ({ v, i, s: score(v) }))
-    .sort((a, b) => b.s - a.s || a.i - b.i)
-    .map((x) => x.v);
-  const start = (Math.max(0, round) * VOICE_PICK) % ranked.length;
-  const out: VoiceOption[] = [];
-  for (let k = 0; k < VOICE_PICK; k++) out.push(ranked[(start + k) % ranked.length]);
-  return out;
-}
-
 /** 角色没选音色时的默认：按恋爱类型取同语言同性别那把 > 同性别第一把 > 池里第一把 > env 按人称 */
 export function defaultVoiceId(
-  c: Pick<Character, 'id' | 'gender' | 'loveTag' | 'pronoun' | 'loveStyle'> & { archetype?: ArchetypeId },
+  c: Pick<Character, 'id'> & Partial<Pick<Character, 'gender' | 'loveTag' | 'pronoun' | 'loveStyle'>> & { archetype?: ArchetypeId },
   lang: Lang
 ): string {
   const gender = voiceGenderOf(c);

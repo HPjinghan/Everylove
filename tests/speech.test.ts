@@ -8,7 +8,7 @@ import type { Lang } from '@/lib/i18n';
 import { CHARACTERS, LOVE_STYLES } from '@/content/characters';
 import { seedBaseId } from '@/content/portraits';
 import { SEED_STYLES, VOICES } from '@/content/voices';
-import { asrChannelFor, defaultVoiceId, inVoicePool, recommendVoices, voiceGenderOf, voicesFor, multiAsrWanted } from '@/lib/speech';
+import { asrChannelFor, defaultVoiceId, inVoicePool, voiceGenderOf, voicesFor, multiAsrWanted } from '@/lib/speech';
 
 describe('识别分流', () => {
   const both = { multi: true, baidu: true };
@@ -30,13 +30,13 @@ describe('识别分流', () => {
 
 describe('音色池', () => {
   const pool = [
-    { id: 'm1', name: '男一', langs: ['zh'] as Lang[], gender: 'male' as const, styles: ['温柔年上'] },
-    { id: 'm2', name: '男二', langs: ['zh'] as Lang[], gender: 'male' as const, styles: ['霸总'] },
-    { id: 'm3', name: '男三', langs: ['zh'] as Lang[], gender: 'male' as const, styles: ['小狗系年下'] },
-    { id: 'm4', name: '男四', langs: ['zh'] as Lang[], gender: 'male' as const, styles: ['高冷禁欲', '毒舌竹马'] },
-    { id: 'f1', name: '女一', langs: ['zh'] as Lang[], gender: 'female' as const, styles: ['甜'] },
-    { id: 'f2', name: '女二', langs: ['zh'] as Lang[], gender: 'female' as const, styles: ['姐姐系'] },
-    { id: 'j1', name: '日一', langs: ['ja'] as Lang[], gender: 'male' as const, styles: [] },
+    { id: 'm1', name: '男一', vibe: '男一', langs: ['zh'] as Lang[], gender: 'male' as const, styles: ['温柔年上'] },
+    { id: 'm2', name: '男二', vibe: '男二', langs: ['zh'] as Lang[], gender: 'male' as const, styles: ['霸总'] },
+    { id: 'm3', name: '男三', vibe: '男三', langs: ['zh'] as Lang[], gender: 'male' as const, styles: ['小狗系年下'] },
+    { id: 'm4', name: '男四', vibe: '男四', langs: ['zh'] as Lang[], gender: 'male' as const, styles: ['高冷禁欲', '毒舌竹马'] },
+    { id: 'f1', name: '女一', vibe: '女一', langs: ['zh'] as Lang[], gender: 'female' as const, styles: ['甜'] },
+    { id: 'f2', name: '女二', vibe: '女二', langs: ['zh'] as Lang[], gender: 'female' as const, styles: ['姐姐系'] },
+    { id: 'j1', name: '日一', vibe: '日一', langs: ['ja'] as Lang[], gender: 'male' as const, styles: [] },
   ];
   const withPool = (fn: () => void) => {
     const real = VOICES.splice(0, VOICES.length, ...pool);
@@ -50,23 +50,18 @@ describe('音色池', () => {
   it('池子空时不推荐、默认音色回落 env（没配 = 空字符串，只剩百度）', () => {
     const real = VOICES.splice(0, VOICES.length);
     try {
-      expect(recommendVoices({ lang: 'zh', gender: 'male' })).toEqual([]);
+      expect(voicesFor('zh')).toEqual([]);
       expect(defaultVoiceId({ id: 'x', loveTag: 'male' }, 'zh')).toBe('');
     } finally {
       VOICES.splice(0, 0, ...real);
     }
   });
 
-  it('同语言同性别里对应恋爱类型的排前，三把一批、换一批循环、池子不够全给', () => {
+  it('只列会说这门语言的声线', () => {
     withPool(() => {
-      const r0 = recommendVoices({ lang: 'zh', gender: 'male', hints: ['高冷禁欲'] }, 0);
-      expect(r0.map((v) => v.id)).toEqual(['m4', 'm1', 'm2']);
-      const r1 = recommendVoices({ lang: 'zh', gender: 'male', hints: ['高冷禁欲'] }, 1);
-      expect(r1.map((v) => v.id)).toEqual(['m3', 'm4', 'm1']);
-      expect(recommendVoices({ lang: 'zh', gender: 'female' }).map((v) => v.id)).toEqual(['f1', 'f2']);
-      expect(recommendVoices({ lang: 'ja', gender: 'female' })).toEqual([]);
-      expect(recommendVoices({ lang: 'ja', gender: 'nonbinary' }).map((v) => v.id)).toEqual(['j1']);
-      expect(recommendVoices({ lang: 'ko', gender: 'male' })).toEqual([]);
+      expect(voicesFor('zh').map((v) => v.id)).toEqual(['m1', 'm2', 'm3', 'm4', 'f1', 'f2']);
+      expect(voicesFor('ja').map((v) => v.id)).toEqual(['j1']);
+      expect(voicesFor('ko')).toEqual([]);
     });
   });
 
@@ -88,7 +83,7 @@ describe('音色池', () => {
 
 describe('多语种声线（D-241）', () => {
   it('没写 langs 的声线四门语言都推荐；旧供应商的音色 id 不在池里就作废', () => {
-    const real = VOICES.splice(0, VOICES.length, { id: 'any1', name: 'Any', gender: 'male', styles: ['霸总'] }, { id: 'zh1', name: '只中', langs: ['zh'], gender: 'male', styles: [] });
+    const real = VOICES.splice(0, VOICES.length, { id: 'any1', name: 'Any', vibe: 'Any', gender: 'male', styles: ['霸总'] }, { id: 'zh1', name: '只中', vibe: '只中', langs: ['zh'], gender: 'male', styles: [] });
     try {
       expect(voicesFor('ja').map((v) => v.id)).toEqual(['any1']);
       expect(voicesFor('zh').map((v) => v.id)).toEqual(['any1', 'zh1']);

@@ -1,15 +1,15 @@
 /**
- * 音色选择（D-139 / D-230，创造 ⑧）：按角色的语言 × 性别 × 恋爱类型从音色池推荐三把（每把旁边写它是哪几种类型的声），每把可试听一句（ElevenLabs 合成、走 tts 缓存）；
- * 「换一批」再推三把，池子转完循环。音色池里没有这门语言的声线时整块不显示（无供给不摆入口）。
- * 纸面：Chip 选中 = primary；试听键 ink 图标。
+ * TA 的声音（D-139 / D-230 / D-250，创造「细节」页、恋爱类型下面）：
+ * 第一行「跟着恋爱类型」= 不选（按恋爱类型取默认声，写出现在会是哪一把）；下面列出同性别的全部声音——
+ * 每把写它给人的感觉（vibe）和它是哪几种恋爱类型的默认声，点行选中、点右边的键试听一句（ElevenLabs 合成、走 tts 缓存）。
+ * 当前恋爱类型的那把排第一。音色池里没有这门语言的声线时整块不显示（无供给不摆入口）。
  */
 
-import { memo, useState } from 'react';
-import { useAudioPlayer } from 'expo-audio';
+import { memo, useEffect, useState } from 'react';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button } from '@/components/button';
-import { Chip } from '@/components/chip';
+import { Card, Divider } from '@/components/card';
 import { Field } from '@/components/input';
 import { showToast } from '@/components/toast';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -18,14 +18,14 @@ import { Romance, themed } from '@/constants/theme';
 import type { VoiceOption } from '@/content/voices';
 import type { Lang } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
-import { recommendVoices, voicesFor } from '@/lib/speech';
+import { defaultVoiceId, voicesFor } from '@/lib/speech';
 import { previewVoice } from '@/lib/tts';
 import { audioSession, claimVoicePlayback } from '@/lib/audio-session';
 
 export const VoicePicker = memo(function VoicePicker({
   lang,
   gender,
-  hints,
+  loveStyle,
   value,
   onChange,
   sampleText,
@@ -33,34 +33,41 @@ export const VoicePicker = memo(function VoicePicker({
 }: {
   lang: Lang;
   gender: VoiceOption['gender'];
-  /** 推荐打分用的提示词（恋爱类型） */
-  hints: (string | undefined)[];
+  /** 当前选的恋爱类型（label）：决定默认声、排第一 */
+  loveStyle: string | undefined;
   value: string | undefined;
   onChange: (id: string | undefined) => void;
   /** 试听念的那句（开场白优先） */
   sampleText: string;
   pronoun: '他' | '她' | 'TA';
 }) {
-  const [round, setRound] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const player = useAudioPlayer(null);
+  const status = useAudioPlayerStatus(player);
 
-  if (voicesFor(lang).length === 0) return null;
-  const picks = recommendVoices({ lang, gender, hints: hints.filter((h): h is string => Boolean(h)) }, round);
-  // 已选的不在这一批里也要露出来（编辑回填 / 换过批）
-  const selected = value && !picks.some((v) => v.id === value) ? voicesFor(lang).find((v) => v.id === value) : undefined;
-  const shown = selected ? [selected, ...picks] : picks;
+  // 放完了就把键换回播放
+  useEffect(() => {
+    if (status.didJustFinish) setPlayingId(null);
+  }, [status.didJustFinish]);
 
-  const listen = async (v: VoiceOption) => {
+  const all = voicesFor(lang);
+  if (all.length === 0) return null;
+  const pool = all.filter((v) => gender === 'nonbinary' || v.gender === gender || v.gender === 'nonbinary');
+  const fallbackId = defaultVoiceId({ id: '', gender, loveStyle }, lang);
+  const fallback = all.find((v) => v.id === fallbackId);
+  // 当前恋爱类型的那把排第一，其余按池子顺序
+  const list = [...pool].sort((a, b) => Number(b.id === fallbackId) - Number(a.id === fallbackId));
+
+  const listen = async (key: string, voiceId: string) => {
     if (busyId) return;
-    if (playingId === v.id) {
+    if (playingId === key) {
       player.pause();
       setPlayingId(null);
       return;
     }
-    setBusyId(v.id);
-    const uri = await previewVoice(sampleText, v.id, pronoun);
+    setBusyId(key);
+    const uri = await previewVoice(sampleText, voiceId, pronoun);
     setBusyId(null);
     if (!uri) {
       showToast(t('试听没成功'));
@@ -74,44 +81,73 @@ export const VoicePicker = memo(function VoicePicker({
     player.replace({ uri });
     player.seekTo(0);
     player.play();
-    setPlayingId(v.id);
-    setTimeout(() => setPlayingId((cur) => (cur === v.id ? null : cur)), 8000);
+    setPlayingId(key);
   };
+
+  const row = (key: string, voiceId: string | undefined, title: string, sub: string, selected: boolean, onPress: () => void) => (
+    <Pressable key={key} onPress={onPress} style={styles.row}>
+      <View style={styles.check}>{selected ? <IconSymbol name="checkmark" size={15} color={Romance.accentStrong} /> : null}</View>
+      <View style={styles.text}>
+        <Text style={[styles.title, selected && styles.titleOn]}>{title}</Text>
+        {sub ? (
+          <Text style={styles.sub} numberOfLines={1}>
+            {sub}
+          </Text>
+        ) : null}
+      </View>
+      {voiceId ? (
+        <Pressable onPress={() => void listen(key, voiceId)} style={styles.play} hitSlop={8}>
+          <IconSymbol name={playingId === key ? 'pause.fill' : 'play.fill'} size={14} color={busyId === key ? Romance.sub : Romance.ink} />
+        </Pressable>
+      ) : null}
+    </Pressable>
+  );
 
   return (
     <Field label={t('TA 的声音')}>
-      <View style={styles.rows}>
-        {shown.map((v) => (
-          <View key={v.id} style={styles.row}>
-            <Chip label={v.name} selected={value === v.id} onPress={() => onChange(value === v.id ? undefined : v.id)} style={styles.chip} />
-            <Text style={styles.tags} numberOfLines={1}>
-              {v.styles.slice(0, 3).map((st) => t(st)).join(' · ')}
-            </Text>
-            <Pressable onPress={() => void listen(v)} style={styles.play} hitSlop={8}>
-              <IconSymbol name={playingId === v.id ? 'pause.fill' : 'play.fill'} size={14} color={busyId === v.id ? Romance.sub : Romance.ink} />
-            </Pressable>
+      <Card padded={false}>
+        {row(
+          'default',
+          fallback?.id,
+          t('跟着恋爱类型'),
+          fallback ? t(fallback.vibe) : '',
+          !value,
+          () => onChange(undefined)
+        )}
+        {list.map((v) => (
+          <View key={v.id}>
+            <Divider soft style={styles.divider} />
+            {row(
+              v.id,
+              v.id,
+              t(v.vibe),
+              v.styles.map((st) => t(st)).join(' · '),
+              value === v.id,
+              () => onChange(v.id)
+            )}
           </View>
         ))}
-      </View>
-      <Button label={t('换一批')} variant="outline" size="sm" style={styles.more} onPress={() => setRound((r) => r + 1)} />
+      </Card>
     </Field>
   );
 });
 
 const styles = themed(() =>
   StyleSheet.create({
-    rows: { gap: Space.inline },
-    row: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose },
-    chip: { minWidth: 88, alignItems: 'center' },
-    tags: { flex: 1, fontSize: Type.scale.caption.size, color: Romance.sub },
+    row: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose, paddingVertical: Space.inlineLoose, paddingHorizontal: Space.cardX },
+    check: { width: 16, alignItems: 'center' },
+    text: { flex: 1 },
+    title: { fontSize: Type.scale.body.size, color: Romance.ink },
+    titleOn: { color: Romance.accentStrong, fontWeight: '600' },
+    sub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
+    divider: { marginLeft: Space.cardX + 16 + Space.inlineLoose },
     play: {
       width: 30,
       height: 30,
       borderRadius: Shape.radius,
-      backgroundColor: Romance.card,
+      backgroundColor: Romance.bg,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    more: { alignSelf: 'flex-start', marginTop: Space.inlineLoose },
   })
 );
