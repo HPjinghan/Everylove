@@ -1,7 +1,7 @@
 /**
  * 共享角色池（D-060）：公开的自创角色上传 Supabase，所有玩家的交友牌堆合入这一池。
  * - 读公开（anon 也可读，RLS：select using true）；写只限本人（owner_id）
- * - 本地缓存在 store.sharedPool（5 分钟节流刷新）；离线用缓存
+ * - 只拉同语言的、不跨语言分发（D-248）；本地缓存在 store.sharedPool（5 分钟节流刷新）；离线用缓存
  * - 审核暂缺：Harper 后续接平台（发布仍过本地真人/IP 拦截，红线 #1/#4 的最低线）
  */
 
@@ -20,9 +20,12 @@ export async function refreshSharedPool(force = false): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
   try {
+    // 只拉同语言的（D-093 / D-248）：在服务器上按语言查——先拉最新 200 再在手机上筛，哪门语言的角色多了，别的语言就一个也刷不到
+    const lang = getLang();
     const { data, error } = await sb
       .from('shared_characters')
       .select('id, owner_id, data')
+      .or(lang === 'zh' ? 'data->>lang.eq.zh,data->>lang.is.null' : `data->>lang.eq.${lang}`)
       .order('updated_at', { ascending: false })
       .limit(200);
     if (error) throw error;
@@ -30,8 +33,8 @@ export async function refreshSharedPool(force = false): Promise<void> {
     const chars: Character[] = (data ?? [])
       .filter((r) => r.owner_id !== mine)
       .map((r) => ({ ...(r.data as Character), id: r.id as string, shared: true }))
-      // 只发同语言的（D-093）；早期没打语言的按中文
-      .filter((c) => c.name && !c.teaser && (c.lang ?? 'zh') === getLang());
+      // 早期没打语言的按中文；服务器已按语言筛过，这里再兜一次
+      .filter((c) => c.name && !c.teaser && (c.lang ?? 'zh') === lang);
     useAppStore.getState().setSharedPool(chars);
   } catch (e) {
     console.warn('[pool] 共享池刷新失败（用缓存）：', e);
