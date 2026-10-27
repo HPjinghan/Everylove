@@ -1,19 +1,17 @@
 /**
- * 外出场景（D-038/D-040；D-100 纸面）：两个人真的在同一个空间——亲身互动的故事模式。
- * 有约定 = 赴约（TA 提前到了，约定优先于离席：TA 说到做到）；
- * 没有 = 偶遇（通讯录里、此刻不在忙的人恰好也在）；
- * 广场 = 偶遇陌生人（D-040：还没配对的角色，TA 不认识她、也没有她的资料——想再见去「交友」里滑）。
- * 她在这里发的每句话同样 +XP（仅限有羁绊的 TA）；
- * 结束外出时在羁绊会话留一条「你们一起去了××」的系统记录（陌生人不留），现场对话并进羁绊记忆（D-079）；
- * 没点结束就离开，TA 还在这里等——一小时没说话再进来才是新的一场；照片洗好即进相册（lib/outing.ts）。
- * 开场白走模型（D-110）：进场先让 TA 按【此刻】开口，每次不一样；失败回落离线模板（同一情形不连用同一条）。点气泡头像或顶栏副文打开 TA 的资料页。
- * 界面：顶栏 ‹ + 「emoji 地点」16/600 + 副文 11 muted（和谁 · 时间 · 天气）+ 「结束外出」白 r6，下沿 1.5 ink；
- * 场景条 = ink 底白字的系统条；拍照两按钮白 r6 13/600 在输入栏上方。
+ * 外出场景（D-038/D-040；D-254 跑团式改版）：她真的在一个地方——像跑团，每个地点有自己的规矩，旁白交代环境与工作人员。
+ * - 进门（lib/outing.ts enterPlace）：约定窗口里 = 赴约（永远两个人）；打烊了 = 关门的样子；这会儿没人 = 空场；
+ *   两人场（咖啡馆 / 书店 / 海边 / 天台 / 便利店）有几位在就先选坐到谁旁边——不认识的人只看得到样子，写「陌生人」；
+ *   多人场（广场 / 公园 / 游乐园 / 夜市 / 水族馆）与安静的地方（自习室）、电影院：在场的都在，一次最多三个人。
+ * - 输入框左边「（ ）」插一对括号写动作；安静的地方与电影院多一个「纸条」键；输入框上方是这个地方的现成动作。
+ * - 安静的地方出声三次被请出去：输入框关上，只能离开。多人场里好奇满了的陌生人当场开口要联系方式。
+ * - 一人场照旧能拍照（合影 / 拍 TA）；开场 TA 先开口（模型，失败回落模板）；多人场由主持人开场。
+ * - 结束外出留记录、现场对话并进在场每位 TA 的记忆（D-079）；没点结束就离开，一小时内回来还在。
  */
 
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,24 +19,57 @@ import { showAlert } from '@/components/action-sheet';
 import { alertAiUnavailable } from '@/components/ai-unavailable';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
+import { CharAvatar } from '@/components/char-avatar';
 import { CharacterSheet } from '@/components/character-sheet';
-import { ChatThread } from '@/components/chat-thread';
+import { ChatThread, type Speakers } from '@/components/chat-thread';
 import { DevelopingPolaroid } from '@/components/developing';
+import { PixelArt } from '@/components/pixel-art';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
-import { outingOpenerUserLine, pickOutingOpener } from '@/content/prompts';
-import { placeById } from '@/content/places';
+import { outingOpenerUserLine, pickOutingOpener, SCENE_OPENER_USER } from '@/content/prompts';
+import { placeById, type Place } from '@/content/places';
+import { sendNote } from '@/features/outing-scene';
 import { HEART_FULL } from '@/lib/bond';
 import { uid } from '@/lib/format';
 import { haptic } from '@/lib/haptics';
 import { imageKeyReady } from '@/lib/imagegen';
 import { t } from '@/lib/i18n';
 import { ON_TIME_TOLERANCE_MIN, planTimeLabel } from '@/lib/appointments';
-import { describeAiError, outingScope, resendTurn, respond, sendText, wait } from '@/lib/chat';
-import { enterPlace, finishOuting, setSceneVisible, shootPhoto } from '@/lib/outing';
+import { describeAiError, resendTurn, respond, sendText, sessionScope, wait } from '@/lib/chat';
+import { enterPlace, finishOuting, setSceneVisible, shootPhoto, type EnterResult } from '@/lib/outing';
+import { dayPartOf } from '@/lib/presence';
+import type { Presence } from '@/lib/presence';
 import { tempNow, todayWeather } from '@/lib/weather';
+import type { OutingSession } from '@/lib/types';
 import { findCharacter, useAppStore } from '@/store/app-store';
+
+/** 进门那一刻怎么开场：一人场 TA 先开口（模型，失败回落模板）；多人场主持人开场 */
+async function openScene(s: OutingSession, place: Place, setTyping: (v: boolean) => void): Promise<void> {
+  if (s.messages.length) return;
+  const scope = sessionScope(s);
+  if (s.cast && s.cast.length > 1) {
+    await respond(scope, SCENE_OPENER_USER, { typing: setTyping });
+    return;
+  }
+  const b = useAppStore.getState().bonds.find((x) => x.characterId === s.characterId);
+  // 赴约迟到了（D-079）：开场就知道
+  const late = s.kind === 'date' && (s.lateMinutes ?? 0) > ON_TIME_TOLERANCE_MIN;
+  const openerKind = late ? 'dateLate' : s.kind === 'group' ? 'encounter' : s.kind;
+  const { reply } = await respond(scope, outingOpenerUserLine(openerKind), { typing: setTyping });
+  if (reply) return;
+  // 模板按界面语言取：地点名与称呼也要同一种语言（称呼缺省回落她的昵称）
+  const own = b?.nickname && b.nickname !== '你' ? b.nickname : undefined;
+  const nickname = own || useAppStore.getState().me?.nickname || t('你');
+  const line = pickOutingOpener(openerKind)
+    .replace(/\{place\}/g, t(place.name))
+    .replace(/\{nickname\}/g, nickname)
+    .replace(/\{minutes\}/g, String(s.lateMinutes ?? 0));
+  setTyping(true);
+  await wait(1000);
+  setTyping(false);
+  useAppStore.getState().appendOuting([{ id: uid('m'), from: 'him', kind: 'text', text: line, at: Date.now() }]);
+}
 
 export default function OutingSceneScreen() {
   const { placeId } = useLocalSearchParams<{ placeId: string }>();
@@ -49,53 +80,42 @@ export default function OutingSceneScreen() {
   const place = placeById(placeId);
   const session = useAppStore((s) => s.outingSession);
   const bonds = useAppStore((s) => s.bonds);
+  const squareChats = useAppStore((s) => s.squareChats);
   const [typing, setTyping] = useState(false);
-  const [noOne, setNoOne] = useState(false);
+  // 进门的结果：没有一场时是关门 / 没人 / 两人场要她选
+  const [entry, setEntry] = useState<Exclude<EnterResult, { session: OutingSession }> | null>(null);
   const [shooting, setShooting] = useState<null | 'solo' | 'together'>(null);
+  const [prefill, setPrefill] = useState<{ text: string; nonce: number } | undefined>(undefined);
   // 快门白闪（D-209）
   const flash = useSharedValue(0);
   const flashStyle = useAnimatedStyle(() => ({ opacity: flash.get() }));
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetId, setSheetId] = useState<string | null>(null);
   const booted = useRef(false);
 
   const active = session && session.placeId === placeId ? session : null;
-  const bond = active ? bonds.find((b) => b.characterId === active.characterId) : undefined;
+  const cast = active ? (active.cast ?? [active.characterId]) : [];
+  const group = cast.length > 1;
   const character = active ? findCharacter(active.characterId) : undefined;
-  const squareChat = useAppStore((s) => (active ? s.squareChats[active.characterId] : undefined));
+  const bond = active ? bonds.find((b) => b.characterId === active.characterId) : undefined;
   // 陌生人在现场交换了联系方式后（D-056），这场偶遇就地升格为熟人偶遇
   const kind = active?.kind === 'stranger' && bond ? 'encounter' : active?.kind;
 
-  // 进场：开一场外出；新场次由 TA 先开口——走模型按【此刻】说第一句（D-110），失败回落离线模板（不重复上一条）
+  const enter = (pick?: string) => {
+    if (!place) return;
+    const r = enterPlace(place.id, pick);
+    if ('session' in r) {
+      setEntry(null);
+      void openScene(r.session, place, setTyping);
+    } else {
+      setEntry(r);
+    }
+  };
+
+  // 进场：开一场外出（没人 / 关门 / 要选的结果放到 effect 之后的微任务里落——规则不许 effect 体内同步 setState）
   useEffect(() => {
     if (!place || booted.current) return;
     booted.current = true;
-    const s = enterPlace(place.id);
-    if (!s) {
-      // 没遇到人：store 里没有会话可派生，空场态放到 effect 之后的微任务里落（规则不许 effect 体内同步 setState）
-      queueMicrotask(() => setNoOne(true));
-      return;
-    }
-    if (s.messages.length === 0) {
-      const b = useAppStore.getState().bonds.find((x) => x.characterId === s.characterId);
-      // 赴约迟到了（D-079）：开场就知道
-      const late = s.kind === 'date' && (s.lateMinutes ?? 0) > ON_TIME_TOLERANCE_MIN;
-      const openerKind = late ? 'dateLate' : s.kind;
-      void (async () => {
-        const { reply } = await respond(outingScope(s.characterId), outingOpenerUserLine(openerKind), { typing: setTyping });
-        if (reply) return;
-        // 模板按界面语言取：地点名与称呼也要同一种语言（称呼缺省回落她的昵称）
-        const own = b?.nickname && b.nickname !== '你' ? b.nickname : undefined;
-        const nickname = own || useAppStore.getState().me?.nickname || t('你');
-        const line = pickOutingOpener(openerKind)
-          .replace(/\{place\}/g, t(place.name))
-          .replace(/\{nickname\}/g, nickname)
-          .replace(/\{minutes\}/g, String(s.lateMinutes ?? 0));
-        setTyping(true);
-        await wait(1000);
-        setTyping(false);
-        useAppStore.getState().appendOuting([{ id: uid('m'), from: 'him', kind: 'text', text: line, at: Date.now() }]);
-      })();
-    }
+    queueMicrotask(() => enter());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -120,39 +140,63 @@ export default function OutingSceneScreen() {
     router.back();
   };
 
-  // 顶栏副文里的天气：「晴 24°」
+  // 顶栏副文里的天气：「晴 24°」；夜里像素图换夜色
   const w = todayWeather();
   const weatherShort = { label: t(w.label), temp: `${tempNow(w)}°` };
+  const night = dayPartOf(new Date(openedAt)) === 'night';
 
-  // 没遇到人：广场新面孔见完了 / 还没有好友 / 大家都在忙
-  if (noOne) {
+  // 关门 / 没人 / 选人
+  if (!active && entry) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top }]}>
-        <Header place={place} weather={weatherShort} onBack={() => router.back()} />
-        <View style={styles.emptyWrap}>
-          <Text style={styles.emptyEmoji}>{place.emoji}</Text>
-          <Text style={styles.emptyText}>
-            {place.stranger
-              ? t('广场今天安安静静的——\n新面孔都被你认识完了。')
-              : bonds.length
-                ? t('认识的人这会儿都在忙。\n晚点再来走走。')
-                : t('这里风景很好，但一个人逛有点安静。')}
-          </Text>
-        </View>
+        <Header place={place} night={night || 'closed' in entry} weather={weatherShort} onBack={() => router.back()} />
+        {'choose' in entry ? (
+          <ScrollView contentContainerStyle={styles.chooseWrap}>
+            <PixelArt id={place.id} size={120} night={night} />
+            <Text style={styles.chooseTitle}>{t('坐到谁旁边？')}</Text>
+            {entry.choose.map((p) => (
+              <ChooseRow key={p.characterId} presence={p} onPress={() => enter(p.characterId)} />
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={styles.emptyWrap}>
+            <PixelArt id={'closed' in entry ? 'closed' : place.id} size={'closed' in entry ? 72 : 120} night={night} />
+            <Text style={styles.emptyText}>
+              {'closed' in entry
+                ? t('这会儿关门了。')
+                : place.stranger
+                  ? t('广场今天安安静静的。')
+                  : t('这会儿没人。')}
+            </Text>
+          </View>
+        )}
       </View>
     );
   }
 
   if (!active || !character) return null;
 
-  // 回合走底座管线（D-086）：XP / 陌生人心动记账、现场描写不剥、心动满的 offer 都在模式与钩子里
-  const onSend = (text: string) => void sendText(outingScope(character.id), text, { ui: { typing: setTyping } });
-  const onResend = (m: { id: string }) => void resendTurn(outingScope(character.id), m.id, { typing: setTyping });
+  const scope = sessionScope(active);
+  // 回合走底座管线（D-086）：XP / 陌生人好奇记账、现场描写不剥、旁白与纸条按说话人分条都在模式与钩子里
+  const onSend = (text: string) => void sendText(scope, text, { ui: { typing: setTyping } });
+  const onResend = (m: { id: string }) => void resendTurn(scope, m.id, { typing: setTyping });
+  const onSendNote = place.rule === 'quiet' || place.rule === 'cinema' ? (text: string) => void sendNote(text, { typing: setTyping }) : undefined;
 
+  const nameOf = (cid: string) => {
+    const b = bonds.find((x) => x.characterId === cid);
+    return b?.name ?? (b ? '' : t('陌生人'));
+  };
   const name = bond?.name ?? character.name;
+  // 多人场的说话人：认识的写名字，不认识的写「陌生人」
+  const speakers: Speakers = Object.fromEntries(
+    cast.map((cid) => {
+      const c = findCharacter(cid);
+      return [cid, { name: nameOf(cid), color: c?.color ?? Romance.accent, characterId: cid }];
+    })
+  );
 
   /** 拍照（D-051/D-079）：合影 / 拍TA——她主动按快门；洗好即进相册，人还在场就贴进现场（lib/outing.ts） */
-  const shoot = async (kind: 'solo' | 'together') => {
+  const shoot = async (k: 'solo' | 'together') => {
     if (shooting) return;
     if (!imageKeyReady()) {
       alertAiUnavailable();
@@ -161,9 +205,9 @@ export default function OutingSceneScreen() {
     // 快门（D-209）：白闪一下 + 一记震动，然后相纸在输入栏上方慢慢显影
     haptic.medium();
     flash.set(withSequence(withTiming(0.85, { duration: 60 }), withTiming(0, { duration: 320 })));
-    setShooting(kind);
+    setShooting(k);
     try {
-      await shootPhoto(active, character, place, kind, name);
+      await shootPhoto(active, character, place, k, name);
     } catch (e) {
       console.warn('[outing] 拍照失败：', e);
       if (mounted.current) showAlert(t('没拍成'), `${t('生图服务出了点问题，可以再试一次。')}\n\n${t('原因：{reason}', { reason: describeAiError(e) })}`);
@@ -172,18 +216,19 @@ export default function OutingSceneScreen() {
     }
   };
 
-  const heart = Math.min(HEART_FULL, squareChat?.heart ?? 0);
-  const offered = !bond && !!squareChat?.adoptionOffered;
+  // 还不认识、好奇满了、开口要联系方式的那几位（一人场 / 多人场都有）
+  const offers = cast.filter((cid) => !bonds.some((b) => b.characterId === cid) && squareChats[cid]?.adoptionOffered);
+  const heart = Math.min(HEART_FULL, squareChats[character.id]?.heart ?? 0);
   // 约定窗口还没开就进来了（比如从日历太早点「赴约」）：这一场是偶遇，副文带上约的时间（D-197）
   const pendingPlan = kind === 'encounter' ? outingPlans.find((p) => p.characterId === character.id && p.placeId === place.id && p.at !== undefined && p.at > openedAt) : undefined;
-  const planAt = pendingPlan?.at;
-  const subtitle =
-    kind === 'date'
+  const subtitle = group
+    ? cast.map(nameOf).join('、')
+    : kind === 'date'
       ? `${t('和{name}有约', { name })}${active.planAt ? ` · ${planTimeLabel(active.planAt)}` : ''}`
       : kind === 'stranger'
-        ? t('陌生人 · {name} · 好奇 {h}/{f}', { name, h: heart, f: HEART_FULL })
-        : planAt
-          ? t('偶遇了{name} · 约在{time}', { name, time: planTimeLabel(planAt) })
+        ? t('陌生人 · 好奇 {h}/{f}', { h: heart, f: HEART_FULL })
+        : pendingPlan?.at
+          ? t('偶遇了{name} · 约在{time}', { name, time: planTimeLabel(pendingPlan.at) })
           : t('偶遇了{name}', { name });
 
   return (
@@ -191,78 +236,84 @@ export default function OutingSceneScreen() {
       <Animated.View pointerEvents="none" style={[styles.flash, flashStyle]} />
       <Header
         place={place}
+        night={night}
         subtitle={subtitle}
         weather={weatherShort}
         onBack={() => router.back()}
         onLeave={leave}
-        onSubtitlePress={() => setSheetOpen(true)}
+        onSubtitlePress={group ? undefined : () => setSheetId(character.id)}
       />
-      <CharacterSheet characterId={character.id} visible={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <CharacterSheet characterId={sheetId} visible={!!sheetId} onClose={() => setSheetId(null)} />
       <ChatThread
         messages={active.messages}
         color={character.color}
-        name={name}
+        name={kind === 'stranger' ? t('陌生人') : name}
         characterId={character.id}
-        onAvatarPress={() => setSheetOpen(true)}
+        speakers={group ? speakers : undefined}
+        onAvatarPress={(cid) => setSheetId(cid ?? character.id)}
         typing={typing}
         typingLabel="……"
         onSend={onSend}
         onResend={onResend}
-        placeholder={t('说点什么，或（做点什么）…')}
+        onSendNote={onSendNote}
+        actionBrackets
+        prefill={prefill}
+        inputDisabled={!!active.ended}
+        placeholder={active.ended ? t('该走了') : t('说点什么…')}
         cta={
           <View>
-            {offered ? (
-              <Card style={styles.offerCard}>
+            {offers.map((cid) => (
+              <Card key={cid} style={styles.offerCard}>
+                <CharAvatar name={nameOf(cid)} color={findCharacter(cid)?.color ?? Romance.accent} size={32} characterId={cid} />
                 <View style={styles.offerText}>
                   <Text style={styles.offerTitle}>{t('TA 想和你交换联系方式')}</Text>
                   <Text style={styles.offerSub}>{t('就在这里、就是现在——面对面的那种')}</Text>
                 </View>
-                <Button
-                  label={t('交换')}
-                  size="sm"
-                  onPress={() =>
-                    router.push({
-                      pathname: '/adopt/[characterId]',
-                      params: { characterId: character.id },
-                    })
-                  }
-                />
+                <Button label={t('交换')} size="sm" onPress={() => router.push({ pathname: '/adopt/[characterId]', params: { characterId: cid } })} />
               </Card>
-            ) : null}
+            ))}
             {shooting ? (
               <View style={styles.developing}>
                 <DevelopingPolaroid width={150} lines={DEVELOP_LINES.map((l) => t(l))} tiltKey={place.id} />
               </View>
             ) : null}
-            <View style={styles.shootRow}>
-              <Button
-                variant="secondary"
-                size="sm"
-                style={styles.shootBtn}
-                icon="emoji"
-                label={shooting === 'together' ? t('拍摄中…') : t('合影')}
-                disabled={!!shooting}
-                onPress={() => shoot('together')}
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                style={styles.shootBtn}
-                icon="camera"
-                label={shooting === 'solo' ? t('拍摄中…') : t('拍 TA')}
-                disabled={!!shooting}
-                onPress={() => shoot('solo')}
-              />
-            </View>
+            {!active.ended && place.actions.length ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionRow}>
+                {place.actions.map((a) => (
+                  <Pressable key={a} style={styles.actionChip} onPress={() => setPrefill({ text: `（${t(a)}）`, nonce: Date.now() })}>
+                    <Text style={styles.actionChipText}>{t(a)}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            ) : null}
+            {!group && !active.ended ? (
+              <View style={styles.shootRow}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  style={styles.shootBtn}
+                  icon="emoji"
+                  label={shooting === 'together' ? t('拍摄中…') : t('合影')}
+                  disabled={!!shooting}
+                  onPress={() => shoot('together')}
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  style={styles.shootBtn}
+                  icon="camera"
+                  label={shooting === 'solo' ? t('拍摄中…') : t('拍 TA')}
+                  disabled={!!shooting}
+                  onPress={() => shoot('solo')}
+                />
+              </View>
+            ) : null}
           </View>
         }
         banner={
           <View style={styles.sceneBanner}>
-            <Text style={styles.sceneBannerText}>
-              {kind === 'stranger'
-                ? `${place.emoji} ${t('你们还不认识')}`
-                : `${place.emoji} ${t(place.hook)} · ${t('你们面对面')}`}
-            </Text>
+            <PixelArt id={place.id} size={96} night={night} />
+            <Text style={styles.sceneBannerText}>{t(place.hook)}</Text>
           </View>
         }
       />
@@ -270,15 +321,37 @@ export default function OutingSceneScreen() {
   );
 }
 
+/** 两人场选人：认识的写名字，不认识的只看得到样子 */
+function ChooseRow({ presence, onPress }: { presence: Presence; onPress: () => void }) {
+  const c = findCharacter(presence.characterId);
+  const bond = useAppStore((s) => s.bonds.find((b) => b.characterId === presence.characterId));
+  if (!c) return null;
+  const label = presence.known ? (bond?.name ?? c.name) : t('陌生人');
+  return (
+    <Pressable onPress={onPress}>
+      <Card style={styles.chooseRow}>
+        <CharAvatar name={label} color={c.color} size={48} characterId={c.id} />
+        <View style={styles.chooseBody}>
+          <Text style={styles.chooseName}>{label}</Text>
+          {presence.known ? null : <Text style={styles.chooseSub}>{t('还不认识')}</Text>}
+        </View>
+        <IconSymbol name="chevron.right" size={14} color={Romance.sub} />
+      </Card>
+    </Pressable>
+  );
+}
+
 function Header({
   place,
+  night,
   subtitle,
   weather,
   onBack,
   onLeave,
   onSubtitlePress,
 }: {
-  place: { name: string; emoji: string };
+  place: Place;
+  night: boolean;
   subtitle?: string;
   weather: { label: string; temp: string };
   onBack: () => void;
@@ -291,9 +364,10 @@ function Header({
       <Pressable onPress={onBack} hitSlop={10}>
         <IconSymbol name="chevron.left" size={22} color={Romance.ink} />
       </Pressable>
+      <PixelArt id={place.id} size={30} night={night} />
       <Pressable style={styles.headerText} onPress={onSubtitlePress} disabled={!onSubtitlePress}>
         <Text style={styles.headerName} numberOfLines={1}>
-          {place.emoji} {t(place.name)}
+          {t(place.name)}
         </Text>
         <Text style={styles.headerSub} numberOfLines={1}>
           {subtitle ? `${subtitle} · ` : ''}
@@ -318,7 +392,7 @@ const styles = themed(() =>
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: Space.inlineLoose,
+      gap: Space.inline,
       paddingHorizontal: Space.screen,
       paddingTop: 6,
       paddingBottom: 10,
@@ -329,49 +403,36 @@ const styles = themed(() =>
     headerName: { fontSize: Type.scale.md.size, fontWeight: '600', color: Romance.ink },
     headerSub: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 1 },
     headerTemp: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.sub },
-    leaveBtn: {
-      backgroundColor: Romance.card,
-      borderRadius: Shape.radius,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-    },
+    leaveBtn: { backgroundColor: Romance.card, borderRadius: Shape.radius, paddingHorizontal: 10, paddingVertical: 6 },
     leaveText: { fontSize: Type.scale.timestamp.size, fontWeight: '600', color: Romance.sub },
-    // 场景条：同 ChatThread 的系统条（ink 底白字 12 r6）
-    sceneBanner: {
-      alignSelf: 'center',
-      backgroundColor: Romance.ink,
-      borderRadius: Shape.radius,
-      paddingHorizontal: 12,
-      paddingVertical: 3,
-    },
-    sceneBannerText: { fontSize: Type.scale.caption.size, fontWeight: '500', color: '#FFFFFF', textAlign: 'center' },
+    // 场景条：像素小场景 + 一句钩子
+    sceneBanner: { alignItems: 'center', gap: 6, paddingVertical: 8 },
+    sceneBannerText: { fontSize: Type.scale.caption.size, color: Romance.sub, textAlign: 'center' },
     flash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#FFFFFF', zIndex: 10 },
     developing: { alignItems: 'center', paddingTop: Space.inlineLoose, paddingBottom: 4 },
-    shootRow: {
-      flexDirection: 'row',
-      gap: Space.inlineLoose,
-      paddingHorizontal: Space.screen,
-      paddingBottom: 8,
+    actionRow: { gap: Space.inline, paddingHorizontal: Space.screen, paddingBottom: 8 },
+    actionChip: {
+      backgroundColor: Romance.card,
+      borderRadius: Shape.radiusPill,
+      borderWidth: Shape.stroke,
+      borderColor: Romance.stroke,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
     },
+    actionChipText: { fontSize: Type.scale.caption.size, color: Romance.ink },
+    shootRow: { flexDirection: 'row', gap: Space.inlineLoose, paddingHorizontal: Space.screen, paddingBottom: 8 },
     shootBtn: { flex: 1, paddingVertical: 11 },
-    offerCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Space.inlineLoose,
-      marginHorizontal: Space.screen,
-      marginBottom: 8,
-    },
+    offerCard: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose, marginHorizontal: Space.screen, marginBottom: 8 },
     offerText: { flex: 1 },
     offerTitle: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
     offerSub: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 2 },
-    emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-    emptyEmoji: { fontSize: 52 },
-    emptyText: {
-      textAlign: 'center',
-      fontSize: Type.scale.label.size,
-      color: Romance.sub,
-      lineHeight: 21,
-      marginTop: 14,
-    },
+    emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 14 },
+    emptyText: { textAlign: 'center', fontSize: Type.scale.label.size, color: Romance.sub, lineHeight: 21 },
+    chooseWrap: { alignItems: 'center', padding: Space.screen, gap: Space.inlineLoose },
+    chooseTitle: { fontSize: Type.scale.lg.size, fontWeight: '600', color: Romance.ink, marginTop: 8 },
+    chooseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, alignSelf: 'stretch' },
+    chooseBody: { flex: 1 },
+    chooseName: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
+    chooseSub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
   })
 );

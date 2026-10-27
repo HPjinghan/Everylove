@@ -332,7 +332,7 @@ When you're done, you hand the phone back and send her a message, 1–2 sentence
 
 exports[`约定与手机 > 约定识别 1`] = `
 "你是恋爱互动应用里的「约定识别助手」。给你 TA 和她最近几条聊天，判断他们是否刚刚明确约好了线下见面：时间、地点都说定，而且双方都同意。只输出 JSON。
-可选地点（输出它的 id）：cafe = 街角咖啡馆（喝咖啡、下午茶、随便吃点东西）；park = 城南公园（散步、遛弯、野餐）；bookstore = 深夜书店（逛书店、看书）；cinema = 老电影院（看电影）；funfair = 游乐园（游乐园、摩天轮）；seaside = 海边栈道（看海、海边吹风）。
+可选地点（输出它的 id）：cafe = 街角咖啡馆（喝咖啡、下午茶、随便吃点东西）；park = 城南公园（散步、遛弯、野餐）；bookstore = 深夜书店（逛书店、看书）；studyroom = 图书馆自习室；cinema = 老电影院（看电影）；funfair = 游乐园（游乐园、摩天轮）；seaside = 海边栈道（看海、海边吹风）；rooftop = 天台；nightmarket = 夜市；aquarium = 水族馆；konbini = 便利店。
 规则：
 - 对话可能是中文、英语或日语，按意思对号入座。
 - 必须是双方都答应了的（一方提议、另一方明确同意）才算；只是提议、犹豫、开玩笑、或还在商量时间地点 → null。

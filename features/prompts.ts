@@ -55,6 +55,14 @@ import {
   TALK_MANNER,
   userProfileBlock,
   warmthLine,
+  outingNarratorLines,
+  placeRuleLines,
+  SCENE_MANNER,
+  SCENE_OUTPUT_FORMAT,
+  sceneCastLines,
+  sceneHeartLines,
+  sceneIntroLine,
+  sceneWhereLine,
 } from '@/content/prompts';
 import { dateKey } from '@/content/calendar';
 import { ORDER, promptSections, type PromptMode } from '@/core/prompt';
@@ -71,6 +79,9 @@ const POST: readonly PromptMode[] = ['post'];
 const SQUARE: readonly PromptMode[] = ['square'];
 const OUTING: readonly PromptMode[] = ['outing'];
 const NOTE: readonly PromptMode[] = ['note'];
+/** 一个人的模式（D-254：多人场 scene 没有「你是谁」——它是主持人，人设在【People here】里） */
+const SOLO: readonly PromptMode[] = ['square', 'bonded', 'call', 'outing', 'post', 'note'];
+const SCENE: readonly PromptMode[] = ['scene'];
 
 const isStranger = (ctx: EngineContext) => ctx.outing?.kind === 'stranger';
 /** 外出里的熟人（赴约 / 偶遇）才有的段：陌生人没有 */
@@ -85,7 +96,7 @@ promptSections.register({ name: 'intro-post', stable: true, modes: POST, order: 
 // 你们有多近（D-245）：放在开头的稳定段（等级一周左右才变），羁绊层说话的几种都带；陌生人没有
 promptSections.register({ name: 'relation', stable: true, modes: [...BONDED_CHAT, 'outing', 'post'], when: notStranger, order: ORDER.relation, lines: (ctx, env) => whereYouAreLines(ctx, env.now) });
 promptSections.register({ name: 'outing-scene', modes: OUTING, order: ORDER.scene, lines: (ctx) => [outingSceneLine(ctx)] });
-promptSections.register({ name: 'persona', stable: true, modes: 'all', order: ORDER.persona, lines: (ctx) => [`[Who you are] ${scriptFor(ctx.character).persona}`] });
+promptSections.register({ name: 'persona', stable: true, modes: SOLO, order: ORDER.persona, lines: (ctx) => [`[Who you are] ${scriptFor(ctx.character).persona}`] });
 promptSections.register({ name: 'pursuit', stable: true, modes: TALK, order: ORDER.pursuit, lines: (ctx) => [`[How you get close to someone] ${pursuitLine(ctx.character)} (Your whole arc over time — not where you start.)`] });
 // 恋爱类型的话术包（D-151）：紧跟追法；没选类型不出现。口头习惯 LV2 起才给（D-245），试聊与陌生人只有情绪与雷区
 promptSections.register({
@@ -95,7 +106,7 @@ promptSections.register({
   order: ORDER.pursuit,
   lines: (ctx, env) => loveStyleTalkLines(ctx.character, env.mode !== 'square' && notStranger(ctx) && (ctx.bond ? levelOf(ctx.bond, env.now.getTime()) : 1) >= 2),
 });
-promptSections.register({ name: 'profile', stable: true, modes: 'all', order: ORDER.profile, lines: (ctx) => characterProfileBlock(ctx.character) });
+promptSections.register({ name: 'profile', stable: true, modes: SOLO, order: ORDER.profile, lines: (ctx) => characterProfileBlock(ctx.character) });
 // 身边的人（D-110）只在羁绊层（陌生人偶遇没有）
 promptSections.register({ name: 'circle', stable: true, modes: [...BONDED_FAMILY, 'post', 'outing'], when: notStranger, order: ORDER.circle, lines: (ctx, env) => circleBlock(ctx.bond?.circle, env.mode !== 'note') });
 // TA 自己的作息（D-119）：羁绊层都知道自己接下来要干嘛
@@ -123,7 +134,7 @@ promptSections.register({
   order: ORDER.user,
   lines: (ctx) => (isStranger(ctx) ? boundariesBlock(ctx.me) : userProfileBlock(ctx.me, 'outing')),
 });
-promptSections.register({ name: 'shared-memory', stable: true, modes: 'all', order: ORDER.sharedMemory, lines: (ctx) => sharedMemoryBlock(ctx.character) });
+promptSections.register({ name: 'shared-memory', stable: true, modes: SOLO, order: ORDER.sharedMemory, lines: (ctx) => sharedMemoryBlock(ctx.character) });
 // 广场偶遇的记录（D-110）：初识与广场陌生人都记得见过她
 promptSections.register({ name: 'encounters', stable: true, modes: ['square', 'outing'], when: (ctx) => ctx.mode === 'square' || isStranger(ctx), order: ORDER.encounters, lines: (ctx) => encountersBlock(ctx) });
 promptSections.register({ name: 'square-situation', modes: SQUARE, order: ORDER.situation, lines: (ctx) => squareSituationLines(ctx) });
@@ -184,3 +195,17 @@ promptSections.register({ name: 'output-outing', stable: true, modes: OUTING, or
 promptSections.register({ name: 'output-post', stable: true, modes: POST, order: ORDER.output, lines: () => POST_OUTPUT_FORMAT });
 promptSections.register({ name: 'length-square', stable: true, modes: SQUARE, order: ORDER.length, lines: () => [SQUARE_LENGTH] });
 promptSections.register({ name: 'length-bonded', stable: true, modes: ['bonded'], order: ORDER.length, lines: () => BONDED_LENGTH });
+
+/* ── 外出的规矩、旁白与纸条（D-254）：一人场接在外出的写法后面；多人场是主持人的一整套 ── */
+promptSections.register({ name: 'outing-rules', modes: OUTING, order: ORDER.manner + 2, lines: (ctx) => placeRuleLines(ctx.outing) });
+promptSections.register({ name: 'outing-narrator', stable: true, modes: OUTING, order: ORDER.output + 1, lines: (ctx) => outingNarratorLines(ctx.outing) });
+
+promptSections.register({ name: 'scene-intro', stable: true, modes: SCENE, order: ORDER.intro, lines: () => [sceneIntroLine()] });
+promptSections.register({ name: 'scene-cast', stable: true, modes: SCENE, order: ORDER.persona, lines: (ctx) => sceneCastLines(ctx.cast) });
+promptSections.register({ name: 'scene-her', stable: true, modes: SCENE, order: ORDER.user, lines: (ctx) => boundariesBlock(ctx.me) });
+promptSections.register({ name: 'scene-manner', stable: true, modes: SCENE, order: ORDER.manner, lines: () => SCENE_MANNER });
+promptSections.register({ name: 'scene-heart', stable: true, modes: SCENE, order: ORDER.markers, lines: (ctx) => sceneHeartLines(ctx.cast) });
+promptSections.register({ name: 'scene-output', stable: true, modes: SCENE, order: ORDER.output, lines: () => SCENE_OUTPUT_FORMAT });
+promptSections.register({ name: 'scene-where', modes: SCENE, order: ORDER.scene, lines: (ctx) => [sceneWhereLine(ctx)] });
+promptSections.register({ name: 'scene-now', modes: SCENE, order: ORDER.now, lines: (_ctx, env) => [nowLine(env.now)] });
+promptSections.register({ name: 'scene-rules', modes: SCENE, order: ORDER.manner + 2, lines: (ctx) => placeRuleLines(ctx.outing, true) });

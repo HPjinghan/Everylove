@@ -16,6 +16,7 @@ import { TimePicker } from '@/components/time-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
+import { PixelArt } from '@/components/pixel-art';
 import { PLACES, type Place } from '@/content/places';
 import { money } from '@/lib/format';
 import { getLang, t, type Lang } from '@/lib/i18n';
@@ -56,7 +57,7 @@ function PlaceRow({ place, onPress }: { place: Place; onPress: () => void }) {
   return (
     <Pressable onPress={onPress}>
       <Card style={styles.row}>
-        <Text style={styles.rowEmoji}>{place.emoji}</Text>
+        <PixelArt id={place.id} size={40} />
         <View style={styles.rowBody}>
           <Text style={styles.rowTitle}>{t(place.name)}</Text>
           <Text style={styles.rowSub}>{t(place.hook)}</Text>
@@ -180,7 +181,6 @@ const styles = themed(() =>
     sheetClose: { position: 'absolute', right: 16, top: 14, padding: 6 },
     sheetBody: { paddingHorizontal: Space.screen, paddingBottom: 40, gap: 10 },
     row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    rowEmoji: { fontSize: Type.scale.h2.size },
     rowBody: { flex: 1 },
     rowTitle: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
     rowSub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },

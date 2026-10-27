@@ -33,15 +33,26 @@ export function messageContextText(m: ChatMessage): string {
   if (m.replyTo?.text) {
     return `(replying to "${m.replyTo.text.slice(0, 24)}") ${body}`;
   }
+  // 外出（D-254）：旁白、纸条、多人场里谁说的——照写回去时的样子进上下文
+  if (m.speaker === 'narrator') return `${NARRATOR_TOKEN}：${body}`;
+  if (m.note) return m.from === 'me' ? `(She passes a note: "${body}")` : `${m.speakerName ?? ''}${m.speakerName ? `（${NOTE_TOKEN}）` : NOTE_TOKEN}：${body}`;
+  if (m.from === 'him' && m.speakerName) return `${m.speakerName}：${body}`;
   return body;
 }
+
+/** 外出里的行首记号（D-254）：旁白一行、纸条一行；暗号类 token 统一写中文 */
+export const NARRATOR_TOKEN = '旁白';
+export const NOTE_TOKEN = '纸条';
 
 /** 对话记录排版：「She: …」「{TA 的名字}: …」，一行一句 */
 export function transcript(msgs: ChatMessage[], hisName: string): string {
   return msgs
     .map((m) => {
       const t = messageContextText(m);
-      return t ? `${m.from === 'me' ? 'She' : hisName}: ${t}` : '';
+      if (!t) return '';
+      // 外出（D-254）：旁白与多人场里有名有姓的行，自带「名字：」
+      if (m.from !== 'me' && (m.speakerName || m.speaker === 'narrator')) return t;
+      return `${m.from === 'me' ? 'She' : hisName}: ${t}`;
     })
     .filter(Boolean)
     .join('\n');

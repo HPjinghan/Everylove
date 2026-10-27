@@ -254,6 +254,12 @@ export interface ChatMessage {
   card?: ChatCard;
   /** 系统消息的语气（D-100）：hint = 白底 accent 字的轻提示（如 LV1 的「+」面板预告），默认是墨色系统条 */
   tone?: 'hint';
+  /** 外出里是谁说的（D-254）：在场的角色 id，或 'narrator' = 旁白（环境、工作人员）；不写 = 会话那位 TA */
+  speaker?: string;
+  /** 纸条（D-254）：安静的地方传过去 / 递回来的纸条 */
+  note?: boolean;
+  /** 说话人的名字（D-254，进模型上下文时做前缀用） */
+  speakerName?: string;
 }
 
 /** 广场搭话记录：不入消息 tab，会过期（免费层商业承重墙） */
@@ -296,6 +302,19 @@ export interface BondMemory {
   /** messages 里已做过事实提取的条数（前缀长度） */
   factsUpTo: number;
   updatedAt: number;
+}
+
+/** 外出多人场里的一个人（D-254）：给主持人看的那份 */
+export interface SceneMember {
+  characterId: string;
+  /** 场上叫他的名字（缔结过的用她起的名字） */
+  name: string;
+  identity: string;
+  persona: string;
+  /** 恋爱类型的一句（有就给） */
+  style?: string;
+  /** 认识她：她是他的什么人 + 他叫她什么 + 记得的几件事；不认识 = 空 */
+  knows?: { stage: string; nickname: string; memory: string[] };
 }
 
 /** TA 察觉她翻过手机（D-242）：她看了哪些（looked 见 lib/his-phone.ts lookedLabel）、什么时候说出口 */
@@ -528,7 +547,13 @@ export interface OutingSession {
    * date = 赴约（事先有约定）；encounter = 偶遇（通讯录里的人恰好也在）；
    * stranger = 广场偶遇陌生人（D-040：还没配对的角色）
    */
-  kind: 'date' | 'encounter' | 'stranger';
+  kind: 'date' | 'encounter' | 'stranger' | 'group';
+  /** 在场的人（D-254）：多人场是几位一起；单人场只有 characterId 那一位。第一位 = characterId */
+  cast?: string[];
+  /** 安静的地方被工作人员制止了几次（D-254）：三次请出去 */
+  strikes?: number;
+  /** 被请出去了 / 打烊被赶出去了（D-254）：这一场到此为止，只能离开 */
+  ended?: boolean;
   messages: ChatMessage[];
   startedAt: number;
   /** 最近一次有人说话的时间（D-079）：一小时没说话再进来才刷新成新的一场 */
@@ -588,8 +613,8 @@ export type EngineId = 'anthropic' | 'qianfan';
 
 export interface EngineContext {
   character: Character;
-  /** square 初识 / bonded 亲密 / outing 外出（亲身互动故事模式，D-038）/ call 通话（亲密背景 + 电话口吻，D-077）/ post X 回帖（亲密背景 + 回帖写法，D-178） */
-  mode: 'square' | 'bonded' | 'outing' | 'call' | 'post';
+  /** square 初识 / bonded 亲密 / outing 外出（亲身互动故事模式，D-038）/ call 通话（亲密背景 + 电话口吻，D-077）/ post X 回帖（亲密背景 + 回帖写法，D-178）/ scene 外出多人场（旁白 + 在场的几个人一起，D-254） */
+  mode: 'square' | 'bonded' | 'outing' | 'call' | 'post' | 'scene';
   /** bonded/outing 模式下的关系信息（含记忆库、缔结时间，注入系统 prompt） */
   bond?: Pick<
     Bond,
@@ -624,9 +649,17 @@ export interface EngineContext {
     placeName: string;
     /** 地点的场景设定（content/places.ts） */
     scene: string;
-    kind: 'date' | 'encounter' | 'stranger';
+    kind: 'date' | 'encounter' | 'stranger' | 'group';
     /** 今天的天气一句话（lib/weather.ts），进场景氛围 */
     weatherLine?: string;
+    /** 这里的规矩（D-254）：duo / group / quiet / cinema；约会按 duo */
+    rule?: 'duo' | 'group' | 'quiet' | 'cinema';
+    /** 旁白替谁说话（工作人员） */
+    npc?: string;
+    /** 安静的地方被制止了几次 */
+    strikes?: number;
+    /** 进来多少分钟了（电影院推进剧情用） */
+    minutesIn?: number;
     /** 赴约的约定（D-079）：约的什么时候、她晚到了几分钟（负数 = 早到）——TA 据此反应 */
     appointment?: { atLabel: string; lateMinutes: number };
   };
@@ -635,6 +668,8 @@ export interface EngineContext {
   post?: { text: string; mine?: boolean; comments: { from: 'me' | 'him' | 'other'; text: string; name?: string }[] };
   /** 她最近在 X 上和 TA 的来往（D-252）：点赞 / 评论 TA 的帖、她发的帖 TA 回了什么；进亲密聊天，TA 可以自然提一句 */
   xActivity?: string[];
+  /** 外出多人场（D-254）：在场的每个人（character = 第一位，只作兜底） */
+  cast?: SceneMember[];
   history: ChatMessage[];
   userText: string;
 }

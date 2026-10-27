@@ -40,6 +40,8 @@ export interface ConversationMode {
   billing?: Billing;
   /** 实时（通话）：延迟优先，供应商不开思考（D-232） */
   realtime?: boolean;
+  /** 按说话人分行（D-254 外出）：回复按「名字：」「旁白：」「纸条：」分段，每段一条，不再按句拆 */
+  speakerLines?: boolean;
 }
 
 export const modes = createRegistry<ConversationMode>('modes', (m) => m.id);

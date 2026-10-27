@@ -47,7 +47,7 @@ import { DevelopingFilm } from '@/components/developing';
 import { TypingDots } from '@/components/typing-dots';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
-import { Shape, Space, Type } from '@/constants/design';
+import { NOTE_PAPER, Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { clockTime, voiceDuration } from '@/lib/format';
 import { cardKindOf } from '@/lib/chat';
@@ -286,11 +286,15 @@ function AudioVoiceBubble({ uri, durationMs, tint }: { uri: string; durationMs?:
   );
 }
 
+/** 外出里的说话人（D-254）：多人场每个人的名字 / 颜色 / 立绘；不认识的写「陌生人」 */
+export type Speakers = Record<string, { name: string; color: string; characterId?: string }>;
+
 const Bubble = memo(function Bubble({
   msg,
-  color,
-  name,
-  characterId,
+  color: baseColor,
+  name: baseName,
+  characterId: baseCharacterId,
+  speakers,
   read,
   onLongPress,
   onOpenPhoto,
@@ -302,10 +306,11 @@ const Bubble = memo(function Bubble({
   color: string;
   name: string;
   characterId?: string;
+  speakers?: Speakers;
   /** 横滑引用这条（D-229）；只有文字消息会传 */
   onReply?: (msg: ChatMessage) => void;
-  /** 点 TA 的头像（D-110：打开资料页） */
-  onAvatarPress?: () => void;
+  /** 点 TA 的头像（D-110：打开资料页）；外出多人场带说话人的角色 id */
+  onAvatarPress?: (characterId?: string) => void;
   /** 我的消息是否显示「已读」（TA 回过话即视为已读） */
   read?: boolean;
   onLongPress?: (msg: ChatMessage) => void;
@@ -335,6 +340,19 @@ const Bubble = memo(function Bubble({
       </View>
     );
   }
+  // 旁白（D-254）：环境、工作人员、小事件——不是谁的话，居中一条纸面上的斜体
+  if (msg.speaker === 'narrator') {
+    return (
+      <View style={styles.narratorRow}>
+        <Text style={styles.narratorText}>{msg.text}</Text>
+      </View>
+    );
+  }
+  // 多人场里是谁说的（D-254）
+  const who = msg.speaker ? speakers?.[msg.speaker] : undefined;
+  const color = who?.color ?? baseColor;
+  const name = who?.name ?? baseName;
+  const characterId = who ? who.characterId : baseCharacterId;
   const mine = msg.from === 'me';
   // 撤回占位：居中小字，无内容
   if (msg.recalled) {
@@ -360,7 +378,7 @@ const Bubble = memo(function Bubble({
     <SwipeReply onReply={onReply ? () => onReply(msg) : undefined}>
     <View style={[styles.msgRow, mine ? styles.msgRowMe : styles.msgRowHim]}>
       {!mine && (
-        <Pressable onPress={onAvatarPress} disabled={!onAvatarPress} hitSlop={6}>
+        <Pressable onPress={() => onAvatarPress?.(msg.speaker ?? baseCharacterId)} disabled={!onAvatarPress} hitSlop={6}>
           <CharAvatar name={name} color={color} size={Space.avatar.bubble} characterId={characterId} />
         </Pressable>
       )}
@@ -368,7 +386,14 @@ const Bubble = memo(function Bubble({
       <Pressable
         onLongPress={onLongPress ? () => onLongPress(msg) : undefined}
         delayLongPress={350}
-        style={[styles.bubble, mine ? styles.bubbleMe : styles.bubbleHim, bubbleTint ? { backgroundColor: bubbleTint } : null]}>
+        style={[
+          styles.bubble,
+          mine ? styles.bubbleMe : styles.bubbleHim,
+          bubbleTint ? { backgroundColor: bubbleTint } : null,
+          msg.note ? styles.noteBubble : null,
+        ]}>
+        {/* 多人场：气泡上方一行名字（D-254） */}
+        {!mine && msg.speaker ? <Text style={styles.speakerName}>{name}</Text> : null}
         {msg.replyTo ? (
           <View style={[styles.quote, !textDark && styles.quoteLight]}>
             <Text style={[styles.quoteName, !textDark && styles.quoteTextLight]}>
@@ -418,6 +443,9 @@ const Bubble = memo(function Bubble({
           )
         ) : msg.kind === 'card' && msg.card ? (
           <CardBody msg={msg} dark={textDark} />
+        ) : msg.note ? (
+          // 纸条（D-254）：米色纸、手写感的一小片
+          <Text style={styles.noteText}>{msg.text}</Text>
         ) : (
           <Text style={[styles.bubbleText, !textDark && styles.bubbleTextMe]}>{msg.text}</Text>
         )}
@@ -454,6 +482,10 @@ export function ChatThread({
   characterId,
   extras,
   onAvatarPress,
+  speakers,
+  actionBrackets,
+  onSendNote,
+  prefill,
 }: {
   messages: ChatMessage[];
   color: string;
@@ -483,11 +515,28 @@ export function ChatThread({
   characterId?: string;
   /** 「+」面板的项目（D-081）；不传则没有「+」 */
   extras?: ChatExtra[];
-  /** 点 TA 的头像（D-110：资料页） */
-  onAvatarPress?: () => void;
+  /** 点 TA 的头像（D-110：资料页）；外出多人场带说话人的角色 id */
+  onAvatarPress?: (characterId?: string) => void;
+  /** 外出多人场的说话人（D-254） */
+  speakers?: Speakers;
+  /** 输入框左边的「（ ）」键（D-254 外出）：点一下插入一对括号，光标停在中间 */
+  actionBrackets?: boolean;
+  /** 递纸条（D-254）：有它就有「纸条」键，开着时发出去的是纸条 */
+  onSendNote?: (text: string) => void;
+  /** 往输入框里填一段（D-254 现成动作）；nonce 变了才填 */
+  prefill?: { text: string; nonce: number };
 }) {
   const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState('');
+  // 外出（D-254）：光标位置（括号键插在这里）、纸条开关、现成动作的填入
+  const [sel, setSel] = useState({ start: 0, end: 0 });
+  const [forcedSel, setForcedSel] = useState<{ start: number; end: number } | undefined>(undefined);
+  const [noteMode, setNoteMode] = useState(false);
+  const [lastPrefill, setLastPrefill] = useState(prefill?.nonce);
+  if (prefill && prefill.nonce !== lastPrefill) {
+    setLastPrefill(prefill.nonce);
+    setDraft((d) => (d.trim() ? `${d}${prefill.text}` : prefill.text));
+  }
   const [replyTo, setReplyTo] = useState<ReplyRef | null>(null);
   const inputRef = useRef<TextInput>(null);
   const [viewingShot, setViewingShot] = useState<ViewerShot | null>(null);
@@ -545,6 +594,12 @@ export function ChatThread({
     const text = draft.trim();
     if (!text || inputDisabled) return;
     setDraft('');
+    if (noteMode && onSendNote) {
+      setNoteMode(false);
+      haptic.tap();
+      onSendNote(text);
+      return;
+    }
     const ref = replyTo ?? undefined;
     setReplyTo(null);
     setExtrasOpen(false);
@@ -590,6 +645,7 @@ export function ChatThread({
           color={color}
           name={name}
           characterId={characterId}
+          speakers={speakers}
           read={readIds.has(item.id)}
           onLongPress={openActions}
           onOpenPhoto={setViewingShot}
@@ -599,7 +655,7 @@ export function ChatThread({
         />
       </Animated.View>
     ),
-    [color, name, characterId, readIds, openActions, onAvatarPress, onResend, openedAt, replyBySwipe]
+    [color, name, characterId, speakers, readIds, openActions, onAvatarPress, onResend, openedAt, replyBySwipe]
   );
 
   const pickImage = async () => {
@@ -764,15 +820,42 @@ export function ChatThread({
                 <MingCute name="mic" size={Space.iconBar} color={iconColor} />
               </Pressable>
             ) : null}
+            {actionBrackets ? (
+              <Pressable
+                onPress={() => {
+                  // 括号插在光标处，光标停在中间（D-254）
+                  const at = Math.min(sel.start, draft.length);
+                  const end = Math.min(sel.end, draft.length);
+                  setDraft(`${draft.slice(0, at)}（）${draft.slice(end)}`);
+                  setForcedSel({ start: at + 1, end: at + 1 });
+                  inputRef.current?.focus();
+                }}
+                hitSlop={6}
+                style={styles.barBtn}
+                disabled={inputDisabled}
+                accessibilityLabel={t('动作')}>
+                <Text style={[styles.bracketKey, inputDisabled && styles.bracketKeyOff]}>（ ）</Text>
+              </Pressable>
+            ) : null}
+            {onSendNote ? (
+              <Pressable onPress={() => setNoteMode((v) => !v)} hitSlop={6} style={styles.barBtn} disabled={inputDisabled} accessibilityLabel={t('纸条')}>
+                <MingCute name="notebook" size={Space.iconBar} color={noteMode ? Romance.accent : iconColor} />
+              </Pressable>
+            ) : null}
             {/* 多行（D-229）：长段落看得见全貌，最多长到 5 行；回车照旧是发送 */}
             <TextInput
               ref={inputRef}
               multiline
-              style={[styles.input, inputDisabled && styles.inputDisabled]}
+              style={[styles.input, noteMode && styles.inputNote, inputDisabled && styles.inputDisabled]}
               value={draft}
               onChangeText={setDraft}
+              selection={forcedSel}
+              onSelectionChange={(e) => {
+                setSel(e.nativeEvent.selection);
+                if (forcedSel) setForcedSel(undefined);
+              }}
               onFocus={() => setExtrasOpen(false)}
-              placeholder={placeholder ?? t('说点什么…')}
+              placeholder={noteMode ? t('写在纸条上…') : (placeholder ?? t('说点什么…'))}
               placeholderTextColor={Romance.sub}
               editable={!inputDisabled}
               onSubmitEditing={send}
@@ -840,6 +923,16 @@ const styles = themed(() =>
     bubbleTextMe: { color: '#FFFFFF' },
     typingText: { fontSize: Type.scale.sub.size, color: Romance.sub },
     systemRow: { alignItems: 'center', marginVertical: 8 },
+    // 旁白（D-254）：居中、斜体、浅墨，像书里的一行描写
+    narratorRow: { alignItems: 'center', marginVertical: 8, paddingHorizontal: Space.screen * 1.5 },
+    narratorText: { fontSize: Type.scale.label.size, lineHeight: 20, fontStyle: 'italic', color: Romance.sub, textAlign: 'center' },
+    speakerName: { fontSize: Type.scale.timestamp.size, fontWeight: '600', color: Romance.sub, marginBottom: 2 },
+    // 纸条（D-254）：米色纸面（同 TA 的记事本）
+    noteBubble: { backgroundColor: NOTE_PAPER.bg, borderWidth: Shape.stroke, borderColor: Romance.stroke },
+    noteText: { fontSize: Type.scale.sub.size, lineHeight: 21, color: NOTE_PAPER.ink },
+    bracketKey: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
+    bracketKeyOff: { color: Romance.faint },
+    inputNote: { backgroundColor: NOTE_PAPER.bg },
     polaroidRow: { alignItems: 'center', marginVertical: 12 },
     // 系统条：ink 底白字 r6；hint：白底 accent 字
     systemText: {

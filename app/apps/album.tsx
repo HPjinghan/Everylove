@@ -41,14 +41,14 @@ export default function AlbumScreen() {
     for (const p of album) {
       const name =
         bonds.find((b) => b.characterId === p.characterId)?.name ?? findCharacter(p.characterId)?.name ?? '';
-      const emoji = p.placeId ? placeById(p.placeId)?.emoji : undefined;
+      const place = p.placeId ? placeById(p.placeId) : undefined;
       shots.push({
         id: p.id,
         uri: p.uri,
         at: p.at,
         from: name,
         caption: p.caption,
-        wall: emoji ? `${emoji} ${name}` : name,
+        wall: place ? `${name} · ${t(place.name)}` : name,
       });
       seen.add(p.uri);
     }

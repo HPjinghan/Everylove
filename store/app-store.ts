@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { bondedPostsFor, CHARACTERS, scriptFor, seedCharactersFor, SQUARE_POSTS } from '@/content/characters';
+import { bondedPostsFor, CHARACTERS, scriptFor, SQUARE_POSTS } from '@/content/characters';
 import { uid } from '@/lib/format';
 import { applyPaperTint } from '@/constants/theme';
 import { DEFAULT_LOVE_MODEL, EMPTY_TRAFFIC, START_VOICE, type LoveModelId, type Traffic, trafficAfterUse, voiceAfterUse, type VoiceTime, type VoiceUse } from '@/lib/traffic';
@@ -20,7 +20,7 @@ import { setLang, t, type Lang } from '@/lib/i18n';
 import { syncAccountLanguage } from '@/lib/auth';
 import { DEFAULT_DOCK, DEFAULT_WALLPAPER, wallpaperTint } from '@/constants/apps';
 import { placeById } from '@/content/places';
-import { minutesLate, planIsOpen, planTimeLabel } from '@/lib/appointments';
+import { minutesLate, planTimeLabel } from '@/lib/appointments';
 import { randomPasscode } from '@/lib/phone';
 import type {
   AlbumShot,
@@ -309,7 +309,10 @@ interface AppState {
    * （跳过离席中的；赴约不跳过——TA 说到做到）。没有可遇的人返回 null。
    * 若已有同地点的进行中会话则续上。
    */
-  startOuting: (placeId: string) => OutingSession | null;
+  /** 开一场外出（D-254：谁在、什么场由 lib/outing.ts 定好传进来；同地点进行中的续上） */
+  startOuting: (placeId: string, opts: { cast: string[]; kind: OutingSession['kind']; planId?: string }) => OutingSession | null;
+  /** 改这一场的状态（被制止的次数 / 被请出去） */
+  patchOuting: (patch: Partial<Pick<OutingSession, 'strikes' | 'ended'>>) => void;
   appendOuting: (msgs: ChatMessage[]) => void;
   /** 结束外出：聊过的话在羁绊会话留一条系统记录，然后清空场景 */
   endOuting: () => void;
@@ -1021,7 +1024,7 @@ export const useAppStore = create<AppState>()(
           ),
         }),
 
-      startOuting: (placeId) => {
+      startOuting: (placeId, opts) => {
         // 同地点的进行中会话：续上（离开再进来 TA 还在）；换了地点则先体面结束上一场
         if (get().outingSession?.placeId === placeId) {
           return get().outingSession;
@@ -1029,50 +1032,15 @@ export const useAppStore = create<AppState>()(
         if (get().outingSession) get().endOuting();
         const state = get();
         const now = Date.now();
-        const place = placeById(placeId);
-        // 有时间的约定只在赴约窗口内算数（D-079）；没时间的随时有效
-        const plan = state.outingPlans.find((p) => p.placeId === placeId && planIsOpen(p, now));
-        let characterId: string | undefined;
-        let kind: OutingSession['kind'] = 'encounter';
-        if (place?.stranger) {
-          // 广场（D-040）：直接偶遇陌生人——还没加好友的角色（不含预告卡）。
-          // 优先还没配对过的新面孔，其次配对过但没加好友的；口味（lovePref）优先。
-          const bondedIds = new Set(state.bonds.map((b) => b.characterId));
-          const matchedIds = new Set(Object.keys(state.squareChats));
-          // 种子角色只发本语言的一套（D-093）
-          const pool = [...state.customCharacters, ...seedCharactersFor(state.language)].filter(
-            (c) => !c.teaser && !bondedIds.has(c.id)
-          );
-          const fresh = pool.filter((c) => !matchedIds.has(c.id));
-          const base = fresh.length ? fresh : pool;
-          const preferred =
-            state.lovePref && state.lovePref !== 'any'
-              ? base.filter((c) => c.loveTag === state.lovePref)
-              : [];
-          const candidates = preferred.length ? preferred : base;
-          if (!candidates.length) return null;
-          characterId = candidates[Math.floor(Math.random() * candidates.length)].id;
-          kind = 'stranger';
-        } else if (plan) {
-          // 赴约：约定优先于离席——TA 说到做到
-          characterId = plan.characterId;
-          kind = 'date';
-        } else {
-          // 偶遇：通讯录里的人恰好也在（离席态已随开门一起退役，D-046）；
-          // 和她在这里另有约、还没到时候的人不会「恰好」在这（D-079）
-          const planned = new Set(
-            state.outingPlans.filter((p) => p.placeId === placeId).map((p) => p.characterId)
-          );
-          const candidates = state.bonds.filter((b) => !planned.has(b.characterId));
-          if (!candidates.length) return null;
-          const pickIdx = Math.floor(Math.random() * candidates.length);
-          characterId = candidates[pickIdx].characterId;
-        }
+        const plan = opts.planId ? state.outingPlans.find((p) => p.id === opts.planId) : undefined;
+        const [characterId] = opts.cast;
+        if (!characterId) return null;
         const session: OutingSession = {
           id: uid('o'),
           placeId,
           characterId,
-          kind,
+          kind: opts.kind,
+          ...(opts.cast.length > 1 ? { cast: opts.cast } : {}),
           messages: [],
           startedAt: now,
           lastActiveAt: now,
@@ -1084,6 +1052,11 @@ export const useAppStore = create<AppState>()(
           outingPlans: plan ? state.outingPlans.filter((p) => p.id !== plan.id) : state.outingPlans,
         });
         return session;
+      },
+
+      patchOuting: (patch) => {
+        const session = get().outingSession;
+        if (session) set({ outingSession: { ...session, ...patch } });
       },
 
       appendOuting: (msgs) => {
@@ -1105,36 +1078,37 @@ export const useAppStore = create<AppState>()(
         const session = state.outingSession;
         if (!session) return;
         const place = placeById(session.placeId);
-        const bond = state.bonds.find((b) => b.characterId === session.characterId);
         const talked = session.messages.some((m) => m.from === 'me' && m.kind === 'text');
         // 照片不再跨会话并入羁绊会话（D-079）：按下快门时已进相册（store.album）。
         // 现场对话并进记忆由 lib/outing.ts finishOuting 负责（store 不调模型）。
         const photos = session.messages.filter((m) => m.kind === 'image' && m.imageUri);
+        // 在场的每位认识的 TA 都留一条（D-254 多人场）
+        const cast = new Set(session.cast ?? [session.characterId]);
+        const record = place && (talked || photos.length);
         set({
           outingSession: null,
-          bonds:
-            bond && place && (talked || photos.length)
-              ? state.bonds.map((b) =>
-                  b.id === bond.id
-                    ? {
-                        ...b,
-                        messages: [
-                          ...b.messages,
-                          {
-                            id: uid('m'),
-                            from: 'system' as const,
-                            kind: 'system' as const,
-                            text:
-                              session.kind === 'date'
-                                ? t('你们在{place}见了面', { place: t(place.name) })
-                                : t('你们一起去了{place}', { place: t(place.name) }),
-                            at: Date.now(),
-                          },
-                        ],
-                      }
-                    : b
-                )
-              : state.bonds,
+          bonds: record
+            ? state.bonds.map((b) =>
+                cast.has(b.characterId)
+                  ? {
+                      ...b,
+                      messages: [
+                        ...b.messages,
+                        {
+                          id: uid('m'),
+                          from: 'system' as const,
+                          kind: 'system' as const,
+                          text:
+                            session.kind === 'date'
+                              ? t('你们在{place}见了面', { place: t(place.name) })
+                              : t('你们一起去了{place}', { place: t(place.name) }),
+                          at: Date.now(),
+                        },
+                      ],
+                    }
+                  : b
+              )
+            : state.bonds,
         });
       },
 

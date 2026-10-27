@@ -29,6 +29,9 @@ export const bondScope = (bondId: string): TurnScope => ({ mode: 'bonded', bondI
 export const callScope = (bondId: string): TurnScope => ({ mode: 'call', bondId });
 export const squareScope = (characterId: string): TurnScope => ({ mode: 'square', characterId });
 export const outingScope = (characterId: string): TurnScope => ({ mode: 'outing', characterId });
+/** 这一场外出的回合入口（D-254）：几个人一起是多人场 scene，一个人是 outing */
+export const sessionScope = (s: { characterId: string; cast?: string[] }): TurnScope =>
+  s.cast && s.cast.length > 1 ? { mode: 'scene', characterId: s.characterId } : outingScope(s.characterId);
 
 /** 亲密模式的引擎上下文（TA 写记事本等后台用途；含手机密码，第一次需要时生成） */
 export function bondedContext(bond: Bond, userText: string): EngineContext | null {

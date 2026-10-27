@@ -21,6 +21,7 @@ import '@/features/phone-peek';
 import '@/features/share';
 import '@/features/x-post';
 import '@/features/note-share';
+import '@/features/outing-scene';
 
 import '@/features/voice-reply';
 import '@/features/memory';

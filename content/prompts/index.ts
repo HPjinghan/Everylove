@@ -58,6 +58,7 @@ export * from './image-common';
 export * from './memory';
 export * from './mood';
 export * from './outing';
+export * from './scene';
 export * from './phone';
 export * from './photo';
 export * from './portrait';

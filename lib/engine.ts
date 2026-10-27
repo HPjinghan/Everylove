@@ -11,7 +11,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { DARK_SIDE_PATTERN, darkSideReply, loveStyleByLabel } from '@/content/characters';
-import { buildChatSystemPromptParts, messageContextText, OPENING_STAGE_LINE } from '@/content/prompts';
+import { buildChatSystemPromptParts, messageContextText, NARRATOR_TOKEN, NOTE_TOKEN, OPENING_STAGE_LINE } from '@/content/prompts';
 import { joinPromptParts } from '@/core/prompt';
 import { stripReplyMarkers } from '@/core/markers';
 import { modes } from '@/core/modes';
@@ -428,6 +428,13 @@ export async function generateReply(
   );
   if (!text) throw new Error('empty reply');
 
+  // 外出（D-254）：按说话人分段——旁白、纸条、多人场里的每个人各一条，不按句拆
+  if (policy?.speakerLines) {
+    const marked = stripReplyMarkers({ texts: [text] });
+    const names = [ctx.character.name, ...(ctx.cast ?? []).map((m) => m.name)];
+    const texts = speakerSegments(marked.texts.join('\n'), names).slice(0, policy.maxBubbles);
+    return { ...marked, texts: policy.keepTrailingPeriod ? texts : stripTrailingPeriods(texts) };
+  }
   const stripStage = policy?.stripStage ?? true;
   // 说话节奏（D-155）：连发的人在亲密模式里最多四条，其余按模式的上限
   const style = bubbleStyleOf(ctx.character);
@@ -441,3 +448,33 @@ export async function generateReply(
   return { ...marked, texts: policy?.keepTrailingPeriod ? texts : stripTrailingPeriods(texts) };
 }
 
+
+/* ── 外出的分行（D-254） ── */
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * 按行首记号分段：「旁白：」「纸条：」「名字：」「名字（纸条）：」开一段，没记号的行接在上一段后面。
+ * 段落保留规范化后的记号（「名字：……」），会话模式落屏时再拆出说话人。
+ */
+export function speakerSegments(text: string, names: string[]): string[] {
+  const who = [NARRATOR_TOKEN, NOTE_TOKEN, ...names.filter(Boolean).map(escapeRe)].join('|');
+  const head = new RegExp(`^\\s*(?:\\*\\*)?(${who})(?:\\*\\*)?\\s*(?:[（(]\\s*${NOTE_TOKEN}\\s*[）)])?\\s*[：:]\\s*`);
+  const out: string[] = [];
+  for (const raw of text.split(/\n+/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const m = line.match(head);
+    if (m) {
+      const note = /[（(]\s*纸条\s*[）)]/.test(m[0]) && m[1] !== NOTE_TOKEN;
+      out.push(`${m[1]}${note ? `（${NOTE_TOKEN}）` : ''}：${line.slice(m[0].length).trim()}`);
+    } else if (out.length) {
+      out[out.length - 1] += ` ${line}`;
+    } else {
+      out.push(line);
+    }
+  }
+  return out.filter((s) => s.replace(/^[^：]*：/, '').trim());
+}

@@ -1,12 +1,13 @@
 /**
- * 外出（D-038/D-040；D-100 纸面）：把相处从手机屏幕里拿出来。
+ * 外出（D-038/D-040；D-254 跑团式改版）：把相处从手机屏幕里拿出来。
  * - 天气条 → 约定条（约定只表达一次：时间 · 地点 · 和谁 + 「赴约 ›」；最多 2 条，其余折叠；长按取消）
- * - 广场（accentSoft 卡）：直接偶遇陌生人——还没配对的角色（D-040）。
- * - 六个地点：点进去就是一场亲身互动（故事模式）。有约定 → 赴约（TA 已经在等你）；没有 → 偶遇通讯录里的人。
+ * - 广场一张宽卡 + 十一个地点：每张是我们自己画的像素小场景（content/pixel-art.ts；夜里 / 打烊换夜色）。
+ *   卡上只说「这里有几个人」——进去才知道是谁（不认识的人不报名字）；约定窗口里写「TA 在等你」；打烊写「打烊了」。
+ * - 谁在：按「人 × 这个小时」稳定散开（lib/presence.ts），每分钟看一眼钟。
  */
 
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { showAlert } from '@/components/action-sheet';
@@ -14,22 +15,26 @@ import { AppScreen, HeaderAction } from '@/components/app-screen';
 import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute, WEATHER_ICON } from '@/components/mingcute';
+import { PixelArt } from '@/components/pixel-art';
 import { TimePicker } from '@/components/time-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { PLACES, placeById, type Place } from '@/content/places';
-import { planTimeLabel } from '@/lib/appointments';
+import { planIsOpen, planTimeLabel } from '@/lib/appointments';
 import { t } from '@/lib/i18n';
 import { sessionExpired } from '@/lib/outing';
+import { dayPartOf, isOpen, presenceAt } from '@/lib/presence';
 import { todayWeather, tempNow } from '@/lib/weather';
 import type { Bond, OutingPlan } from '@/lib/types';
-import { findCharacter, useAppStore } from '@/store/app-store';
+import { useAppStore } from '@/store/app-store';
 
 /** 约定条最多直接露出几条，其余折叠成「还有 n 个约定」（D-100 交互改动 8） */
 const MAX_PLAN_STRIPS = 2;
 const GRID_GAP = 12;
+/** 多久看一眼钟（谁在按小时变、营业按分钟变） */
+const TICK_MS = 60_000;
 
 /** 「今天 20:30」拆成日与钟点：钟点（以及纯数字的日期）用 Fredoka */
 function splitPlanTime(at: number): { day: string; clock: string; dayNumeric: boolean } {
@@ -45,17 +50,26 @@ export default function OutingScreen() {
   const customs = useAppStore((s) => s.customCharacters);
   const plans = useAppStore((s) => s.outingPlans);
   const session = useAppStore((s) => s.outingSession);
-  // 进行中的一场（D-079）：没点结束、一小时内说过话——卡片上标出 TA 还在那儿
-  const live = session && !sessionExpired(session) ? session : null;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), TICK_MS);
+    return () => clearInterval(id);
+  }, []);
+  // 进行中的一场（D-079）：没点结束、一小时内说过话——卡片上标出「你在这儿」
+  const live = session && !sessionExpired(session, now) && !session.ended ? session : null;
 
   const [planOpen, setPlanOpen] = useState(false);
   const [planCharacterId, setPlanCharacterId] = useState<string | null>(null);
   const [planPlaceId, setPlanPlaceId] = useState<string | null>(null);
   const [showAllPlans, setShowAllPlans] = useState(false);
 
-  const w = todayWeather();
+  const date = new Date(now);
+  const w = todayWeather(date);
+  const night = dayPartOf(date) === 'night';
   const plaza: Place | undefined = PLACES.find((p) => p.stranger);
   const spots = PLACES.filter((p) => !p.stranger);
+  // 这会儿谁在（同一个小时里稳定）；只用来数人
+  const presence = presenceAt(date);
 
   const colorOf = (characterId: string) =>
     [...customs, ...CHARACTERS].find((c) => c.id === characterId)?.color ?? Romance.accent;
@@ -66,12 +80,11 @@ export default function OutingScreen() {
     const rows: { plan: OutingPlan; place: Place; bond: Bond }[] = [];
     for (const plan of plans) {
       const place = placeById(plan.placeId);
-      const bond = bondOf(plan.characterId);
+      const bond = bonds.find((b) => b.characterId === plan.characterId);
       if (place && bond) rows.push({ plan, place, bond });
     }
     rows.sort((a, b) => (a.plan.at ?? Infinity) - (b.plan.at ?? Infinity) || a.plan.createdAt - b.plan.createdAt);
     return rows;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plans, bonds]);
   const visiblePlans = showAllPlans ? planRows : planRows.slice(0, MAX_PLAN_STRIPS);
   const hiddenPlans = planRows.length - visiblePlans.length;
@@ -95,6 +108,17 @@ export default function OutingScreen() {
     setPlanPlaceId(null);
   };
 
+  /** 卡上的一行状态：你在这儿 / TA 在等你（约定窗口里）/ 和 TA 有约 / 打烊了 / 这里有 n 个人 / 这会儿没人 */
+  const statusOf = (place: Place): string => {
+    if (live?.placeId === place.id) return t('你在这儿');
+    const plan = plans.find((p) => p.placeId === place.id);
+    const planBond = plan ? bondOf(plan.characterId) : undefined;
+    if (plan && planBond) return planIsOpen(plan, now) ? t('{name} 在等你', { name: planBond.name }) : t('和{name}有约', { name: planBond.name });
+    if (!isOpen(place, date)) return t('打烊了');
+    const n = presence[place.id]?.length ?? 0;
+    return n ? t('这里有 {n} 个人', { n }) : t('这会儿没人');
+  };
+
   const cardWidth = (useWindowDimensions().width - Space.screen * 2 - GRID_GAP) / 2;
 
   return (
@@ -106,7 +130,7 @@ export default function OutingScreen() {
         <View style={styles.weatherStrip}>
           <MingCute name={WEATHER_ICON[w.id]} size={Space.iconBar} color={Romance.accent} />
           <Text style={styles.weatherText} numberOfLines={1}>
-            {t(w.label)} <Text style={styles.weatherTemp}>{tempNow(w)}°</Text> · {t(w.line)}
+            {t(w.label)} <Text style={styles.weatherTemp}>{tempNow(w, date)}°</Text> · {t(w.line)}
           </Text>
         </View>
 
@@ -124,9 +148,7 @@ export default function OutingScreen() {
                 <Text style={styles.planText} numberOfLines={1}>
                   {time ? (
                     <>
-                      {time.day ? (
-                        <Text style={time.dayNumeric ? styles.planClock : undefined}>{time.day} </Text>
-                      ) : null}
+                      {time.day ? <Text style={time.dayNumeric ? styles.planClock : undefined}>{time.day} </Text> : null}
                       <Text style={styles.planClock}>{time.clock}</Text>
                       {' · '}
                     </>
@@ -144,49 +166,37 @@ export default function OutingScreen() {
           </Pressable>
         ) : null}
 
-        {/* 广场（D-040）：accentSoft 卡，直接偶遇陌生人 */}
+        {/* 广场（D-040）：宽卡 */}
         {plaza ? (
           <Pressable onPress={() => goPlace(plaza.id)}>
             <Card padded={false} style={styles.plaza}>
-              <Text style={styles.plazaEmoji}>{plaza.emoji}</Text>
+              <PixelArt id={plaza.id} size={64} night={night} />
               <View style={styles.plazaBody}>
                 <Text style={styles.plazaTitle}>{t(plaza.name)}</Text>
                 <Text style={styles.plazaSub}>{t(plaza.hook)}</Text>
+                <Text style={styles.status}>{statusOf(plaza)}</Text>
               </View>
-              <Text style={styles.plazaGo}>{t('去逛逛 ›')}</Text>
             </Card>
           </Pressable>
         ) : null}
 
-        {/* 六个地点：圆角卡片，上 100 高浅粉底放 emoji，角标「和 X 有约」 */}
+        {/* 地点：像素小场景 + 名字 + 一句钩子 + 此刻的状态 */}
         <View style={styles.grid}>
           {spots.map((place) => {
-            const plan = plans.find((p) => p.placeId === place.id);
-            const planBond = plan ? bondOf(plan.characterId) : undefined;
-            const liveName =
-              live?.placeId === place.id
-                ? (bondOf(live.characterId)?.name ?? findCharacter(live.characterId)?.name)
-                : undefined;
-            const badge = liveName
-              ? t('{name} 在这儿', { name: liveName })
-              : planBond
-                ? t('和{name}有约', { name: planBond.name })
-                : null;
+            const open = isOpen(place, date);
             return (
               <Pressable key={place.id} style={{ width: cardWidth }} onPress={() => goPlace(place.id)}>
                 <Card padded={false} style={styles.placeCard}>
-                  <View style={styles.placeArt}>
-                    <Text style={styles.placeEmoji}>{place.emoji}</Text>
-                    {badge ? (
-                      <View style={styles.placeBadge}>
-                        <Text style={styles.placeBadgeText}>{badge}</Text>
-                      </View>
-                    ) : null}
+                  <View style={[styles.placeArt, !open && styles.placeArtClosed]}>
+                    <PixelArt id={place.id} size={Math.round(cardWidth * 0.6)} night={night || !open} />
                   </View>
                 </Card>
                 <Text style={styles.placeName}>{t(place.name)}</Text>
                 <Text style={styles.placeHook} numberOfLines={1}>
                   {t(place.hook)}
+                </Text>
+                <Text style={[styles.status, styles.placeStatus]} numberOfLines={1}>
+                  {statusOf(place)}
                 </Text>
               </Pressable>
             );
@@ -195,11 +205,7 @@ export default function OutingScreen() {
       </ScrollView>
 
       {/* 约 TA：选人 → 选地点 → 选时间 */}
-      <Modal
-        visible={planOpen}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setPlanOpen(false)}>
+      <Modal visible={planOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setPlanOpen(false)}>
         <View style={styles.modal}>
           <Pressable
             style={styles.modalClose}
@@ -222,7 +228,7 @@ export default function OutingScreen() {
             </Pressable>
           ) : null}
           {!planCharacterId ? (
-            <>
+            <ScrollView>
               <Text style={styles.modalTitle}>{t('约谁出来？')}</Text>
               {bonds.map((b) => (
                 <Pressable key={b.id} onPress={() => setPlanCharacterId(b.characterId)}>
@@ -232,14 +238,14 @@ export default function OutingScreen() {
                   </Card>
                 </Pressable>
               ))}
-            </>
+            </ScrollView>
           ) : !planPlaceId ? (
-            <>
+            <ScrollView>
               <Text style={styles.modalTitle}>{t('去哪儿见？')}</Text>
               {spots.map((place) => (
                 <Pressable key={place.id} onPress={() => setPlanPlaceId(place.id)}>
                   <Card padded={false} style={styles.modalRow}>
-                    <Text style={styles.modalRowEmoji}>{place.emoji}</Text>
+                    <PixelArt id={place.id} size={40} />
                     <View style={styles.modalRowBody}>
                       <Text style={styles.modalRowText}>{t(place.name)}</Text>
                       <Text style={styles.modalRowSub}>{t(place.hook)}</Text>
@@ -247,7 +253,7 @@ export default function OutingScreen() {
                   </Card>
                 </Pressable>
               ))}
-            </>
+            </ScrollView>
           ) : (
             <>
               <Text style={styles.modalTitle}>{t('约在什么时候？')}</Text>
@@ -275,59 +281,30 @@ const styles = themed(() =>
     },
     weatherText: { flex: 1, fontSize: Type.scale.label.size, color: Romance.sub },
     weatherTemp: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.sub },
-    planStrip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Space.inlineLoose,
-      paddingHorizontal: Space.cardX,
-      paddingVertical: 8,
-    },
+    planStrip: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose, paddingHorizontal: Space.cardX, paddingVertical: 8 },
     planText: { flex: 1, fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.ink },
     planClock: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.ink },
     planGo: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.accent },
-    morePlans: {
-      backgroundColor: Romance.card,
-      borderRadius: Shape.radius,
-      paddingVertical: 8,
-      paddingHorizontal: Space.cardX,
-      alignItems: 'center',
-    },
+    morePlans: { backgroundColor: Romance.card, borderRadius: Shape.radius, paddingVertical: 8, paddingHorizontal: Space.cardX, alignItems: 'center' },
     morePlansText: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.sub },
-    plaza: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      backgroundColor: Romance.accentSoft,
-      padding: 16,
-    },
-    plazaEmoji: { fontSize: 36 },
+    plaza: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Romance.accentSoft, padding: 14 },
     plazaBody: { flex: 1 },
     plazaTitle: { fontSize: Type.scale.xl.size, fontWeight: '600', color: Romance.ink },
     plazaSub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 3 },
-    plazaGo: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.accent },
+    status: { fontSize: Type.scale.timestamp.size, fontWeight: '600', color: Romance.accentStrong, marginTop: 4 },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP },
     placeCard: { overflow: 'hidden', borderRadius: Shape.radiusIcon },
-    placeArt: { height: 100, backgroundColor: Romance.accentSoft, alignItems: 'center', justifyContent: 'center' },
-    placeEmoji: { fontSize: 40 },
-    placeBadge: {
-      position: 'absolute',
-      top: 8,
-      left: 8,
-      backgroundColor: Romance.card,
-      borderRadius: Shape.radiusInner,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-    },
-    placeBadgeText: { fontSize: Type.scale.xs.size, fontWeight: '600', color: Romance.accentStrong },
+    placeArt: { height: 120, backgroundColor: Romance.accentSoft, alignItems: 'center', justifyContent: 'center' },
+    placeArtClosed: { backgroundColor: Romance.line },
     placeName: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink, marginTop: 8, marginLeft: 4 },
     placeHook: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 2, marginLeft: 4 },
+    placeStatus: { marginLeft: 4, marginTop: 2 },
     modal: { flex: 1, backgroundColor: Romance.bg, paddingTop: 28, paddingHorizontal: Space.screen },
     modalClose: { position: 'absolute', top: 16, right: 16, padding: 8, zIndex: 2 },
     modalBack: { flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', marginBottom: Space.inlineLoose },
     modalBackText: { fontSize: Type.scale.sub.size, fontWeight: '500', color: Romance.ink },
     modalTitle: { fontSize: Type.scale.xxl.size, fontWeight: '600', color: Romance.ink, marginBottom: 18 },
     modalRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 10 },
-    modalRowEmoji: { fontSize: Type.scale.h1.size },
     modalRowBody: { flex: 1 },
     modalRowText: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
     modalRowSub: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },

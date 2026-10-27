@@ -9,6 +9,7 @@
  */
 
 import { placeById, PLACES, type Place } from '@/content/places';
+import { isOpen, presenceAt, type Presence } from '@/lib/presence';
 import {
   APPOINTMENT_EXTRACT_SYSTEM,
   buildAppointmentExtractPrompt,
@@ -19,14 +20,14 @@ import {
   transcript,
 } from '@/content/prompts';
 import { showToast } from '@/components/toast';
-import { appointmentAtLabel, parseAppointmentAt, planIsMissed, planTimeLabel } from '@/lib/appointments';
+import { appointmentAtLabel, parseAppointmentAt, planIsMissed, planIsOpen, planTimeLabel } from '@/lib/appointments';
 import { bondScope, respond } from '@/lib/chat';
 import { completeText } from '@/lib/engine';
 import { uid } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { generateScenePhoto } from '@/lib/imagegen';
 import { absorbOutingMemory, addMemoryFact } from '@/lib/memory';
-import type { Character, OutingSession } from '@/lib/types';
+import type { Character, ChatMessage, OutingSession } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, useAppStore } from '@/store/app-store';
 import { parseJsonObject } from '@/lib/json';
@@ -47,46 +48,99 @@ export function sessionExpired(s: OutingSession, now = Date.now()): boolean {
   return now - lastSpokeAt(s) > OUTING_IDLE_MS;
 }
 
-/** 进入地点：续上 / 冷却后刷新 / 换地点先结束上一场；没有可遇的人返回 null */
-export function enterPlace(placeId: string): OutingSession | null {
-  const s = useAppStore.getState().outingSession;
-  if (s && (s.placeId !== placeId || sessionExpired(s))) finishOuting();
-  const before = useAppStore.getState().outingSession?.id;
-  const session = useAppStore.getState().startOuting(placeId);
-  // 新开的一场才记账（D-126）：赴约 / 偶遇是亲密度来源；续上的不重复记
-  if (session && session.id !== before && session.kind !== 'stranger') {
-    const bond = useAppStore.getState().bonds.find((b) => b.characterId === session.characterId);
-    if (bond) useAppStore.getState().creditBond(bond.id, session.kind === 'date' ? 'date' : 'encounter');
+/** 进门的结果（D-254）：一场外出 / 两人场里有几位、要她选一位 / 打烊了 / 这会儿没人 */
+export type EnterResult = { session: OutingSession } | { choose: Presence[] } | { closed: true } | { nobody: true };
+
+/**
+ * 进入地点（D-254 跑团式）：同地点进行中的续上；约定窗口里 = 赴约（永远两个人）；打烊了 = 关门；
+ * 否则看这会儿谁在——两人场有几位就让她选一位（pick），多人场在场的都在，安静的地方也一样。
+ */
+export function enterPlace(placeId: string, pick?: string, now = new Date()): EnterResult {
+  const store = useAppStore.getState();
+  const place = placeById(placeId);
+  if (!place) return { nobody: true };
+  const s = store.outingSession;
+  if (s && s.placeId === placeId && !sessionExpired(s, now.getTime()) && !s.ended) return { session: s };
+  const plan = store.outingPlans.find((p) => p.placeId === placeId && planIsOpen(p, now.getTime()));
+  if (plan) return start(placeId, { cast: [plan.characterId], kind: 'date', planId: plan.id });
+  if (!isOpen(place, now)) return { closed: true };
+  const here = presenceAt(now)[placeId] ?? [];
+  if (!here.length) return { nobody: true };
+  if (place.rule === 'duo') {
+    const chosen = pick ? here.find((p) => p.characterId === pick) : here.length === 1 ? here[0] : undefined;
+    if (!chosen) return { choose: here };
+    return start(placeId, { cast: [chosen.characterId], kind: chosen.known ? 'encounter' : 'stranger' });
   }
-  return session;
+  const cast = here.map((p) => p.characterId);
+  return start(placeId, { cast, kind: cast.length > 1 ? 'group' : here[0].known ? 'encounter' : 'stranger' });
 }
 
-/** 结束外出：留记录（store）+ 现场对话并进记忆（后台、静默失败） */
+function start(placeId: string, opts: { cast: string[]; kind: OutingSession['kind']; planId?: string }): EnterResult {
+  const store = useAppStore.getState();
+  const s = store.outingSession;
+  if (s) finishOuting();
+  const session = useAppStore.getState().startOuting(placeId, opts);
+  if (!session) return { nobody: true };
+  // 新开的一场才记账（D-126）：赴约 / 偶遇是亲密度来源；在场的每位认识的 TA 各记一笔
+  for (const cid of session.cast ?? [session.characterId]) {
+    const bond = useAppStore.getState().bonds.find((b) => b.characterId === cid);
+    if (bond) useAppStore.getState().creditBond(bond.id, session.kind === 'date' ? 'date' : 'encounter');
+  }
+  return { session };
+}
+
+/** 结束外出：留记录（store）+ 现场对话并进在场每位 TA 的记忆（后台、静默失败）；陌生人记得在这里见过她 */
 export function finishOuting(): void {
   const store = useAppStore.getState();
   const s = store.outingSession;
   if (!s) return;
-  const bond = store.bonds.find((b) => b.characterId === s.characterId);
   const place = placeById(s.placeId);
   store.endOuting();
   if (!place) return;
-  if (!bond) {
-    // 陌生人（D-110）：TA 记得在广场见过她——她开过口的这一场留一条记录（进初识 / 广场 prompt 与资料页）
-    if (s.kind === 'stranger' && s.messages.some((m) => m.from === 'me' && m.kind === 'text')) {
-      const summary = transcript(s.messages.filter((m) => m.kind === 'text').slice(-ENCOUNTER_LINES), findCharacter(s.characterId)?.name ?? 'TA').slice(0, ENCOUNTER_CHARS);
-      if (summary) useAppStore.getState().addEncounter(s.characterId, { at: s.startedAt, placeName: place.name, summary });
+  const spoke = s.messages.some((m) => m.from === 'me' && m.kind === 'text');
+  for (const cid of s.cast ?? [s.characterId]) {
+    const bond = useAppStore.getState().bonds.find((b) => b.characterId === cid);
+    if (!bond) {
+      // 陌生人（D-110）：TA 记得在这里见过她——她开过口的这一场留一条记录（进初识 / 外出 prompt 与资料页）
+      if (spoke) {
+        const name = findCharacter(cid)?.name ?? 'TA';
+        const summary = transcript(s.messages.filter((m) => m.kind === 'text').slice(-ENCOUNTER_LINES), name).slice(0, ENCOUNTER_CHARS);
+        if (summary) useAppStore.getState().addEncounter(cid, { at: s.startedAt, placeName: place.name, summary });
+      }
+      continue;
     }
-    return;
+    // 陌生人在现场交换了联系方式（D-056）就有了羁绊——这场也算你们的第一次见面
+    void absorbOutingMemory(bond.id, {
+      placeName: place.name,
+      kind: s.kind === 'date' ? 'date' : 'encounter',
+      startedAt: s.startedAt,
+      planAt: s.planAt,
+      lateMinutes: s.lateMinutes,
+      messages: s.messages,
+    });
   }
-  // 陌生人在现场交换了联系方式（D-056）就有了羁绊——这场也算你们的第一次见面
-  void absorbOutingMemory(bond.id, {
-    placeName: place.name,
-    kind: s.kind === 'date' ? 'date' : 'encounter',
-    startedAt: s.startedAt,
-    planAt: s.planAt,
-    lateMinutes: s.lateMinutes,
-    messages: s.messages,
-  });
+}
+
+/** 她这句有没有出声（D-254 安静的地方）：去掉（）里的动作还剩字 = 说出口了 */
+export function spokeAloud(text: string): boolean {
+  return text.replace(/（[^）]*）|\([^)]*\)/g, '').trim().length > 0;
+}
+
+/**
+ * 把一条回复拆回说话人（D-254）：引擎按行首记号分好的段——「旁白：」= 旁白；「纸条：」= 这场那位 TA 的纸条；
+ * 「名字：」「名字（纸条）：」= 在场那个人。names = 场上名字 → 角色 id（一人场只有那一位）。
+ */
+export function toSceneMessage(m: ChatMessage, names: Record<string, string>, solo?: string): ChatMessage {
+  const hit = m.text.match(/^([^：]{1,24}?)(（纸条）)?：\s*/);
+  if (!hit) return m;
+  const [head, who, noteMark] = hit;
+  const body = m.text.slice(head.length).trim();
+  if (who === '旁白') return { ...m, text: body, speaker: 'narrator' };
+  if (who === '纸条') return { ...m, text: body, note: true };
+  const id = names[who];
+  if (!id) return m;
+  if (solo && id === solo) return { ...m, text: body, ...(noteMark ? { note: true } : {}) };
+  return { ...m, text: body, speaker: id, speakerName: who, ...(noteMark ? { note: true } : {}) };
 }
 
 /* ── 拍照 ── */

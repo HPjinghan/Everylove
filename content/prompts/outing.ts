@@ -87,7 +87,7 @@ export const OUTING_OUTPUT_FORMAT = [
   '[Output format]',
   '- Output only what you say and the on-the-spot description in (parentheses): no name prefix, no explanations, no markdown, no emoji.',
   '- At most two (parenthetical) descriptions per reply, one short sentence each.',
-  "- Length follows hers, usually 1–3 sentences: spoken, concrete, no essays; never split into multiple messages — you're face to face, not texting.",
+  "- Length follows hers, usually 1–3 sentences: spoken, concrete, no essays; never split your own words into multiple messages — you're face to face, not texting.",
 ];
 
 /** 外出开场白（TA 先开口；离线模板，{place} 换地点名、{nickname} 换称呼、{minutes} 换迟到分钟数）；D-093 按界面语言取 */
@@ -193,4 +193,35 @@ export function pickOutingOpener(kind: OutingOpenerKind, lang: Lang = getLang())
   const line = candidates[Math.floor(Math.random() * candidates.length)];
   lastOpener[kind] = line;
   return line;
+}
+
+/* ── 地点的规矩、旁白与纸条（D-254 跑团式外出） ── */
+
+/** 这里的规矩：安静的地方只能做动作和传纸条；电影院开场后只能小声 */
+export function placeRuleLines(o: EngineContext['outing'], group = false): string[] {
+  if (!o?.rule) return [];
+  const staff = o.npc ?? 'staff';
+  const who = group ? 'Everyone here' : 'You';
+  if (o.rule === 'quiet') {
+    const strikes = o.strikes ?? 0;
+    return [
+      `[This place's rule] A quiet room: nobody talks out loud. ${who} communicate only by gestures, expressions and notes (纸条) — no spoken lines.`,
+      `- If she speaks out loud, the ${staff} comes over and shushes you all — narrate it on a 旁白： line. She has been shushed ${strikes} time${strikes === 1 ? '' : 's'}${strikes >= 2 ? '; this time the ' + staff + ' asks everyone to leave' : '; on the third time the ' + staff + ' will ask everyone to leave'}.`,
+    ];
+  }
+  if (o.rule === 'cinema') {
+    return [
+      `[This place's rule] The film is on (${o.minutesIn ?? 0} minutes in). ${who} talk only in brief whispers; now and then a 旁白： line can show what's on screen.`,
+    ];
+  }
+  return [];
+}
+
+/** 旁白与纸条的写法：一人场 */
+export function outingNarratorLines(o: EngineContext['outing']): string[] {
+  const staff = o?.npc ? ` (including the ${o.npc})` : '';
+  return [
+    `- When something happens around you two — the place, the weather, other people${staff} — you may add one separate line starting with 旁白： (third person, one short sentence). Only when it adds something.`,
+    '- If she passes you a note, write your note back on a separate line starting with 纸条：.',
+  ];
 }

@@ -4,14 +4,17 @@
  * 界面与后台都通过 core/turn 的管线用它们，不再各自拼 EngineContext。
  */
 
-import { placeById } from '@/content/places';
-import { buildPostThreadUser, HIS_POSTS_POOL } from '@/content/prompts';
+import { loveStyleByLabel, scriptFor } from '@/content/characters';
+import { placeById, type Place } from '@/content/places';
+import { buildPostThreadUser, HIS_POSTS_POOL, SCENE_HEART_PATTERN, stageNameOf } from '@/content/prompts';
 import { modes, type ConversationMode, type TurnScope } from '@/core/modes';
 import { appointmentAtLabel } from '@/lib/appointments';
-import { anniversaryToday, type UtteranceKind } from '@/lib/bond';
+import { anniversaryToday, clampHeartGain, levelOf, type UtteranceKind } from '@/lib/bond';
 import { xActivityFor } from '@/features/x-post';
 import { cancelRecall } from '@/lib/recall';
-import type { Bond, ChatMessage, EngineContext } from '@/lib/types';
+import { spokeAloud, toSceneMessage } from '@/lib/outing';
+import { sceneFor } from '@/lib/presence';
+import type { Bond, ChatMessage, EngineContext, OutingSession, SceneMember } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 import { findCharacter, meForCharacter, useAppStore } from '@/store/app-store';
 
@@ -161,10 +164,31 @@ const call: ConversationMode = {
 };
 
 /* ── 外出（D-038/D-040/D-079）：同一时间只有一场；赴约 / 偶遇带关系背景，陌生人不带 ── */
+/** 外出现场的那几样（D-254）：规矩（约会永远两个人）、工作人员、这会儿的场景、被制止了几次、进来多久 */
+function outingFacts(session: OutingSession, place: Place, now: Date) {
+  return {
+    placeName: place.name,
+    scene: sceneFor(place, now),
+    weatherLine: weatherLine(),
+    rule: session.kind === 'date' ? ('duo' as const) : place.rule,
+    npc: place.npc,
+    strikes: session.strikes ?? 0,
+    minutesIn: Math.max(0, Math.round((now.getTime() - session.startedAt) / 60_000)),
+  };
+}
+
+/** 她在现场开口一次：安静的地方说出声就记一次（D-254，三次请出去，见 features/outing-scene.ts） */
+function countStrike(session: OutingSession, place: Place | undefined, contextText: string): void {
+  if (place?.rule !== 'quiet' || session.kind === 'date' || !spokeAloud(contextText)) return;
+  useAppStore.getState().patchOuting({ strikes: (session.strikes ?? 0) + 1 });
+}
+
 const outing: ConversationMode = {
   id: 'outing',
-  maxBubbles: 1,
+  // D-254：TA 的话 + 至多一行旁白 / 一张纸条，按说话人分条
+  maxBubbles: 3,
   stripStage: false,
+  speakerLines: true,
   context(scope, userText) {
     const s = useAppStore.getState();
     const session = s.outingSession;
@@ -174,7 +198,7 @@ const outing: ConversationMode = {
     if (!character || !place) return null;
     const bond = s.bonds.find((b) => b.characterId === session.characterId);
     // 陌生人在现场交换了联系方式后（D-056），这场偶遇就地升格为熟人偶遇
-    const kind = session.kind === 'stranger' && bond ? 'encounter' : session.kind;
+    const kind = (session.kind === 'stranger' && bond) || session.kind === 'group' ? 'encounter' : session.kind;
     return {
       character,
       mode: 'outing',
@@ -184,10 +208,8 @@ const outing: ConversationMode = {
       // 陌生人也记得上次在广场见过她（D-110）
       encounters: kind === 'stranger' ? s.squareChats[character.id]?.encounters : undefined,
       outing: {
-        placeName: place.name,
-        scene: place.scene,
+        ...outingFacts(session, place, new Date()),
         kind,
-        weatherLine: weatherLine(),
         appointment: session.planAt
           ? { atLabel: appointmentAtLabel(session.planAt), lateMinutes: session.lateMinutes ?? 0 }
           : undefined,
@@ -197,10 +219,15 @@ const outing: ConversationMode = {
     };
   },
   append(_scope, msgs) {
-    useAppStore.getState().appendOuting(msgs);
+    const session = useAppStore.getState().outingSession;
+    const character = session && findCharacter(session.characterId);
+    const names: Record<string, string> = character ? { [character.name]: character.id } : {};
+    useAppStore.getState().appendOuting(msgs.map((m) => (m.from === 'him' ? toSceneMessage(m, names, character?.id) : m)));
   },
-  creditUserTurn(scope, _text, kind) {
+  creditUserTurn(scope, contextText, kind) {
     const s = useAppStore.getState();
+    const session = s.outingSession;
+    if (session) countStrike(session, placeById(session.placeId), contextText);
     const bond = s.bonds.find((b) => b.characterId === scope.characterId);
     if (bond) {
       // 她开口 = 来源表记账（升级系统提示会出现在羁绊会话里）
@@ -214,6 +241,106 @@ const outing: ConversationMode = {
   },
   patch() {
     // 外出现场没有语音 / 照片消息需要回填
+  },
+};
+
+/** 多人场里每个人的那份（D-254）：认识的带阶段、称呼、记得的几件事；不认识的只有人设 */
+function sceneMember(characterId: string, now: number): SceneMember | null {
+  const c = findCharacter(characterId);
+  if (!c) return null;
+  const bond = useAppStore.getState().bonds.find((b) => b.characterId === characterId);
+  const style = loveStyleByLabel(c.loveStyle);
+  return {
+    characterId,
+    name: bond?.name ?? c.name,
+    identity: c.identity,
+    persona: scriptFor(c).persona,
+    ...(style ? { style: `(${style.label}: ${style.desc})` } : {}),
+    ...(bond
+      ? {
+          knows: {
+            stage: stageNameOf(levelOf(bond, now)),
+            nickname: bond.nickname,
+            memory: bond.memory.facts.slice(-3).map((f) => f.replace(/^\[[^\]]*\]\s*/, '')),
+          },
+        }
+      : {}),
+  };
+}
+
+/* ── 外出多人场（D-254）：旁白 + 在场的几个人，一次调用写出这一轮谁说了什么 ── */
+const scene: ConversationMode = {
+  id: 'scene',
+  maxBubbles: 6,
+  stripStage: false,
+  speakerLines: true,
+  context(scope, userText) {
+    const s = useAppStore.getState();
+    const session = s.outingSession;
+    if (!session?.cast || session.characterId !== scope.characterId) return null;
+    const place = placeById(session.placeId);
+    const now = new Date();
+    const cast = session.cast.map((cid) => sceneMember(cid, now.getTime())).filter((m): m is SceneMember => !!m);
+    const first = findCharacter(session.characterId);
+    if (!place || !first || !cast.length) return null;
+    return {
+      character: first,
+      mode: 'scene',
+      cast,
+      me: s.me,
+      outing: { ...outingFacts(session, place, now), kind: 'group' },
+      history: session.messages,
+      userText,
+    };
+  },
+  append(_scope, msgs) {
+    const s = useAppStore.getState();
+    const session = s.outingSession;
+    if (!session) return;
+    const names: Record<string, string> = {};
+    for (const cid of session.cast ?? [session.characterId]) {
+      const c = findCharacter(cid);
+      const bond = s.bonds.find((b) => b.characterId === cid);
+      if (c) names[bond?.name ?? c.name] = cid;
+    }
+    const out: ChatMessage[] = [];
+    for (const m of msgs) {
+      if (m.from !== 'him') {
+        out.push(m);
+        continue;
+      }
+      // 陌生人的好奇（[好奇 名字 n]）：各记各的，记完从字里拿掉
+      const text = m.text
+        .replace(SCENE_HEART_PATTERN, (_all: string, who: string, n: string) => {
+          const cid = names[who.trim()];
+          if (cid && !s.bonds.some((b) => b.characterId === cid)) {
+            s.ensureSquareChat(cid);
+            useAppStore.getState().appendSquare(cid, [], { heartDelta: clampHeartGain(Number(n)) });
+          }
+          return '';
+        })
+        .trim();
+      if (text) out.push(toSceneMessage({ ...m, text }, names));
+    }
+    if (out.length) useAppStore.getState().appendOuting(out);
+  },
+  creditUserTurn(_scope, contextText, kind) {
+    const s = useAppStore.getState();
+    const session = s.outingSession;
+    if (!session) return;
+    countStrike(session, placeById(session.placeId), contextText);
+    // 在场的每个人各算各的：认识的记羁绊，不认识的记一次开口（好奇由模型判）
+    for (const cid of session.cast ?? [session.characterId]) {
+      const bond = s.bonds.find((b) => b.characterId === cid);
+      if (bond) creditBondedUtterance(bond, kind);
+      else {
+        s.ensureSquareChat(cid);
+        useAppStore.getState().appendSquare(cid, [], { userTurn: true });
+      }
+    }
+  },
+  patch() {
+    // 现场没有要回填的
   },
 };
 
@@ -281,4 +408,5 @@ modes.register(square);
 modes.register(bonded);
 modes.register(call);
 modes.register(outing);
+modes.register(scene);
 modes.register(post);
