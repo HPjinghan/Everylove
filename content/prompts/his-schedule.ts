@@ -7,18 +7,18 @@
 import { scriptFor } from '@/content/characters';
 import type { Bond, Character, HisEvent } from '@/lib/types';
 
-import { circleBlock } from './circle';
-import { characterProfileBlock, langName } from './shared';
+import { circleBlock, type HerBond } from './circle';
+import { characterProfileBlock, herToYouZh, langName } from './shared';
 import { parseJsonObject } from '@/lib/json';
 
 export const HIS_SCHEDULE_DAYS = 7;
 export const HIS_SCHEDULE_MIN = 3;
 export const HIS_SCHEDULE_MAX = 6;
 
-export function buildHisScheduleSystem(c: Character, bond: Pick<Bond, 'nickname' | 'circle'> | undefined): string {
+export function buildHisScheduleSystem(c: Character, bond: (HerBond & Pick<Bond, 'circle'>) | undefined): string {
   const script = scriptFor(c);
   return [
-    `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。现在要写你自己接下来一周的日程——你的日历，不是和恋人${bond ? `（你叫她「${bond.nickname}」）` : ''}的约定。`,
+    `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。现在要写你自己接下来一周的日程——你的日历，不是和她的约定${bond ? `（${herToYouZh(bond)}）` : ''}。`,
     `【你是谁】${script.persona}`,
     ...characterProfileBlock(c),
     ...circleBlock(bond?.circle),

@@ -8,6 +8,8 @@ import { deliverDueHeartbeats } from '@/lib/heartbeat';
 import { deliverDueHisNotes } from '@/lib/his-notes';
 import { ensureCircle, refreshCircleChats } from '@/lib/circle';
 import { deliverDueHisSchedules, ensureHisSchedule } from '@/lib/his-schedule';
+import { deliverDueHerContactNames, ensureHerContactName } from '@/lib/his-phone';
+import { deliverDuePhoneNotices } from '@/features/phone-peek';
 import { archiveOldMessages } from '@/lib/archive';
 import { gcMedia } from '@/lib/media-gc';
 import { repairMediaPaths } from '@/lib/media-paths';
@@ -76,6 +78,16 @@ jobs.register({
   on: ['screen:phone'],
   run: (now, _trigger, ctx) => (ctx.bondId ? ensureCircle(ctx.bondId).then(() => refreshCircleChats(ctx.bondId!, now)) : undefined),
 });
+
+/** TA 给她存的名字（D-242）：升了级就重写一次——回前台先写好，打开 TA 的手机时再补 */
+jobs.register({
+  id: 'her-contact-name',
+  on: ['foreground', 'screen:phone'],
+  run: (now, _trigger, ctx) => (ctx.bondId ? ensureHerContactName(ctx.bondId, now) : deliverDueHerContactNames(now)),
+});
+
+/** TA 察觉她翻过手机（D-242）：到点还没说出口的（App 中途关了）补上 */
+jobs.register({ id: 'phone-notice', on: ['launch', 'foreground'], run: (now) => deliverDuePhoneNotices(now) });
 
 /** 媒体目录清理（D-186）：语音缓存过期的、没人引用的照片 / 立绘，启动时清 */
 jobs.register({ id: 'media-gc', on: ['launch'], run: (now) => gcMedia(now) });

@@ -218,8 +218,10 @@ interface AppState {
   markBondRead: (bondId: string) => void;
   /** 查手机（D-082）：TA 的手机密码——没有就随机生成一把记下（第一次需要时），返回它 */
   ensurePhoneCode: (bondId: string) => string;
-  /** 查手机（D-082）：拿到密码后解锁，之后随时能看 */
-  setPhoneUnlocked: (bondId: string) => void;
+  /** 查手机（D-082）：拿到密码后解锁，之后随时能看；guessed = 她自己猜开的（D-242） */
+  setPhoneUnlocked: (bondId: string, guessed?: boolean) => void;
+  /** 查手机（D-242）：备注名 / 看过的时刻 / TA 察觉 */
+  patchPhone: (bondId: string, patch: Partial<Pick<Bond, 'herContact' | 'phoneSeenAt' | 'phoneNotice' | 'phoneCaught'>>) => void;
   /** 「+」面板预告已插过（D-100） */
   /** LINE 规则（D-030）：撤回=占位+清内容（仅自己的消息、24h 内，界面侧把关）；删除=本地移除任意消息 */
   recallMessage: (scope: { bondId?: string; characterId?: string }, msgId: string) => void;
@@ -692,10 +694,12 @@ export const useAppStore = create<AppState>()(
         return code;
       },
 
-      setPhoneUnlocked: (bondId) =>
+      setPhoneUnlocked: (bondId, guessed) =>
         set({
-          bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, phoneUnlocked: true } : b)),
+          bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, phoneUnlocked: true, ...(guessed ? { phoneGuessed: true } : {}) } : b)),
         }),
+
+      patchPhone: (bondId, patch) => set({ bonds: get().bonds.map((b) => (b.id === bondId ? { ...b, ...patch } : b)) }),
 
       recallMessage: ({ bondId, characterId }, msgId) => {
         const wipe = (m: ChatMessage): ChatMessage =>

@@ -36,7 +36,7 @@ function bondPick(bond: Bond, opts: { phone?: boolean } = {}): NonNullable<Engin
   if (!opts.phone) return base;
   // 查手机（D-082）：TA 的手机密码第一次需要时才生成，记在这段羁绊上
   const phoneCode = useAppStore.getState().ensurePhoneCode(bond.id);
-  return { ...base, phoneCode, phoneUnlocked: bond.phoneUnlocked };
+  return { ...base, phoneCode, phoneUnlocked: bond.phoneUnlocked, phoneGuessed: bond.phoneGuessed, phoneCaught: bond.phoneCaught };
 }
 
 /** TA 自己最近的帖子（D-158）：候选池，进【你最近的日子】（底 + 按她的话检索） */

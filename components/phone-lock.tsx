@@ -1,11 +1,13 @@
 /**
  * TA 的手机锁屏（D-082/D-084；D-100 纸面）：角色色通底 + 白色 8% 菱格，时钟 Fredoka 84、四个密码点、九宫格方键（r6 白 22%）。
  * 猜对即 onUnlock；左下「问 TA 要密码」→ onAsk（父组件给 TA 发一张「想看看你的手机」卡片）。
+ * LV4 起有合影就铺合影当壁纸（D-242，PhoneWallpaper 与 TA 的手机桌面共用）。
  * 传了 bondId 时锁屏不关：订阅这个 bond 在按下之后 TA 发的消息，以气泡原地显示（答应带着密码、拒绝也看得见）；
  * TA 答应时 features/phone-peek 把 phoneUnlocked 置真，父组件的 visible 自然切到手机内容。不传 bondId 走旧行为。
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { Image } from 'expo-image';
 import { Animated, Modal, Pressable, StyleSheet, Text, useAnimatedValue, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -46,9 +48,21 @@ function dateLine(d: Date): string {
   }
 }
 
+/** TA 的手机底（D-242）：角色色上白 8% 菱格；有合影就铺合影、压一层墨色让白字看得清 */
+export function PhoneWallpaper({ uri }: { uri?: string }) {
+  if (!uri) return <DiamondBackground color="#FFFFFF" alpha={0.08} />;
+  return (
+    <>
+      <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+      <View style={[StyleSheet.absoluteFill, styles.wallShade]} />
+    </>
+  );
+}
+
 export function PhoneLock({
   visible,
   color,
+  wallpaper,
   passcode,
   onUnlock,
   onAsk,
@@ -60,6 +74,8 @@ export function PhoneLock({
   visible: boolean;
   /** 角色主题色：通底 */
   color: string;
+  /** TA 的壁纸（D-242，lib/his-phone.ts hisWallpaper）；空 = 角色色 */
+  wallpaper?: string;
   passcode: string;
   onUnlock: () => void;
   onAsk: () => void;
@@ -137,7 +153,7 @@ export function PhoneLock({
   return (
     <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={onClose}>
       <View style={[styles.screen, { backgroundColor: color }]}>
-        <DiamondBackground color="#FFFFFF" alpha={0.08} />
+        <PhoneWallpaper uri={wallpaper} />
         <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
           <MingCute name="lock" size={18} color="#FFFFFF" />
           <Text style={styles.clock}>
@@ -205,6 +221,7 @@ export function PhoneLock({
 const styles = themed(() =>
   StyleSheet.create({
     screen: { flex: 1, justifyContent: 'space-between' },
+    wallShade: { backgroundColor: withAlpha(Romance.ink, 0.3) },
     top: { alignItems: 'center', gap: 6 },
     clock: {
       fontFamily: Fonts.labelBold,

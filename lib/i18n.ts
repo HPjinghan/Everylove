@@ -972,6 +972,7 @@ const en: Record<string, string> = {
   '这个月的': 'This month',
   '每 30 天重新给，不累积。': 'Refills every 30 days; doesn’t roll over.',
   '有分钟后可开': 'Needs voice minutes',
+  '来电 · {d}': 'Incoming · {d}',
   // __EN_END__
 };
 
@@ -1911,6 +1912,7 @@ const ja: Record<string, string> = {
   '这个月的': '今月の分',
   '每 30 天重新给，不累积。': '30 日ごとにリセット、繰り越しなし。',
   '有分钟后可开': '通話分数が必要',
+  '来电 · {d}': '着信 · {d}',
   // __JA_END__
 };
 
@@ -2844,6 +2846,7 @@ const ko: Record<string, string> = {
   '这个月的': '이번 달',
   '每 30 天重新给，不累积。': '30일마다 다시 채워지고 이월되지 않아요.',
   '有分钟后可开': '음성 시간이 필요해요',
+  '来电 · {d}': '수신 · {d}',
   // __KO_END__
 };
 

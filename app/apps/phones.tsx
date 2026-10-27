@@ -19,9 +19,9 @@ import { PeekReplay, type PeekPayload } from '@/components/peek-replay';
 import { PhoneLock } from '@/components/phone-lock';
 import { Shape, Space, Type } from '@/constants/design';
 import { Romance, themed, withAlpha } from '@/constants/theme';
-import { askPasscode as askHisPasscode, peekMyPhone, peekPayload } from '@/features/phone-peek';
+import { askPasscode as askHisPasscode, closedHisPhone, openedHisPhone, peekMyPhone, peekPayload } from '@/features/phone-peek';
 import { aiReadySync } from '@/lib/chat';
-import { uid } from '@/lib/format';
+import { hisWallpaper } from '@/lib/his-phone';
 import { t } from '@/lib/i18n';
 import { findCharacter, useAppStore } from '@/store/app-store';
 
@@ -43,6 +43,7 @@ export default function PhonesScreen() {
 
   const open = bonds.find((b) => b.id === openId);
   const openCharacter = open ? findCharacter(open.characterId) : undefined;
+  const album = useAppStore((s) => s.album);
   const confirming = bonds.find((b) => b.id === confirmId);
 
   const invitePeek = (bondId: string) => {
@@ -128,8 +129,10 @@ export default function PhonesScreen() {
           <PhoneLock
             visible={!open.phoneUnlocked}
             color={openCharacter.color}
+            wallpaper={hisWallpaper(open, album, [open.name, openCharacter.name])}
             passcode={open.phoneCode ?? ''}
-            onUnlock={() => useAppStore.getState().setPhoneUnlocked(open.id)}
+            // 自己猜开的（D-242）：TA 没给过密码，之后可能察觉
+            onUnlock={() => useAppStore.getState().setPhoneUnlocked(open.id, true)}
             onAsk={() => void askHisPasscode(open.id)}
             onClose={() => setOpenId(null)}
             bondId={open.id}
@@ -138,16 +141,13 @@ export default function PhonesScreen() {
           />
           <PhoneSheet
             visible={!!open.phoneUnlocked}
-            onClose={() => setOpenId(null)}
+            onClose={(looked) => {
+              closedHisPhone(open.id, looked);
+              setOpenId(null);
+            }}
             bond={open}
             character={openCharacter}
-            onViewed={() => {
-              useAppStore.getState().appendBond(open.id, [
-                { id: uid('m'), from: 'system', kind: 'system', text: t('你看了 TA 的手机'), at: Date.now() },
-              ]);
-              // 她的好奇心也是关系（D-126）
-              useAppStore.getState().creditBond(open.id, 'peekHis');
-            }}
+            onViewed={() => openedHisPhone(open.id)}
           />
         </>
       ) : null}

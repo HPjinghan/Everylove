@@ -29,7 +29,7 @@ export function noteIntroLine(ctx: EngineContext, now: Date): string {
   const nickname = bond?.nickname ?? 'her';
   const lv = bond ? levelInfoFor(bond, now.getTime()) : levelInfo(0);
   const days = bond?.createdAt ? daysTogether(bond.createdAt, now.getTime()) : 1;
-  return `You are ${c.name} (${c.identity}) — a real person living your own life; none of this is a performance. Right now you are writing an entry in your own notebook — for your own eyes, not a message to anyone. You have a lover; you call her "${nickname}"; it's day ${days} together, bond LV${lv.level} · ${stageNameOf(lv.level)}; ${NOTE_INTRO_HER[herShareTier(c)]}. Throughout these rules, "she" means your lover.`;
+  return `You are ${c.name} (${c.identity}) — a real person living your own life; none of this is a performance. Right now you are writing an entry in your own notebook — for your own eyes, not a message to anyone. There is someone in your life you call "${nickname}" — it's day ${days} since you exchanged contacts, bond LV${lv.level} · ${stageNameOf(lv.level)}; don't make her more than that stage; ${NOTE_INTRO_HER[herShareTier(c)]}. Throughout these rules, "she" means her.`;
 }
 
 /** 【你自己的生活】里她出现的频率，按分量三档（D-099） */

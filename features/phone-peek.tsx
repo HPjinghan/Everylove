@@ -4,12 +4,13 @@
  * 一个玩法一个文件：prompt 分段（TA 知道自己的密码）+ 回复暗号 + 卡片种类 + 「问 TA 要密码」的动作，
  * 以及反过来的「让 TA 看我的手机」（D-085 / D-113 / D-194 从 lib/chat 搬来）：TA 翻她的记事本、日历里的安排、她和别人的聊天，
  * 然后发 1–2 句消息，记事本并进记忆；看到的日程从此 TA 知道（event.knownBy）——心跳三段式只投给知道的 TA，日程也记成事实。
+ * 被发现（D-242）：她合上 TA 的手机时掷一次，TA 偶尔察觉她翻过，过一两分钟按性子发一句（见文件末尾）。
  */
 
 import { CardShell } from '@/components/card-bubble';
 import { showToast } from '@/components/toast';
 import { parseDateKey } from '@/content/calendar';
-import { buildPeekMyPhoneUser, PHONE_UNLOCK_MARK, phoneBlock, todayLine } from '@/content/prompts';
+import { buildPeekMyPhoneUser, buildPhoneNoticedUser, PHONE_UNLOCK_MARK, phoneBlock, todayLine } from '@/content/prompts';
 import { cardKinds } from '@/core/cards';
 import { replyMarkers } from '@/core/markers';
 import { modeOf } from '@/core/modes';
@@ -18,6 +19,8 @@ import { himMsg, respond, sendCard, sysMsg, type TurnUi } from '@/core/turn';
 import { BONDED_CHAT } from '@/features/prompts';
 import { bondScope } from '@/lib/chat';
 import { darkSideCheck } from '@/lib/engine';
+import { lookedLabel, noticeChance } from '@/lib/his-phone';
+import { createInflight } from '@/lib/inflight';
 import { t } from '@/lib/i18n';
 import { absorbNotesMemory, addMemoryFact } from '@/lib/memory';
 import type { ChatMessage } from '@/lib/types';
@@ -152,4 +155,70 @@ export async function peekMyPhone(bondId: string): Promise<boolean> {
   }
   if (notes.length) void absorbNotesMemory(bondId, notes);
   return !!reply;
+}
+
+/* ── 被发现（D-242）：她合上 TA 的手机，TA 偶尔察觉她翻过 ── */
+
+/** 察觉后过多久说出口（像 TA 过一会儿才拿起手机）；一天没说出口就算了 */
+const NOTICE_DELAY_MIN_MS = 45_000;
+const NOTICE_DELAY_SPAN_MS = 75_000;
+const NOTICE_STALE_MS = 24 * 3600_000;
+const noticing = createInflight();
+
+/** 她看过 TA 的手机（内容真的展开时）：会话里留一条系统条、记一笔亲密度（她的好奇心也是关系，D-126） */
+export function openedHisPhone(bondId: string): void {
+  const store = useAppStore.getState();
+  store.appendBond(bondId, [sysMsg(t('你看了 TA 的手机'))]);
+  store.creditBond(bondId, 'peekHis');
+}
+
+/** 她合上 TA 的手机：记下这一刻（之后新有的才标新），并掷一次 TA 会不会察觉 */
+export function closedHisPhone(bondId: string, looked: string[], now = Date.now()): void {
+  const store = useAppStore.getState();
+  const bond = store.bonds.find((b) => b.id === bondId);
+  if (!bond) return;
+  const chance = noticeChance(bond, bond.phoneSeenAt === undefined, now);
+  store.patchPhone(bondId, { phoneSeenAt: now });
+  if (!chance || Math.random() >= chance) return;
+  const dueAt = now + NOTICE_DELAY_MIN_MS + Math.random() * NOTICE_DELAY_SPAN_MS;
+  store.patchPhone(bondId, { phoneNotice: { looked, dueAt } });
+  // App 一直开着就到点说；中途被杀掉的，下次启动 / 回前台补（features/schedulers.ts）
+  setTimeout(() => void deliverPhoneNotice(bondId), dueAt - now + 500);
+}
+
+/** 到点的察觉：TA 发一两句（TA 自己开口，平台出，D-210），记进记忆 */
+export async function deliverPhoneNotice(bondId: string, now = Date.now()): Promise<boolean> {
+  return noticing.run(
+    bondId,
+    async () => {
+      const store = useAppStore.getState();
+      const bond = store.bonds.find((b) => b.id === bondId);
+      const notice = bond?.phoneNotice;
+      if (!bond || !notice || now < notice.dueAt) return false;
+      if (now - notice.dueAt > NOTICE_STALE_MS) {
+        store.patchPhone(bondId, { phoneNotice: undefined });
+        return false;
+      }
+      const guessed = !!bond.phoneGuessed && !bond.phoneCaught;
+      const { reply } = await respond(
+        bondScope(bondId),
+        buildPhoneNoticedUser({ nickname: bond.nickname, looked: notice.looked.map((k) => lookedLabel(k, 'en')), guessed }),
+        { pace: 'none', unread: true },
+        { billing: 'house' }
+      );
+      if (!reply) return false;
+      useAppStore.getState().patchPhone(bondId, { phoneNotice: undefined, phoneCaught: Date.now() });
+      const what = notice.looked.map((k) => lookedLabel(k, 'zh')).join('、');
+      addMemoryFact(bondId, `[节点] ${todayLine()} ${bond.name} 发现她${guessed ? '自己猜出密码、' : ''}翻过自己的手机${what ? `（看了${what}）` : ''}`);
+      return true;
+    },
+    false
+  );
+}
+
+/** 启动 / 回前台：补说到点了还没说的 */
+export async function deliverDuePhoneNotices(now = Date.now()): Promise<number> {
+  let n = 0;
+  for (const b of useAppStore.getState().bonds) if (b.phoneNotice && (await deliverPhoneNotice(b.id, now))) n++;
+  return n;
 }

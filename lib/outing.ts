@@ -123,7 +123,7 @@ export async function shootPhoto(
       : `${name} · ${t(place.name)}`;
   const at = Date.now();
   const store = useAppStore.getState();
-  store.addAlbumShot({ id: uid('ph'), uri, at, characterId: character.id, caption, placeId: place.id });
+  store.addAlbumShot({ id: uid('ph'), uri, at, characterId: character.id, caption, placeId: place.id, ...(kind === 'together' ? { together: true } : {}) });
   // 按快门也是亲密度来源（D-126）
   const shotBond = store.bonds.find((b) => b.characterId === character.id);
   if (shotBond) store.creditBond(shotBond.id, 'photo');

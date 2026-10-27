@@ -31,12 +31,13 @@ import { ARCHETYPE_LABEL } from '@/content/characters';
 import { characterSecrets, unlockedSecretCount } from '@/content/prompts';
 import { sendInvite } from '@/features/invite';
 import { sendLocation } from '@/features/location';
-import { askPasscode } from '@/features/phone-peek';
+import { askPasscode, closedHisPhone, openedHisPhone } from '@/features/phone-peek';
+import { hisWallpaper } from '@/lib/his-phone';
 import { sendRedPacket } from '@/features/red-packet';
 import { levelInfoFor } from '@/lib/bond';
 import { callReady } from '@/lib/call';
 import { characterUpdateFor } from '@/lib/character-update';
-import { bondScope, resendTurn, sendImage, sendText, sendVoice, sysMsg } from '@/lib/chat';
+import { bondScope, resendTurn, sendImage, sendText, sendVoice } from '@/lib/chat';
 import type { ChatMessage } from '@/lib/types';
 import { daysTogether } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -286,20 +287,25 @@ export default function BondScreen() {
       <PhoneLock
         visible={sheet === 'phone' && !bond.phoneUnlocked}
         color={character.color}
+        wallpaper={sheet === 'phone' ? hisWallpaper(bond, album, [bond.name, character.name]) : undefined}
         passcode={sheet === 'phone' ? (bond.phoneCode ?? '') : ''}
         bondId={bond.id}
         characterId={character.id}
         name={bond.name}
-        onUnlock={() => useAppStore.getState().setPhoneUnlocked(bond.id)}
+        // 自己猜开的（D-242）：TA 没给过密码，之后可能察觉
+        onUnlock={() => useAppStore.getState().setPhoneUnlocked(bond.id, true)}
         onAsk={onAskPasscode}
         onClose={() => setSheet(null)}
       />
       <PhoneSheet
         visible={sheet === 'phone' && !!bond.phoneUnlocked}
-        onClose={() => setSheet(null)}
+        onClose={(looked) => {
+          closedHisPhone(bond.id, looked);
+          setSheet(null);
+        }}
         bond={bond}
         character={character}
-        onViewed={() => useAppStore.getState().appendBond(bond.id, [sysMsg(t('你看了 TA 的手机'))])}
+        onViewed={() => openedHisPhone(bond.id)}
       />
 
       {/* TA 的主页（D-100）：统计卡 → 三个动作图块 → 信息卡 */}

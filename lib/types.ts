@@ -296,6 +296,12 @@ export interface BondMemory {
   updatedAt: number;
 }
 
+/** TA 察觉她翻过手机（D-242）：她看了哪些（looked 见 lib/his-phone.ts lookedLabel）、什么时候说出口 */
+export interface PhoneNotice {
+  looked: string[];
+  dueAt: number;
+}
+
 /** 羁绊：领养后的独立关系实例（个体层状态机） */
 export interface Bond {
   id: string;
@@ -318,6 +324,16 @@ export interface Bond {
   phoneCode?: string;
   /** 查手机（D-082）：她已经拿到密码（聊天里 TA 答应了，或她猜对了）；之后随时能看 */
   phoneUnlocked?: boolean;
+  /** 密码是她自己猜开的（D-242）：TA 没给过，在 TA 察觉之前 TA 以为手机还锁着 */
+  phoneGuessed?: boolean;
+  /** 她上一次合上 TA 手机的时刻（D-242）：之后新写的记事本 / 新聊的 / 新拍的算「新」，桌面图块带角标 */
+  phoneSeenAt?: number;
+  /** TA 察觉到她翻过手机、还没说出口的那一次（D-242）：到点 TA 发消息，发完清掉 */
+  phoneNotice?: PhoneNotice;
+  /** TA 上一次察觉她翻手机的时刻（D-242）：24 小时内不再察觉，免得每次都被抓 */
+  phoneCaught?: number;
+  /** TA 通讯录里给她存的名字（D-242）：每到一个新的羁绊等级由 TA 重写一次；没写成用她的昵称 */
+  herContact?: { name: string; level: number };
   /** TA 的记事本（D-085）：lib/his-notes.ts 按 MBTI 频率写，最多 30 条（store HIS_NOTES_MAX） */
   notes: HisNote[];
   /** 缔结那一刻的角色快照（D-116）：设定、台词、世界都定格在这里；之后角色库里怎么改（自己改 / 创作者改）都不动这段关系。旧存档没有的按 id 取现行 */
@@ -546,6 +562,8 @@ export interface AlbumShot {
   /** 拍立得手写字 */
   caption?: string;
   placeId?: string;
+  /** 合影（D-242：高等级时 TA 拿它当手机壁纸）；旧存档没有这个字段 */
+  together?: boolean;
 }
 
 /** 对话引擎：Claude 或百度千帆（脚本引擎 mock 已删，D-069；选择走工程配置 EXPO_PUBLIC_AI_ENGINE） */
@@ -566,6 +584,8 @@ export interface EngineContext {
     | 'createdAt'
     | 'phoneCode'
     | 'phoneUnlocked'
+    | 'phoneGuessed'
+    | 'phoneCaught'
     | 'circle'
     | 'hisEvents'
     | 'notes'

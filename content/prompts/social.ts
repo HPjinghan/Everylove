@@ -10,7 +10,7 @@ import type { Bond, Character, EngineContext } from '@/lib/types';
 import { weatherLine } from '@/lib/weather';
 
 import { circleBlock } from './circle';
-import { CHAT_HARD_RULES_OF, characterProfileBlock, langName, memoryBlockFor, pursuitLine, timeOfDayLine } from './shared';
+import { CHAT_HARD_RULES_OF, characterProfileBlock, herToYouZh, langName, memoryBlockFor, pursuitLine, timeOfDayLine } from './shared';
 import { parseJsonObject } from '@/lib/json';
 
 /**
@@ -42,11 +42,11 @@ export function buildPostThreadUser(post: NonNullable<EngineContext['post']>, hi
 
 export function buildCharacterPostSystem(
   c: Character,
-  bond: Pick<Bond, 'nickname' | 'affinity' | 'memory' | 'circle'> | undefined
+  bond: Pick<Bond, 'nickname' | 'affinity' | 'createdAt' | 'legacyLevel' | 'memory' | 'circle'> | undefined
 ): string {
   const script = scriptFor(c);
   const audience = bond
-    ? `看的人里有你的恋人（你叫她「${bond.nickname}」）`
+    ? `看的人里有她（${herToYouZh(bond)}）`
     : '看的人里有你在意的人';
   return [
     `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。你正要在一个类似 X（推特）的社交应用上发一条帖子——${audience}，但这是半公开的时间线。`,
@@ -107,7 +107,7 @@ export function buildPostReactionsSystem(c: Character, authors: ReactionAuthor[]
     '【写法】',
     '- 挑其中 1–3 个人各评论一句：短、口语、像熟人随手回的（调侃、关心、接梗、约饭、吐槽都行），每人的口气要配得上他和发帖人的关系。',
     `- ${c.name} 可以回其中一条（一句，按 ${c.name} 的性格），也可以不回。`,
-    '- 不提发帖人的恋人，不写任何真实存在的人，不用 emoji、不用话题标签。',
+    '- 不提发帖人的感情生活，不写任何真实存在的人，不用 emoji、不用话题标签。',
     `- 全部用${langName()}写。`,
     '【输出格式】只输出一个 JSON 对象，不加解释、不用 markdown：',
     '{"comments":[{"by":"名单里的名字","text":"…"}],"reply":"发帖人回的一句，没有就留空字符串"}',

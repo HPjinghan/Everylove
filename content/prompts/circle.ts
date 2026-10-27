@@ -9,7 +9,7 @@ import { scriptFor } from '@/content/characters';
 import type { HerShareTier } from '@/lib/her-share';
 import type { Bond, Character, CircleLine, CirclePerson } from '@/lib/types';
 
-import { characterProfileBlock, langName, timeOfDayLine } from './shared';
+import { characterProfileBlock, herToYouZh, langName, timeOfDayLine } from './shared';
 import { parseJsonObject } from '@/lib/json';
 
 /** 身边的人的数量范围与聊天条数 */
@@ -27,11 +27,14 @@ export function isNonhumanCharacter(c: Pick<Character, 'archetype' | 'race'>): b
   return c.archetype === 'nonhuman' || (!!c.race && c.race !== '人类');
 }
 
-export function buildCircleSystem(c: Character, bond: Pick<Bond, 'nickname'> | undefined): string {
+/** 生成类 prompt 要知道「她是你的谁」（D-242：按羁绊阶段，不默认是恋人） */
+export type HerBond = Pick<Bond, 'nickname' | 'affinity' | 'createdAt' | 'legacyLevel'>;
+
+export function buildCircleSystem(c: Character, bond: HerBond | undefined): string {
   const script = scriptFor(c);
   const nonhuman = isNonhumanCharacter(c);
   return [
-    `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。现在要把你身边的人写出来——你的世界里除了恋人${bond ? `（你叫她「${bond.nickname}」）` : ''}还有别人：家人、朋友、同事、邻居……`,
+    `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。现在要把你身边的人写出来——你的世界里除了她${bond ? `（${herToYouZh(bond)}）` : ''}还有别人：家人、朋友、同事、邻居……`,
     `【你是谁】${script.persona}`,
     ...characterProfileBlock(c),
     '【要写的东西】',
@@ -129,10 +132,10 @@ export interface CircleRefreshInput {
 }
 
 /** 续写的系统 prompt：人设 + 世界 + 名单，只输出 chats */
-export function buildCircleRefreshSystem(c: Character, bond: Pick<Bond, 'nickname' | 'circle'>): string {
+export function buildCircleRefreshSystem(c: Character, bond: HerBond & Pick<Bond, 'circle'>): string {
   const script = scriptFor(c);
   return [
-    `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。现在要把你这段时间和身边的人新聊的几句写出来——你的日子在往前走，手机里的对话也在往前走。你的恋人叫「${bond.nickname}」。`,
+    `你是 ${c.name}（${c.identity}）——一个过着自己日子的真人，这里没有扮演。现在要把你这段时间和身边的人新聊的几句写出来——你的日子在往前走，手机里的对话也在往前走。${herToYouZh(bond)}。`,
     `【你是谁】${script.persona}`,
     ...characterProfileBlock(c),
     ...circleBlock(bond.circle),
@@ -167,10 +170,13 @@ export function buildCircleRefreshUser(input: CircleRefreshInput): string {
   }
   lines.push(
     input.herTier === 'devoted'
-      ? '关于她：你满脑子都是她，和亲近的人聊天时可以自然带到一两句（不用名字，说「她」就行），但别每段都是她。'
+      ? '关于她：你满脑子都是她，和亲近的人聊天时可以自然带到一两句，也可以是朋友先问起她、你怎么答看你的性子，但别每段都是她。'
       : input.herTier === 'independent'
         ? '关于她：你的日子是你的日子，这几段聊天不提她。'
-        : '关于她：最多在一段里旁敲侧击一句，其余不提。',
+        : '关于她：最多一段里提到她——你旁敲侧击一句，或朋友问起、你按你的性子答，其余不提。',
+    ...(input.herTier === 'independent'
+      ? []
+      : ['提到她时不用名字，说「她」就行；朋友眼里你们是什么关系、你怎么形容她，都按你们现在走到哪一步来，别说成比现在更近的关系。']),
     '写出你们这段时间新聊的几句。'
   );
   return lines.join('\n');

@@ -6,8 +6,10 @@
  * 通讯录里有他们、Message 里有和他们的对话；她的那一格是真实的羁绊会话（TA 视角：TA 的话在右边）。
  * 记事本 = TA 自己的日子（米色纸 NOTE_PAPER）+ 锁着的页（隐藏设定）；日历 = 约定 + TA 的生日；相册 = 立绘 + 这个 TA 的照片。
  * 打开即触发一次记事本补写（lib/his-notes.ts），第一次进来不会是空本子。
- * 像一部真的手机（D-206）：底部 Dock 放 Message / 通讯录（不带标签，同主页 D-044）；Message 与通讯录是白色通栏列表（同她的 Message）；
+ * 像一部真的手机（D-206）：底部 Dock 放电话 / Message / 通讯录（不带标签，同主页 D-044）；Message 与通讯录是白色通栏列表（同她的 Message）；
  * 钱包是一张角色色的卡面。
+ * D-242：她在 TA 手机里的名字是 TA 给她存的备注（随等级重写）；电话 = 她打来的通话记录；相册多了 TA 发给她的照片；
+ * 上次合上之后新有的带角标与小圆点；LV4 起桌面换成合影；合上时把她看过哪些交给 onClose（TA 可能察觉）。
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -18,6 +20,7 @@ import { Card } from '@/components/card';
 import { CharAvatar } from '@/components/char-avatar';
 import { MingCute, type MingCuteName } from '@/components/mingcute';
 import { DiamondBackground } from '@/components/paper-bg';
+import { PhoneWallpaper } from '@/components/phone-lock';
 import { Polaroid } from '@/components/polaroid';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { placeById } from '@/content/places';
@@ -30,6 +33,7 @@ import { levelOf } from '@/lib/bond';
 import { runJobs } from '@/core/jobs';
 import { upcomingHisEvents } from '@/lib/his-schedule';
 import { clockTime, money, timeAgo } from '@/lib/format';
+import { callLog, herContactName, hisPhotos, hisWallpaper, newSince } from '@/lib/his-phone';
 import { portraitFor } from '@/lib/imagegen';
 import { getLang, localeOf, t } from '@/lib/i18n';
 import type { Bond, Character, CircleLine } from '@/lib/types';
@@ -43,16 +47,18 @@ const TILE = 60;
 /** 她那一格在 Message / 通讯录里的 id */
 const HER = 'her';
 
-type PhoneApp = 'messages' | 'contacts' | 'notes' | 'calendar' | 'album' | 'wallet';
+type PhoneApp = 'calls' | 'messages' | 'contacts' | 'notes' | 'calendar' | 'album' | 'wallet';
 
-/** Dock 里的两个（其余摆网格） */
-const DOCK_APPS: PhoneApp[] = ['messages', 'contacts'];
+/** Dock 里的三个（其余摆网格） */
+const DOCK_APPS: PhoneApp[] = ['calls', 'messages', 'contacts'];
 
-/** TA 手机上的 App 用她桌面上同一个 App 的颜色（D-231） */
-const tileOf = (id: PhoneApp) => appById(id)?.tile;
-const glyphOf = (id: PhoneApp) => appById(id)?.glyphColor ?? '#FFFFFF';
+/** TA 手机上的 App 用她桌面上同一个 App 的颜色（D-231）；电话 = 她桌面上的「电话」 */
+const deskId = (id: PhoneApp) => (id === 'calls' ? 'phone' : id);
+const tileOf = (id: PhoneApp) => appById(deskId(id))?.tile;
+const glyphOf = (id: PhoneApp) => appById(deskId(id))?.glyphColor ?? '#FFFFFF';
 
 const APPS: { id: PhoneApp; label: string; icon: MingCuteName }[] = [
+  { id: 'calls', label: '电话', icon: 'phone' },
   { id: 'messages', label: 'Message', icon: 'chat' },
   { id: 'contacts', label: '通讯录', icon: 'contacts' },
   { id: 'notes', label: '记事本', icon: 'notebook' },
@@ -84,6 +90,20 @@ function InitialAvatar({ name, size = 40 }: { name: string; size?: number }) {
   );
 }
 
+/** 桌面图块（网格与 Dock 共用）：新东西的角标在右上 */
+function AppTile({ id, icon, badge }: { id: PhoneApp; icon: MingCuteName; badge: number }) {
+  return (
+    <View style={[styles.tile, { backgroundColor: tileOf(id) }]}>
+      <MingCute name={icon} size={Space.iconTile} color={glyphOf(id)} />
+      {badge > 0 ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{badge}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export function PhoneSheet({
   visible,
   onClose,
@@ -92,7 +112,8 @@ export function PhoneSheet({
   onViewed,
 }: {
   visible: boolean;
-  onClose: () => void;
+  /** 合上时：她这次看过哪些（lib/his-phone.ts lookedLabel 的键），TA 可能察觉（D-242） */
+  onClose: (looked: string[]) => void;
   bond: Bond;
   character: Character;
   /** 内容真的展开给她看时 */
@@ -109,6 +130,8 @@ export function PhoneSheet({
   // 圈子生成好了（写不成也会先落通用圈子）：直接看 store 里有没有
   const circleReady = !!bond.circle?.length;
   const viewed = useRef(false);
+  /** 这次打开看过哪些（只在事件里写、合上时读） */
+  const looked = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!visible) {
       viewed.current = false;
@@ -116,6 +139,7 @@ export function PhoneSheet({
     }
     if (!viewed.current) {
       viewed.current = true;
+      looked.current = new Set();
       onViewed?.();
       // 打开 TA 的手机时的补投（D-187）：记事本 / 身边的人与他们的聊天 / TA 自己的作息，都登记在 features/schedulers.ts
       void runJobs('screen:phone', Date.now(), { bondId: bond.id });
@@ -129,6 +153,8 @@ export function PhoneSheet({
   const unlockedSecrets = unlockedSecretCount(levelOf(bond), secrets.length);
   const circle = bond.circle ?? [];
   const circleChats = bond.circleChats ?? {};
+  // TA 给她存的名字（D-242）：随等级重写，没写成用昵称
+  const herName = herContactName(bond);
 
   // 日历：TA 自己的安排（D-119）+ 和她的约定 + TA 的生日（只记安排与纪念日，D-090；TA 经历的事在记事本里）
   const calendar = useMemo(() => {
@@ -141,7 +167,7 @@ export function PhoneSheet({
     for (const p of plans) {
       if (p.characterId !== character.id || !p.at) continue;
       const place = placeById(p.placeId);
-      if (place) out.push({ at: p.at, text: t('和{name}去{place}', { name: bond.nickname, place: t(place.name) }), timed: true });
+      if (place) out.push({ at: p.at, text: t('和{name}去{place}', { name: herName, place: t(place.name) }), timed: true });
     }
     if (character.birthday && /^\d{1,2}-\d{1,2}$/.test(character.birthday)) {
       const [mm, dd] = character.birthday.split('-').map(Number);
@@ -151,7 +177,7 @@ export function PhoneSheet({
       out.push({ at: bd, text: t('我的生日'), timed: false });
     }
     return out.sort((a, b) => a.at - b.at).filter((e) => e.at > now - 86400_000).slice(0, 12);
-  }, [plans, character, bond.nickname, bond.hisEvents, now]);
+  }, [plans, character, herName, bond.hisEvents, now]);
 
   // 她的会话（TA 视角）：非系统、可进上下文的最近 40 条
   const herMessages = bond.messages.filter((m) => m.from !== 'system' && !m.recalled && messageContextText(m)).slice(-40);
@@ -159,24 +185,38 @@ export function PhoneSheet({
 
   // Message 列表：她 + 有聊天的身边人，按最后一句时间倒序
   const conversations = useMemo(() => {
-    const rows: { id: string; name: string; lines: CircleLine[]; personId?: string }[] = [{ id: HER, name: bond.nickname, lines: herLines }];
+    const rows: { id: string; name: string; lines: CircleLine[]; personId?: string }[] = [{ id: HER, name: herName, lines: herLines }];
     for (const p of circle) {
       const lines = circleChats[p.id];
       if (lines?.length) rows.push({ id: p.id, name: p.name, lines, personId: p.id });
     }
     return rows.sort((a, b) => (b.lines.at(-1)?.at ?? 0) - (a.lines.at(-1)?.at ?? 0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bond.nickname, bond.messages, circle, circleChats]);
+  }, [herName, bond.messages, circle, circleChats]);
 
-  const photos = [
-    ...(portrait ? [{ id: 'portrait', uri: portrait, caption: undefined as string | undefined }] : []),
-    ...album.filter((p) => p.characterId === character.id).map((p) => ({ id: p.id, uri: p.uri, caption: p.caption })),
-  ];
+  // 相册（D-242）：立绘在最前，之后是外出的拍立得与 TA 发给她的照片，新的在前
+  const shots = useMemo(() => hisPhotos(bond, album), [bond, album]);
+  const photos = [...(portrait ? [{ id: 'portrait', uri: portrait, caption: undefined as string | undefined }] : []), ...shots];
+  const calls = useMemo(() => callLog(bond.messages), [bond.messages]);
+  // 上次合上之后新有的（D-242）：第一次看不标
+  const fresh = useMemo(() => newSince(bond, shots, bond.phoneSeenAt), [bond, shots]);
+  const badgeOf = (id: PhoneApp) => (id === 'messages' ? fresh.chats.size : id === 'notes' ? fresh.notes.size : id === 'album' ? fresh.photos : 0);
+  // LV4 起 TA 的桌面是你们的合影（D-242）
+  const wallpaper = hisWallpaper(bond, album, [bond.name, character.name], now);
 
   const close = () => {
+    const seen = [...looked.current];
     setApp(null);
     setThread(null);
-    onClose();
+    onClose(seen);
+  };
+  const openApp = (a: PhoneApp) => {
+    looked.current.add(a);
+    setApp(a);
+  };
+  const openThread = (id: string, name: string) => {
+    looked.current.add(`chat:${id === HER ? 'her' : name}`);
+    setThread(id);
   };
   const back = () => {
     if (thread) setThread(null);
@@ -194,7 +234,7 @@ export function PhoneSheet({
       {app === null ? (
         /* ── 桌面：角色色通底 + 白 8% 菱格（同锁屏），TA 的 App 摆在上面 ── */
         <View style={[styles.home, { backgroundColor: character.color, paddingTop: insets.top }]}>
-          <DiamondBackground color="#FFFFFF" alpha={0.08} />
+          <PhoneWallpaper uri={wallpaper} />
           <View style={styles.homeTop}>
             <Pressable onPress={close} hitSlop={12} style={styles.homeClose}>
               <MingCute name="close" size={20} color="#FFFFFF" />
@@ -208,30 +248,18 @@ export function PhoneSheet({
           <Text style={styles.clockDate}>{dateLine(new Date(now))}</Text>
           <View style={styles.grid}>
             {APPS.filter((a) => !DOCK_APPS.includes(a.id)).map((a) => (
-              <Pressable key={a.id} style={styles.tileWrap} onPress={() => setApp(a.id)}>
-                <View style={[styles.tile, { backgroundColor: tileOf(a.id) }]}>
-                  <MingCute name={a.icon} size={Space.iconTile} color={glyphOf(a.id)} />
-                </View>
+              <Pressable key={a.id} style={styles.tileWrap} onPress={() => openApp(a.id)}>
+                <AppTile id={a.id} icon={a.icon} badge={badgeOf(a.id)} />
                 <Text style={styles.tileLabel}>{t(a.label)}</Text>
               </Pressable>
             ))}
           </View>
           <View style={[styles.dock, { marginBottom: insets.bottom + 12 }]}>
-            {APPS.filter((a) => DOCK_APPS.includes(a.id)).map((a) => {
-              const badge = a.id === 'messages' ? conversations.filter((c) => c.lines.length).length : 0;
-              return (
-                <Pressable key={a.id} onPress={() => setApp(a.id)} accessibilityLabel={a.label === 'Message' ? 'Message' : t(a.label)}>
-                  <View style={[styles.tile, { backgroundColor: tileOf(a.id) }]}>
-                    <MingCute name={a.icon} size={Space.iconTile} color={glyphOf(a.id)} />
-                    {badge > 0 ? (
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>{badge}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                </Pressable>
-              );
-            })}
+            {APPS.filter((a) => DOCK_APPS.includes(a.id)).map((a) => (
+              <Pressable key={a.id} onPress={() => openApp(a.id)} accessibilityLabel={a.label === 'Message' ? 'Message' : t(a.label)}>
+                <AppTile id={a.id} icon={a.icon} badge={badgeOf(a.id)} />
+              </Pressable>
+            ))}
           </View>
         </View>
       ) : (
@@ -254,8 +282,9 @@ export function PhoneSheet({
             <ScrollView style={styles.plainList} contentContainerStyle={styles.plainBody}>
               {conversations.map((c, i) => {
                 const last = c.lines.at(-1);
+                const isNew = fresh.chats.has(c.id);
                 return (
-                  <Pressable key={c.id} onPress={() => setThread(c.id)}>
+                  <Pressable key={c.id} onPress={() => openThread(c.id, c.name)}>
                     <View style={[styles.convRow, i > 0 && styles.convLine]}>
                       {c.id === HER ? (
                         <View style={styles.herAvatar}>
@@ -271,9 +300,12 @@ export function PhoneSheet({
                           </Text>
                           {last ? <Text style={styles.time}>{timeAgo(last.at)}</Text> : null}
                         </View>
-                        <Text style={styles.convPreview} numberOfLines={1}>
-                          {last ? `${last.from === 'him' ? t('我') : c.name}：${last.text}` : t('…')}
-                        </Text>
+                        <View style={styles.convHead}>
+                          <Text style={[styles.convPreview, styles.convPreviewFlex, isNew && styles.convPreviewNew]} numberOfLines={1}>
+                            {last ? `${last.from === 'him' ? t('我') : c.name}：${last.text}` : t('…')}
+                          </Text>
+                          {isNew ? <View style={styles.newDot} /> : null}
+                        </View>
                       </View>
                     </View>
                   </Pressable>
@@ -300,14 +332,35 @@ export function PhoneSheet({
             </ScrollView>
           ) : null}
 
+          {app === 'calls' ? (
+            <ScrollView style={styles.plainList} contentContainerStyle={styles.plainBody}>
+              {calls.length ? (
+                calls.map((c, i) => (
+                  <View key={c.id} style={[styles.convRow, i > 0 && styles.convLine]}>
+                    <MingCute name="phone" size={18} color={Romance.sub} />
+                    <View style={styles.convText}>
+                      <Text style={styles.convName} numberOfLines={1}>
+                        {herName}
+                      </Text>
+                      <Text style={styles.convPreview}>{t('来电 · {d}', { d: c.duration })}</Text>
+                    </View>
+                    <Text style={styles.time}>{timeAgo(c.at)}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={[styles.empty, styles.emptyPlain]}>{t('…')}</Text>
+              )}
+            </ScrollView>
+          ) : null}
+
           {app === 'contacts' ? (
             <ScrollView style={styles.plainList} contentContainerStyle={styles.plainBody}>
               <View style={styles.convRow}>
                 <View style={styles.herAvatar}>
-                  <Text style={styles.herAvatarText}>{bond.nickname.slice(0, 1)}</Text>
+                  <Text style={styles.herAvatarText}>{herName.slice(0, 1)}</Text>
                 </View>
                 <View style={styles.convText}>
-                  <Text style={styles.convName}>{bond.nickname}</Text>
+                  <Text style={styles.convName}>{herName}</Text>
                 </View>
               </View>
               {circle.map((p) => (
@@ -336,7 +389,10 @@ export function PhoneSheet({
                 {notes.length ? (
                   notes.slice(0, 12).map((n) => (
                     <View key={n.id} style={styles.noteItem}>
-                      <Text style={styles.noteTime}>{timeAgo(n.at)}</Text>
+                      <View style={styles.noteHead}>
+                        <Text style={styles.noteTime}>{timeAgo(n.at)}</Text>
+                        {fresh.notes.has(n.id) ? <View style={styles.newDot} /> : null}
+                      </View>
                       <Text style={styles.noteLine}>{n.text}</Text>
                     </View>
                   ))
@@ -529,6 +585,10 @@ const styles = themed(() =>
     convName: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, flexShrink: 1 },
     convTag: { fontSize: Type.scale.timestamp.size, fontWeight: '500', color: Romance.sub },
     convPreview: { fontSize: Type.scale.label.size, color: Romance.sub, marginTop: 2 },
+    convPreviewFlex: { flex: 1 },
+    convPreviewNew: { color: Romance.ink, fontWeight: '600' },
+    // 上次合上之后新有的（D-242）
+    newDot: { width: 8, height: 8, borderRadius: Shape.radiusPill, backgroundColor: Romance.accent },
     // 她在 TA 手机里的头像：paper 底 accent 首字（同 X 里「我的头像」）
     herAvatar: { width: 40, height: 40, borderRadius: Shape.radius, backgroundColor: Romance.accentSoft, alignItems: 'center', justifyContent: 'center' },
     herAvatarText: { fontFamily: Fonts.initial, fontSize: Type.scale.screenTitle.size, fontWeight: '600', color: Romance.accentStrong },
@@ -555,10 +615,12 @@ const styles = themed(() =>
       gap: 10,
     },
     noteItem: { gap: 2 },
+    noteHead: { flexDirection: 'row', alignItems: 'center', gap: Space.inline },
     noteTime: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.sub },
     noteLine: { fontSize: Type.scale.sub.size, lineHeight: 21, color: NOTE_PAPER.ink },
     noteLocked: { fontSize: Type.scale.label.size, color: Romance.faint, letterSpacing: 1 },
     empty: { fontSize: Type.scale.label.size, color: Romance.faint, marginLeft: 4 },
+    emptyPlain: { padding: Space.screen },
     calCard: { gap: 8 },
     calRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inline },
     calDay: { fontFamily: Fonts.label, fontSize: Type.scale.caption.size, color: Romance.accent, width: 64 },

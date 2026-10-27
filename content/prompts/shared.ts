@@ -5,10 +5,10 @@
 
 import { loveStyleByLabel, scriptFor } from '@/content/characters';
 import { cardContextText } from '@/core/cards';
-import { LEVEL_NAMES, levelInfoFor } from '@/lib/bond';
+import { LEVEL_NAMES, levelInfoFor, levelOf, type LevelSubject } from '@/lib/bond';
 import { daysTogether } from '@/lib/format';
 import { getLang, type Lang } from '@/lib/i18n';
-import type { BondMemory, Character, ChatMessage, EngineContext, UserProfile } from '@/lib/types';
+import type { Bond, BondMemory, Character, ChatMessage, EngineContext, UserProfile } from '@/lib/types';
 
 /**
  * 一条消息进入模型上下文时用的文字：
@@ -336,6 +336,17 @@ export const BONDED_STAGE_NOTES: string[] = [
   "Inseparable: her business is your business; your tone is sure and relaxed; you dare show her your vulnerable side and you can hold hers.",
   "She is the one exception: certain, no testing needed, you naturally put her into your \"later\".",
 ];
+
+/**
+ * 生成任务类 prompt 里「她是你的谁」（D-242，中文）：缔结不等于恋人——刚认识就只是刚交换了联系方式的人，
+ * 按羁绊阶段往近处走；发帖 / 身边的人 / 日程 / 给她的备注名共用。下标 = LV − 1。
+ */
+const HER_TO_YOU_ZH = ['刚交换联系方式、还在互相了解的人', '最近常聊、有点在意的人', '常常想起的人', '放在心上的人', '离不开的人', '你认定的那个人'];
+
+export function herToYouZh(bond: LevelSubject & Pick<Bond, 'nickname'>, now = Date.now()): string {
+  const level = levelOf(bond, now);
+  return `她是${HER_TO_YOU_ZH[Math.min(Math.max(level, 1), HER_TO_YOU_ZH.length) - 1]}，你叫她「${bond.nickname}」`;
+}
 
 /** 阶段感（按羁绊等级） */
 export function stageLine(ctx: EngineContext, now: Date): string {
