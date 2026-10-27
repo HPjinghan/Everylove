@@ -35,8 +35,10 @@ export function messageContextText(m: ChatMessage): string {
   }
   // 外出（D-254）：旁白、纸条、多人场里谁说的——照写回去时的样子进上下文
   if (m.speaker === 'narrator') return `${NARRATOR_TOKEN}：${body}`;
-  if (m.note) return m.from === 'me' ? `(She passes a note: "${body}")` : `${m.speakerName ?? ''}${m.speakerName ? `（${NOTE_TOKEN}）` : NOTE_TOKEN}：${body}`;
+  if (m.note) return m.from === 'me' ? `(She passes a note${m.toName ? ` to ${m.toName}` : ''}: "${body}")` : `${m.speakerName ?? ''}${m.speakerName ? `（${NOTE_TOKEN}）` : NOTE_TOKEN}：${body}`;
   if (m.from === 'him' && m.speakerName) return `${m.speakerName}：${body}`;
+  // 多人场里她对某一位说的（D-255）
+  if (m.from === 'me' && m.toName) return `(to ${m.toName}) ${body}`;
   return body;
 }
 

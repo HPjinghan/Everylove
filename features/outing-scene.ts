@@ -6,6 +6,7 @@
  */
 
 import { scriptFor } from '@/content/characters';
+import { messageContextText } from '@/content/prompts';
 import { placeById } from '@/content/places';
 import { modeOf } from '@/core/modes';
 import { respond, turnHooks, wait, type TurnUi } from '@/core/turn';
@@ -20,14 +21,22 @@ import { findCharacter, useAppStore } from '@/store/app-store';
 export const STRIKES_OUT = 3;
 
 /** 递一张纸条：落一条她的纸条，在场的人按这一场的规矩回（多人场 / 一人场同一条管线） */
-export async function sendNote(text: string, ui?: TurnUi): Promise<void> {
+export async function sendNote(text: string, ui?: TurnUi, to?: { id: string; name: string }): Promise<void> {
   const session = useAppStore.getState().outingSession;
   const body = text.trim();
   if (!session || session.ended || !body) return;
   const scope = sessionScope(session);
   const mode = modeOf(scope);
-  const msg: ChatMessage = { id: uid('m'), from: 'me', kind: 'text', text: body, note: true, at: Date.now() };
-  const contextText = `(She passes a note: "${body}")`;
+  const msg: ChatMessage = {
+    id: uid('m'),
+    from: 'me',
+    kind: 'text',
+    text: body,
+    note: true,
+    at: Date.now(),
+    ...(to ? { toId: to.id, toName: to.name } : {}),
+  };
+  const contextText = messageContextText(msg);
   mode.append(scope, [msg]);
   mode.creditUserTurn(scope, contextText, 'text');
   await respond(scope, contextText, ui, { her: true, msgId: msg.id });

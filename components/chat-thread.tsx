@@ -394,6 +394,10 @@ const Bubble = memo(function Bubble({
         ]}>
         {/* 多人场：气泡上方一行名字（D-254） */}
         {!mine && msg.speaker ? <Text style={styles.speakerName}>{name}</Text> : null}
+        {/* 她对某一位说的（D-255）：气泡里先一行「@名字」 */}
+        {mine && msg.toId && speakers?.[msg.toId] ? (
+          <Text style={[styles.speakerName, styles.quoteTextLight]}>@{speakers[msg.toId].name}</Text>
+        ) : null}
         {msg.replyTo ? (
           <View style={[styles.quote, !textDark && styles.quoteLight]}>
             <Text style={[styles.quoteName, !textDark && styles.quoteTextLight]}>

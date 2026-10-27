@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import '@/features';
 
-import { buildChatSystemPrompt, placeRuleLines } from '@/content/prompts';
+import { buildChatSystemPrompt, messageContextText, placeRuleLines } from '@/content/prompts';
 import { PLACES, placeById } from '@/content/places';
 import { speakerSegments } from '@/lib/engine';
 import { spokeAloud, toSceneMessage } from '@/lib/outing';
@@ -35,6 +35,14 @@ describe('按说话人分行', () => {
     expect(solo.speaker).toBeUndefined();
     expect(toSceneMessage(him('江野（纸条）：笨蛋'), names)).toMatchObject({ speaker: 'b', speakerName: '江野', note: true, text: '笨蛋' });
     expect(toSceneMessage(him('等一下：你看'), names).text).toBe('等一下：你看');
+  });
+
+  it('多人场里她对某一位说的话 / 纸条带上对象（D-255）', () => {
+    const her = (extra: Partial<ChatMessage>): ChatMessage => ({ id: 'h', from: 'me', kind: 'text', text: '你也来啦', at: 0, ...extra });
+    expect(messageContextText(her({}))).toBe('你也来啦');
+    expect(messageContextText(her({ toId: 'b', toName: '江野' }))).toBe('(to 江野) 你也来啦');
+    expect(messageContextText(her({ toId: 'b', toName: '江野', note: true }))).toBe('(She passes a note to 江野: "你也来啦")');
+    expect(spokeAloud(messageContextText(her({ toId: 'b', toName: '江野', note: true })))).toBe(false);
   });
 
   it('安静的地方：只有括号里的动作不算出声', () => {

@@ -4,6 +4,7 @@
  *   两人场（咖啡馆 / 书店 / 海边 / 天台 / 便利店）有几位在就先选坐到谁旁边——不认识的人只看得到样子，写「陌生人」；
  *   多人场（广场 / 公园 / 游乐园 / 夜市 / 水族馆）与安静的地方（自习室）、电影院：在场的都在，一次最多三个人。
  * - 输入框左边「（ ）」插一对括号写动作；安静的地方与电影院多一个「纸条」键；输入框上方是这个地方的现成动作。
+ * - 多人场里输入框上方第一颗是「@对谁说」（D-255）：点开从底下拉出在场的人，选了这一位，她说的话 / 纸条带上对象，气泡里写「@名字」。
  * - 安静的地方出声三次被请出去：输入框关上，只能离开。多人场里好奇满了的陌生人当场开口要联系方式。
  * - 一人场照旧能拍照（合影 / 拍 TA）；开场 TA 先开口（模型，失败回落模板）；多人场由主持人开场。
  * - 结束外出留记录、现场对话并进在场每位 TA 的记忆（D-079）；没点结束就离开，一小时内回来还在。
@@ -15,7 +16,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { showAlert } from '@/components/action-sheet';
+import { ActionSheet, showAlert } from '@/components/action-sheet';
 import { alertAiUnavailable } from '@/components/ai-unavailable';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -90,6 +91,9 @@ export default function OutingSceneScreen() {
   const flash = useSharedValue(0);
   const flashStyle = useAnimatedStyle(() => ({ opacity: flash.get() }));
   const [sheetId, setSheetId] = useState<string | null>(null);
+  // 多人场里对谁说（D-255）：null = 对大家
+  const [toId, setToId] = useState<string | null>(null);
+  const [pickingTo, setPickingTo] = useState(false);
   const booted = useRef(false);
 
   const active = session && session.placeId === placeId ? session : null;
@@ -176,16 +180,19 @@ export default function OutingSceneScreen() {
 
   if (!active || !character) return null;
 
-  const scope = sessionScope(active);
-  // 回合走底座管线（D-086）：XP / 陌生人好奇记账、现场描写不剥、旁白与纸条按说话人分条都在模式与钩子里
-  const onSend = (text: string) => void sendText(scope, text, { ui: { typing: setTyping } });
-  const onResend = (m: { id: string }) => void resendTurn(scope, m.id, { typing: setTyping });
-  const onSendNote = place.rule === 'quiet' || place.rule === 'cinema' ? (text: string) => void sendNote(text, { typing: setTyping }) : undefined;
-
   const nameOf = (cid: string) => {
     const b = bonds.find((x) => x.characterId === cid);
     return b?.name ?? (b ? '' : t('陌生人'));
   };
+  // 对某一位说（D-255）：模型认得的名字是真名（陌生人在界面上才写「陌生人」）
+  const target = group && toId && cast.includes(toId) ? toId : null;
+  const to = target ? { id: target, name: bonds.find((x) => x.characterId === target)?.name ?? findCharacter(target)?.name ?? '' } : undefined;
+
+  const scope = sessionScope(active);
+  // 回合走底座管线（D-086）：XP / 陌生人好奇记账、现场描写不剥、旁白与纸条按说话人分条都在模式与钩子里
+  const onSend = (text: string) => void sendText(scope, text, { ui: { typing: setTyping }, to });
+  const onResend = (m: { id: string }) => void resendTurn(scope, m.id, { typing: setTyping });
+  const onSendNote = place.rule === 'quiet' || place.rule === 'cinema' ? (text: string) => void sendNote(text, { typing: setTyping }, to) : undefined;
   const name = bond?.name ?? character.name;
   // 多人场的说话人：认识的写名字，不认识的写「陌生人」
   const speakers: Speakers = Object.fromEntries(
@@ -244,6 +251,31 @@ export default function OutingSceneScreen() {
         onSubtitlePress={group ? undefined : () => setSheetId(character.id)}
       />
       <CharacterSheet characterId={sheetId} visible={!!sheetId} onClose={() => setSheetId(null)} />
+      {group ? (
+        <ActionSheet
+          visible={pickingTo}
+          title={t('对谁说')}
+          onClose={() => setPickingTo(false)}
+          actions={[
+            {
+              label: t('大家'),
+              selected: !target,
+              leading: (
+                <View style={styles.everyone}>
+                  <IconSymbol name="person.2.fill" size={16} color={Romance.sub} />
+                </View>
+              ),
+              onPress: () => setToId(null),
+            },
+            ...cast.map((cid) => ({
+              label: nameOf(cid),
+              selected: target === cid,
+              leading: <CharAvatar name={nameOf(cid)} color={findCharacter(cid)?.color ?? Romance.accent} size={32} characterId={cid} />,
+              onPress: () => setToId(cid),
+            })),
+          ]}
+        />
+      ) : null}
       <ChatThread
         messages={active.messages}
         color={character.color}
@@ -259,7 +291,7 @@ export default function OutingSceneScreen() {
         actionBrackets
         prefill={prefill}
         inputDisabled={!!active.ended}
-        placeholder={active.ended ? t('该走了') : t('说点什么…')}
+        placeholder={active.ended ? t('该走了') : target ? t('对{name}说…', { name: nameOf(target) }) : t('说点什么…')}
         cta={
           <View>
             {offers.map((cid) => (
@@ -277,8 +309,17 @@ export default function OutingSceneScreen() {
                 <DevelopingPolaroid width={150} lines={DEVELOP_LINES.map((l) => t(l))} tiltKey={place.id} />
               </View>
             ) : null}
-            {!active.ended && place.actions.length ? (
+            {!active.ended && (group || place.actions.length) ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionRow}>
+                {/* 多人场：对谁说（D-255），点开从底下拉出在场的人 */}
+                {group ? (
+                  <Pressable style={[styles.actionChip, styles.toChip]} onPress={() => setPickingTo(true)}>
+                    <Text style={styles.toChipText} numberOfLines={1}>
+                      @{target ? nameOf(target) : t('大家')}
+                    </Text>
+                    <IconSymbol name="chevron.up" size={11} color={Romance.accent} />
+                  </Pressable>
+                ) : null}
                 {place.actions.map((a) => (
                   <Pressable key={a} style={styles.actionChip} onPress={() => setPrefill({ text: `（${t(a)}）`, nonce: Date.now() })}>
                     <Text style={styles.actionChipText}>{t(a)}</Text>
@@ -420,6 +461,9 @@ const styles = themed(() =>
       paddingVertical: 6,
     },
     actionChipText: { fontSize: Type.scale.caption.size, color: Romance.ink },
+    toChip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderColor: Romance.accent },
+    toChipText: { fontSize: Type.scale.caption.size, fontWeight: '600', color: Romance.accent },
+    everyone: { width: 32, height: 32, borderRadius: Shape.radius, backgroundColor: Romance.bg, alignItems: 'center', justifyContent: 'center' },
     shootRow: { flexDirection: 'row', gap: Space.inlineLoose, paddingHorizontal: Space.screen, paddingBottom: 8 },
     shootBtn: { flex: 1, paddingVertical: 11 },
     offerCard: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose, marginHorizontal: Space.screen, marginBottom: 8 },

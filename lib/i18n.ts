@@ -1054,6 +1054,9 @@ const en: Record<string, string> = {
   '这里有 {n} 个人': '{n} people here',
   '陌生人': 'Stranger',
   '陌生人 · 好奇 {h}/{f}': 'Stranger · Curious {h}/{f}',
+  '对谁说': 'Talk to',
+  '大家': 'everyone',
+  '对{name}说…': 'Say to {name}…',
   // __EN_END__
 };
 
@@ -2075,6 +2078,9 @@ const ja: Record<string, string> = {
   '这里有 {n} 个人': '{n}人いる',
   '陌生人': '知らない人',
   '陌生人 · 好奇 {h}/{f}': '知らない人 · 興味 {h}/{f}',
+  '对谁说': '誰に話す？',
+  '大家': 'みんな',
+  '对{name}说…': '{name}に話しかける…',
   // __JA_END__
 };
 
@@ -3080,6 +3086,9 @@ const ko: Record<string, string> = {
   '这里有 {n} 个人': '{n}명 있어요',
   '陌生人': '낯선 사람',
   '陌生人 · 好奇 {h}/{f}': '낯선 사람 · 호기심 {h}/{f}',
+  '对谁说': '누구에게',
+  '大家': '모두',
+  '对{name}说…': '{name}에게 말하기…',
   // __KO_END__
 };
 

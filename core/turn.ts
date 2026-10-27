@@ -306,14 +306,15 @@ export async function applyMarkers(
 export async function sendText(
   scope: TurnScope,
   text: string,
-  opts: { replyTo?: ChatMessage['replyTo']; ui?: TurnUi } = {}
+  opts: { replyTo?: ChatMessage['replyTo']; ui?: TurnUi; to?: { id: string; name: string } } = {}
 ): Promise<TurnResult> {
   if (gateBlocked(scope)) return { reply: null };
   const mode = modeOf(scope);
-  const msg = meMsg(text, { replyTo: opts.replyTo });
+  const msg = meMsg(text, { replyTo: opts.replyTo, ...(opts.to ? { toId: opts.to.id, toName: opts.to.name } : {}) });
   mode.append(scope, [msg]);
   mode.creditUserTurn(scope, text, 'text');
-  return runTurn(scope, text, opts.ui, { her: true, msgId: msg.id });
+  // 对某一位说的（D-255）：这一轮送进去的话带上对象
+  return runTurn(scope, opts.to ? messageContextText(msg) : text, opts.ui, { her: true, msgId: msg.id });
 }
 
 /** 重发（D-169）：TA 没回上的那条，她点一下再让 TA 回——不再落会话、不再记账 */

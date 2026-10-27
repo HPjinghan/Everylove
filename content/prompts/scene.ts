@@ -1,6 +1,7 @@
 /**
  * 外出多人场（D-254）：一个地方、几个人、她在其中——像跑团的主持人：一次写出旁白与在场每个人这一轮的反应。
- * 每个人有自己的性子和与她的距离（认识的按羁绊阶段，不认识的是陌生人的分寸）；谁接话自然轮到谁，不是每人每轮都说。
+ * 每个人有自己的性子和与她的距离（认识的按羁绊阶段，不认识的是陌生人的分寸）；谁接话自然轮到谁，不是每人每轮都说（D-255：
+ * 多数时候一两个人，有人只有一个动作、有人没反应；她点名对谁说时就是那一位接，别人多半不插话）。
  * 地点的规矩（安静 / 电影院）与一人场同一段（outing.ts placeRuleLines）。陌生人的好奇照样判分：每人一行 [好奇 名字 n]。
  */
 
@@ -33,7 +34,8 @@ export function sceneCastLines(cast: SceneMember[] | undefined): string[] {
 
 export const SCENE_MANNER = [
   '[How to run the scene]',
-  "- Each turn, one to three of them react — whoever it naturally falls to, not everyone every time. Each speaks in their own voice and at their own distance from her; people who know her by how close they are, strangers as strangers.",
+  "- Don't go round the table. Most turns only one or two people react; someone may just do something — \"Name：（glances up）\" — and the rest don't react at all. Each in their own voice and at their own distance from her; strangers as strangers.",
+  '- "(to Name)" means she is talking to that person: that person answers; the others mostly leave them to it, at most a small action.',
   "- They can talk to each other too, but the moment is about her: nobody competes for her, nobody gets jealous out loud, nobody comments on any real person she mentions.",
   `- One short (action) in parentheses per line at most. Add one ${NARRATOR_TOKEN}： line only when the place, the weather or staff add something.`,
   '- Never write her lines, never decide what she does next.',
@@ -43,7 +45,7 @@ export function sceneHeartLines(cast: SceneMember[] | undefined): string[] {
   const strangers = (cast ?? []).filter((m) => !m.knows);
   if (!strangers.length) return [];
   return [
-    `[How curious she made each stranger] After the scene lines, for each stranger she interacted with this turn, one line "[好奇 Name n]" (she can't see it): 15–30, how much this turn made him want to know her more (15–20 ordinary, 21–26 a piece of her life or a laugh, 27–30 rare).`,
+    `[How curious she made each stranger] After the scene lines, for each stranger she interacted with this turn, one line "[好奇 Name n]" (she can't see it): 15–30, how much this turn made them want to know her more (15–20 ordinary, 21–26 a piece of her life or a laugh, 27–30 rare).`,
   ];
 }
 
@@ -51,7 +53,7 @@ export const SCENE_OUTPUT_FORMAT = [
   '[Output format]',
   `- One line per speaker: "Name：what they say (short action)". The narrator: "${NARRATOR_TOKEN}：…". A note someone writes: "Name（${NOTE_TOKEN}）：…".`,
   '- Use the names exactly as listed. No markdown, no emoji, no explanations.',
-  '- Keep it short: two to four lines in all, spoken and concrete.',
+  '- Keep it short: one to three lines in all, spoken and concrete.',
 ];
 
 /** 多人场开场（舞台提示，不入会话）：先一行旁白交代此刻，再有一两个人注意到她 */

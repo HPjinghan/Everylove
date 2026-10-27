@@ -260,6 +260,9 @@ export interface ChatMessage {
   note?: boolean;
   /** 说话人的名字（D-254，进模型上下文时做前缀用） */
   speakerName?: string;
+  /** 多人场里她这句是对谁说的（D-255）：角色 id（界面标「@名字」）与模型认得的名字；不写 = 对大家 */
+  toId?: string;
+  toName?: string;
 }
 
 /** 广场搭话记录：不入消息 tab，会过期（免费层商业承重墙） */

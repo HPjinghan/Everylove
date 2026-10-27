@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { Card, Divider } from '@/components/card';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Space, Type } from '@/constants/design';
 import { Romance, themed, withAlpha } from '@/constants/theme';
 import { t } from '@/lib/i18n';
@@ -24,6 +25,10 @@ export interface SheetAction {
   label: string;
   onPress: () => void;
   destructive?: boolean;
+  /** 行首的小东西（头像），有它这一行就靠左排（D-255 对谁说） */
+  leading?: ReactNode;
+  /** 当前选中的那一行：行尾打勾 */
+  selected?: boolean;
 }
 
 function Overlay({ children, onClose }: { children: ReactNode; onClose: () => void }) {
@@ -87,8 +92,10 @@ export function ActionSheet({
                   a.onPress();
                 }}
                 accessibilityRole="button"
-                style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-                <Text style={[styles.rowText, a.destructive && styles.rowDanger]}>{a.label}</Text>
+                style={({ pressed }) => [styles.row, a.leading ? styles.rowLeading : null, pressed && styles.rowPressed]}>
+                {a.leading}
+                <Text style={[styles.rowText, a.leading ? styles.rowTextLeading : null, a.destructive && styles.rowDanger]}>{a.label}</Text>
+                {a.selected ? <IconSymbol name="checkmark" size={16} color={Romance.accent} /> : null}
               </Pressable>
             </View>
           ))}
@@ -272,6 +279,8 @@ const styles = themed(() =>
     title: { fontSize: Type.scale.label.size, lineHeight: 18, color: Romance.sub },
     headBody: { marginTop: 0 },
     row: { paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center' },
+    rowLeading: { flexDirection: 'row', gap: 12, paddingVertical: 10 },
+    rowTextLeading: { flex: 1 },
     rowPressed: { backgroundColor: Romance.bg },
     rowText: { fontSize: Type.scale.body.size, fontWeight: '500', color: Romance.ink },
     rowDanger: { color: Romance.danger },

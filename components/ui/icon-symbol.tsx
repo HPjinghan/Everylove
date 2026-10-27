@@ -19,6 +19,9 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  checkmark: 'check',
+  'person.2.fill': 'group',
+  'chevron.up': 'expand-less',
   // 网页预览用（App 只跑 iOS，走 SF Symbols）
   'chevron.left': 'chevron-left',
   'arrow.up': 'arrow-upward',
