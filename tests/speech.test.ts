@@ -102,9 +102,8 @@ describe('多语种声线（D-241）', () => {
   });
 });
 
-// 音色池等 ElevenLabs 官方声线人工定好再填（D-241）；填之前这两条跳过
-describe.skipIf(VOICES.length === 0)('音色池内容（D-230 / D-241）', () => {
-  it('每门语言 × 男 / 女，14 种恋爱类型各恰好一把默认声', () => {
+describe('音色池内容（D-230 / D-241）', () => {
+  it('四门语言 × 男 / 女，14 种恋爱类型各恰好一把默认声', () => {
     for (const lang of ['zh', 'en', 'ja', 'ko'] as const) {
       for (const gender of ['male', 'female'] as const) {
         const pool = voicesFor(lang).filter((v) => v.gender === gender);
