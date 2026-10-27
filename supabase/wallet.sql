@@ -136,6 +136,13 @@ begin
       w.plan_voice_sec := coalesce((p_c -> 'plan_voice_sec' ->> w.plan)::numeric, 0);
       insert into public.wallet_ledger (user_id, kind, mb, charged_mb, sec) values (p_user, 'grant', n * monthly, 0, w.plan_voice_sec);
     end if;
+    -- D-240 上线前就在订阅里的：这一期的流量发过了、分钟还没给过（账本里没有带分钟的发放），补上这一期的分钟（D-243）
+    if coalesce(n, 0) = 0 and not exists (select 1 from public.wallet_ledger where user_id = p_user and kind = 'grant' and sec > 0) then
+      w.plan_voice_sec := coalesce((p_c -> 'plan_voice_sec' ->> w.plan)::numeric, 0);
+      if w.plan_voice_sec > 0 then
+        insert into public.wallet_ledger (user_id, kind, mb, charged_mb, sec) values (p_user, 'grant', 0, 0, w.plan_voice_sec);
+      end if;
+    end if;
   end if;
   perform public._wallet_save(w);
   return w;

@@ -250,9 +250,13 @@ export default function CallScreen() {
       turnBusy.current = false;
       activeUtt.current = null;
       l.mouth.stop();
-      setNote(__DEV__ ? `${t('TA 这条没回上')} · ${describeAiError(e)}` : t('TA 这条没回上'));
+      // 分钟用完了才拦得住这一轮：挂断并说一声（D-243）
+      if (callSecondsLeft() <= 0) return endForNoMinutes();
+      // 没回上不提示（D-243）：接着听她说；原因只进日志
+      console.warn('[call] TA 没回上：', describeAiError(e));
       if (alive.current) void listenLive();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bond, listenLive, enterSpeaking, afterSpeech]);
 
   /** 实时：打断 TA（她插话 / 点头像）——掐掉这段，当场接着听 */
@@ -296,10 +300,12 @@ export default function CallScreen() {
       await speak(reply);
     } catch (e) {
       turnBusy.current = false;
-      // 原因只在开发构建露出（文案纪律 #6）
-      setNote(__DEV__ ? `${t('TA 这条没回上')} · ${describeAiError(e)}` : t('TA 这条没回上'));
+      if (callSecondsLeft() <= 0) return endForNoMinutes();
+      // 没回上不提示（D-243）：接着听她说；原因只进日志
+      console.warn('[call] TA 没回上：', describeAiError(e));
       if (alive.current) void listen();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bond, character, listen, recorder, speak, endTurnLive]);
 
   /* ── 实时断句：字不再变、也没声音满 0.75 秒 ── */
@@ -476,6 +482,12 @@ export default function CallScreen() {
   const interrupt = () => {
     if (liveOn.current && phaseRef.current === 'speaking') stopTA();
   };
+
+  /** 通话中分钟用完：挂断，回去后说一声可以买分钟包 */
+  function endForNoMinutes() {
+    hangUp();
+    setTimeout(alertNoVoice, 1300);
+  }
 
   function hangUp() {
     if (!bond || phaseRef.current === 'ended') return;

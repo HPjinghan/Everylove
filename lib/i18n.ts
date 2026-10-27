@@ -370,7 +370,6 @@ const en: Record<string, string> = {
   '{n} 天前': '{n}d ago',
   // AI 取路与失败露出（D-069）
   '未配置 AI：.env.local 没有 key，服务端代理也没连上': 'AI not configured: no key in .env.local and the server proxy could not be reached',
-  'TA 这条没回上': 'No reply this time',
   'AI 引擎': 'AI engine', 'AI 取路': 'AI route',
   '直连（.env.local）': 'Direct (.env.local)',
   '服务端代理（已登录）': 'Server proxy (signed in)',
@@ -1310,7 +1309,6 @@ const ja: Record<string, string> = {
   '{n} 天前': '{n}日前',
   // AI 取路与失败露出（D-069）
   '未配置 AI：.env.local 没有 key，服务端代理也没连上': 'AI未設定：.env.localにkeyがなく、サーバー経由にも接続できません',
-  'TA 这条没回上': '返事が届きませんでした',
   'AI 引擎': 'AIエンジン', 'AI 取路': 'AI経路',
   '直连（.env.local）': '直接接続（.env.local）',
   '服务端代理（已登录）': 'サーバー経由（ログイン中）',
@@ -2270,7 +2268,6 @@ const ko: Record<string, string> = {
   '{n} 小时前': '{n}시간 전',
   '{n} 天前': '{n}일 전',
   '未配置 AI：.env.local 没有 key，服务端代理也没连上': 'AI 미설정: .env.local에 key가 없고, 서버 프록시에도 연결되지 않았어요',
-  'TA 这条没回上': '이 메시지에는 답이 오지 않았어요',
   'AI 引擎': 'AI 엔진',
   'AI 取路': 'AI 경로',
   '直连（.env.local）': '직접 연결 (.env.local)',

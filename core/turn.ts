@@ -16,7 +16,6 @@ import { createRegistry } from '@/core/registry';
 import type { Billing } from '@/core/usage';
 import { describeAiError, generateReply, messageContextText } from '@/lib/engine';
 import { uid } from '@/lib/format';
-import { t } from '@/lib/i18n';
 import type { ChatCard, ChatMessage, EngineContext, EngineReply } from '@/lib/types';
 
 /** 界面侧的参与：打字指示、节奏、要不要计未读 */
@@ -26,8 +25,6 @@ export interface TurnUi {
   pace?: 'natural' | 'none';
   /** TA 的话计未读（她不在这个会话页时） */
   unread?: boolean;
-  /** 模型失败时不弹轻提示（调用方自己兜底，例：外出开场白回落模板） */
-  quiet?: boolean;
   /** TA 的话边出字边给（D-232，实时通话拿去分句合成）：参数是到现在为止的原文，暗号还没剥；落气泡仍等整段 */
   partial?(soFar: string): void;
 }
@@ -206,12 +203,11 @@ async function runOne(
   try {
     reply = await generateReply(ctx, undefined, { billing, ...(ui.partial ? { onText: ui.partial } : {}) });
   } catch (e) {
-    // 模型调用失败（D-169）：她那条标「没送到」可重发，轻提示只说没回上；原因记在消息上、开发者看 console（不写进会话，D-110）
+    // 模型调用失败（D-169 / D-243）：她那条标「没送到」可重发，不另弹提示；原因记在消息上、开发者看 console（不写进会话，D-110）
     ui.typing?.(false);
     const reason = describeAiError(e);
     console.warn('[turn] TA 没回上：', reason);
     for (const id of msgIds) mode.patch(scope, id, { failed: reason });
-    if (!ui.quiet) notify(t('TA 这条没回上'));
     return { reply: null, error: e };
   }
 
@@ -266,7 +262,7 @@ export async function landReply(scope: TurnScope, reply: EngineReply, opts: { at
     const mode = modeOf(scope);
     const ctx = mode.context(scope, '');
     if (!ctx) return;
-    const ui: TurnUi = { pace: 'none', unread: opts.unread, quiet: true };
+    const ui: TurnUi = { pace: 'none', unread: opts.unread };
     // 后台写好的（TA 主动 / 召回 / 心跳）平台出（D-210）：落状态时再花的钱（发图、语音）也不记她的账
     const info: TurnInfo = { scope, ctx, mode, reply, darkSide: !!reply.darkSide, ui, her: false, billing: 'house' };
     await settle(info, { pace: 'none', at: opts.at, extra: opts.extra });

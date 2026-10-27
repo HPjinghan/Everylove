@@ -81,10 +81,7 @@ export default function OutingSceneScreen() {
       const late = s.kind === 'date' && (s.lateMinutes ?? 0) > ON_TIME_TOLERANCE_MIN;
       const openerKind = late ? 'dateLate' : s.kind;
       void (async () => {
-        const { reply } = await respond(outingScope(s.characterId), outingOpenerUserLine(openerKind), {
-          typing: setTyping,
-          quiet: true,
-        });
+        const { reply } = await respond(outingScope(s.characterId), outingOpenerUserLine(openerKind), { typing: setTyping });
         if (reply) return;
         // 模板按界面语言取：地点名与称呼也要同一种语言（称呼缺省回落她的昵称）
         const own = b?.nickname && b.nickname !== '你' ? b.nickname : undefined;

@@ -77,10 +77,30 @@ export function takeSseEvents(buf: string): { events: SseEvent[]; rest: string }
   return { events, rest };
 }
 
-/** 流式（D-232，通话）：边到边把累计的正文交给 onText，最后给整段与 usage；拒答 / 出错抛错 */
+/** 通话里第一个字迟迟不来（连接卡住）：这么久就掐掉重来一次，不让她对着没声音的电话干等到整体超时 */
+const FIRST_TEXT_MS = 12_000;
+
+class StalledError extends Error {}
+
+/** 流式（D-232，通话）：边到边把累计的正文交给 onText，最后给整段与 usage；拒答 / 出错抛错；卡住重来一次 */
 async function streamAnthropic(body: Record<string, unknown>, route: 'direct' | 'proxy', req: ChatRequest): Promise<{ text: string; usage: ChatUsage }> {
+  try {
+    return await streamAnthropicOnce(body, route, req);
+  } catch (e) {
+    if (!(e instanceof StalledError)) throw e;
+    console.warn('[anthropic] 流式第一个字超时，重来一次');
+    return streamAnthropicOnce(body, route, req);
+  }
+}
+
+async function streamAnthropicOnce(body: Record<string, unknown>, route: 'direct' | 'proxy', req: ChatRequest): Promise<{ text: string; usage: ChatUsage }> {
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), TIMEOUTS.chat);
+  let stalled = false;
+  let firstText: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
+    stalled = true;
+    abort.abort();
+  }, FIRST_TEXT_MS);
   try {
     let reader: ReadableStreamDefaultReader<Uint8Array>;
     if (route === 'direct') {
@@ -111,6 +131,8 @@ async function streamAnthropic(body: Record<string, unknown>, route: 'direct' | 
         if (e.type === 'message_start') started = e.message?.usage ?? {};
         else if (e.type === 'content_block_delta' && e.delta?.type === 'text_delta' && e.delta.text) {
           text += e.delta.text;
+          clearTimeout(firstText);
+          firstText = undefined;
           req.onText?.(text);
         } else if (e.type === 'message_delta') {
           outputTokens = e.usage?.output_tokens ?? outputTokens;
@@ -120,8 +142,12 @@ async function streamAnthropic(body: Record<string, unknown>, route: 'direct' | 
     }
     if (stop === 'refusal') throw new Error('Anthropic refusal');
     return { text: text.trim(), usage: anthropicUsage(started, outputTokens) };
+  } catch (e) {
+    if (stalled) throw new StalledError(`Anthropic stream: no text in ${FIRST_TEXT_MS / 1000}s`);
+    throw e;
   } finally {
     clearTimeout(timer);
+    clearTimeout(firstText);
   }
 }
 
