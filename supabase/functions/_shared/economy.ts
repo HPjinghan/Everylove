@@ -43,14 +43,16 @@ export function imageModelOf(name: string): ImageModel {
 export const VISION_MB = 3;
 /** 她的语音识别（D-211）：按录音时长折流量，2 RB / 分钟（D-234） */
 export const ASR_SECONDS_PER_MB = 30;
-/** 流量包（D-239：$4.99～$99.99 五档，越大送得越多，但每美元都不如订阅；收费开关打开前点即到账） */
-export const TRAFFIC_PACKS: { id: string; mb: number }[] = [
-  { id: 'pack-2500', mb: 2500 },
-  { id: 'pack-5500', mb: 5500 },
-  { id: 'pack-12000', mb: 12000 },
-  { id: 'pack-32000', mb: 32000 },
-  { id: 'pack-65000', mb: 65000 },
+/** 流量包（D-239：五档，越大送得越多，但每美元都不如订阅；收费开关打开前点即到账；usd = 美国店面价，模拟收费时显示） */
+export const TRAFFIC_PACKS: { id: string; mb: number; usd: number }[] = [
+  { id: 'pack-2500', mb: 2500, usd: 4.99 },
+  { id: 'pack-5500', mb: 5500, usd: 9.99 },
+  { id: 'pack-12000', mb: 12000, usd: 19.99 },
+  { id: 'pack-32000', mb: 32000, usd: 49.99 },
+  { id: 'pack-65000', mb: 65000, usd: 99.99 },
 ];
+/** 订阅月费（美国店面，D-221）；真收费时以 App Store 返回的本地价为准，这里只给模拟收费时显示 */
+export const PLAN_PRICE_USD: Record<'pro' | 'max', number> = { pro: 9.99, max: 24.99 };
 
 /* ── TA 的声音（D-240：按分钟，不扣流量；TA 的语音按字数估的秒数、电话按接通时长）── */
 
@@ -58,11 +60,11 @@ export const TRAFFIC_PACKS: { id: string; mb: number }[] = [
 export const PLAN_VOICE_MONTHLY_MIN: Record<Plan, number> = { free: 0, pro: 100, max: 300 };
 /** 新用户送几分钟通话（只能打电话，不过期；电话先扣它） */
 export const NEW_USER_CALL_MIN = 5;
-/** 语音分钟包（所有人都能买，不过期；$2.99 / $4.99 / $12.99，D-240） */
-export const VOICE_PACKS: { id: string; min: number }[] = [
-  { id: 'voice-30', min: 30 },
-  { id: 'voice-60', min: 60 },
-  { id: 'voice-180', min: 180 },
+/** 语音分钟包（所有人都能买，不过期，D-240） */
+export const VOICE_PACKS: { id: string; min: number; usd: number }[] = [
+  { id: 'voice-30', min: 30, usd: 2.99 },
+  { id: 'voice-60', min: 60, usd: 4.99 },
+  { id: 'voice-180', min: 180, usd: 12.99 },
 ];
 
 /* ── 后台保险丝（平台出的那些每人每天封顶，看不见）── */

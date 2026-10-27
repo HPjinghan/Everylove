@@ -36,6 +36,7 @@ import {
   LOVE_MODELS,
   mb,
   PLAN_MONTHLY_MB,
+  PLAN_PRICE_USD,
   PLAN_VOICE_MONTHLY_MIN,
   planVoiceLeft,
   TRAFFIC_PACKS,
@@ -278,6 +279,8 @@ export default function MeScreen() {
   // 流量（D-132）：今天免费的按进页面那一刻算；扣费后 traffic 变了会重算
   const [trafficNow] = useState(() => Date.now());
   /** 订阅档说明（D-240：订阅给一份流量 + 每 30 天的语音分钟） */
+  /** 模拟收费时显示的美国店面价；真收费用 App Store 返回的本地价 */
+  const usd = (n: number) => `$${n.toFixed(2)}`;
   const planBlurb = (p: 'free' | 'pro' | 'max') => t('每月 {n} · {m} 分钟 TA 的声音', { n: mb(PLAN_MONTHLY_MB[p]), m: PLAN_VOICE_MONTHLY_MIN[p] });
 
   /** 钱包的事都经服务器（D-217）：成功了 store 已经是服务器的数，失败只说稍后再试 */
@@ -462,11 +465,15 @@ export default function MeScreen() {
             <>
               <Row
                 label={plan === 'pro' ? t('已订阅 Pro ✓') : t('订阅 Pro')}
+                value={usd(PLAN_PRICE_USD.pro)}
+                numeric
                 hint={planBlurb('pro')}
                 onPress={plan === 'pro' ? undefined : () => subscribe('pro')}
               />
               <Row
                 label={plan === 'max' ? t('已订阅 Max ✓') : t('订阅 Max')}
+                value={usd(PLAN_PRICE_USD.max)}
+                numeric
                 hint={planBlurb('max')}
                 onPress={plan === 'max' ? undefined : () => subscribe('max')}
               />
@@ -518,7 +525,8 @@ export default function MeScreen() {
                 <Row
                   key={p.id}
                   label={t('流量包 {n}', { n: mb(p.mb) })}
-                  value={t('买')}
+                  value={usd(p.usd)}
+                  numeric
                   onPress={() => void viaServer(() => buyTrafficPack(p.id), mb(p.mb))}
                 />
               ))
@@ -556,7 +564,8 @@ export default function MeScreen() {
                 <Row
                   key={p.id}
                   label={t('语音分钟包 {n} 分钟', { n: p.min })}
-                  value={t('买')}
+                  value={usd(p.usd)}
+                  numeric
                   onPress={() => void viaServer(() => buyVoicePack(p.id), t('{n} 分钟', { n: p.min }))}
                 />
               ))
