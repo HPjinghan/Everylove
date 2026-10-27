@@ -558,7 +558,7 @@ export default function MeScreen() {
               hint={t('只能打电话，用完为止。')}
             />
           ) : null}
-          <Row label={t('分钟包')} value={t('{n} 分钟', { n: voiceMinutes(voice.packSec) })} hint={t('买了一直有效，用完为止。')} />
+          <Row label={t('分钟包')} value={t('{n} 分钟', { n: voiceMinutes(voice.packSec) })} />
           {storeMode === 'sim'
             ? VOICE_PACKS.map((p) => (
                 <Row
