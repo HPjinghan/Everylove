@@ -112,10 +112,6 @@ export function stageName(xp: number): string {
   return LEVEL_NAMES[bondLevel(xp) - 1];
 }
 
-export function levelLabelOf(level: number): string {
-  return `LV${level} · ${LEVEL_NAMES[Math.min(MAX_LEVEL, Math.max(1, level)) - 1]}`;
-}
-
 /* ═══ 羁绊值来源表：当天重复递减 + 日上限 ═══ */
 
 export type XpSource =

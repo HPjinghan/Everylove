@@ -15,12 +15,12 @@ import { uid } from '@/lib/format';
 import { applyPaperTint } from '@/constants/theme';
 import { DEFAULT_LOVE_MODEL, EMPTY_TRAFFIC, START_VOICE, type LoveModelId, type Traffic, trafficAfterUse, voiceAfterUse, type VoiceTime, type VoiceUse } from '@/lib/traffic';
 import { emptyHisWallet, ledgerEntry, pushLedger } from '@/lib/wallet';
-import { dedupeBonds, legacyBondLevel, levelLabelOf, levelOf, WARMTH_GAINS, WARMTH_START, warmthAfter, xpGain, type XpSource } from '@/lib/bond';
-import { setLang, type Lang } from '@/lib/i18n';
+import { dedupeBonds, legacyBondLevel, LEVEL_NAMES, levelOf, WARMTH_GAINS, WARMTH_START, warmthAfter, xpGain, type XpSource } from '@/lib/bond';
+import { setLang, t, type Lang } from '@/lib/i18n';
 import { syncAccountLanguage } from '@/lib/auth';
 import { DEFAULT_DOCK, DEFAULT_WALLPAPER, wallpaperTint } from '@/constants/apps';
 import { placeById } from '@/content/places';
-import { appointmentAtLabel, minutesLate, planIsOpen } from '@/lib/appointments';
+import { minutesLate, planIsOpen, planTimeLabel } from '@/lib/appointments';
 import { randomPasscode } from '@/lib/phone';
 import type {
   AlbumShot,
@@ -590,9 +590,10 @@ export const useAppStore = create<AppState>()(
           id: uid('m'),
           from: 'system',
           kind: 'system',
+          // 系统条按界面语言写（D-247）
           text: character.custom
-            ? `你们成了朋友 · TA 开始叫你「${nickname}」`
-            : `你们交换了联系方式 · 他开始叫你「${nickname}」`,
+            ? t('你们成了朋友 · {name} 开始叫你「{nickname}」', { name: name || character.name, nickname })
+            : t('你们交换了联系方式 · {name} 开始叫你「{nickname}」', { name: name || character.name, nickname }),
           at: now - 1,
         };
         // 开门已下线（D-046）：加好友即在线——TA 直接开口打招呼（原开门台词转为见面第一句）
@@ -668,7 +669,7 @@ export const useAppStore = create<AppState>()(
             const level = levelOf({ ...b, affinity: nextXp }, now);
             const extra: ChatMessage[] =
               level > shown
-                ? [{ id: uid('m'), from: 'system' as const, kind: 'system' as const, text: `羁绊升级 · ${levelLabelOf(level)}`, at: now }]
+                ? [{ id: uid('m'), from: 'system' as const, kind: 'system' as const, text: t('羁绊升级 · LV{n} · {stage}', { n: level, stage: t(LEVEL_NAMES[Math.min(LEVEL_NAMES.length, level) - 1]) }), at: now }]
                 : [];
             return {
               ...b,
@@ -956,8 +957,8 @@ export const useAppStore = create<AppState>()(
                           from: 'system' as const,
                           kind: 'system' as const,
                           text: opts?.at
-                            ? `你们约好了 ${appointmentAtLabel(opts.at)} 在${place.name}见面`
-                            : `你们约好了去${place.name}见面`,
+                            ? t('你们约好了 {time} 在{place}见面', { time: planTimeLabel(opts.at), place: t(place.name) })
+                            : t('你们约好了去{place}见面', { place: t(place.name) }),
                           at: Date.now(),
                         },
                       ],
@@ -1092,8 +1093,8 @@ export const useAppStore = create<AppState>()(
                             kind: 'system' as const,
                             text:
                               session.kind === 'date'
-                                ? `你们在${place.name}见了面`
-                                : `你们一起去了${place.name}`,
+                                ? t('你们在{place}见了面', { place: t(place.name) })
+                                : t('你们一起去了{place}', { place: t(place.name) }),
                             at: Date.now(),
                           },
                         ],

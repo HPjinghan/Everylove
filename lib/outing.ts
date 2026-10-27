@@ -19,7 +19,7 @@ import {
   transcript,
 } from '@/content/prompts';
 import { showToast } from '@/components/toast';
-import { appointmentAtLabel, parseAppointmentAt, planIsMissed } from '@/lib/appointments';
+import { appointmentAtLabel, parseAppointmentAt, planIsMissed, planTimeLabel } from '@/lib/appointments';
 import { bondScope, respond } from '@/lib/chat';
 import { completeText } from '@/lib/engine';
 import { uid } from '@/lib/format';
@@ -191,7 +191,7 @@ export async function detectAppointment(bondId: string): Promise<void> {
             id: uid('m'),
             from: 'system',
             kind: 'system',
-            text: `${place?.name ?? ''}的约取消了`,
+            text: t('{place}的约取消了', { place: place ? t(place.name) : '' }),
             at: Date.now(),
           },
         ]);
@@ -228,7 +228,7 @@ export async function checkMissedPlans(now = Date.now()): Promise<number> {
         id: uid('m'),
         from: 'system',
         kind: 'system',
-        text: `你错过了${atLabel}在${place.name}的约`,
+        text: t('你错过了{time}在{place}的约', { time: planTimeLabel(plan.at), place: t(place.name) }),
         at: now,
       },
     ]);

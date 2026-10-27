@@ -954,6 +954,15 @@ const en: Record<string, string> = {
   '默认': 'Default',
   '很快': 'Fast',
   '一见如故': 'Clicks right away',
+  '你们成了朋友 · {name} 开始叫你「{nickname}」': 'You became friends · {name} calls you "{nickname}" now',
+  '你们交换了联系方式 · {name} 开始叫你「{nickname}」': 'You exchanged contacts · {name} calls you "{nickname}" now',
+  '羁绊升级 · LV{n} · {stage}': 'Your bond grew · LV{n} · {stage}',
+  '你们约好了 {time} 在{place}见面': 'Plans made · {time} at {place}',
+  '你们约好了去{place}见面': 'Plans made · meet at {place}',
+  '你们在{place}见了面': 'You met at {place}',
+  '你们一起去了{place}': 'You went to {place} together',
+  '{place}的约取消了': 'Plans at {place} cancelled',
+  '你错过了{time}在{place}的约': 'You missed your {time} plans at {place}',
   // __EN_END__
 };
 
@@ -1875,6 +1884,15 @@ const ja: Record<string, string> = {
   '默认': 'デフォルト',
   '很快': '早い',
   '一见如故': 'すぐ打ち解ける',
+  '你们成了朋友 · {name} 开始叫你「{nickname}」': '友だちになりました · {name}はあなたを「{nickname}」と呼びます',
+  '你们交换了联系方式 · {name} 开始叫你「{nickname}」': '連絡先を交換しました · {name}はあなたを「{nickname}」と呼びます',
+  '羁绊升级 · LV{n} · {stage}': '絆が深まった · LV{n} · {stage}',
+  '你们约好了 {time} 在{place}见面': '{time}に{place}で会う約束をしました',
+  '你们约好了去{place}见面': '{place}で会う約束をしました',
+  '你们在{place}见了面': '{place}で会いました',
+  '你们一起去了{place}': '一緒に{place}へ行きました',
+  '{place}的约取消了': '{place}の約束はキャンセルされました',
+  '你错过了{time}在{place}的约': '{time}の{place}の約束に行けませんでした',
   // __JA_END__
 };
 
@@ -2780,6 +2798,15 @@ const ko: Record<string, string> = {
   '默认': '기본',
   '很快': '빠르게',
   '一见如故': '금방 친해져요',
+  '你们成了朋友 · {name} 开始叫你「{nickname}」': '친구가 됐어요 · 앞으로 ‘{nickname}’(이)라고 불러요',
+  '你们交换了联系方式 · {name} 开始叫你「{nickname}」': '연락처를 교환했어요 · 앞으로 ‘{nickname}’(이)라고 불러요',
+  '羁绊升级 · LV{n} · {stage}': '인연이 깊어졌어요 · LV{n} · {stage}',
+  '你们约好了 {time} 在{place}见面': '{time}에 {place}에서 만나기로 했어요',
+  '你们约好了去{place}见面': '{place}에서 만나기로 했어요',
+  '你们在{place}见了面': '{place}에서 만났어요',
+  '你们一起去了{place}': '함께 {place}에 갔어요',
+  '{place}的约取消了': '{place} 약속이 취소됐어요',
+  '你错过了{time}在{place}的约': '{time} {place} 약속에 못 갔어요',
   // __KO_END__
 };
 
