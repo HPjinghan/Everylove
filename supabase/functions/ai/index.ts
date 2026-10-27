@@ -8,9 +8,9 @@
  *   baidu.asr / baidu.asr_pro（百度语音识别，JSON；D-073）
  *   baidu.tts（百度短文本语音合成 tsn.baidu.com/text2audio，body 为表单字段对象；D-073）
  *   asr.transcribe（Whisper 协议识别，日 / 韩用；D-139。Secrets：ASR_BASE_URL / ASR_API_KEY / ASR_MODEL；没配返回 503「asr not configured」，客户端回落百度）
- *   fish.tts（Fish Audio 合成 api.fish.audio/v1/tts；D-139。Secrets：FISH_API_KEY / FISH_MODEL；没配返回 503「fish not configured」，客户端回落百度）
- *   fish.tts.stream（同上，但边合成边回：24 kHz 16 bit 单声道 PCM 原样流回，打电话用；D-232）
- *   fish.asr（Fish transcribe-1 识别 api.fish.audio/v1/asr，multipart 字段 audio；同一把 FISH_API_KEY；D-139）
+ *   eleven.tts（ElevenLabs 合成 api.elevenlabs.io/v1/text-to-speech/{voice_id}；D-241。Secrets：ELEVENLABS_API_KEY / ELEVENLABS_MODEL；没配返回 503「eleven not configured」，客户端回落百度）
+ *   eleven.tts.stream（同上，但边合成边回：24 kHz 16 bit 单声道 PCM 原样流回，打电话用；D-232）
+ *   eleven.asr（ElevenLabs Scribe 识别 api.elevenlabs.io/v1/speech-to-text，multipart 字段 file；同一把 key，ELEVENLABS_ASR_MODEL；D-241）
  * 返回：上游成功 → JSON 原样透传（二进制音频包成 { audio_base64 }）；上游失败 → { error: 'upstream', status, message }（只带上游的一句话，不带原文）；
  *      本函数出错 → { error: 'internal' }（细节只进函数日志）。
  *
@@ -151,15 +151,24 @@ function qianfanImageBody(b: Rec, muse: boolean): Rec {
   return out;
 }
 
-function fishTtsBody(b: Rec): Rec {
-  const out: Rec = { text: str(b.text, TTS_TEXT_MAX, 'text'), format: 'mp3', latency: 'balanced' };
-  const ref = optStr(b.reference_id, 64, 'reference_id');
-  if (ref) out.reference_id = ref;
-  return out;
+const ELEVEN_KEY = Deno.env.get('ELEVENLABS_API_KEY') ?? '';
+const ELEVEN_MODEL = Deno.env.get('ELEVENLABS_MODEL') || 'eleven_v4_turbo';
+const ELEVEN_TTS_URL = 'https://api.elevenlabs.io/v1/text-to-speech';
+
+/** ElevenLabs 合成（D-241）：text / voice_id / language 放行，模型由服务端定；voice_id 进 URL 路径，只认字母数字 */
+function elevenTts(b: Rec): { voice: string; payload: Rec } {
+  const voice = str(b.voice_id, 40, 'voice_id');
+  if (!/^[A-Za-z0-9]{8,40}$/.test(voice)) throw new BadRequest('voice_id');
+  return {
+    voice,
+    payload: { text: str(b.text, TTS_TEXT_MAX, 'text'), model_id: ELEVEN_MODEL, language_code: oneOf(b.language ?? 'en', ['zh', 'en', 'ja', 'ko'], 'language') },
+  };
 }
 
-function fishTtsStreamBody(b: Rec): Rec {
-  return { ...fishTtsBody(b), format: 'pcm', sample_rate: TTS_STREAM_RATE };
+function elevenTtsFetch(b: Rec, stream: boolean, signal?: AbortSignal): Promise<Response> {
+  const { voice, payload } = elevenTts(b);
+  const url = stream ? `${ELEVEN_TTS_URL}/${voice}/stream?output_format=pcm_${TTS_STREAM_RATE}` : `${ELEVEN_TTS_URL}/${voice}?output_format=mp3_44100_128`;
+  return fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'xi-api-key': ELEVEN_KEY }, body: JSON.stringify(payload), signal });
 }
 
 function baiduTtsForm(b: Rec): Record<string, string> {
@@ -191,7 +200,7 @@ function baiduAsrBody(b: Rec): Rec {
   };
 }
 
-/** Whisper 协议 / Fish 识别共用：base64 音频 + 可选语言 */
+/** Whisper 协议 / ElevenLabs 识别共用：base64 音频 + 可选语言 */
 function audioUpload(b: Rec): { bytes: Uint8Array<ArrayBuffer>; mime: string; filename: string; language?: string } {
   const b64 = str(b.audio_base64, AUDIO_B64_MAX, 'audio_base64');
   const bin = atob(b64);
@@ -344,10 +353,10 @@ function meterKindOf(service: string, body: Rec): MeterKind | null {
     case 'baidu.asr':
     case 'baidu.asr_pro':
     case 'asr.transcribe':
-    case 'fish.asr':
+    case 'eleven.asr':
       return 'asr';
-    case 'fish.tts':
-    case 'fish.tts.stream':
+    case 'eleven.tts':
+    case 'eleven.tts.stream':
     case 'baidu.tts':
       return 'tts';
     default:
@@ -553,25 +562,15 @@ function gatewayFetch(body: Rec, signal?: AbortSignal): Promise<Response> {
   });
 }
 
-/** 发给 Fish 的流式合成请求 */
-function fishStreamFetch(body: Rec, signal?: AbortSignal): Promise<Response> {
-  return fetch('https://api.fish.audio/v1/tts', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${Deno.env.get('FISH_API_KEY') ?? ''}`, model: Deno.env.get('FISH_MODEL') || 's2.1-pro' },
-    body: JSON.stringify(fishTtsStreamBody(body)),
-    signal,
-  });
-}
-
 /**
  * 实时通话要快（D-232）：流式的模型请求与流式合成，上游请求和次数 / 记账闸门同时发出去（离库远的时候能省半秒到一秒），
  * 闸门不放行就当场掐掉上游；被拦的极少，最多白花一点上游。参数不合规照样在这里就抛 400。
  */
 function earlyUpstream(service: string, body: Rec): { response: Promise<Response>; abort: AbortController } | null {
-  const realtime = (service === 'anthropic.messages' && body.stream === true && LLMGATEWAY_KEY) || (service === 'fish.tts.stream' && Deno.env.get('FISH_API_KEY'));
+  const realtime = (service === 'anthropic.messages' && body.stream === true && LLMGATEWAY_KEY) || (service === 'eleven.tts.stream' && ELEVEN_KEY);
   if (!realtime) return null;
   const abort = new AbortController();
-  const response = service === 'fish.tts.stream' ? fishStreamFetch(body, abort.signal) : gatewayFetch(body, abort.signal);
+  const response = service === 'eleven.tts.stream' ? elevenTtsFetch(body, true, abort.signal) : gatewayFetch(body, abort.signal);
   response.catch(() => {});
   return { response, abort };
 }
@@ -630,34 +629,28 @@ Deno.serve(async (req) => {
       return relayJson(r, meter);
     }
 
-    // Fish transcribe-1 识别（D-139）：multipart 字段叫 audio
-    if (service === 'fish.asr') {
-      const key = Deno.env.get('FISH_API_KEY') ?? '';
-      if (!key) return json({ error: 'fish not configured' }, 503);
+    // ElevenLabs Scribe 识别（D-241）：multipart 字段叫 file
+    if (service === 'eleven.asr') {
+      if (!ELEVEN_KEY) return json({ error: 'eleven not configured' }, 503);
       const a = audioUpload(body);
       const form = new FormData();
-      form.append('audio', new Blob([a.bytes], { type: a.mime }), a.filename);
-      if (a.language) form.append('language', a.language);
-      const r = await fetch('https://api.fish.audio/v1/asr', { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: form });
+      form.append('file', new Blob([a.bytes], { type: a.mime }), a.filename);
+      form.append('model_id', Deno.env.get('ELEVENLABS_ASR_MODEL') || 'scribe_v2');
+      if (a.language) form.append('language_code', a.language);
+      const r = await fetch('https://api.elevenlabs.io/v1/speech-to-text', { method: 'POST', headers: { 'xi-api-key': ELEVEN_KEY }, body: form });
       return relayJson(r, meter);
     }
 
-    // Fish Audio 合成（D-139）：text / reference_id 放行，format / latency 固定，模型走 header
-    if (service === 'fish.tts') {
-      const key = Deno.env.get('FISH_API_KEY') ?? '';
-      if (!key) return json({ error: 'fish not configured' }, 503);
-      const r = await fetch('https://api.fish.audio/v1/tts', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}`, model: Deno.env.get('FISH_MODEL') || 's2.1-pro' },
-        body: JSON.stringify(fishTtsBody(body)),
-      });
-      return await audioOrJson(r, meter);
+    // ElevenLabs 合成（D-241）：mp3，包成 audio_base64
+    if (service === 'eleven.tts') {
+      if (!ELEVEN_KEY) return json({ error: 'eleven not configured' }, 503);
+      return await audioOrJson(await elevenTtsFetch(body, false), meter);
     }
 
     // 通话的流式合成（D-232）：PCM 边合成边回，记账放到流回之后（不让她多等一趟库）
-    if (service === 'fish.tts.stream') {
-      if (!Deno.env.get('FISH_API_KEY')) return json({ error: 'fish not configured' }, 503);
-      const r = early ? await early.response : await fishStreamFetch(body);
+    if (service === 'eleven.tts.stream') {
+      if (!ELEVEN_KEY) return json({ error: 'eleven not configured' }, 503);
+      const r = early ? await early.response : await elevenTtsFetch(body, true);
       if (!r.ok || !r.body || (r.headers.get('content-type') ?? '').includes('application/json')) return relayJson(r, meter);
       if (meter) {
         const charge = chargeAfter(meter, null);

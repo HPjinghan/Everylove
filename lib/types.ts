@@ -72,7 +72,7 @@ export interface Character {
   secrets?: string;
   /** 立绘画风（D-076）：创造 ⑦ 选择；缺省按 shojo（= 原工程画风）。立绘与外出拍照共用 */
   artStyle?: PortraitStyleId;
-  /** TA 的声音（D-139）：Fish Audio 音色 id，创造 ⑧ 从推荐里选；缺省按语言 × 人称从音色池取默认。语音气泡与电话共用 */
+  /** TA 的声音（D-139 / D-241）：ElevenLabs 音色 id，创造 ⑧ 从推荐里选；缺省或已不在池里按恋爱类型 × 性别从音色池取默认。语音气泡与电话共用 */
   voiceId?: string;
   /** 说话节奏（D-155）：flow = 整句一条（句末标点断、最多两条）；burst = 连发（每个标点都断、最多四条）。缺省按恋爱类型 / 原型推（lib/engine bubbleStyleOf） */
   bubbleStyle?: 'flow' | 'burst';

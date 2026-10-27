@@ -1,8 +1,8 @@
 /**
  * 多模态输入（D-073）：让 TA 真的「听到」她的语音、「看到」她的照片。
  * - 语音 → 文字（D-074 双通道，D-139 按语言分流）：中 / 英走百度语音识别（vop.baidu.com，与千帆同一把 bce-v3 key：
- *   普通话极速版 80001 约 1.5s、界面英语时标准版 1737）；日 / 韩走多语种通道——默认 Fish transcribe-1（api.fish.audio/v1/asr，
- *   multipart，与合成同一把 key，自动识别语言），或 EXPO_PUBLIC_ASR_PROVIDER=whisper 走 Whisper 协议（EXPO_PUBLIC_ASR_*，Groq / OpenAI /
+ *   普通话极速版 80001 约 1.5s、界面英语时标准版 1737）；日 / 韩走多语种通道——默认 ElevenLabs Scribe（api.elevenlabs.io/v1/speech-to-text，
+ *   multipart，与合成同一把 key，D-241），或 EXPO_PUBLIC_ASR_PROVIDER=whisper 走 Whisper 协议（EXPO_PUBLIC_ASR_*，Groq / OpenAI /
  *   硅基流动 / 百炼都是 /audio/transcriptions）。哪些语言走多语种通道由 CONFIG.asr.langs 定（lib/speech asrChannelFor）。
  * - 照片 → 描述：千帆视觉模型（默认 qwen3.5-397b-a17b）按 content/prompts/caption.ts 客观描述——只写画面、不描述人的长相（红线 #2）。
  * 两者产出的文字只作对话模型的上下文（messageContextText），TA 的回复仍由聊天引擎生成：主引擎不换模型、人设不漂。
@@ -46,42 +46,42 @@ const ASR_PRO_URL = 'https://vop.baidu.com/pro_api';
 const QIANFAN_CHAT_URL = 'https://qianfan.baidubce.com/v2/chat/completions';
 const CUID = 'everylove-app';
 
-/** 多语种识别通道（D-139）：fish（与合成同一把 key）或 whisper（ASR_*）；本地没配 = 只有百度（中 / 英） */
+/** 多语种识别通道（D-139 / D-241）：eleven（Scribe，与合成同一把 key）或 whisper（ASR_*）；本地没配 = 只有百度（中 / 英） */
 const ASR_PROVIDER = CONFIG.asr.provider;
 const ASR_BASE_URL = CONFIG.asr.baseUrl;
 const ASR_API_KEY = CONFIG.asr.apiKey;
 const ASR_MODEL = CONFIG.asr.model;
-const FISH_KEY = CONFIG.fish.apiKey;
-const FISH_ASR_URL = 'https://api.fish.audio/v1/asr';
+const ELEVEN_KEY = CONFIG.eleven.apiKey;
+const ELEVEN_ASR_URL = 'https://api.elevenlabs.io/v1/speech-to-text';
 export function asrConfigured(): boolean {
-  return ASR_PROVIDER === 'fish' ? Boolean(FISH_KEY) : Boolean(ASR_BASE_URL && ASR_API_KEY);
+  return ASR_PROVIDER === 'eleven' ? Boolean(ELEVEN_KEY) : Boolean(ASR_BASE_URL && ASR_API_KEY);
 }
 /** 代理侧没配时的固定回应（supabase/functions/ai），客户端据此回落百度 */
 export const ASR_UNCONFIGURED = 'asr not configured';
-export const FISH_ASR_UNCONFIGURED = 'fish not configured';
-const UNCONFIGURED = [ASR_UNCONFIGURED, FISH_ASR_UNCONFIGURED];
+export const ELEVEN_ASR_UNCONFIGURED = 'eleven not configured';
+const UNCONFIGURED = [ASR_UNCONFIGURED, ELEVEN_ASR_UNCONFIGURED];
 
 type WhisperJson = { text?: string; error?: unknown };
 
-/** Fish transcribe-1 直连：multipart 字段叫 audio，language 只是提示、语言自动识别 */
-async function transcribeFishDirect(uri: string, language: string): Promise<string> {
-  const res = await FileSystem.uploadAsync(FISH_ASR_URL, uri, {
+/** ElevenLabs Scribe 直连：multipart 字段叫 file，language_code 写明 */
+async function transcribeElevenDirect(uri: string, language: string): Promise<string> {
+  const res = await FileSystem.uploadAsync(ELEVEN_ASR_URL, uri, {
     httpMethod: 'POST',
     uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-    fieldName: 'audio',
+    fieldName: 'file',
     mimeType: 'audio/wav',
-    parameters: { language },
-    headers: { authorization: `Bearer ${FISH_KEY}` },
+    parameters: { model_id: CONFIG.eleven.asrModel, language_code: language },
+    headers: { 'xi-api-key': ELEVEN_KEY },
   });
-  if (res.status >= 300) throw new Error(`Fish ASR ${res.status}: ${res.body.slice(0, 160)}`);
+  if (res.status >= 300) throw new Error(`ElevenLabs ASR ${res.status}: ${res.body.slice(0, 160)}`);
   const text = ((JSON.parse(res.body) as WhisperJson).text ?? '').trim();
   if (!text) throw new Error(t('没听清这段语音（识别结果为空）'));
   return text;
 }
 
-/** Fish 走代理：key 在服务端，客户端传 base64（supabase/functions/ai：fish.asr） */
-async function transcribeFishProxy(audioBase64: string, language: string, billing: Billing): Promise<string> {
-  const data = await proxyJson<WhisperJson>('fish.asr', { audio_base64: audioBase64, filename: 'voice.wav', mime: 'audio/wav', language }, { billing });
+/** ElevenLabs 走代理：key 在服务端，客户端传 base64（supabase/functions/ai：eleven.asr） */
+async function transcribeElevenProxy(audioBase64: string, language: string, billing: Billing): Promise<string> {
+  const data = await proxyJson<WhisperJson>('eleven.asr', { audio_base64: audioBase64, filename: 'voice.wav', mime: 'audio/wav', language }, { billing });
   const text = (data.text ?? '').trim();
   if (!text) throw new Error(t('没听清这段语音（识别结果为空）'));
   return text;
@@ -149,7 +149,7 @@ export async function transcribeVoice(uri: string, billing: Billing = 'user'): P
   const len = info.exists && 'size' in info ? info.size : 0;
   if (!len) throw new Error(t('录音文件是空的'));
   if (channel === 'multi' && asrConfigured()) {
-    const text = ASR_PROVIDER === 'fish' ? await transcribeFishDirect(uri, lang) : await transcribeWhisperDirect(uri, lang);
+    const text = ASR_PROVIDER === 'eleven' ? await transcribeElevenDirect(uri, lang) : await transcribeWhisperDirect(uri, lang);
     reportUsage({ kind: 'asr', provider: ASR_PROVIDER, seconds: len / 32000, billing, estimated: true });
     return text;
   }
@@ -159,7 +159,7 @@ export async function transcribeVoice(uri: string, billing: Billing = 'user'): P
   });
   if (channel === 'multi') {
     try {
-      const text = ASR_PROVIDER === 'fish' ? await transcribeFishProxy(speech, lang, billing) : await transcribeWhisperProxy(speech, lang, billing);
+      const text = ASR_PROVIDER === 'eleven' ? await transcribeElevenProxy(speech, lang, billing) : await transcribeWhisperProxy(speech, lang, billing);
       reportUsage({ kind: 'asr', provider: ASR_PROVIDER, seconds: len / 32000, billing, estimated: true, metered: true });
       return text;
     } catch (e) {

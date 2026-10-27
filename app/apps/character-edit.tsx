@@ -198,7 +198,7 @@ type FormInit = {
   palette: number;
   portraitUri: string | undefined;
   artStyle: ArtStyle;
-  /** TA 的声音（D-139）：Fish 音色 id；undefined = 默认 */
+  /** TA 的声音（D-139 / D-241）：ElevenLabs 音色 id；undefined = 默认 */
   voiceId: string | undefined;
   /** 传记章节（D-149）：随角色保存 */
   chapters: StoryChapter[];

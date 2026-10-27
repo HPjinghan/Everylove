@@ -1,12 +1,14 @@
 /**
- * 语音供给（D-139 / D-230）：识别按语言分流、音色池按恋爱类型推荐与默认音色。
+ * 语音供给（D-139 / D-230 / D-241）：识别按语言分流、音色池按恋爱类型推荐与默认音色。
  */
 import { describe, expect, it } from 'vitest';
+
+import type { Lang } from '@/lib/i18n';
 
 import { CHARACTERS, LOVE_STYLES } from '@/content/characters';
 import { seedBaseId } from '@/content/portraits';
 import { SEED_STYLES, VOICES } from '@/content/voices';
-import { asrChannelFor, defaultVoiceId, recommendVoices, voiceGenderOf, multiAsrWanted } from '@/lib/speech';
+import { asrChannelFor, defaultVoiceId, inVoicePool, recommendVoices, voiceGenderOf, voicesFor, multiAsrWanted } from '@/lib/speech';
 
 describe('识别分流', () => {
   const both = { multi: true, baidu: true };
@@ -28,13 +30,13 @@ describe('识别分流', () => {
 
 describe('音色池', () => {
   const pool = [
-    { id: 'm1', name: '男一', lang: 'zh' as const, gender: 'male' as const, styles: ['温柔年上'] },
-    { id: 'm2', name: '男二', lang: 'zh' as const, gender: 'male' as const, styles: ['霸总'] },
-    { id: 'm3', name: '男三', lang: 'zh' as const, gender: 'male' as const, styles: ['小狗系年下'] },
-    { id: 'm4', name: '男四', lang: 'zh' as const, gender: 'male' as const, styles: ['高冷禁欲', '毒舌竹马'] },
-    { id: 'f1', name: '女一', lang: 'zh' as const, gender: 'female' as const, styles: ['甜'] },
-    { id: 'f2', name: '女二', lang: 'zh' as const, gender: 'female' as const, styles: ['姐姐系'] },
-    { id: 'j1', name: '日一', lang: 'ja' as const, gender: 'male' as const, styles: [] },
+    { id: 'm1', name: '男一', langs: ['zh'] as Lang[], gender: 'male' as const, styles: ['温柔年上'] },
+    { id: 'm2', name: '男二', langs: ['zh'] as Lang[], gender: 'male' as const, styles: ['霸总'] },
+    { id: 'm3', name: '男三', langs: ['zh'] as Lang[], gender: 'male' as const, styles: ['小狗系年下'] },
+    { id: 'm4', name: '男四', langs: ['zh'] as Lang[], gender: 'male' as const, styles: ['高冷禁欲', '毒舌竹马'] },
+    { id: 'f1', name: '女一', langs: ['zh'] as Lang[], gender: 'female' as const, styles: ['甜'] },
+    { id: 'f2', name: '女二', langs: ['zh'] as Lang[], gender: 'female' as const, styles: ['姐姐系'] },
+    { id: 'j1', name: '日一', langs: ['ja'] as Lang[], gender: 'male' as const, styles: [] },
   ];
   const withPool = (fn: () => void) => {
     const real = VOICES.splice(0, VOICES.length, ...pool);
@@ -45,7 +47,7 @@ describe('音色池', () => {
     }
   };
 
-  it('池子空时不推荐、默认音色回落 env（空字符串 = Fish 默认声）', () => {
+  it('池子空时不推荐、默认音色回落 env（没配 = 空字符串，只剩百度）', () => {
     const real = VOICES.splice(0, VOICES.length);
     try {
       expect(recommendVoices({ lang: 'zh', gender: 'male' })).toEqual([]);
@@ -84,11 +86,28 @@ describe('音色池', () => {
   });
 });
 
-describe('音色池内容（D-230）', () => {
+describe('多语种声线（D-241）', () => {
+  it('没写 langs 的声线四门语言都推荐；旧供应商的音色 id 不在池里就作废', () => {
+    const real = VOICES.splice(0, VOICES.length, { id: 'any1', name: 'Any', gender: 'male', styles: ['霸总'] }, { id: 'zh1', name: '只中', langs: ['zh'], gender: 'male', styles: [] });
+    try {
+      expect(voicesFor('ja').map((v) => v.id)).toEqual(['any1']);
+      expect(voicesFor('zh').map((v) => v.id)).toEqual(['any1', 'zh1']);
+      expect(defaultVoiceId({ id: 'x', loveTag: 'male', archetype: 'ceo' }, 'ko')).toBe('any1');
+      expect(inVoicePool('any1')).toBe(true);
+      expect(inVoicePool('fdc29e5149ea49c7b21c2556c5f05ce2')).toBe(false);
+      expect(inVoicePool(undefined)).toBe(false);
+    } finally {
+      VOICES.splice(0, VOICES.length, ...real);
+    }
+  });
+});
+
+// 音色池等 ElevenLabs 官方声线人工定好再填（D-241）；填之前这两条跳过
+describe.skipIf(VOICES.length === 0)('音色池内容（D-230 / D-241）', () => {
   it('每门语言 × 男 / 女，14 种恋爱类型各恰好一把默认声', () => {
     for (const lang of ['zh', 'en', 'ja', 'ko'] as const) {
       for (const gender of ['male', 'female'] as const) {
-        const pool = VOICES.filter((v) => v.lang === lang && v.gender === gender);
+        const pool = voicesFor(lang).filter((v) => v.gender === gender);
         for (const s of LOVE_STYLES) {
           expect(pool.filter((v) => v.styles.includes(s.label)).length, `${lang} ${gender} ${s.label}`).toBe(1);
         }
@@ -98,11 +117,11 @@ describe('音色池内容（D-230）', () => {
     expect(new Set(VOICES.map((v) => v.id)).size).toBe(VOICES.length);
   });
 
-  it('六位种子在四门语言都落到对应性别的声线上', () => {
+  it('六位种子在四门语言都落到对应性别、会说这门语言的声线上', () => {
     for (const c of CHARACTERS.filter((x) => SEED_STYLES[seedBaseId(x.id)])) {
       for (const lang of ['zh', 'en', 'ja', 'ko'] as const) {
-        const v = VOICES.find((x) => x.id === defaultVoiceId(c, lang));
-        expect(v?.lang, `${c.id} ${lang}`).toBe(lang);
+        const v = voicesFor(lang).find((x) => x.id === defaultVoiceId(c, lang));
+        expect(v, `${c.id} ${lang}`).toBeDefined();
         expect(v?.styles).toContain(SEED_STYLES[seedBaseId(c.id)]);
         if (c.pronoun === '他') expect(v?.gender).toBe('male');
         if (c.pronoun === '她') expect(v?.gender).toBe('female');

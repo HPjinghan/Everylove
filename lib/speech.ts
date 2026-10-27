@@ -1,8 +1,8 @@
 /**
  * 语音供给的纯逻辑（D-139）：识别按语言分流 + 音色池推荐。不碰网络、不碰 RN，可直接测。
- * - 识别：中 / 英走百度（同一把千帆 key、快且免费），日 / 韩走多语种通道（Fish transcribe-1，或 Whisper 协议的 Groq / OpenAI …，CONFIG.asr.provider）；
+ * - 识别：中 / 英走百度（同一把千帆 key、快且免费），日 / 韩走多语种通道（ElevenLabs Scribe，或 Whisper 协议的 Groq / OpenAI …，CONFIG.asr.provider）；
  *   哪些语言走多语种通道由 CONFIG.asr.langs 定。
- * - 音色（D-230）：角色自己选的 > 按恋爱类型取池里同语言同性别的那把（种子按 SEED_STYLES、没填类型按原型）> 同性别第一把 > env 兜底 > Fish 默认声。
+ * - 音色（D-230 / D-241）：角色自己选的（还在池里才算）> 按恋爱类型取池里会这门语言、同性别的那把（种子按 SEED_STYLES、没填类型按原型）> 同性别第一把 > env 兜底。
  */
 
 import { SEED_STYLES, VOICES, type VoiceOption } from '@/content/voices';
@@ -41,8 +41,14 @@ export function asrChannelFor(lang: Lang, avail: { multi: boolean; baidu: boolea
 
 /* ═══ 音色池 ═══ */
 
+/** 会说这门语言的声线（没写 langs = 四门都会，D-241） */
 export function voicesFor(lang: Lang): VoiceOption[] {
-  return VOICES.filter((v) => v.lang === lang);
+  return VOICES.filter((v) => !v.langs || v.langs.includes(lang));
+}
+
+/** 这把声线还在不在池里：换供应商以后旧的音色 id 作废，按默认走（D-241） */
+export function inVoicePool(id: string | undefined): id is string {
+  return Boolean(id && VOICES.some((v) => v.id === id));
 }
 
 /** 角色的性别归一（推荐与默认音色用）：没填按 loveTag 推，人外按人称（她 = 女声） */
@@ -104,7 +110,7 @@ export function defaultVoiceId(
   const fromPool = (style ? pool.find((v) => v.styles.includes(style)) : undefined) ?? pool[0] ?? voicesFor(lang)[0];
   if (fromPool) return fromPool.id;
   const p = c.pronoun ?? (gender === 'male' ? '他' : gender === 'female' ? '她' : 'TA');
-  return p === '他' ? CONFIG.fish.voice.he : p === '她' ? CONFIG.fish.voice.she : CONFIG.fish.voice.ta;
+  return p === '他' ? CONFIG.eleven.voice.he : p === '她' ? CONFIG.eleven.voice.she : CONFIG.eleven.voice.ta;
 }
 
 /** 试听句（创造 ⑧）：没有开场白时用；中文键，显示 / 合成前 t() */

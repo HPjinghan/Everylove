@@ -1,7 +1,7 @@
 /**
  * 实时通话的耳朵与嘴（D-232）：
  *   耳朵 = iOS 本机语音识别：边说边出字，她一停顿就有整句，不再录整段上传识别；
- *   嘴   = Fish 的 PCM 流（代理 fish.tts.stream / 本地 key 直连）边到边播，不等整段合成完。
+ *   嘴   = ElevenLabs 的 PCM 流（代理 eleven.tts.stream / 本地 key 直连，D-241）边到边播，不等整段合成完。
  * 两条通道，按包里有什么原生模块选：
  * - 通话通道（D-238，modules/live-call）：一台引擎开着系统通话处理（回声消除），识别与播放都在里面——
  *   TA 说话时也一直在听，她开口就能打断（liveDuplex() 为真）；
@@ -18,9 +18,9 @@ import type { AudioBufferQueueSourceNode, AudioContext } from 'react-native-audi
 
 import { CONFIG } from '@/core/config';
 import { estimateSpeechSeconds, generationBlocked, reportUsage, type Billing } from '@/core/usage';
-import type { Lang } from '@/lib/i18n';
+import { getLang, type Lang } from '@/lib/i18n';
 import { proxyStream } from '@/lib/proxy';
-import { fishConfigured, voiceFor } from '@/lib/tts';
+import { ELEVEN_TTS_URL, elevenBody, elevenConfigured, voiceFor } from '@/lib/tts';
 import type { Character } from '@/lib/types';
 
 type SpeechModule = typeof SpeechModuleValue;
@@ -45,8 +45,7 @@ declare class CallChannel extends NativeModule<ChannelEvents> {
   setSpeaker(on: boolean): void;
 }
 
-const FISH_TTS_URL = 'https://api.fish.audio/v1/tts';
-/** PCM 采样率：与代理 fish.tts.stream 一致（24 kHz 16 bit 单声道） */
+/** PCM 采样率：与代理 eleven.tts.stream 一致（24 kHz 16 bit 单声道） */
 const RATE = 24000;
 /** 攒够这么多再开播（秒）：网络抖一下也不断音 */
 const PREROLL_SEC = 0.25;
@@ -299,18 +298,18 @@ export interface LiveMouth {
 }
 
 async function pcmReader(text: string, voiceId: string, billing: Billing, signal: AbortSignal): Promise<ReadableStreamDefaultReader<Uint8Array>> {
-  const body = { text, reference_id: voiceId || undefined, latency: 'balanced' };
-  if (fishConfigured()) {
-    const res = await streamingFetch(FISH_TTS_URL, {
+  if (!voiceId) throw new Error('ElevenLabs TTS: no voice');
+  if (elevenConfigured()) {
+    const res = await streamingFetch(`${ELEVEN_TTS_URL}/${voiceId}/stream?output_format=pcm_${RATE}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${CONFIG.fish.apiKey}`, model: CONFIG.fish.model },
-      body: JSON.stringify({ ...body, format: 'pcm', sample_rate: RATE }),
+      headers: { 'content-type': 'application/json', 'xi-api-key': CONFIG.eleven.apiKey },
+      body: JSON.stringify(elevenBody(text)),
       signal,
     });
-    if (!res.ok || !res.body) throw new Error(`Fish TTS ${res.status}`);
+    if (!res.ok || !res.body) throw new Error(`ElevenLabs TTS ${res.status}`);
     return res.body.getReader();
   }
-  return (await proxyStream('fish.tts.stream', body, { billing, signal })).reader;
+  return (await proxyStream('eleven.tts.stream', { text, voice_id: voiceId, language: getLang() }, { billing, signal })).reader;
 }
 
 /** 16 bit 小端 PCM → [-1, 1) 浮点 */
@@ -555,7 +554,7 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
         }
         void (async () => {
           try {
-            const reader = await pcmReader(tex, voiceFor(character, 'fish'), billing, abort.signal);
+            const reader = await pcmReader(tex, voiceFor(character, 'eleven'), billing, abort.signal);
             for (;;) {
               const { done, value } = await reader.read();
               if (done || !alive()) break;
@@ -565,7 +564,7 @@ export function createMouth(character: Character, billing: Billing): LiveMouth {
                 pump();
               }
             }
-            reportUsage({ kind: 'tts', provider: fishConfigured() ? 'fish' : 'proxy', chars: tex.length, seconds: estimateSpeechSeconds(tex), billing, estimated: true, metered: !fishConfigured() });
+            reportUsage({ kind: 'tts', provider: elevenConfigured() ? 'eleven' : 'proxy', chars: tex.length, seconds: estimateSpeechSeconds(tex), billing, estimated: true, metered: !elevenConfigured() });
           } catch (e) {
             if (alive()) console.warn('[live-voice] 流式合成失败：', e);
           }

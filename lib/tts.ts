@@ -1,11 +1,11 @@
 /**
- * 语音合成（D-048；D-073 改百度接口；D-074 TA 偶尔发语音；D-139 换 Fish Audio + 角色音色）。
+ * 语音合成（D-048；D-073 改百度接口；D-074 TA 偶尔发语音；D-139 角色音色；D-241 换 ElevenLabs）。
  * 通道（synthesizeVoice 自动选）：
- *   1. Fish Audio `POST api.fish.audio/v1/tts`（EXPO_PUBLIC_FISH_API_KEY；中 / 英 / 日 / 韩全语种；音色 = 角色的 voiceId，见 lib/speech defaultVoiceId）——配了就优先；
+ *   1. ElevenLabs `POST api.elevenlabs.io/v1/text-to-speech/{voice_id}`（EXPO_PUBLIC_ELEVENLABS_API_KEY；中 / 英 / 日 / 韩；音色 = 角色的 voiceId，见 lib/speech defaultVoiceId）——配了就优先；
  *   2. 百度短文本语音合成 `tsn.baidu.com/text2audio`（与千帆同一把 bce-v3 key；只会中/英混读）：
  *      音色（per）按人称 他→4193 度泽言 / 她→4194 度嫣然 / TA→4115 度小贤，EXPO_PUBLIC_BAIDU_TTS_PER 可覆盖；
- *   3. 走代理（分发包，无本地 key）：先试代理侧的 Fish（服务端配了 FISH_API_KEY 才有），没配回落百度。
- * 返回 mp3，按（通道+模型+音色+文本）缓存到本机，同一句话不重复扣费。
+ *   3. 走代理（分发包，无本地 key）：先试代理侧的 ElevenLabs（服务端配了 ELEVENLABS_API_KEY 才有），没配回落百度。
+ * 返回 mp3，按（通道+模型+语言+音色+文本）缓存到本机，同一句话不重复扣费。
  * 失败返回 undefined——语音气泡显示「语音暂时没接通」并可看文字（Metro 有 [tts] 日志）。
  */
 
@@ -16,47 +16,52 @@ import { pronounFor } from '@/content/prompts';
 import { CONFIG } from '@/core/config';
 import { getLang, type Lang } from '@/lib/i18n';
 import { proxyJson, proxyReadySync, requestWithTimeout, TIMEOUTS, type TimedResponse } from '@/lib/proxy';
-import { defaultVoiceId } from '@/lib/speech';
+import { defaultVoiceId, inVoicePool } from '@/lib/speech';
 import type { Character } from '@/lib/types';
 
 const BAIDU_TTS_URL = 'https://tsn.baidu.com/text2audio';
-const FISH_TTS_URL = 'https://api.fish.audio/v1/tts';
+export const ELEVEN_TTS_URL = 'https://api.elevenlabs.io/v1/text-to-speech';
 const ENV_PER = CONFIG.baiduTtsPer;
 const ENV_QIANFAN_KEY = CONFIG.qianfanKey;
-const FISH_KEY = CONFIG.fish.apiKey;
-const FISH_MODEL = CONFIG.fish.model;
+const ELEVEN_KEY = CONFIG.eleven.apiKey;
+const ELEVEN_MODEL = CONFIG.eleven.model;
 /** 百度 tex 上限 1024 GBK 字节（约 500 汉字）；气泡本来就短，保守截断 */
 const MAX_CHARS = 300;
-/** 代理侧没配 FISH_API_KEY 时的固定回应（supabase/functions/ai），客户端据此回落百度 */
-export const FISH_UNCONFIGURED = 'fish not configured';
+/** 代理侧没配 ELEVENLABS_API_KEY 时的固定回应（supabase/functions/ai），客户端据此回落百度 */
+export const ELEVEN_UNCONFIGURED = 'eleven not configured';
 
-type TtsProvider = 'fish' | 'baidu';
+type TtsProvider = 'eleven' | 'baidu';
 
-export function fishConfigured(): boolean {
-  return Boolean(FISH_KEY);
+export function elevenConfigured(): boolean {
+  return Boolean(ELEVEN_KEY);
 }
 
-/** 可发声 = 配了 Fish，或本地有千帆 key（百度直连），或已登录（走服务端代理，D-057） */
+/** 可发声 = 配了 ElevenLabs，或本地有千帆 key（百度直连），或已登录（走服务端代理，D-057） */
 export function ttsReady(): boolean {
-  return fishConfigured() || Boolean(ENV_QIANFAN_KEY) || proxyReadySync();
+  return elevenConfigured() || Boolean(ENV_QIANFAN_KEY) || proxyReadySync();
 }
 
 /**
- * 当前 TTS 通道会不会说这门语言：百度只有中/英，日语 / 韩语要靠 Fish；
+ * 当前 TTS 通道会不会说这门语言：百度只有中/英，日语 / 韩语要靠 ElevenLabs；
  * 走代理时以服务端配置为准（这里乐观放行）。
  */
 export function ttsSpeaksLang(lang: Lang): boolean {
-  if (fishConfigured()) return true;
+  if (elevenConfigured()) return true;
   if (lang !== 'ja' && lang !== 'ko') return true;
   return !ENV_QIANFAN_KEY && proxyReadySync();
 }
 
-/** 音色：Fish = 角色选的 / 默认（lib/speech）；百度 = 按人称给默认，env 可覆盖 */
+/** 音色：ElevenLabs = 角色选的（还在池里才算）/ 默认（lib/speech）；百度 = 按人称给默认，env 可覆盖 */
 export function voiceFor(character: Character, provider: TtsProvider): string {
-  if (provider === 'fish') return character.voiceId || defaultVoiceId(character, getLang());
+  if (provider === 'eleven') return inVoicePool(character.voiceId) ? character.voiceId : defaultVoiceId(character, getLang());
   if (ENV_PER) return ENV_PER;
   const p = pronounFor(character);
   return p === '他' ? '4193' : p === '她' ? '4194' : '4115';
+}
+
+/** ElevenLabs 请求体（直连与流式共用）：语言写明，中文与日文的汉字不会念串 */
+export function elevenBody(text: string): Record<string, unknown> {
+  return { text, model_id: ELEVEN_MODEL, language_code: getLang() };
 }
 
 /**
@@ -120,26 +125,21 @@ function audioBase64(res: TimedResponse, label: string): string {
   return toBase64(buf);
 }
 
-/** Fish 请求体：reference_id 空 = Fish 默认声；latency balanced 兼顾首包与自然度 */
-function fishBody(text: string, voiceId: string): Record<string, unknown> {
-  return { text, reference_id: voiceId || undefined, format: 'mp3', latency: 'balanced' };
-}
-
-/** 通道 1：Fish 直连 */
-async function fishDirect(text: string, voiceId: string): Promise<string> {
-  const res = await requestWithTimeout(FISH_TTS_URL, {
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${FISH_KEY}`, model: FISH_MODEL },
-    body: JSON.stringify(fishBody(text, voiceId)),
+/** 通道 1：ElevenLabs 直连 */
+async function elevenDirect(text: string, voiceId: string): Promise<string> {
+  const res = await requestWithTimeout(`${ELEVEN_TTS_URL}/${voiceId}?output_format=mp3_44100_128`, {
+    headers: { 'content-type': 'application/json', 'xi-api-key': ELEVEN_KEY },
+    body: JSON.stringify(elevenBody(text)),
     timeoutMs: TIMEOUTS.tts,
     binary: true,
   });
-  return audioBase64(res, 'Fish TTS');
+  return audioBase64(res, 'ElevenLabs TTS');
 }
 
-/** 通道 3a：Fish 走代理（服务端 FISH_API_KEY 没配会抛 fish not configured） */
-async function fishProxy(text: string, voiceId: string, billing: Billing): Promise<string> {
-  const data = await proxyJson<{ audio_base64?: string; error?: string }>('fish.tts', fishBody(text, voiceId), { billing });
-  if (!data.audio_base64) throw new Error(`Fish TTS: ${data.error ?? 'no audio'}`);
+/** 通道 3a：ElevenLabs 走代理（服务端 ELEVENLABS_API_KEY 没配会抛 eleven not configured） */
+async function elevenProxy(text: string, voiceId: string, billing: Billing): Promise<string> {
+  const data = await proxyJson<{ audio_base64?: string; error?: string }>('eleven.tts', { text, voice_id: voiceId, language: getLang() }, { billing });
+  if (!data.audio_base64) throw new Error(`ElevenLabs TTS: ${data.error ?? 'no audio'}`);
   return data.audio_base64;
 }
 
@@ -173,11 +173,12 @@ const inflight = new Map<string, Promise<string | undefined>>();
  * 合成核心：给定两条通道各自的音色，按取路合成并缓存。
  * 同一句话并发只打一次接口。
  */
-async function synthesize(text: string, voices: { fish: string; baidu: string }, billing: Billing): Promise<string | undefined> {
+async function synthesize(text: string, voices: { eleven: string; baidu: string }, billing: Billing): Promise<string | undefined> {
   if (!ttsReady() || !text.trim()) return undefined;
   const tex = text.trim().slice(0, MAX_CHARS);
-  const route: 'fish' | 'baidu' | 'proxy' = fishConfigured() ? 'fish' : ENV_QIANFAN_KEY ? 'baidu' : 'proxy';
-  const cacheKey = hash(`${route}|${FISH_MODEL}|${voices.fish}|${voices.baidu}|${tex}`);
+  // ElevenLabs 必须给音色：池子还空着时只剩百度
+  const route: 'eleven' | 'baidu' | 'proxy' = elevenConfigured() && voices.eleven ? 'eleven' : ENV_QIANFAN_KEY ? 'baidu' : 'proxy';
+  const cacheKey = hash(`${route}|${ELEVEN_MODEL}|${getLang()}|${voices.eleven}|${voices.baidu}|${tex}`);
   const dir = `${FileSystem.documentDirectory}tts/`;
   const local = `${dir}${cacheKey}.mp3`;
 
@@ -192,15 +193,16 @@ async function synthesize(text: string, voices: { fish: string; baidu: string },
     try {
       await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => {});
       let b64: string;
-      if (route === 'fish') {
-        b64 = await fishDirect(tex, voices.fish);
+      if (route === 'eleven') {
+        b64 = await elevenDirect(tex, voices.eleven);
       } else if (route === 'baidu') {
         b64 = await baiduDirect(tex, voices.baidu);
       } else {
         try {
-          b64 = await fishProxy(tex, voices.fish, billing);
+          if (!voices.eleven) throw new Error(ELEVEN_UNCONFIGURED);
+          b64 = await elevenProxy(tex, voices.eleven, billing);
         } catch (e) {
-          if (!String(e).includes(FISH_UNCONFIGURED)) throw e;
+          if (!String(e).includes(ELEVEN_UNCONFIGURED)) throw e;
           b64 = await baiduProxy(tex, voices.baidu, billing);
         }
       }
@@ -222,12 +224,12 @@ async function synthesize(text: string, voices: { fish: string; baidu: string },
 
 /** 合成 TA 的一句话（音色按角色），返回本机音频 URI；不可用 / 失败返回 undefined（调用方显示占位） */
 export function synthesizeVoice(text: string, character: Character, billing: Billing = 'user'): Promise<string | undefined> {
-  return synthesize(text, { fish: voiceFor(character, 'fish'), baidu: voiceFor(character, 'baidu') }, billing);
+  return synthesize(text, { eleven: voiceFor(character, 'eleven'), baidu: voiceFor(character, 'baidu') }, billing);
 }
 
-/** 试听一把音色（创造 ⑧）：指定 Fish 音色 id 合成一句；没配 Fish 时按人称回落百度 */
+/** 试听一把音色（创造 ⑧）：指定 ElevenLabs 音色 id 合成一句；没配 ElevenLabs 时按人称回落百度 */
 export function previewVoice(text: string, voiceId: string, pronoun: '他' | '她' | 'TA'): Promise<string | undefined> {
   const baidu = ENV_PER || (pronoun === '他' ? '4193' : pronoun === '她' ? '4194' : '4115');
   // 试听不计时（D-210）：选声音是创作，不该先付钱
-  return synthesize(text, { fish: voiceId, baidu }, 'house');
+  return synthesize(text, { eleven: voiceId, baidu }, 'house');
 }

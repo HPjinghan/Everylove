@@ -202,9 +202,9 @@ describe('D-210：只扣她发起的、语音按分钟、后台保险丝', () =>
     const s = () => useAppStore.getState();
     s().setPlan('pro');
     s().setPlanVoice(600);
-    reportUsage({ kind: 'tts', provider: 'fish', seconds: 12, billing: 'user' });
-    reportUsage({ kind: 'tts', provider: 'fish', seconds: 30, billing: 'house' });
-    reportUsage({ kind: 'tts', provider: 'fish', seconds: 30, billing: 'included' });
+    reportUsage({ kind: 'tts', provider: 'eleven', seconds: 12, billing: 'user' });
+    reportUsage({ kind: 'tts', provider: 'eleven', seconds: 30, billing: 'house' });
+    reportUsage({ kind: 'tts', provider: 'eleven', seconds: 30, billing: 'included' });
     reportUsage({ kind: 'asr', provider: 'baidu', seconds: 30, billing: 'included' });
     expect(s().voice.usedSec).toBe(12);
     expect(s().voice.planSec).toBe(588);

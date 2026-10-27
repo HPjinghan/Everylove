@@ -191,7 +191,7 @@ export async function proxyJson<T = unknown>(service: string, body: unknown, opt
 }
 
 /**
- * 调一次代理的流式服务（D-232，现在只有 fish.tts.stream）：返回响应体的读取器，边到边读；
+ * 调一次代理的流式服务（D-232，现在只有 eleven.tts.stream）：返回响应体的读取器，边到边读；
  * 余额不够抛 GenerationBlockedError，其余失败抛错。signal 用来在她打断 TA 时掐掉。
  */
 export async function proxyStream(
