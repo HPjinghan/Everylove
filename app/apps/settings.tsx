@@ -462,12 +462,12 @@ export default function MeScreen() {
             <>
               <Row
                 label={plan === 'pro' ? t('已订阅 Pro ✓') : t('订阅 Pro')}
-                value={planBlurb('pro')}
+                hint={planBlurb('pro')}
                 onPress={plan === 'pro' ? undefined : () => subscribe('pro')}
               />
               <Row
                 label={plan === 'max' ? t('已订阅 Max ✓') : t('订阅 Max')}
-                value={planBlurb('max')}
+                hint={planBlurb('max')}
                 onPress={plan === 'max' ? undefined : () => subscribe('max')}
               />
               {plan !== 'free' ? <Row label={t('取消订阅（回 Free）')} onPress={() => subscribe('free')} /> : null}
@@ -484,7 +484,8 @@ export default function MeScreen() {
                     <Row
                       key={i.productId}
                       label={p === 'max' ? (on ? t('已订阅 Max ✓') : t('订阅 Max')) : on ? t('已订阅 Pro ✓') : t('订阅 Pro')}
-                      value={priceOf(i.productId, `${i.priceString} · ${planBlurb(p)}`)}
+                      value={priceOf(i.productId, i.priceString)}
+                      hint={planBlurb(p)}
                       onPress={on ? undefined : () => void buyNow(i.productId)}
                     />
                   );
@@ -531,7 +532,7 @@ export default function MeScreen() {
             : null}
         </Section>
 
-        {/* TA 的声音（D-240）：按分钟、不扣流量——订阅每 30 天给的 + 新用户送的通话 + 分钟包（所有人都能买） */}
+        {/* TA 的声音（D-240）：按分钟、不扣流量——订阅每 30 天给的 + 新用户送的通话 + 分钟包（所有人都能买；没买过也显示 0） */}
         <Section title={t('TA 的声音')}>
           {plan !== 'free' ? (
             <Row
@@ -549,7 +550,7 @@ export default function MeScreen() {
               hint={t('只能打电话，用完为止。')}
             />
           ) : null}
-          {voice.packSec > 0 ? <Row label={t('分钟包')} value={t('{n} 分钟', { n: voiceMinutes(voice.packSec) })} hint={t('不过期。')} /> : null}
+          <Row label={t('分钟包')} value={t('{n} 分钟', { n: voiceMinutes(voice.packSec) })} hint={t('不过期。')} />
           {storeMode === 'sim'
             ? VOICE_PACKS.map((p) => (
                 <Row
