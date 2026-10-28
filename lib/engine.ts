@@ -428,11 +428,11 @@ export async function generateReply(
   );
   if (!text) throw new Error('empty reply');
 
-  // 外出（D-254）：按说话人分段——旁白、纸条、多人场里的每个人各一条，不按句拆
+  // 外出（D-254）：按说话人分段——旁白、纸条、多人场里的每个人各一条；一个人的一段再按「一个动作 + 一段话」拆（D-256）
   if (policy?.speakerLines) {
     const marked = stripReplyMarkers({ texts: [text] });
     const names = [ctx.character.name, ...(ctx.cast ?? []).map((m) => m.name)];
-    const texts = speakerSegments(marked.texts.join('\n'), names).slice(0, policy.maxBubbles);
+    const texts = splitBeats(speakerSegments(marked.texts.join('\n'), names), policy.maxBubbles, names);
     return { ...marked, texts: policy.keepTrailingPeriod ? texts : stripTrailingPeriods(texts) };
   }
   const stripStage = policy?.stripStage ?? true;
@@ -477,4 +477,73 @@ export function speakerSegments(text: string, names: string[]): string[] {
     }
   }
   return out.filter((s) => s.replace(/^[^：]*：/, '').trim());
+}
+
+/** 一对括号里的动作（全角 / 半角） */
+const ACTION_RE = /（[^（）]*）|\([^()]*\)/g;
+
+/**
+ * 一段话按「一个动作 + 一段话」拆（D-256）：括号前已经有话、或已经有一个动作，就从这个括号另起一条；
+ * 收尾的那个动作（后面没话了）跟着前一句，不单独成条。
+ */
+export function beats(body: string): string[] {
+  const parts: { action: boolean; text: string }[] = [];
+  let last = 0;
+  for (const m of body.matchAll(ACTION_RE)) {
+    const before = body.slice(last, m.index).trim();
+    if (before) parts.push({ action: false, text: before });
+    parts.push({ action: true, text: m[0] });
+    last = m.index + m[0].length;
+  }
+  const tail = body.slice(last).trim();
+  if (tail) parts.push({ action: false, text: tail });
+  const out: { text: string; action: boolean; speech: boolean }[] = [];
+  parts.forEach((p, i) => {
+    const cur = out[out.length - 1];
+    const trailing = p.action && i === parts.length - 1 && !!cur?.speech && !cur.action;
+    if (!cur || (p.action && (cur.speech || cur.action) && !trailing) || (!p.action && cur.speech)) {
+      out.push({ text: p.text, action: p.action, speech: !p.action });
+    } else {
+      cur.text = joinBeat(cur.text, p.text);
+      if (p.action) cur.action = true;
+      else cur.speech = true;
+    }
+  });
+  return out.map((b) => b.text);
+}
+
+/** 拼回去：两边都是拉丁字母 / 标点时隔一个空格，中日文直接接上 */
+function joinBeat(a: string, b: string): string {
+  return /[\x21-\x7e]$/.test(a) && /^[\x21-\x7e]/.test(b) ? `${a} ${b}` : `${a}${b}`;
+}
+
+/** 旁白与纸条整段一条，不拆 */
+const WHOLE_LINE = new RegExp(`^(?:${NARRATOR_TOKEN}|${NOTE_TOKEN}|[^：]*（${NOTE_TOKEN}）)：`);
+
+/**
+ * 每段按 beats 拆、各自带回行首记号（D-256）；超过上限时从后往前把同一段相邻的两条并回去（不丢字），直到不超。
+ */
+export function splitBeats(segments: string[], max: number, names: string[] = []): string[] {
+  const items: { seg: number; prefix: string; body: string }[] = [];
+  segments.forEach((s, seg) => {
+    if (WHOLE_LINE.test(s)) {
+      items.push({ seg, prefix: '', body: s });
+      return;
+    }
+    // 行首的「名字：」只认在场的人（speakerSegments 已规范成这个样子）；话里自己带的冒号不算
+    const colon = s.indexOf('：');
+    const prefix = colon > 0 && names.includes(s.slice(0, colon)) ? s.slice(0, colon + 1) : '';
+    for (const b of beats(s.slice(prefix.length))) items.push({ seg, prefix, body: b });
+  });
+  while (items.length > max) {
+    let i = items.length - 1;
+    while (i > 0 && items[i].seg !== items[i - 1].seg) i--;
+    if (i === 0) {
+      items.length = max;
+      break;
+    }
+    items[i - 1].body = joinBeat(items[i - 1].body, items[i].body);
+    items.splice(i, 1);
+  }
+  return items.map((it) => `${it.prefix}${it.body}`);
 }

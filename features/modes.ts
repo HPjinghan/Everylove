@@ -185,8 +185,8 @@ function countStrike(session: OutingSession, place: Place | undefined, contextTe
 
 const outing: ConversationMode = {
   id: 'outing',
-  // D-254：TA 的话 + 至多一行旁白 / 一张纸条，按说话人分条
-  maxBubbles: 3,
+  // D-254：TA 的话 + 至多一行旁白 / 一张纸条，按说话人分条；TA 的话再按「一个动作 + 一段话」拆（D-256）
+  maxBubbles: 5,
   stripStage: false,
   speakerLines: true,
   context(scope, userText) {
@@ -271,7 +271,8 @@ function sceneMember(characterId: string, now: number): SceneMember | null {
 /* ── 外出多人场（D-254）：旁白 + 在场的几个人，一次调用写出这一轮谁说了什么 ── */
 const scene: ConversationMode = {
   id: 'scene',
-  maxBubbles: 6,
+  // 一到三行，每行再按「一个动作 + 一段话」拆（D-256）
+  maxBubbles: 8,
   stripStage: false,
   speakerLines: true,
   context(scope, userText) {

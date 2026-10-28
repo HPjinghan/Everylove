@@ -7,7 +7,7 @@ import '@/features';
 
 import { buildChatSystemPrompt, messageContextText, placeRuleLines } from '@/content/prompts';
 import { PLACES, placeById } from '@/content/places';
-import { speakerSegments } from '@/lib/engine';
+import { beats, speakerSegments, splitBeats } from '@/lib/engine';
 import { spokeAloud, toSceneMessage } from '@/lib/outing';
 import { dayPartOf, isOpen, presenceAt, sceneFor } from '@/lib/presence';
 import type { ChatMessage, EngineContext } from '@/lib/types';
@@ -24,6 +24,26 @@ describe('按说话人分行', () => {
   it('旁白、纸条、名字各开一段；没记号的行接在上一段', () => {
     const out = speakerSegments('（推了推眼镜）嗯，来了。\n旁白：管理员抬头看了一眼。\n纸条：别出声\n沈之言（纸条）：写给你的\n接着写', ['沈之言']);
     expect(out).toEqual(['（推了推眼镜）嗯，来了。', '旁白：管理员抬头看了一眼。', '纸条：别出声', '沈之言（纸条）：写给你的 接着写']);
+  });
+
+  it('一条气泡最多一个动作 + 一段话（D-256）', () => {
+    expect(beats('（推了推眼镜）嗯，来了。（笑了一下）你今天怎么这么早？')).toEqual(['（推了推眼镜）嗯，来了。', '（笑了一下）你今天怎么这么早？']);
+    // 收尾的动作跟着前一句；连着两个动作各成一条
+    expect(beats('好啊（笑）')).toEqual(['好啊（笑）']);
+    expect(beats('（愣住）（低头）……嗯')).toEqual(['（愣住）', '（低头）……嗯']);
+    expect(beats('嗯，来了。你坐。')).toEqual(['嗯，来了。你坐。']);
+    expect(beats('Hey. (smiles) You came early.')).toEqual(['Hey.', '(smiles) You came early.']);
+  });
+
+  it('拆完带回说话人；旁白纸条不拆；话里的冒号不当名字；超上限同一段并回去不丢字', () => {
+    const names = ['沈之言', '江野'];
+    expect(splitBeats(['沈之言：（抬头）你来了。（笑）坐吧', '旁白：（门响）有人进来了。（风）'], 8, names)).toEqual([
+      '沈之言：（抬头）你来了。',
+      '沈之言：（笑）坐吧',
+      '旁白：（门响）有人进来了。（风）',
+    ]);
+    expect(splitBeats(['嗯：（笑）你看（指）那边'], 8, names)).toEqual(['嗯：', '（笑）你看', '（指）那边']);
+    expect(splitBeats(['（a）一（b）二（c）三', '旁白：雨停了'], 3, names)).toEqual(['（a）一', '（b）二（c）三', '旁白：雨停了']);
   });
 
   it('拆回说话人：旁白 / 一人场的纸条 / 多人场的名字与纸条', () => {
