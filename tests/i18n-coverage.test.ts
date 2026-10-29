@@ -41,8 +41,11 @@ function literalKeys(): Map<string, string> {
   return keys;
 }
 
-/** 数据表里经 t(x.label) 等动态取键的中文：这些文件里 label / line / name 字段的字面值 */
+/** 数据表里经 t(x.label) 等动态取键的中文：这些文件里 label / line / name / hint / sample / title 字段的字面值 */
 const DATA_FILES = [
+  'lib/character-form.ts',
+  'app/apps/character-new.tsx',
+  'content/characters/index.ts',
   'constants/apps.ts',
   'constants/theme.ts',
   'lib/weather.ts',
@@ -54,7 +57,7 @@ function dataKeys(): Map<string, string> {
   const keys = new Map<string, string>();
   for (const rel of DATA_FILES) {
     const src = readFileSync(join(ROOT, rel), 'utf8');
-    for (const m of src.matchAll(/\b(?:label|line|name)\s*:\s*'((?:[^'\\]|\\.)*)'/g)) {
+    for (const m of src.matchAll(/\b(?:label|line|name|hint|sample|title)\s*:\s*'((?:[^'\\]|\\.)*)'/g)) {
       const v = unescape(m[1]);
       if (HAN.test(v) && !NATIVE_NAMES.has(v)) keys.set(v, rel);
     }

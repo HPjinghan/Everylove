@@ -1,9 +1,9 @@
 /**
- * 创造（D-149 改版为列表；D-095 列表原在「我创建的」；D-100 纸面）：
- * 进来就是自创角色的列表——每行一张白卡：立绘头像 48、名字 15/600、身份 12 muted、状态标签 r4 11
- * （已缔结 = accentSoft 底 accent 字；心动中 / 公开 / 私密 = line 底 muted 字）、右侧「编辑」描边按钮带 edit=<id>
- * 进创造流程回填（app/apps/character-edit.tsx：设定 / 台词 / 传记都在那里改）。
- * 右下角「+」= 新建（primary 圆钮，无阴影无渐变）。入口：桌面「创造」图标、设置 → 我的创作。
+ * 创造（D-149 改版为列表；D-260 分步捏人）：
+ * 进来就是自创角色的列表——每行一张白卡：立绘头像、名字、身份、状态标签（已缔结 / 认识中、公开 / 私密、传记几章）、
+ * 右侧「编辑」带 edit=<id> 进 app/apps/character-edit.tsx（设定 / 台词 / 传记都在那里改）。
+ * 捏了一半的草稿排在最上面，点「继续」接着捏。右下角「+」= 新建（app/apps/character-new.tsx；有草稿就接着草稿）。
+ * 入口：桌面「创造」图标、设置 → 我的创作。
  */
 
 import { useRouter } from 'expo-router';
@@ -23,6 +23,8 @@ export default function CreateScreen() {
   const router = useRouter();
   const customs = useAppStore((s) => s.customCharacters);
   const bonds = useAppStore((s) => s.bonds);
+  const draft = useAppStore((s) => s.createDraft);
+  const startNew = () => router.push('/apps/character-new' as never);
   // 共享池领来的快照不算你的创作（D-060）
   const mine = customs.filter((c) => !c.shared);
   const bondedIds = new Set(bonds.map((b) => b.characterId));
@@ -31,7 +33,21 @@ export default function CreateScreen() {
     <AppScreen title={t('创造')}>
       <View style={styles.flex}>
         <ScrollView contentContainerStyle={styles.list}>
-          {mine.length === 0 ? (
+          {draft ? (
+            <Card style={styles.row}>
+              <CharAvatar name={draft.form.name || '?'} color={Romance.faint} size={48} uri={draft.form.portraitUri} />
+              <View style={styles.text}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {draft.form.name || t('还没起名字')}
+                </Text>
+                <View style={styles.tags}>
+                  <Text style={styles.tag}>{t('草稿')}</Text>
+                </View>
+              </View>
+              <Button label={t('继续')} size="sm" onPress={startNew} />
+            </Card>
+          ) : null}
+          {mine.length === 0 && !draft ? (
             <View style={styles.empty}>
               <Text style={styles.emptyText}>{t('还没有创造过 TA')}</Text>
             </View>
@@ -66,7 +82,7 @@ export default function CreateScreen() {
           )}
         </ScrollView>
         {/* 新建（D-149）：右下角 primary 圆钮 */}
-        <Pressable style={styles.fab} hitSlop={6} onPress={() => router.push('/apps/character-edit' as never)}>
+        <Pressable style={styles.fab} hitSlop={6} accessibilityRole="button" accessibilityLabel={t('创造')} onPress={startNew}>
           <MingCute name="plus" size={Space.iconTile} color="#FFFFFF" />
         </Pressable>
       </View>

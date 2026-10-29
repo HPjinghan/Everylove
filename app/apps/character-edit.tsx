@@ -1,64 +1,44 @@
 /**
- * 创造流程（D-025 大改版；D-043 描述解析；D-100 纸面；D-149 从创造页拆出来、改成分页签）：
- * 创造页现在是列表（app/apps/create.tsx），右下角「+」进这里新建，列表行「编辑」带 edit=<id> 进这里回填。
- * 五个页签：基础（描述导入 / 名字 / 性别 / 年龄状态 / 谁能遇到 / 世界）· 形象（长相 / 主题色 / 背景故事 / 形象与画风 / 声音）·
- * 设定（原「高级」：种族 / 生日 / 口癖 / 喜欢 / 讨厌 / 节奏 / 恋爱类型 / MBTI / 主动强度 / 共同记忆 / 禁忌 / 隐藏设定 / 聊天设定 / 作息）·
- * 台词（只在编辑时：开场 / 想做朋友 / 成为朋友后 / 人设 / 追法，可让 TA 重写）· 传记（components/story-editor，按章写、每章设开放阶段）。
- * 底部常驻：预览卡 + 发布 / 保存按钮（换页签不丢输入——全部状态在这一个组件里）。
- * 描述导入：写/粘贴一大段人设（≤2000 字）→「自动解析」由当前引擎整理成表单字段
- *          （prompt 在 content/prompts/create.ts 的 CHARACTER_PARSE_SYSTEM），无 key/失败回落规则解析；解析后仍可手改。
- * 全部设定进对话与生图 prompt（content/prompts/shared.ts 的 characterProfileBlock / pursuitLine）。
- * 审核最小拦截：挡真人明星与 IP 角色（红线 #1/#4，完整流程见 OPEN_QUESTIONS #7）——描述文本同样过拦截。
- * 界面：字段一律 Field + Input、选项一律 Chip、页签 Segmented、按钮一律 Button、卡片一律 Card。
+ * 编辑已创建的 TA（D-050 / D-095；D-149 页签；D-260 只管编辑——新建是 app/apps/character-new.tsx 的分步捏人）：
+ * 创造列表行「编辑」带 edit=<id> 进来，全部字段回填。没带 id / 找不到就去新建。
+ * 五个页签：基础（名字 / 性别 / 背景 / 恋爱类型 / 声音 / 谁能遇到）· 形象（立绘 / 画风 / 长相 / 主题色）·
+ * 细节（其余设定）· 台词（开场 / 想做朋友 / 成为朋友后 / 人设 / 追法，可让 TA 重写）· 传记（按章写、每章设开放阶段）。
+ * 底部只留一颗「保存修改」；换页签不丢输入（全部状态在一份表单里）。
+ * 字段组在 components/character-fields.tsx，表单模型在 lib/character-form.ts。
  */
 
-import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { memo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useRef, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { showAlert } from '@/components/action-sheet';
-import { alertAiUnavailable } from '@/components/ai-unavailable';
 import { AppScreen } from '@/components/app-screen';
-import { BirthdayPicker } from '@/components/birthday-picker';
 import { Button } from '@/components/button';
-import { Card } from '@/components/card';
-import { CharAvatar } from '@/components/char-avatar';
-import { DevelopingFilm, useStepLine } from '@/components/developing';
-import { Chip, Segmented } from '@/components/chip';
+import {
+  alertBlocked,
+  DetailFields,
+  IdentityFields,
+  LookFields,
+  LoveStylePicker,
+  publishIfPublic,
+  VisibilityField,
+  type Patch,
+} from '@/components/character-fields';
+import { Segmented } from '@/components/chip';
 import { Field, Input } from '@/components/input';
 import { StoryEditor } from '@/components/story-editor';
-import { VoicePicker } from '@/components/voice-picker';
 import { showToast } from '@/components/toast';
-import { Shape, Space, Type } from '@/constants/design';
-import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
-import { BLOCKED_NAME_PATTERN, LOVE_STYLES, loveStyleByLabel, RACES } from '@/content/characters';
-import { DEFAULT_PORTRAIT_STYLE, PORTRAIT_STYLES } from '@/content/prompts';
-import { authConfigured, signedInSession } from '@/lib/auth';
-import { getLang, t } from '@/lib/i18n';
-import { describeAiError } from '@/lib/chat';
-import { parseCharacterDescription } from '@/lib/character-parse';
-import { uid } from '@/lib/format';
+import { VoicePicker } from '@/components/voice-picker';
+import { Space } from '@/constants/design';
+import { themed } from '@/constants/theme';
+import { blocked, characterFromForm, formFor, GENDERS, type CharacterForm } from '@/lib/character-form';
 import { generateCharacterLines } from '@/lib/character-lines';
-import { generatePortraitFor, imageKeyReady } from '@/lib/imagegen';
+import { getLang, t } from '@/lib/i18n';
+import { unpublishCharacter } from '@/lib/pool';
 import { VOICE_SAMPLE_LINE } from '@/lib/speech';
-import { publishCharacter, unpublishCharacter } from '@/lib/pool';
-import type { Character, CharacterLines, StoryChapter } from '@/lib/types';
+import type { Character, CharacterLines } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
-import { copyIntoDocuments } from '@/lib/media-paths';
 
-/** 页签（D-149）：台词只在编辑已创建的角色时出现（发布时模型才写出第一版） */
 type Tab = 'basic' | 'look' | 'settings' | 'lines' | 'story';
 const TABS: { key: Tab; label: string }[] = [
   { key: 'basic', label: '基础' },
@@ -68,979 +48,108 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'story', label: '传记' },
 ];
 
-/** 描述导入的最大长度（D-043） */
-const DESC_MAX = 2000;
-/** 提交完成后的冷却（D-121）：这段时间内再点「让 TA 醒来」不响应 */
+/** 保存后的冷却（D-121）：这段时间里再点不响应 */
 const SUBMIT_COOLDOWN_MS = 1000;
-
-/** 主题色块选中外圈：ink 2.5、留 2（同设置页主题点） */
-const SWATCH_RING = { width: 2.5, gap: 2 };
-
-/**
- * 规则解析（无 key / 引擎失败时的回落）：认「标签：内容」式的行，MBTI 直接正则；
- * 什么标签都没有时，整段进背景故事。
- */
-function heuristicParse(text: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  const grab = (labels: string[]): string | undefined => {
-    for (const l of labels) {
-      const m = text.match(new RegExp(`${l}\\s*[:：]\\s*([^\\n；;]+)`));
-      if (m) return m[1].trim();
-    }
-    return undefined;
-  };
-  const put = (k: string, v?: string) => {
-    if (v) out[k] = v;
-  };
-  put('name', grab(['名字', '姓名']));
-  put('look', grab(['外貌', '长相', '外形', '样貌']));
-  put('race', grab(['种族']));
-  put('birthday', grab(['生日']));
-  put('catchphrase', grab(['口癖', '口头禅']));
-  put('likes', grab(['喜欢', '喜好']));
-  put('dislikes', grab(['讨厌', '厌恶']));
-  put('mbti', text.match(/\b([IE][NS][TF][JP])\b/i)?.[1]?.toUpperCase());
-  put('schedule', grab(['作息', '日常作息']));
-  put('chatNotes', grab(['聊天设定', '说话方式', '语气']));
-  put('taboos', grab(['禁忌', '边界', '雷点']));
-  put('presetMemories', grab(['共同记忆', '共同的过去']));
-  put('secrets', grab(['秘密', '隐藏设定', '剧情钩子']));
-  const g = grab(['性别']);
-  if (g) out.gender = /男/.test(g) ? 'male' : /女/.test(g) ? 'female' : 'nonbinary';
-  put('story', grab(['背景故事', '背景', '故事', '经历']) ?? text.slice(0, 300));
-  return out;
-}
-
-const PALETTES = [
-  { color: '#E58AA5', colorSoft: '#FDEDF2' },
-  { color: '#8AA5E5', colorSoft: '#EDF1FD' },
-  { color: '#5FB39B', colorSoft: '#E9F7F2' },
-  { color: '#C99ADF', colorSoft: '#F7EEFB' },
-  { color: '#E5AE6E', colorSoft: '#FDF4E9' },
-  { color: '#546080', colorSoft: '#EDEFF5' },
-];
-
-const GENDERS = [
-  { key: 'male', label: '男生', pronoun: '他' },
-  { key: 'female', label: '女生', pronoun: '她' },
-  { key: 'nonbinary', label: '非二元', pronoun: 'TA' },
-] as const;
-
-/** 走近的节奏（机制上=好奇值步长；界面不暴露机制口径，D-045） */
-const OFFER_PACES = [
-  { turns: 2, label: '很快', hint: '一见如故' },
-  { turns: 4, label: '标准', hint: '顺其自然' },
-  { turns: 7, label: '慢热', hint: '需要时间发酵' },
-];
-
-/** 主动联系强度（D-045）：进亲密/外出 prompt */
-const INITIATIVES = [
-  { key: 'high', label: '高', hint: '常常先来找你' },
-  { key: 'mid', label: '中', hint: '自然往来' },
-  { key: 'low', label: '低', hint: '多半等你先开口' },
-] as const;
-
-/** 说话节奏（D-155）：不选 = 按恋爱类型 / 原型；整句 = 一条说完；连发 = 每个标点断一条 */
-const BUBBLE_STYLES = [
-  { key: undefined, label: '默认', hint: '跟着人设' },
-  { key: 'flow', label: '整句', hint: '哈哈哈，我知道了，下次' },
-  { key: 'burst', label: '连发', hint: '哈哈哈 · 我知道了 · 下次' },
-] as const;
-
-/** 解析生日用：某月的天数（2 月给到 29） */
-const daysInMonth = (m: number) => (m === 2 ? 29 : [4, 6, 9, 11].includes(m) ? 30 : 31);
-
-/** 生日统一成 'MM-DD'（BirthdayPicker 的值格式）；不合法给空串 */
-function normBirthday(s: string | undefined): string {
-  const m = s ? /^(\d{1,2})-(\d{1,2})$/.exec(s) : null;
-  if (!m) return '';
-  const mm = Number(m[1]);
-  const dd = Number(m[2]);
-  if (mm < 1 || mm > 12 || dd < 1 || dd > daysInMonth(mm)) return '';
-  return `${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
-}
-
-/**
- * 身份行（列表 / 交友卡 / 会话顶栏只给一行）：中日文照旧取前 18 字；
- * 有空格分词的语言（英 / 韩）取第一句、在词边界截断，不截在单词中间。
- */
-function identityFrom(src: string): string {
-  if (!/\s/.test(src)) return src.slice(0, 18);
-  const first = (src.split(/[.!?。！？\n]/)[0] || src).trim();
-  const max = /[가-힯]/.test(first) ? 20 : 40;
-  if (first.length <= max) return first;
-  const cut = first.slice(0, max);
-  const sp = cut.lastIndexOf(' ');
-  return (sp > max / 3 ? cut.slice(0, sp) : cut).replace(/[\s,;:，、；：—-]+$/, '');
-}
-
-const LOVE_STYLE_LABELS = LOVE_STYLES.map((l) => l.label);
-const MBTI_LIST = [
-  'INTJ', 'INTP', 'ENTJ', 'ENTP',
-  'INFJ', 'INFP', 'ENFJ', 'ENFP',
-  'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ',
-  'ISTP', 'ISFP', 'ESTP', 'ESFP',
-];
 
 const EMPTY_LINES: CharacterLines = { opening: [], offer: [], arrival: [] };
 
-type Gender = (typeof GENDERS)[number]['key'];
-type ArtStyle = (typeof PORTRAIT_STYLES)[number]['id'];
-
-/** 表单的一份初始值：新建 = 空白；编辑 = 从已创建的角色回填（D-050 / D-095） */
-type FormInit = {
-  editing: Character | null;
-  name: string;
-  gender: Gender;
-  visibility: 'private' | 'public';
-  look: string;
-  story: string;
-  palette: number;
-  portraitUri: string | undefined;
-  artStyle: ArtStyle;
-  /** TA 的声音（D-139 / D-241）：ElevenLabs 音色 id；undefined = 默认 */
-  voiceId: string | undefined;
-  /** 传记章节（D-149）：随角色保存 */
-  chapters: StoryChapter[];
-  race: string;
-  raceCustom: string;
-  /** 'MM-DD' 或空串 */
-  birthday: string;
-  catchphrase: string;
-  likes: string;
-  dislikes: string;
-  offerTurns: number;
-  loveStyle: string | undefined;
-  mbti: string | undefined;
-  initiative: 'high' | 'mid' | 'low';
-  bubbleStyle: 'flow' | 'burst' | undefined;
-  presetMemories: string;
-  taboos: string;
-  secrets: string;
-  chatNotes: string;
-  schedule: string;
-  lines: CharacterLines | null;
-};
-
-const BLANK_FORM: FormInit = {
-  editing: null,
-  name: '',
-  gender: 'male',
-  visibility: 'private',
-  look: '',
-  story: '',
-  palette: 0,
-  portraitUri: undefined,
-  artStyle: DEFAULT_PORTRAIT_STYLE,
-  voiceId: undefined,
-  chapters: [],
-  race: '人类',
-  raceCustom: '',
-  birthday: '',
-  catchphrase: '',
-  likes: '',
-  dislikes: '',
-  offerTurns: 4,
-  loveStyle: undefined,
-  mbti: undefined,
-  initiative: 'mid',
-  bubbleStyle: undefined,
-  presetMemories: '',
-  taboos: '',
-  secrets: '',
-  chatNotes: '',
-  schedule: '',
-  lines: null,
-};
-
-/** 编辑已创建的角色（D-050）：全部字段回填进表单 */
-function formFor(c: Character): FormInit {
-  const pi = PALETTES.findIndex((p) => p.color === c.color);
-  const race = !c.race
-    ? { race: '人类', raceCustom: '' }
-    : RACES.includes(c.race)
-      ? { race: c.race, raceCustom: '' }
-      : { race: '其他', raceCustom: c.race };
-  return {
-    editing: c,
-    name: c.name,
-    gender: c.gender ?? (c.loveTag === 'female' ? 'female' : c.loveTag === 'nonbinary' ? 'nonbinary' : 'male'),
-    visibility: c.visibility ?? 'private',
-    look: c.look ?? '',
-    story: c.story ?? '',
-    palette: pi >= 0 ? pi : 0,
-    portraitUri: useAppStore.getState().portraits[c.id],
-    artStyle: c.artStyle ?? DEFAULT_PORTRAIT_STYLE,
-    voiceId: c.voiceId,
-    chapters: c.chapters ?? [],
-    ...race,
-    birthday: normBirthday(c.birthday),
-    catchphrase: c.catchphrase ?? '',
-    likes: c.likes ?? '',
-    dislikes: c.dislikes ?? '',
-    offerTurns: c.offerAfterTurns ?? 4,
-    loveStyle: c.loveStyle,
-    mbti: c.mbti,
-    initiative: c.initiative ?? 'mid',
-    bubbleStyle: c.bubbleStyle,
-    presetMemories: c.presetMemories ?? '',
-    taboos: c.taboos ?? '',
-    secrets: c.secrets ?? '',
-    chatNotes: c.chatNotes ?? '',
-    schedule: c.schedule ?? '',
-    lines: c.lines ?? null,
-  };
-}
-
-/** 从「我创建的」列表页带 edit=<id> 进来 → 表单初始值即回填（D-095）；找不到或不是自己的就当新建 */
-function initialForm(edit?: string): FormInit {
-  if (!edit) return BLANK_FORM;
-  const c = useAppStore.getState().customCharacters.find((x) => x.id === edit && !x.shared);
-  return c ? formFor(c) : BLANK_FORM;
-}
-
 /** 一组台词：一行一条（D-094） */
-function LinesField({
-  label,
-  placeholder,
-  value,
-  onChange,
-}: {
-  label: string;
-  placeholder: string;
-  value: string[];
-  onChange: (v: string[]) => void;
-}) {
+function LinesField({ label, placeholder, value, onChange }: { label: string; placeholder: string; value: string[]; onChange: (v: string[]) => void }) {
   return (
     <Field label={label}>
-      <Input
-        value={value.join('\n')}
-        onChangeText={(text) => onChange(text.split('\n'))}
-        placeholder={placeholder}
-        multiline
-        maxLength={400}
-      />
+      <Input value={value.join('\n')} onChangeText={(text) => onChange(text.split('\n'))} placeholder={placeholder} multiline maxLength={400} />
     </Field>
   );
 }
 
-/** 选项 chip：label 过 t()，active → selected */
-function OptionChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return <Chip label={t(label)} selected={active} onPress={onPress} />;
-}
-
-/** 单选 chip 组（D-198）：memo——表单别的字段每次击键不再重画 14 种恋爱类型 / 16 个 MBTI */
-const ChipGroup = memo(function ChipGroup({
-  options,
-  value,
-  onChange,
-}: {
-  options: string[];
-  value: string | undefined;
-  onChange: (next: string | undefined) => void;
-}) {
-  return (
-    <View style={styles.chipRow}>
-      {options.map((o) => (
-        <OptionChip key={o} label={o} active={value === o} onPress={() => onChange(value === o ? undefined : o)} />
-      ))}
-    </View>
-  );
-});
-
-/** 三选一的小卡（节奏 / 主动强度）：白底 r6，选中 primary 白字 */
-function PaceCard({
-  label,
-  hint,
-  active,
-  onPress,
-}: {
-  label: string;
-  hint: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable style={[styles.paceCard, active && styles.paceCardOn]} onPress={onPress}>
-      <Text style={[styles.paceLabel, active && styles.paceLabelOn]}>{t(label)}</Text>
-      <Text style={[styles.paceHint, active && styles.paceHintOn]}>{t(hint)}</Text>
-    </Pressable>
-  );
-}
-
 export default function CharacterEditScreen() {
-  // 从创造列表带 edit=<id> 进来 → 回填表单（D-095）：换一个 edit 就整表重挂载，初始值按它算
   const { edit } = useLocalSearchParams<{ edit?: string }>();
-  return <CreateForm key={edit ?? ''} edit={edit} />;
+  const character = useAppStore((s) => s.customCharacters.find((c) => c.id === edit && !c.shared));
+  if (!character) return <Redirect href={'/apps/character-new' as never} />;
+  // 换一个 edit 就整表重挂载，初始值按它算
+  return <EditForm key={character.id} character={character} />;
 }
 
-function CreateForm({ edit }: { edit?: string }) {
+function EditForm({ character }: { character: Character }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  // 表单初始值只算一次：新建为空白，edit 进来即回填
-  const [init] = useState(() => initialForm(edit));
-
-  // ── 编辑已创建的（D-050） ──
-  const [editing] = useState<Character | null>(init.editing);
-
-  // ── 描述导入（D-043） ──
-  const [desc, setDesc] = useState('');
-  const [parsing, setParsing] = useState(false);
-
-  // ── 基础 ──
-  const [name, setName] = useState(init.name);
-  const [gender, setGender] = useState<Gender>(init.gender);
-  // 年龄（D-045 → D-223）：不再给「未成年」选项，发布即确认成年（基础页一行声明），存 adultConfirmed
-  // 可见性（D-060）：公开 = 进共享角色池，别人也能滑到；默认私密
-  const [visibility, setVisibility] = useState<'private' | 'public'>(init.visibility);
-  const [look, setLook] = useState(init.look);
-  const [story, setStory] = useState(init.story);
-  const [palette, setPalette] = useState(init.palette);
-  const [portraitUri, setPortraitUri] = useState<string | undefined>(init.portraitUri);
-  const [generating, setGenerating] = useState(false);
-  // TA 的台词（D-094）：发布时模型写一次；编辑已创建的角色时可改、可让 TA 重写
-  const [lines, setLines] = useState<CharacterLines | null>(init.lines);
-  const [linesBusy, setLinesBusy] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  // 提交去重（D-121）：`publishing` 要等一次渲染才禁用按钮，连点会在空档里跑两次 submit → 两个 id；
-  // 这里用 ref 同步上锁，整个 submit（含编辑分支）期间与结束后 1 秒内的再次调用直接返回
-  const submitLockRef = useRef(0);
-  // 立绘画风（D-076）：注入生图 prompt 第一行；动漫走蒸汽机、其余走 Qwen
-  const [artStyle, setArtStyle] = useState<ArtStyle>(init.artStyle);
-  // TA 的声音（D-139）：从音色池推荐里选；不选 = 按语言 × 人称默认
-  const [voiceId, setVoiceId] = useState<string | undefined>(init.voiceId);
-  // 传记（D-149）：随角色保存；编辑器只改这份本地状态
-  const [chapters, setChapters] = useState<StoryChapter[]>(init.chapters);
-  // 页签（D-149）：换页签不丢输入
+  const [form, setForm] = useState<CharacterForm>(() => formFor(character, useAppStore.getState().portraits[character.id]));
+  const patch: Patch = (p) => setForm((f) => ({ ...f, ...p }));
   const [tab, setTab] = useState<Tab>('basic');
+  const [saving, setSaving] = useState(false);
+  const [linesBusy, setLinesBusy] = useState(false);
+  // 提交去重（D-121）：ref 同步上锁，进行中与结束后 1 秒内的再次调用直接返回
+  const submitLock = useRef(0);
+  const lines = form.lines;
+  const setLines = (l: CharacterLines) => patch({ lines: l });
 
-  // ── 设定（原「高级」，D-149 起是自己的页签） ──
-  const [race, setRace] = useState(init.race);
-  const [raceCustom, setRaceCustom] = useState(init.raceCustom);
-  // 生日（D-223）：和「我的身份」同一个 BirthdayPicker，值 'MM-DD'
-  const [birthday, setBirthday] = useState(init.birthday);
-  const [catchphrase, setCatchphrase] = useState(init.catchphrase);
-  const [likes, setLikes] = useState(init.likes);
-  const [dislikes, setDislikes] = useState(init.dislikes);
-  const [offerTurns, setOfferTurns] = useState(init.offerTurns);
-  const [loveStyle, setLoveStyle] = useState<string | undefined>(init.loveStyle);
-  const [mbti, setMbti] = useState<string | undefined>(init.mbti);
-  // 创造扩展（D-045）
-  const [initiative, setInitiative] = useState<'high' | 'mid' | 'low'>(init.initiative);
-  const [bubbleStyle, setBubbleStyle] = useState<'flow' | 'burst' | undefined>(init.bubbleStyle);
-  const [presetMemories, setPresetMemories] = useState(init.presetMemories);
-  const [taboos, setTaboos] = useState(init.taboos);
-  const [secrets, setSecrets] = useState(init.secrets);
-  const [chatNotes, setChatNotes] = useState(init.chatNotes);
-  const [schedule, setSchedule] = useState(init.schedule);
-  // 细节页签后半段（D-223）：默认收起；编辑时这些项有内容就展开
-  const [moreOpen, setMoreOpen] = useState(
-    () =>
-      init.initiative !== 'mid' ||
-      !!init.bubbleStyle ||
-      !!(init.presetMemories || init.taboos || init.secrets || init.chatNotes || init.schedule)
-  );
-
-  const finalRace = race === '其他' ? raceCustom.trim() : race;
-  const style = loveStyleByLabel(loveStyle);
-  const allText = [
-    desc, name, look, story, raceCustom, catchphrase, likes, dislikes,
-    presetMemories, taboos, secrets, chatNotes, schedule,
-  ]
-    .join(' ')
-    .trim();
-
-  /** 解析结果落进表单（各字段裁到表单上限；解析后仍可手改）；返回填了几项 */
-  const applyParsed = (p: Record<string, unknown>): number => {
-    const s = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
-    let n = 0;
-    if (s(p.name)) { setName(s(p.name).slice(0, 12)); n++; }
-    const g = s(p.gender);
-    if (g === 'male' || g === 'female' || g === 'nonbinary') { setGender(g); n++; }
-    if (s(p.look)) { setLook(s(p.look).slice(0, 60)); n++; }
-    if (s(p.story)) { setStory(s(p.story).slice(0, 300)); n++; }
-    const r = s(p.race).slice(0, 10);
-    if (r && r !== '人类') {
-      if (RACES.includes(r)) setRace(r);
-      else { setRace('其他'); setRaceCustom(r); }
-      n++;
-    }
-    const bd = normBirthday(s(p.birthday).replace(/[月./]/g, '-').replace(/日/g, ''));
-    if (bd) { setBirthday(bd); n++; }
-    if (s(p.catchphrase)) { setCatchphrase(s(p.catchphrase).slice(0, 20)); n++; }
-    if (s(p.likes)) { setLikes(s(p.likes).slice(0, 40)); n++; }
-    if (s(p.dislikes)) { setDislikes(s(p.dislikes).slice(0, 40)); n++; }
-    const ls = s(p.loveStyle);
-    if (ls && LOVE_STYLES.some((l) => l.label === ls)) { setLoveStyle(ls); n++; }
-    const mb = s(p.mbti).toUpperCase();
-    if (MBTI_LIST.includes(mb)) { setMbti(mb); n++; }
-    if (s(p.chatNotes)) { setChatNotes(s(p.chatNotes).slice(0, 120)); n++; }
-    if (s(p.schedule)) { setSchedule(s(p.schedule).slice(0, 120)); n++; }
-    const init = s(p.initiative);
-    if (init === 'high' || init === 'mid' || init === 'low') { setInitiative(init); n++; }
-    if (s(p.taboos)) { setTaboos(s(p.taboos).slice(0, 120)); n++; }
-    if (s(p.presetMemories)) { setPresetMemories(s(p.presetMemories).slice(0, 200)); n++; }
-    if (s(p.secrets)) { setSecrets(s(p.secrets).slice(0, 300)); n++; }
-    // 收起区里的项被填上了就展开，免得填了看不见
-    if (s(p.chatNotes) || s(p.schedule) || s(p.taboos) || s(p.presetMemories) || s(p.secrets) || (init && init !== 'mid')) {
-      setMoreOpen(true);
-    }
-    return n;
-  };
-
-  /** 自动解析：引擎整理成 JSON（prompt 见 content/prompts/create.ts）；AI 不可用/失败回落规则解析并说明原因（D-069） */
-  const parseDesc = async () => {
-    const text = desc.trim();
-    if (!text || parsing) return;
-    if (BLOCKED_NAME_PATTERN.test(text)) {
-      showAlert(t('这个 TA 不能被创造出来'), t('描述里包含真人明星或已有 IP 的角色。\n用文字描述「神似」是可以的。'));
-      return;
-    }
-    setParsing(true);
-    let parsed: Record<string, unknown> | null = null;
-    let aiError: string | null = null;
-    try {
-      parsed = await parseCharacterDescription(text);
-    } catch (e) {
-      console.warn('[create] 引擎解析失败，回落规则解析：', e);
-      parsed = null;
-      aiError = describeAiError(e);
-    }
-    const n = applyParsed(parsed ?? heuristicParse(text));
-    setParsing(false);
-    const body = n ? t('填好了 {n} 项。', { n }) : t('放进了背景故事。');
-    // 失败原因只在开发构建露出（文案纪律 #6）
-    showAlert(
-      aiError ? t('先按格式读了一遍') : n ? t('解析好了') : t('没读出结构化的字段'),
-      aiError && __DEV__ ? `${body}\n\n${t('原因：{reason}', { reason: aiError })}` : body
-    );
-  };
-
-  /** 表单里的 TA（还没入库）：预览与立绘生成共用 */
-  const draftCharacter = (id = 'draft'): Character | null => {
-    if (!name.trim()) return null;
-    const g = GENDERS.find((x) => x.key === gender)!;
-    const identitySrc = story.trim() || look.trim();
-    return {
-      id,
-      // 自创角色带创建时的界面语言（D-093）：共享池只发给同语言用户，兜底脚本也按它取
-      lang: getLang(),
-      lines: lines ?? undefined,
-      name: name.trim(),
-      archetype: style?.archetype ?? 'gentle',
-      loveTag: gender === 'nonbinary' ? 'nonbinary' : gender,
-      gender,
-      styleLabel: style?.label ?? t('自创'),
-      identity: identitySrc ? identityFrom(identitySrc) : t('你亲手捏出来的 TA'),
-      look: look.trim() || undefined,
-      pronoun: g.pronoun,
-      story: story.trim() || undefined,
-      race: finalRace && finalRace !== '人类' ? finalRace : undefined,
-      birthday: birthday || undefined,
-      catchphrase: catchphrase.trim() || undefined,
-      likes: likes.trim() || undefined,
-      dislikes: dislikes.trim() || undefined,
-      loveStyle: style?.label,
-      mbti,
-      chatNotes: chatNotes.trim() || undefined,
-      schedule: schedule.trim() || undefined,
-      adultConfirmed: true,
-      visibility,
-      initiative,
-      bubbleStyle,
-      presetMemories: presetMemories.trim() || undefined,
-      taboos: taboos.trim() || undefined,
-      secrets: secrets.trim() || undefined,
-      artStyle,
-      voiceId,
-      // 传记（D-149）：空章节不落字段
-      chapters: chapters.length ? chapters : undefined,
-      offerAfterTurns: offerTurns,
-      // 一句钩子（交友卡 / 资料页）：取恋爱类型说明的第一分句，按创建时的界面语言存（D-223）
-      hook: style ? t(style.desc).split(/[；;]/)[0].trim() : t('TA 在等一个点开 TA 的人。'),
-      intro: t('……你捏出来的 TA，正在看你。'),
-      tags: [t('自创'), ...(style ? [style.label] : []), ...(finalRace && finalRace !== '人类' ? [finalRace] : [])].slice(0, 3),
-      adoptedCount: 0,
-      ...PALETTES[palette],
-      custom: true,
-    };
-  };
-
-  const guard = (): boolean => {
-    if (BLOCKED_NAME_PATTERN.test(allText)) {
-      showAlert(t('这个 TA 不能被创造出来'), t('不能创造真人明星或已有 IP 的角色。\n用文字描述「神似」是可以的。'));
-      return false;
-    }
-    return true;
-  };
-
-  /** 上传头像（D-045）：相册选图；红线 #1——不收真人照片（试装为自我声明，真人检测见 OPEN_QUESTIONS #14） */
-  const uploadAvatar = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.9,
-      allowsEditing: true,
-      aspect: [3, 4],
-    });
-    if (!result.canceled && result.assets[0]?.uri) {
-      // 相册给的是 cache 路径（D-203）：拷进 Documents 再当立绘
-      setPortraitUri(await copyIntoDocuments(result.assets[0].uri, 'portraits'));
-    }
-  };
-
-  const genPortrait = async () => {
-    const draft = draftCharacter();
-    if (!draft) return;
-    if (!imageKeyReady()) {
-      alertAiUnavailable();
-      return;
-    }
-    if (!guard()) return;
-    setGenerating(true);
-    try {
-      setPortraitUri(await generatePortraitFor(draft));
-    } catch (e) {
-      console.warn('[create] 立绘生成失败：', e);
-      // 形象必选、没有「跳过」这条路；原因只在开发构建露出
-      showAlert(
-        t('立绘没画出来'),
-        __DEV__
-          ? `${t('生图服务出了点问题，可以再试一次。')}\n\n${t('原因：{reason}', { reason: describeAiError(e) })}`
-          : t('生图服务出了点问题，可以再试一次。')
-      );
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  /** 公开角色上传共享池（D-060）；未登录/失败回落私密并提示 */
-  const publishIfPublic = async (character: Character): Promise<Character> => {
-    if (character.visibility !== 'public') return character;
-    const ok = await publishCharacter(character);
-    if (!ok) {
-      showAlert(t('先按私密保存了'), t('公开需要登录，登录后可以再改。'));
-      return { ...character, visibility: 'private' };
-    }
-    return character;
-  };
-
-  const submit = async () => {
-    if (!name.trim()) return;
+  /** 保存（D-050）：原位更新，不动热度与羁绊；公开 → 私密从共享池撤下（D-060） */
+  const save = async () => {
     const now = Date.now();
-    if (submitLockRef.current === -1 || now - submitLockRef.current < SUBMIT_COOLDOWN_MS) return;
-    submitLockRef.current = -1; // -1 = 进行中
-    setPublishing(true);
-    try {
-      await submitInner();
-    } finally {
-      submitLockRef.current = Date.now();
-      setPublishing(false);
+    if (submitLock.current === -1 || now - submitLock.current < SUBMIT_COOLDOWN_MS) return;
+    if (blocked(form)) {
+      alertBlocked();
+      return;
     }
-  };
-
-  const submitInner = async () => {
-    if (!guard()) return;
-
-    // 编辑已创建的角色（D-050）：原位更新，不动热度与羁绊
-    if (editing) {
-      let character = draftCharacter(editing.id);
-      if (!character) return;
-      character = { ...character, adoptedCount: editing.adoptedCount };
-      character = await publishIfPublic(character);
-      // 公开 → 私密：从共享池撤下（D-060）
-      if (editing.visibility === 'public' && character.visibility !== 'public') {
-        void unpublishCharacter(editing.id);
-      }
-      useAppStore.getState().updateCustomCharacter(character);
-      if (portraitUri) useAppStore.getState().setPortrait(editing.id, portraitUri);
+    let next = characterFromForm(form, { id: character.id, adoptedCount: character.adoptedCount });
+    if (!next) return;
+    submitLock.current = -1;
+    setSaving(true);
+    try {
+      next = await publishIfPublic(next);
+      if (character.visibility === 'public' && next.visibility !== 'public') void unpublishCharacter(character.id);
+      useAppStore.getState().updateCustomCharacter(next);
+      if (form.portraitUri) useAppStore.getState().setPortrait(character.id, form.portraitUri);
       showToast(t('已保存'));
       router.back();
-      return;
+    } finally {
+      submitLock.current = Date.now();
+      setSaving(false);
     }
-
-    const id = uid('c');
-    let character = draftCharacter(id);
-    if (!character) return;
-    // TA 的台词（D-094）：按人设写一次；写不成先用原型兜底，之后可在「我创建的」里让 TA 重写
-    const written = await generateCharacterLines(character);
-    if (written) character = { ...character, lines: written };
-    else showToast(t('台词先用了通用版'));
-    // 强制登录判定（D-062）：这是不是第一次把人添加进通讯录
-    const s = useAppStore.getState();
-    const hadContacts = s.bonds.length > 0 || s.customCharacters.some((c) => !c.shared);
-    character = await publishIfPublic(character);
-    useAppStore.getState().addCustomCharacter(character);
-    // 形象必选（D-092）：发布前已保证 portraitUri 存在
-    if (portraitUri) useAppStore.getState().setPortrait(id, portraitUri);
-    // 自创角色直入通讯录（D-052 修订 D-047）：带「心动中」tag 的暧昧期——
-    // 心动满 100 TA 才会想确定关系，那时才占槽、才开始羁绊等级
-    useAppStore.getState().ensureSquareChat(id);
-    resetForm();
-    if (!hadContacts && authConfigured() && !(await signedInSession())) {
-      // 首次入册 → 强制登录（D-062）：TA 值得一个存得住的家
-      router.replace({ pathname: '/auth', params: { force: '1' } });
-      return;
-    }
-    showAlert(t('TA 醒过来了'), undefined, [
-      {
-        text: t('去和 TA 说话'),
-        onPress: () => router.push({ pathname: '/chat/[characterId]', params: { characterId: id } }),
-      },
-      { text: t('再创造一个'), style: 'cancel' },
-    ]);
   };
 
-  const resetForm = () => {
-    setDesc(''); setName(''); setLook(''); setStory(''); setPortraitUri(undefined); setArtStyle(DEFAULT_PORTRAIT_STYLE);
-    setVisibility('private'); setRace('人类'); setRaceCustom('');
-    setBirthday(''); setCatchphrase('');
-    setLikes(''); setDislikes(''); setOfferTurns(4); setLoveStyle(undefined);
-    setMbti(undefined); setInitiative('mid'); setBubbleStyle(undefined); setPresetMemories(''); setTaboos(''); setSecrets('');
-    setChatNotes(''); setSchedule(''); setLines(null); setChapters([]); setMoreOpen(false); setTab('basic');
-  };
-
-  /** 编辑时让 TA 按当前表单重写一遍台词（D-094）；写不成保留原来的 */
+  /** 让 TA 按当前表单重写一遍台词（D-094）；写不成保留原来的 */
   const rewriteLines = async () => {
-    if (linesBusy) return;
-    const draft = draftCharacter(editing?.id ?? 'draft');
-    if (!draft) return;
+    const draft = characterFromForm(form, { id: character.id, lines: null });
+    if (!draft || linesBusy) return;
     setLinesBusy(true);
-    const written = await generateCharacterLines({ ...draft, lines: undefined });
+    const written = await generateCharacterLines(draft);
     setLinesBusy(false);
     if (written) setLines(written);
     else showToast(t('没写成，先保留原来的'));
   };
 
-  const publishLabel = publishing
-    ? editing
-      ? t('保存中…')
-      : t('正在给 TA 写台词…')
-    : !portraitUri
-      ? t('先给 TA 一个形象')
-      : editing
-        ? t('保存修改')
-        : t('让 TA 醒来');
-
-  // 台词页签只在编辑已创建的角色时出现（D-094：发布时模型才写第一版）
-  const tabs = TABS.filter((x) => x.key !== 'lines' || editing).map((x) => ({ key: x.key, label: t(x.label) }));
-
   return (
-    <AppScreen title={editing ? editing.name : t('创造')}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <AppScreen title={character.name}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.tabs}>
-          <Segmented options={tabs} value={tab} onChange={setTab} />
+          <Segmented options={TABS.map((x) => ({ key: x.key, label: t(x.label) }))} value={tab} onChange={setTab} />
         </View>
-        <ScrollView
-          style={styles.screen}
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled">
+        <ScrollView style={styles.flex} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {tab === 'basic' ? (
-          <View>
-          {/* ───────── 描述导入（D-043） ───────── */}
-          <Field
-            label={t('用一段话描述 TA（可选）')}
-            hint={t('小说片段、角色卡、脑子里的画面都行，最多 {n} 字。', { n: DESC_MAX })}>
-            <Input
-              value={desc}
-              onChangeText={setDesc}
-              placeholder={t('银灰色头发的年轻外科医生，毒舌但心软。父母常年在国外，一个人住在老城区……')}
-              multiline
-              maxLength={DESC_MAX}
-            />
-          </Field>
-          <View style={styles.descFoot}>
-            <Text style={styles.descCount}>
-              {desc.length}/{DESC_MAX}
-            </Text>
-            <View style={styles.btnRow}>
-              {parsing ? <ActivityIndicator color={Romance.accent} size="small" /> : null}
-              <Button
-                label={parsing ? t('解析中…') : t('自动解析')}
-                size="sm"
-                disabled={!desc.trim() || parsing}
-                onPress={parseDesc}
-              />
-            </View>
-          </View>
-
-          {/* ───────── 基础 ───────── */}
-          <Field label={t('TA 叫什么')}>
-            <Input value={name} onChangeText={setName} placeholder={t('给 TA 一个名字')} maxLength={12} />
-          </Field>
-
-          <Field label={t('TA 的性别')}>
-            <View style={styles.chipRow}>
-              {GENDERS.map((g) => (
-                <OptionChip key={g.key} label={g.label} active={gender === g.key} onPress={() => setGender(g.key)} />
-              ))}
-            </View>
-          </Field>
-          {/* 年龄（D-223）：不给「未成年」选项，只留一行声明 */}
-          <Text style={styles.afterHint}>{t('发布即确认 TA 是成年人。')}</Text>
-
-          <Field label={t('谁能遇到 TA')}>
-            <View style={styles.chipRow}>
-              <OptionChip label={t('私密')} active={visibility === 'private'} onPress={() => setVisibility('private')} />
-              <OptionChip label={t('公开')} active={visibility === 'public'} onPress={() => setVisibility('public')} />
-            </View>
-          </Field>
-          {visibility === 'public' ? (
-            <Text style={styles.afterHint}>{t('公开：其他人也能遇到 TA（需要登录）。')}</Text>
-          ) : null}
-
-          </View>
-          ) : null}
-
-          {tab === 'look' ? (
-          <View>
-          <Field label={t('TA 长什么样')}>
-            <Input
-              value={look}
-              onChangeText={setLook}
-              placeholder={t('银灰色头发，眼下有一颗泪痣，笑起来很凶……')}
-              multiline
-              maxLength={60}
-              style={styles.inputShort}
-            />
-          </Field>
-          <Text style={styles.afterHint}>{t('TA 的主题色：')}</Text>
-          <View style={styles.paletteRow}>
-            {PALETTES.map((p, i) => (
-              <Pressable
-                key={i}
-                onPress={() => setPalette(i)}
-                hitSlop={6}
-                style={[styles.swatchRing, palette === i && styles.swatchRingOn]}>
-                <View style={[styles.swatch, { backgroundColor: p.color }]} />
-              </Pressable>
-            ))}
-          </View>
-
-          <Field label={t('TA 的背景故事')}>
-            <Input
-              value={story}
-              onChangeText={setStory}
-              placeholder={t('TA 是谁、从哪里来、身上背着什么故事……')}
-              multiline
-              maxLength={300}
-            />
-          </Field>
-
-          <Field label={t('立绘 *')} hint={t('不能上传真人照片。')}>
-            <Text style={styles.subLabel}>{t('画风：')}</Text>
-            <View style={styles.chipRow}>
-              {PORTRAIT_STYLES.map((s) => (
-                <OptionChip key={s.id} label={t(s.label)} active={artStyle === s.id} onPress={() => setArtStyle(s.id)} />
-              ))}
-            </View>
-            {generating ? (
-              <PortraitDeveloping />
-            ) : portraitUri ? (
-              <Image source={{ uri: portraitUri }} style={styles.portrait} contentFit="cover" />
-            ) : null}
-            <View style={styles.portraitBtnRow}>
-              <Button
-                label={portraitUri ? t('换一张') : t('上传图片')}
-                variant="secondary"
-                size="md"
-                style={styles.portraitBtn}
-                onPress={uploadAvatar}
-              />
-              <Button
-                label={generating ? t('生成中…') : t('生成立绘')}
-                variant="outline"
-                size="md"
-                style={styles.portraitBtn}
-                disabled={!name.trim() || generating}
-                onPress={genPortrait}
-              />
-            </View>
-          </Field>
-
-          </View>
-          ) : null}
-
-          {/* ───────── 设定（原「高级」） ───────── */}
-          {tab === 'settings' ? (
             <View>
-              <Field label={t('种族')}>
-                <View style={styles.chipRow}>
-                  {[...RACES, '其他'].map((r) => (
-                    <OptionChip key={r} label={r} active={race === r} onPress={() => setRace(r)} />
-                  ))}
-                </View>
-                {race === '其他' ? (
-                  <Input
-                    style={styles.raceCustomInput}
-                    value={raceCustom}
-                    onChangeText={setRaceCustom}
-                    placeholder={t('如：半人马')}
-                    maxLength={10}
-                  />
-                ) : null}
-              </Field>
-
-              <Field label={t('TA 的生日')}>
-                <BirthdayPicker value={birthday} onChange={setBirthday} />
-              </Field>
-
-              <Field label={t('口癖')}>
-                <Input
-                  value={catchphrase}
-                  onChangeText={setCatchphrase}
-                  placeholder={t('「……真拿你没办法」')}
-                  maxLength={20}
-                />
-              </Field>
-
-              <Field label={t('喜欢')}>
-                <Input
-                  value={likes}
-                  onChangeText={setLikes}
-                  placeholder={t('黑咖啡、下雨天、猫……')}
-                  maxLength={40}
-                />
-              </Field>
-
-              <Field label={t('讨厌')}>
-                <Input
-                  value={dislikes}
-                  onChangeText={setDislikes}
-                  placeholder={t('香菜、迟到、被拍头……')}
-                  maxLength={40}
-                />
-              </Field>
-
-              <Field label={t('TA 在恋爱中的类型')}>
-                <ChipGroup options={LOVE_STYLE_LABELS} value={loveStyle} onChange={setLoveStyle} />
-                {style ? <Text style={styles.styleDesc}>{t(style.desc)}</Text> : null}
-              </Field>
-
+              <IdentityFields form={form} patch={patch} />
+              <LoveStylePicker value={form.loveStyle} onChange={(loveStyle) => patch({ loveStyle })} />
               {/* 声音放在恋爱类型下面：不选就跟着恋爱类型走（D-250） */}
               <VoicePicker
                 lang={getLang()}
-                gender={gender}
-                loveStyle={style?.label}
-                value={voiceId}
-                onChange={setVoiceId}
+                gender={form.gender}
+                loveStyle={form.loveStyle}
+                value={form.voiceId}
+                onChange={(voiceId) => patch({ voiceId })}
                 sampleText={lines?.opening?.[0] ?? t(VOICE_SAMPLE_LINE)}
-                pronoun={GENDERS.find((x) => x.key === gender)!.pronoun}
+                pronoun={GENDERS.find((x) => x.key === form.gender)!.pronoun}
               />
-
-              <Field label={t('走近的节奏')}>
-                <View style={styles.chipRow}>
-                  {OFFER_PACES.map((p) => (
-                    <PaceCard
-                      key={p.turns}
-                      label={p.label}
-                      hint={p.hint}
-                      active={offerTurns === p.turns}
-                      onPress={() => setOfferTurns(p.turns)}
-                    />
-                  ))}
-                </View>
-              </Field>
-
-              <Field label="MBTI">
-                <ChipGroup options={MBTI_LIST} value={mbti} onChange={setMbti} />
-              </Field>
-
-              {/* 后半段默认收起（D-223）：第一次捏人只看到上面这些 */}
-              <Button
-                label={moreOpen ? t('收起') : t('更多设定')}
-                variant="secondary"
-                size="md"
-                style={styles.moreBtn}
-                onPress={() => setMoreOpen((v) => !v)}
-              />
-              {moreOpen ? (
-              <View>
-              <Field label={t('主动联系强度')}>
-                <View style={styles.chipRow}>
-                  {INITIATIVES.map((it) => (
-                    <PaceCard
-                      key={it.key}
-                      label={it.label}
-                      hint={it.hint}
-                      active={initiative === it.key}
-                      onPress={() => setInitiative(it.key)}
-                    />
-                  ))}
-                </View>
-              </Field>
-
-              <Field label={t('说话节奏')}>
-                <View style={styles.chipRow}>
-                  {BUBBLE_STYLES.map((it) => (
-                    <PaceCard
-                      key={it.label}
-                      label={t(it.label)}
-                      hint={t(it.hint)}
-                      active={bubbleStyle === it.key}
-                      onPress={() => setBubbleStyle(it.key)}
-                    />
-                  ))}
-                </View>
-              </Field>
-
-              <Field label={t('预设共同记忆')} hint={t('你们「早就认识」的部分。')}>
-                <Input
-                  value={presetMemories}
-                  onChangeText={setPresetMemories}
-                  placeholder={t('高中同桌三年，TA 总抄你的笔记\n去年冬天一起看过一场雪')}
-                  multiline
-                  maxLength={200}
-                />
-              </Field>
-
-              <Field label={t('禁忌 / 边界')}>
-                <Input
-                  value={taboos}
-                  onChangeText={setTaboos}
-                  placeholder={t('不谈家里的事；不喝酒；被问到左手的疤会岔开话题……')}
-                  multiline
-                  maxLength={120}
-                />
-              </Field>
-
-              <Field label={t('隐藏设定 / 剧情钩子')} hint={t('TA 藏着的事，浅的在前。')}>
-                <Input
-                  value={secrets}
-                  onChangeText={setSecrets}
-                  placeholder={t('其实注册交友软件只是为了找一个人\n左手的疤是替别人挡下来的\n真实身份是……')}
-                  multiline
-                  maxLength={300}
-                />
-              </Field>
-
-              <Field label={t('其他关于聊天的设定')}>
-                <Input
-                  value={chatNotes}
-                  onChangeText={setChatNotes}
-                  placeholder={t('如：会用一点方言；叫我「小朋友」……')}
-                  multiline
-                  maxLength={120}
-                />
-              </Field>
-
-              <Field label={t('日常作息')}>
-                <Input
-                  value={schedule}
-                  onChangeText={setSchedule}
-                  placeholder={t('早八晚六上班，周三晚上健身，习惯凌晨一点睡……')}
-                  multiline
-                  maxLength={120}
-                />
-              </Field>
-              </View>
-              ) : null}
+              <VisibilityField form={form} patch={patch} />
             </View>
           ) : null}
 
-          {/* TA 的台词（D-094）：只在编辑已创建的角色时显示——发布时模型已写好一份，这里可逐条改、可让 TA 重写 */}
-          {tab === 'lines' && editing ? (
+          {tab === 'look' ? <LookFields form={form} patch={patch} /> : null}
+
+          {tab === 'settings' ? <DetailFields form={form} patch={patch} /> : null}
+
+          {/* TA 的台词（D-094）：醒来时模型写好一份，这里可逐条改、可让 TA 重写 */}
+          {tab === 'lines' ? (
             <View>
               <LinesField
                 label={t('开场白')}
@@ -1084,138 +193,34 @@ function CreateForm({ edit }: { edit?: string }) {
                 size="md"
                 style={styles.rewriteBtn}
                 disabled={linesBusy}
-                onPress={rewriteLines}
+                onPress={() => void rewriteLines()}
               />
             </View>
           ) : null}
 
           {/* 传记（D-149）：按章写、每章设开放阶段；随角色一起保存 */}
-          {tab === 'story' ? (
-            <StoryEditor chapters={chapters} onChange={setChapters} character={{ artStyle }} />
-          ) : null}
+          {tab === 'story' ? <StoryEditor chapters={form.chapters} onChange={(chapters) => patch({ chapters })} character={{ artStyle: form.artStyle }} /> : null}
         </ScrollView>
 
-        {/* 底部常驻：预览 + 醒来 / 保存 */}
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Space.screen) }]}>
-          {name.trim() ? (
-            <Card style={styles.previewCard}>
-              <CharAvatar name={name.trim()} color={PALETTES[palette].color} size={44} uri={portraitUri} />
-              <View style={styles.previewText}>
-                <Text style={styles.previewName}>{name.trim()}</Text>
-                <Text style={styles.previewHook} numberOfLines={1}>
-                  {[GENDERS.find((g) => g.key === gender)?.label, style?.label, finalRace !== '人类' ? finalRace : null]
-                    .filter((x): x is string => !!x)
-                    .map((x) => t(x))
-                    .join(' · ')}
-                </Text>
-              </View>
-            </Card>
-          ) : null}
           <Button
-            label={publishLabel}
-            style={styles.primaryBtn}
-            disabled={!name.trim() || !portraitUri || publishing}
-            onPress={submit}
+            label={saving ? t('保存中…') : t('保存修改')}
+            disabled={!form.name.trim() || !form.portraitUri || saving}
+            onPress={() => void save()}
           />
-          <Text style={styles.footnote}>{t('不能创造真人与 IP 角色 · 发布即默认同意创作规范')}</Text>
         </View>
       </KeyboardAvoidingView>
-
     </AppScreen>
-  );
-}
-
-/** 立绘出图中（D-209）：立绘位上一块正在显影的底，下面一行字一句一句往下走 */
-const PORTRAIT_LINES = ['在描轮廓…', '在上色…', '在调光线…', '快好了…'];
-function PortraitDeveloping() {
-  const line = useStepLine(PORTRAIT_LINES, 12_000);
-  return (
-    <View style={styles.portraitWait}>
-      <DevelopingFilm width={180} style={styles.portraitFilm} />
-      <Text style={styles.afterHint}>{t(line)}</Text>
-    </View>
   );
 }
 
 const styles = themed(() =>
   StyleSheet.create({
     flex: { flex: 1 },
-    screen: { flex: 1, backgroundColor: Romance.bg },
     // 表单类页面左右留白按设计稿 18
     content: { paddingHorizontal: 18, paddingBottom: 24 },
-    // 页签（D-149）：paper 底上的白色分段控件，和内容同一留白
     tabs: { paddingHorizontal: 18, paddingTop: Space.inlineLoose },
-    // 底部常驻区：预览 + 发布按钮，1 px line 分隔
-    footer: {
-      paddingHorizontal: 18,
-      paddingTop: Space.inline,
-      paddingBottom: Space.screen,
-      borderTopWidth: 1,
-      borderTopColor: Romance.line,
-      backgroundColor: Romance.bg,
-    },
-    descFoot: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginTop: Space.inline,
-    },
-    descCount: { fontFamily: Fonts.label, fontSize: Type.scale.timestamp.size, color: Romance.sub },
-    btnRow: { flexDirection: 'row', alignItems: 'center', gap: Space.inline },
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.inline },
-    inputShort: { minHeight: 64 },
-    afterHint: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: Space.inline, lineHeight: 16 },
-    subLabel: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.ink, marginBottom: Space.inline },
-    paletteRow: { flexDirection: 'row', gap: Space.inline, marginTop: Space.inline },
-    swatchRing: {
-      borderWidth: SWATCH_RING.width,
-      borderColor: 'transparent',
-      padding: SWATCH_RING.gap,
-      borderRadius: Shape.radius + SWATCH_RING.gap + SWATCH_RING.width,
-    },
-    swatchRingOn: { borderColor: Romance.ink },
-    swatch: { width: 32, height: 32, borderRadius: Shape.radius },
-    portrait: { width: 180, height: 180, borderRadius: Shape.radius, alignSelf: 'center', marginTop: Space.inlineLoose },
-    portraitWait: { alignItems: 'center', marginTop: Space.inlineLoose, gap: 6 },
-    portraitFilm: { borderRadius: Shape.radius },
-    portraitBtnRow: { flexDirection: 'row', gap: Space.inlineLoose, marginTop: Space.inlineLoose },
-    portraitBtn: { flex: 1 },
-    raceCustomInput: { marginTop: Space.inlineLoose },
-    paceCard: {
-      flex: 1,
-      backgroundColor: Romance.card,
-      borderRadius: Shape.radius,
-      paddingVertical: Space.cardX,
-      paddingHorizontal: Space.cardY,
-      alignItems: 'center',
-    },
-    paceCardOn: { backgroundColor: Romance.accent },
-    paceLabel: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
-    paceLabelOn: { color: '#FFFFFF' },
-    paceHint: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 3 },
-    paceHintOn: { color: withAlpha('#FFFFFF', 0.8) },
-    styleDesc: {
-      fontSize: Type.scale.caption.size,
-      color: Romance.accent,
-      backgroundColor: Romance.accentSoft,
-      borderRadius: Shape.radius,
-      paddingHorizontal: Space.cardX,
-      paddingVertical: Space.cardY,
-      marginTop: Space.inlineLoose,
-      lineHeight: 18,
-    },
     rewriteBtn: { marginTop: Space.cardX },
-    moreBtn: { marginTop: Space.cardX },
-    previewCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Space.inlineLoose,
-      marginBottom: Space.inline,
-    },
-    previewText: { flex: 1 },
-    previewName: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink },
-    previewHook: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
-    primaryBtn: { marginTop: 0 },
-    footnote: { textAlign: 'center', fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: Space.inline },
+    footer: { paddingHorizontal: 18, paddingTop: Space.inline },
   })
 );

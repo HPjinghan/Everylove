@@ -19,6 +19,7 @@ import { dedupeBonds, legacyBondLevel, LEVEL_NAMES, levelOf, WARMTH_GAINS, WARMT
 import { setLang, t, type Lang } from '@/lib/i18n';
 import { syncAccountLanguage } from '@/lib/auth';
 import { DEFAULT_DOCK } from '@/constants/apps';
+import type { CreateDraft } from '@/lib/character-form';
 import { placeById } from '@/content/places';
 import { minutesLate, planTimeLabel } from '@/lib/appointments';
 import { randomPasscode } from '@/lib/phone';
@@ -109,6 +110,8 @@ interface AppState {
   theme: ThemeId;
   /** 桌面壁纸（D-258）：null = 主题自带的纸 */
   wallpaper: WallpaperPick | null;
+  /** 捏了一半的 TA（D-260）：分步新建自动存，醒来后清掉 */
+  createDraft: CreateDraft | null;
   /** 日历用户层日程（D-020） */
   userEvents: CalendarEvent[];
   /** 发帖调度（D-055）：characterId → 下一条帖子的到点时间（频率按 MBTI，lib/posts.ts） */
@@ -269,6 +272,7 @@ interface AppState {
   /** 换壁纸 = 换主题（D-110）：立即给纸面换色，主页与里面的每一屏一起变 */
   setTheme: (id: ThemeId) => void;
   setWallpaper: (pick: WallpaperPick | null) => void;
+  setCreateDraft: (draft: CreateDraft | null) => void;
   setReachDue: (bondId: string, at: number) => void;
   setQuietHours: (h: { from: number; to: number }) => void;
   /** TA 自己的作息（D-119） */
@@ -344,6 +348,7 @@ const initialData = {
   desktopDock: DEFAULT_DOCK,
   theme: DEFAULT_THEME as ThemeId,
   wallpaper: null as WallpaperPick | null,
+  createDraft: null as CreateDraft | null,
   userEvents: [] as CalendarEvent[],
   postSchedule: {} as Record<string, number>,
   datingPasses: {} as Record<string, number>,
@@ -906,6 +911,7 @@ export const useAppStore = create<AppState>()(
       setWallpaper: (pick) => {
         set({ wallpaper: pick });
       },
+      setCreateDraft: (draft) => set({ createDraft: draft }),
       setReachDue: (bondId, at) => set({ reachSchedule: { ...get().reachSchedule, [bondId]: at } }),
       setQuietHours: (h) => set({ quietHours: h }),
       setHisEvents: (bondId, events) =>

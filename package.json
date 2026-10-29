@@ -13,6 +13,7 @@
     "gen-image": "node ./scripts/gen-image.mjs",
     "gen-image:web": "node ./scripts/gen-image-server.mjs",
     "eleven-voices": "node ./scripts/eleven-voices.mjs",
+    "voice-samples": "node ./scripts/gen-voice-samples.mjs",
     "update:production": "node ./scripts/release-update.mjs production",
     "update:preview": "node ./scripts/release-update.mjs preview"
   },
