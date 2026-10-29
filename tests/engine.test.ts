@@ -7,7 +7,6 @@ import '@/features';
 import { stripReplyMarkers } from '@/core/markers';
 
 import { bubbleStyleOf, buildTurns, HISTORY_ROUNDS, HISTORY_SLACK, splitBubbles, splitByClauses, splitBySpaces, stripStageDirections } from '@/lib/engine';
-import { stripTrailingPeriod } from '@/lib/text';
 import { history, NOW } from './fixtures';
 
 // vitest 会把 vi.mock 提升到文件顶部，写在 import 之后只是为了过 import/first

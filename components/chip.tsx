@@ -6,6 +6,7 @@
 
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { usePalette } from '@/components/palette';
 import { CONTROL_FONT_SCALE, Elevation, Shape, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 
@@ -20,12 +21,14 @@ export function Chip({
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  // 选中色跟所在的配色作用域走（D-258）
+  const p = usePalette();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: !!selected }}
-      style={[styles.chip, selected && styles.chipOn, style]}>
+      style={[styles.chip, selected && { backgroundColor: p.accent }, style]}>
       <Text style={[styles.chipText, selected && styles.chipTextOn]} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>{label}</Text>
     </Pressable>
   );
@@ -68,7 +71,6 @@ const styles = themed(() =>
   StyleSheet.create({
     // 胶囊 chip：浅底黑字，选中 = 强调色底白字（白卡上、灰底上都看得见）
     chip: { backgroundColor: Romance.line, borderRadius: Shape.radiusPill, paddingVertical: 8, paddingHorizontal: 14 },
-    chipOn: { backgroundColor: Romance.accent },
     chipText: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.ink },
     chipTextOn: { color: '#FFFFFF', fontWeight: '600' },
     // 分段控件：浅灰轨道里一块白色选中块（带一点浮起）

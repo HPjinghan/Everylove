@@ -96,7 +96,7 @@ export default function FeedScreen() {
   const sorted = posts.filter((p) => (p.mine || bondedCharIds.has(p.characterId)) && p.at <= now).sort((a, b) => b.at - a.at);
 
   return (
-    <AppScreen title="X">
+    <AppScreen fixedPalette title="X">
       <FlatList
         data={sorted}
         keyExtractor={(p) => p.id}

@@ -1,6 +1,6 @@
 /**
  * 手机壳桌面（D-020/D-021/D-034/D-044；D-100 翻页；D-231 小手机）：主页 = 一部手机的桌面。
- * - 底：壁纸（WallpaperTint）——纸面粉或另外五款浅底，同一套菱格暗纹（DiamondBackground），只铺在桌面
+ * - 底：壁纸（D-258，components/wallpaper.tsx）——主题自带的纸，或她选的照片；铺照片时时钟、图标名、页码点换白字带一点投影
  * - 图标网格：4 列、行高 Space.desktopRow，图块 60 圆润方块、每个 App 自己的颜色 + 白色图标（日历图块写今天几号）；长按进入编辑模式（抖动），
  *   **自由摆放**（D-034）——任意格位、允许留空格，拖到已占格位则交换；格位持久化（store.desktopSlots）
  * - **翻页**（D-100）：网格区水平分页，每页 rows × 4 格，slot 索引跨页连续（page = floor(slot / slotsPerPage)）；
@@ -11,7 +11,7 @@
  * - 退出编辑时抖动角度归零（wiggle 回 0.5 = 0deg，transform 常挂避免 native 残留）
  * - 大时钟 + 天气小组件（晴空蓝底白字）显示真实时间与世界天气；状态栏已按 D-023 去掉
  * - Message 快捷路径：有未读时桌面顶部弹出通知横幅——一人未读直达会话，多人未读合并后进 Message 列表
- * - 壁纸：设置 → 主题 里换
+ * - 主题与壁纸：设置里各一项（主题换系统向 App 的颜色，壁纸只铺这里）
  */
 
 import * as Haptics from 'expo-haptics';
@@ -38,10 +38,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { MingCute, WEATHER_ICON } from '@/components/mingcute';
-import { DiamondBackground } from '@/components/paper-bg';
 import { appById, DEFAULT_DESKTOP_ORDER, WIDGET_TINT, type DesktopApp } from '@/constants/apps';
 import { CONTROL_FONT_SCALE, DISPLAY_FONT_SCALE, Elevation, Shape, Space, Type } from '@/constants/design';
-import { Fonts, Romance, themed, WallpaperTint, withAlpha } from '@/constants/theme';
+import { Wallpaper, useWallpaperPhoto } from '@/components/wallpaper';
+import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { localeOf, t } from '@/lib/i18n';
 import { useXNewCount } from '@/lib/posts';
 import { tempNow, todayWeather, weatherCity } from '@/lib/weather';
@@ -86,14 +86,14 @@ function useClock(): { time: string; date: string } {
 }
 
 /** 时钟自己刷新（D-197）：15 秒一次只重绘这两行，不带动整个桌面 */
-function Clock() {
+function Clock({ onPhoto }: { onPhoto: boolean }) {
   const clock = useClock();
   return (
     <>
-      <Text style={styles.bigClock} maxFontSizeMultiplier={DISPLAY_FONT_SCALE}>
+      <Text style={[styles.bigClock, onPhoto && styles.onPhoto]} maxFontSizeMultiplier={DISPLAY_FONT_SCALE}>
         {clock.time}
       </Text>
-      <Text style={styles.clockSub} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
+      <Text style={[styles.clockSub, onPhoto && styles.onPhotoSub]} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
         {clock.date}
       </Text>
     </>
@@ -140,12 +140,15 @@ function DesktopIcon({
   unread,
   wiggle,
   dock = false,
+  onPhoto = false,
 }: {
   app: DesktopApp;
   unread: number;
   wiggle: Animated.Value;
   /** Dock 内：图块 paper 底、不显示标签（iPhone 规矩，D-044） */
   dock?: boolean;
+  /** 壁纸是照片：图标名换白字（D-258） */
+  onPhoto?: boolean;
 }) {
   // 0.5 = 0deg（静止）；transform 常挂——条件挂载在 native driver 下会把最后的角度留在原生节点上
   const rotate = wiggle.interpolate({
@@ -177,7 +180,7 @@ function DesktopIcon({
         ) : null}
       </View>
       {dock ? null : (
-        <Text style={styles.iconLabel} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
+        <Text style={[styles.iconLabel, onPhoto && styles.onPhoto]} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
           {t(app.label)}
         </Text>
       )}
@@ -246,6 +249,9 @@ interface DragState {
 
 export default function Desktop() {
   const insets = useSafeAreaInsets();
+  // 壁纸（D-258）：照片读得到就铺照片，读不到回到主题自带的纸；从 store 读，换壁纸不用重挂载
+  const photo = useWallpaperPhoto();
+  const onPhoto = !!photo.source;
   const { width: screenW } = useWindowDimensions();
   const router = useRouter();
   const hydrated = useHydrated();
@@ -596,7 +602,7 @@ export default function Desktop() {
 
   return (
     <View style={styles.screen}>
-      <DiamondBackground color={WallpaperTint.pattern} />
+      <Wallpaper source={photo.source} onError={photo.onError} />
 
       <View style={{ paddingTop: insets.top }}>
         {/* Message 快捷路径：未读横幅——一人直达会话，多人合并进 Message。绝对定位叠在时钟上（D-136）：不挤压下面，网格行数不随它变 */}
@@ -628,7 +634,7 @@ export default function Desktop() {
         ) : null}
 
         <View style={styles.clockBlock}>
-          <Clock />
+          <Clock onPhoto={onPhoto} />
         </View>
 
         {/* 世界天气（D-036）：大大地放在首页 */}
@@ -669,7 +675,7 @@ export default function Desktop() {
                           opacity: dragId === id ? 0 : 1,
                         }}>
                         <Pressable style={styles.cell} {...iconPress(id, app.route)}>
-                          <DesktopIcon app={app} unread={unreadOf(app)} wiggle={wiggle} />
+                          <DesktopIcon app={app} unread={unreadOf(app)} wiggle={wiggle} onPhoto={onPhoto} />
                         </Pressable>
                       </View>
                     );
@@ -685,7 +691,7 @@ export default function Desktop() {
             pointerEvents="none"
             style={[styles.dots, { bottom: dockBottom + DOCK_H + Space.pageDotGap }]}>
             {Array.from({ length: pageCount }, (_, p) => (
-              <View key={p} style={[styles.dot, p !== page && styles.dotOff]} />
+              <View key={p} style={[styles.dot, onPhoto && styles.dotOnPhoto, p !== page && styles.dotOff]} />
             ))}
           </View>
         ) : null}
@@ -721,6 +727,7 @@ export default function Desktop() {
               unread={unreadOf(dragApp)}
               wiggle={wiggle}
               dock={dragging.kind === 'dock'}
+              onPhoto={onPhoto}
             />
           </Animated.View>
         ) : null}
@@ -786,7 +793,7 @@ function IntroReveal() {
 
 const styles = themed(() =>
   StyleSheet.create({
-    screen: { flex: 1, backgroundColor: WallpaperTint.bg },
+    screen: { flex: 1 },
     // 未读横幅（D-231）：手机的通知横幅——白色圆角条浮在桌面上，左边是 Messages 的图块
     // 叠在时钟上、不占布局（D-136）
     notifWrap: { position: 'absolute', left: Space.inline, right: Space.inline, zIndex: 2 },
@@ -893,6 +900,7 @@ const styles = themed(() =>
       borderRadius: Space.pageDot / 2,
       backgroundColor: Romance.ink,
     },
+    dotOnPhoto: { backgroundColor: '#FFFFFF' },
     dotOff: { opacity: 0.3 },
     // Dock（D-231）：半透明白托盘、大圆角，不描边不模糊
     dock: {
@@ -929,6 +937,19 @@ const styles = themed(() =>
       fontWeight: '500',
       color: Romance.ink,
       marginTop: 6,
+    },
+    // 照片壁纸上的字（D-258）：白字 + 一点墨色投影，什么照片上都读得清
+    onPhoto: {
+      color: '#FFFFFF',
+      textShadowColor: withAlpha(Romance.ink, 0.45),
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
+    },
+    onPhotoSub: {
+      color: withAlpha('#FFFFFF', 0.9),
+      textShadowColor: withAlpha(Romance.ink, 0.45),
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
     },
     // 未读角标：红色胶囊、白字，图块右上
     badge: {

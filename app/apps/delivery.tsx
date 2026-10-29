@@ -18,7 +18,7 @@ import { Input } from '@/components/input';
 import { MingCute } from '@/components/mingcute';
 import { appTint } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
-import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
+import { BASE_PALETTE, Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { MENU } from '@/content/menu';
 import { orderStatus, orderTitle, placeOrder, type OrderStatus } from '@/lib/delivery';
 import { money, shortDateTime } from '@/lib/format';
@@ -110,7 +110,7 @@ export default function DeliveryScreen() {
   return (
     // 「留一句话」在屏幕最底下：整页随键盘让位（包在 AppScreen 外面，量的才是整屏、不漏算顶栏）
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <AppScreen title={t('外卖')} onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
+    <AppScreen fixedPalette title={t('外卖')} onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
       <Segmented<Tab>
         options={[
           { key: 'order', label: t('点单') },
@@ -286,7 +286,7 @@ export default function DeliveryScreen() {
 /** 左边店铺栏宽 */
 const RAIL = 84;
 /** 外卖的颜色（D-231）：跟桌面图块一样的黄，上面写黑字 */
-const TINT = appTint('delivery') ?? Romance.accent;
+const TINT = appTint('delivery') ?? BASE_PALETTE.accent;
 
 const styles = themed(() =>
   StyleSheet.create({
@@ -298,7 +298,7 @@ const styles = themed(() =>
     toChips: { flexDirection: 'row', alignItems: 'center', gap: Space.inline, paddingHorizontal: Space.screen, paddingBottom: Space.inlineLoose },
     // 店铺栏：paper 底，选中那家白底 + 左侧 primary 竖条；菜单区白底
     shopWrap: { flex: 1, flexDirection: 'row', borderTopWidth: Shape.stroke, borderTopColor: Romance.stroke },
-    rail: { width: RAIL, flexGrow: 0, backgroundColor: Romance.bg },
+    rail: { width: RAIL, flexGrow: 0, backgroundColor: BASE_PALETTE.bg },
     railItem: { alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6, gap: 2 },
     railItemOn: { backgroundColor: Romance.card },
     railMark: { position: 'absolute', left: 0, top: 12, bottom: 12, width: 3, borderRadius: Shape.radiusTail, backgroundColor: TINT },
@@ -321,7 +321,7 @@ const styles = themed(() =>
     menu: { flex: 1, backgroundColor: Romance.card },
     menuBody: { paddingHorizontal: Space.cardX, paddingBottom: 24 },
     shopHead: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose, paddingVertical: 14 },
-    shopEmojiTile: { width: 48, height: 48, borderRadius: Shape.radius, backgroundColor: Romance.bg, alignItems: 'center', justifyContent: 'center' },
+    shopEmojiTile: { width: 48, height: 48, borderRadius: Shape.radius, backgroundColor: BASE_PALETTE.bg, alignItems: 'center', justifyContent: 'center' },
     shopEmoji: { fontSize: Type.scale.h2.size },
     shopName: { fontSize: Type.scale.cardTitle.size, fontWeight: '600', color: Romance.ink },
     shopEta: { fontSize: Type.scale.caption.size, color: Romance.sub, marginTop: 2 },
@@ -350,7 +350,7 @@ const styles = themed(() =>
       paddingBottom: Space.screen + 12,
       borderTopWidth: Shape.stroke,
       borderTopColor: Romance.stroke,
-      backgroundColor: Romance.bg,
+      backgroundColor: BASE_PALETTE.bg,
       gap: Space.inlineLoose,
     },
     // 购物车条：墨色胶囊、白字，左边一颗黄色购物袋

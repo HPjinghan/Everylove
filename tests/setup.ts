@@ -2,7 +2,7 @@
  * 测试环境（node，无 React Native）：把带原生依赖的模块换成最小桩。
  * - AsyncStorage → 内存实现（zustand persist 与天气缓存用）
  * - react-native / expo-* / react-native-maps → 只提供 import 时会碰到的名字，其余按需返回空组件
- * - constants/theme → 只提供 applyThemeColors 与 themed（store 与卡片样式调）
+ * - constants/theme → 只提供 applyTheme 与 themed（store 与卡片样式调）
  * - lib/weather → 固定的天气句（prompt 快照要确定性）
  * - 测试默认语言钉为中文（D-125 起 App 默认 English，快照与断言都是中文写的；单测要别的语言自己 setLang）
  */
@@ -94,9 +94,11 @@ vi.mock('expo-notifications', () =>
 );
 
 vi.mock('@/constants/theme', () => ({
-  applyThemeColors: () => {},
-  applyPaperTint: () => {},
-  THEMES: { paper: { label: '纸面', colors: {} } },
+  applyTheme: () => {},
+  DEFAULT_THEME: 'paper',
+  isThemeId: (id: unknown) => typeof id === 'string' && ['paper', 'dawn', 'eight', 'sea', 'matcha', 'milk'].includes(id),
+  THEMES: { paper: { label: '纸面', colors: {}, paper: { bg: '#000000', pattern: '#000000' } } },
+  THEME_IDS: ['paper'],
   Romance: new Proxy({}, { get: (_t, k) => (typeof k === 'symbol' || k === 'then' ? undefined : '#000000') }),
   Fonts: {},
   themed: (f: () => unknown) => f(),

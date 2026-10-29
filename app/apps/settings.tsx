@@ -1,8 +1,9 @@
 /**
- * 设置（D-100 纸面）：分区标题 13/600 muted；每区一张白卡（不带内距、墨色描边），行内距 13×12，行间浅色分区线（D-229：Divider soft）；
- * 行左 14 ink、右值 13/500 muted。语言 = 三段等宽（paper 底 / 选中 primary 白字）；主题点 34 r6（选中外圈 ink 2.5、留 2）；
- * 壁纸块 52×88 r6（纸面画 paper 底 + 菱格，其余上下两段纯色；选中外圈 primary 2、留 1）；槽位超额时数值与说明走 accent（交互改动 9）。
- * 开发者区显示 AI 引擎与取路（D-069：key 全走工程配置 .env.local，手填与脚本引擎已下线；D-106：「AI 引擎」可点选供应商，本机偏好）。
+ * 设置（D-231 小手机）：分区标题 + 一张白卡，行间浅分隔线（D-229），每区首行一枚小彩色图标、可点的行带「›」。
+ * - 语言：四段等宽，选中强调色白字。
+ * - 主题（D-258）：六块小纸——主题自带的纸 + 一颗她的气泡色；点一下全局生效（系统向 App 跟着换，第三方 App 不跟）。
+ * - 壁纸（D-258）：一行，进 /apps/wallpaper 选（跟着主题 / 手机里的照片 / App 里的图）。
+ * - 开发者区只在开发构建（D-180）：AI 引擎点选（D-106，本机偏好）、取路、GM、记忆库、立绘、重置。
  */
 
 import Constants from 'expo-constants';
@@ -17,10 +18,9 @@ import { alertAiUnavailable } from '@/components/ai-unavailable';
 import { AppScreen } from '@/components/app-screen';
 import { Card, Divider } from '@/components/card';
 import { MingCute, type MingCuteName } from '@/components/mingcute';
-import { DiamondBackground } from '@/components/paper-bg';
-import { WALLPAPERS } from '@/constants/apps';
+import { ThemePaper } from '@/components/wallpaper';
 import { Shape, Space, Type } from '@/constants/design';
-import { Fonts, PAPER_WALLPAPER, Romance, themed } from '@/constants/theme';
+import { Fonts, Romance, THEME_IDS, THEMES, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { buy as buyIap, iapState, iapVersion, restore as restoreIap, subscribeIap, type BuyOutcome } from '@/features/iap';
 import { billingLive, buyTrafficPack, buyVoicePack, choosePlan, gmGrant } from '@/features/traffic';
@@ -32,8 +32,6 @@ import { t } from '@/lib/i18n';
 import {
   DAILY_FREE_MB,
   freeLeft,
-  LOVE_MODEL_ORDER,
-  LOVE_MODELS,
   mb,
   PLAN_MONTHLY_MB,
   PLAN_PRICE_USD,
@@ -46,8 +44,8 @@ import {
 import { deleteCloudData, restoreSnapshot, uploadSnapshot } from '@/lib/sync';
 import { useAppStore } from '@/store/app-store';
 
-/** 选中外圈：主题点 ink 2.5 留 2；壁纸块 primary 2 留 1（外层 View 包一圈 border，圆角随之外扩） */
-const WALL_RING = { width: 2, gap: 1 };
+/** 主题小纸的选中外圈：强调色 2、留 1（外层 View 包一圈 border，圆角随之外扩） */
+const SWATCH_RING = { width: 2, gap: 1 };
 
 const LANGS = [
   ['zh', '中文'],
@@ -65,7 +63,6 @@ function flattenChildren(children: ReactNode): ReactNode[] {
   );
 }
 
-/** 分区：标题 + 一张不带内距的白卡；卡内每两个直接子元素之间一条 1.5px ink 分区线 */
 /** 小时步进：Fredoka 数字，两侧 −/+（D-120 勿扰时段） */
 function HourStepper({ value, onChange }: { value: number; onChange: (h: number) => void }) {
   const step = (d: number) => onChange((value + d + 24) % 24);
@@ -82,6 +79,7 @@ function HourStepper({ value, onChange }: { value: number; onChange: (h: number)
   );
 }
 
+/** 分区：标题 + 一张不带内距的白卡；卡内每两个直接子元素之间一条浅分隔线 */
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const items = flattenChildren(children);
   return (
@@ -114,7 +112,6 @@ function Row({
   value,
   dim,
   numeric,
-  tone,
   hint,
   onPress,
   icon,
@@ -127,8 +124,6 @@ function Row({
   dim?: boolean;
   /** 值是数字：Fredoka */
   numeric?: boolean;
-  /** accent：值与说明都用强调色（槽位超额） */
-  tone?: 'accent';
   /** 行下方的一句说明，与行同属一格（不隔分区线） */
   hint?: string;
   onPress?: () => void;
@@ -148,7 +143,6 @@ function Row({
               styles.rowValue,
               numeric && styles.rowValueNumeric,
               dim && styles.rowValueDim,
-              tone === 'accent' && styles.rowValueAccent,
             ]}
             numberOfLines={1}>
             {value}
@@ -156,7 +150,7 @@ function Row({
         ) : null}
         {onPress ? <Text style={styles.rowChevron}>›</Text> : null}
       </View>
-      {hint ? <Text style={[styles.rowHint, tone === 'accent' && styles.rowHintAccent]}>{hint}</Text> : null}
+      {hint ? <Text style={styles.rowHint}>{hint}</Text> : null}
     </Pressable>
   );
 }
@@ -165,6 +159,7 @@ export default function MeScreen() {
   const router = useRouter();
   const bonds = useAppStore((s) => s.bonds);
   const customs = useAppStore((s) => s.customCharacters);
+  const theme = useAppStore((s) => s.theme);
   const wallpaper = useAppStore((s) => s.wallpaper);
   // 引擎偏好（D-106）：点「AI 引擎」在已注册供应商间切换，'' = 跟随 .env.local；换完本地重算取路
   const [enginePref, setEnginePrefState] = useState(enginePreference);
@@ -274,13 +269,12 @@ export default function MeScreen() {
   const plan = useAppStore((s) => s.plan);
   const language = useAppStore((s) => s.language);
   const traffic = useAppStore((s) => s.traffic);
-  const loveModel = useAppStore((s) => s.loveModel);
   const voice = useAppStore((s) => s.voice);
   // 流量（D-132）：今天免费的按进页面那一刻算；扣费后 traffic 变了会重算
   const [trafficNow] = useState(() => Date.now());
-  /** 订阅档说明（D-240：订阅给一份流量 + 每 30 天的语音分钟） */
   /** 模拟收费时显示的美国店面价；真收费用 App Store 返回的本地价 */
   const usd = (n: number) => `$${n.toFixed(2)}`;
+  /** 订阅档说明（D-240：订阅给一份流量 + 每 30 天的语音分钟） */
   const planBlurb = (p: 'free' | 'pro' | 'max') => t('每月 {n} · {m} 分钟 TA 的声音', { n: mb(PLAN_MONTHLY_MB[p]), m: PLAN_VOICE_MONTHLY_MIN[p] });
 
   /** 钱包的事都经服务器（D-217）：成功了 store 已经是服务器的数，失败只说稍后再试 */
@@ -436,24 +430,37 @@ export default function MeScreen() {
 
         <Section title={t('主题')}>
           <View>
-            {/* 壁纸（D-231）：纸面 + 五款浅底，只换桌面 */}
-            {/* 一行横排，放不下就横向滑——不让最后一块单独掉到第二行 */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wallRow}>
-              {WALLPAPERS.map((w) => {
-                const on = wallpaper === w.id;
+            {/* 主题（D-258）：主题自带的纸 + 一颗她的气泡色；一行横排，放不下就横向滑 */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.swatchRow}>
+              {THEME_IDS.map((id) => {
+                const on = theme === id;
                 return (
-                  <Pressable key={w.id} style={styles.wallItem} onPress={() => useAppStore.getState().setWallpaper(w.id)}>
-                    <View style={[styles.wallRing, on && styles.wallRingOn]}>
-                      <View style={[styles.wallSwatch, { backgroundColor: w.color ?? PAPER_WALLPAPER.bg }]}>
-                        <DiamondBackground color={PAPER_WALLPAPER.pattern} />
+                  <Pressable
+                    key={id}
+                    style={styles.swatchItem}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    onPress={() => useAppStore.getState().setTheme(id)}>
+                    <View style={[styles.swatchRing, on && styles.swatchRingOn]}>
+                      <View style={styles.swatch}>
+                        <ThemePaper theme={id} />
+                        <View style={[styles.swatchBubble, { backgroundColor: THEMES[id].colors.bubbleMe }]} />
                       </View>
                     </View>
-                    <Text style={[styles.wallLabel, on && styles.wallLabelOn]}>{t(w.label)}</Text>
+                    <Text style={[styles.swatchLabel, on && styles.swatchLabelOn]}>{t(THEMES[id].label)}</Text>
                   </Pressable>
                 );
               })}
             </ScrollView>
           </View>
+        </Section>
+
+        <Section title={t('壁纸')}>
+          <Row
+            label={t('桌面壁纸')}
+            value={!wallpaper ? t('跟着主题') : wallpaper.kind === 'portrait' ? t('立绘') : t('照片')}
+            onPress={() => router.push('/apps/wallpaper' as never)}
+          />
         </Section>
 
         <Section title={t('订阅计划')}>
@@ -507,18 +514,6 @@ export default function MeScreen() {
 
         <Section title={t('流量')}>
           <Row icon="traffic" label={t('剩余流量')} value={mb(traffic.balance)} numeric hint={t('今天免费的还剩 {n}', { n: mb(freeLeft(traffic, trafficNow)) })} />
-          {/* 只剩一档时不给选（D-205） */}
-          {LOVE_MODEL_ORDER.length > 1 && LOVE_MODEL_ORDER.map((id) => {
-            const m = LOVE_MODELS[id];
-            return (
-              <Row
-                key={id}
-                label={loveModel === id ? `${m.label} ✓` : m.label}
-                value={t('{blurb} · 每千 token {n}', { blurb: t(m.blurb), n: mb(m.mbPerKTok) })}
-                onPress={() => useAppStore.getState().setLoveModel(id)}
-              />
-            );
-          })}
           <Row label={t('流水')} onPress={() => router.push('/apps/traffic-log' as never)} />
           {storeMode === 'sim'
             ? TRAFFIC_PACKS.map((p) => (
@@ -632,7 +627,7 @@ export default function MeScreen() {
                   : t('不可用：无 key 且未登录')
             }
             dim={aiRoute === 'none'}
-            hint={t('key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。调用失败会以顶部轻提示露出。')}
+            hint={t('key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。')}
           />
           <Row label="查看 TA 记住了什么（记忆库）" onPress={showMemory} />
           <Row label="为 6 位种子角色生成立绘（测试，后台逐个）" onPress={genSeedPortraits} />
@@ -649,7 +644,7 @@ export default function MeScreen() {
 
 const styles = themed(() =>
   StyleSheet.create({
-    screen: { flex: 1, backgroundColor: Romance.bg },
+    screen: { flex: 1 },
     // 表单类页面左右留白按设计稿 18
     content: { paddingHorizontal: 18, paddingBottom: 40 },
     section: { marginTop: 16 },
@@ -669,12 +664,10 @@ const styles = themed(() =>
     rowValue: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.sub, flexShrink: 1, textAlign: 'right' },
     rowValueNumeric: { fontFamily: Fonts.labelBold },
     rowValueDim: { color: Romance.faint },
-    rowValueAccent: { color: Romance.accentStrong },
     rowHint: { fontSize: Type.scale.timestamp.size, lineHeight: 16, color: Romance.sub, paddingHorizontal: Space.cardX, paddingBottom: Space.cardX },
-    rowHintAccent: { color: Romance.accentStrong },
     /** 卡内独立的一句说明（不是行的附注） */
     cardNote: { fontSize: Type.scale.timestamp.size, lineHeight: 16, color: Romance.sub, padding: Space.cardX },
-    // 语言：三段等宽，paper 底 / 选中 primary 白字，无描边
+    // 语言：四段等宽，浅底 / 选中强调色白字，无描边
     langRow: { flexDirection: 'row', gap: Space.inline, padding: Space.cardX },
     langItem: {
       flex: 1,
@@ -686,23 +679,24 @@ const styles = themed(() =>
     langItemOn: { backgroundColor: Romance.accent },
     langText: { fontSize: Type.scale.label.size, fontWeight: '500', color: Romance.sub },
     langTextOn: { color: '#FFFFFF' },
-    // 壁纸块：52×88 r6，选中外圈 primary 2 留 1
-    wallRow: {
+    // 主题小纸：52×88，右下一颗气泡色；选中外圈强调色 2 留 1
+    swatchRow: {
       flexDirection: 'row',
       gap: Space.inlineLoose,
       padding: Space.inline,
     },
-    wallItem: { alignItems: 'center' },
-    wallRing: {
-      borderWidth: WALL_RING.width,
+    swatchItem: { alignItems: 'center' },
+    swatchRing: {
+      borderWidth: SWATCH_RING.width,
       borderColor: 'transparent',
-      padding: WALL_RING.gap,
-      borderRadius: Shape.radius + WALL_RING.gap + WALL_RING.width,
+      padding: SWATCH_RING.gap,
+      borderRadius: Shape.radius + SWATCH_RING.gap + SWATCH_RING.width,
     },
-    wallRingOn: { borderColor: Romance.accent },
-    wallSwatch: { width: 52, height: 88, borderRadius: Shape.radius, overflow: 'hidden', backgroundColor: Romance.bg },
-    wallLabel: { fontSize: Type.scale.timestamp.size, color: Romance.sub, textAlign: 'center', marginTop: 4 },
-    wallLabelOn: { color: Romance.accent },
+    swatchRingOn: { borderColor: Romance.accent },
+    swatch: { width: 52, height: 88, borderRadius: Shape.radius, overflow: 'hidden', justifyContent: 'flex-end', alignItems: 'flex-end', padding: 6 },
+    swatchBubble: { width: 26, height: 14, borderRadius: Shape.radiusPill },
+    swatchLabel: { fontSize: Type.scale.timestamp.size, color: Romance.sub, textAlign: 'center', marginTop: 4 },
+    swatchLabelOn: { color: Romance.accent },
     quietRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Space.inline, paddingVertical: 10, paddingHorizontal: Space.cardX },
     quietDash: { fontFamily: Fonts.label, fontSize: Type.scale.sub.size, color: Romance.sub },
     stepper: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Romance.bg, borderRadius: Shape.radius, paddingHorizontal: 4 },

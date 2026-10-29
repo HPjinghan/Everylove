@@ -586,7 +586,7 @@ const en: Record<string, string> = {
   '不可用': 'Unavailable',
   '跟随配置': 'Follow config',
   '两把 key 都在 .env.local 时可以手动指定；「跟随配置」= 有 Claude key 用 Claude，否则千帆。': 'With both keys in .env.local you can pick one by hand. "Follow config" = Claude if a Claude key exists, otherwise Qianfan.',
-  'key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。调用失败会以顶部轻提示露出。': 'Keys come only from .env.local (restart Metro after changes). Tap "AI engine" to switch providers; the choice stays on this phone. Without a key, signing in routes through the server proxy. Failures show up as a brief toast at the top.',
+  'key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。': 'Keys come only from .env.local (restart Metro after changes). Tap "AI engine" to switch providers; the choice stays on this phone. Without a key, signing in routes through the server proxy.',
   // D-110：日历图例与每位 TA 的纪念日 / 资料页 / TA 的手机 / X 互动
   '设定': 'Lore',
   '已在通讯录': 'In your contacts',
@@ -705,7 +705,6 @@ const en: Record<string, string> = {
   '流量用完了': 'Out of RB',
   '轻快，省流量': 'Quick, light on data',
   '更细腻，更懂你': 'Finer, knows you better',
-  '{blurb} · 每千 token {n}': '{blurb} · {n} per 1K tokens',
   '流水': 'Usage log',
   '最近 {n} 笔': 'Last {n} entries',
   '估算': 'estimated',
@@ -1057,6 +1056,14 @@ const en: Record<string, string> = {
   '对谁说': 'Talk to',
   '大家': 'everyone',
   '对{name}说…': 'Say to {name}…',
+  '壁纸': 'Wallpaper',
+  '桌面壁纸': 'Home screen',
+  '跟着主题': 'Match theme',
+  '从手机相册选': 'Choose from Photos',
+  '拍立得': 'Polaroids',
+  '立绘': 'Portraits',
+  'TA 发来的': 'Sent to you',
+  '照片': 'Photo',
   // __EN_END__
 };
 
@@ -1610,7 +1617,7 @@ const ja: Record<string, string> = {
   '不可用': '利用不可',
   '跟随配置': '設定に従う',
   '两把 key 都在 .env.local 时可以手动指定；「跟随配置」= 有 Claude key 用 Claude，否则千帆。': '.env.local に両方の key があれば手動で選べます。「設定に従う」= Claude の key があれば Claude、なければ千帆。',
-  'key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。调用失败会以顶部轻提示露出。': 'key は .env.local からのみ読みます（変更後は Metro を再起動）。「AIエンジン」をタップで切り替え、選択はこの端末にだけ保存。key がなければログインでサーバー経由。失敗は画面上部に短く表示されます。',
+  'key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。': 'key は .env.local からのみ読みます（変更後は Metro を再起動）。「AIエンジン」をタップで切り替え、選択はこの端末にだけ保存。key がなければログインでサーバー経由。',
   // D-110：日历图例与每位 TA 的纪念日 / 资料页 / TA 的手机 / X 互动
   '设定': '設定',
   '已在通讯录': '連絡先に登録済み',
@@ -1729,7 +1736,6 @@ const ja: Record<string, string> = {
   '流量用完了': 'RB を使い切りました',
   '轻快，省流量': '軽快、データ節約',
   '更细腻，更懂你': 'より繊細に、あなたをわかってくれる',
-  '{blurb} · 每千 token {n}': '{blurb} · 1K トークンあたり {n}',
   '流水': '利用履歴',
   '最近 {n} 笔': '直近 {n} 件',
   '估算': '推定',
@@ -2081,6 +2087,14 @@ const ja: Record<string, string> = {
   '对谁说': '誰に話す？',
   '大家': 'みんな',
   '对{name}说…': '{name}に話しかける…',
+  '壁纸': '壁紙',
+  '桌面壁纸': 'ホーム画面',
+  '跟着主题': 'テーマに合わせる',
+  '从手机相册选': '写真から選ぶ',
+  '拍立得': 'チェキ',
+  '立绘': '立ち絵',
+  'TA 发来的': '送ってくれた写真',
+  '照片': '写真',
   // __JA_END__
 };
 
@@ -2618,7 +2632,7 @@ const ko: Record<string, string> = {
   '不可用': '사용 불가',
   '跟随配置': '설정 따르기',
   '两把 key 都在 .env.local 时可以手动指定；「跟随配置」= 有 Claude key 用 Claude，否则千帆。': '.env.local에 두 key가 모두 있으면 직접 고를 수 있어요. ‘설정 따르기’ = Claude key가 있으면 Claude, 없으면 千帆.',
-  'key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。调用失败会以顶部轻提示露出。': 'key는 .env.local에서만 읽어요 (바꾼 뒤 Metro 재시작). ‘AI 엔진’을 눌러 공급자를 바꿀 수 있고, 선택은 이 휴대폰에만 저장돼요. key가 없으면 로그인 시 서버 프록시로 가요. 실패는 화면 위쪽에 잠깐 표시돼요.',
+  'key 只读工程配置 .env.local（改后重启 Metro）；点「AI 引擎」可在供应商之间切换，只存这台手机。没有 key 时登录即走服务端代理。': 'key는 .env.local에서만 읽어요 (바꾼 뒤 Metro 재시작). ‘AI 엔진’을 눌러 공급자를 바꿀 수 있고, 선택은 이 휴대폰에만 저장돼요. key가 없으면 로그인 시 서버 프록시로 가요.',
   // D-110：日历图例与每位 TA 的纪念日 / 资料页 / TA 的手机 / X 互动
   '设定': '설정',
   '已在通讯录': '연락처에 있음',
@@ -2737,7 +2751,6 @@ const ko: Record<string, string> = {
   '流量用完了': 'RB를 다 썼어요',
   '轻快，省流量': '가볍고 데이터 절약',
   '更细腻，更懂你': '더 섬세하게, 더 잘 아는',
-  '{blurb} · 每千 token {n}': '{blurb} · 1K 토큰당 {n}',
   '流水': '사용 내역',
   '最近 {n} 笔': '최근 {n}건',
   '估算': '추정',
@@ -3089,6 +3102,14 @@ const ko: Record<string, string> = {
   '对谁说': '누구에게',
   '大家': '모두',
   '对{name}说…': '{name}에게 말하기…',
+  '壁纸': '배경화면',
+  '桌面壁纸': '홈 화면',
+  '跟着主题': '테마에 맞추기',
+  '从手机相册选': '사진에서 선택',
+  '拍立得': '폴라로이드',
+  '立绘': '일러스트',
+  'TA 发来的': '보내준 사진',
+  '照片': '사진',
   // __KO_END__
 };
 

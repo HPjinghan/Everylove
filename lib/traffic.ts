@@ -65,13 +65,12 @@ export interface LoveModel {
   mbPerKTok: number;
 }
 
-/** D-205：两档都是 Claude Haiku 5.5，设置里不再给选（LOVE_MODEL_ORDER 只剩一档 → 不显示）；老存档里的 v2 照样能用 */
+/** D-205：两档都是 Claude Haiku 5.5，设置里不给选；老存档里的 v2 照样能用 */
 export const LOVE_MODELS: Record<LoveModelId, LoveModel> = {
   v1: { id: 'v1', label: 'love-v1', blurb: '轻快，省流量', provider: 'anthropic', mbPerKTok: 1 },
   v2: { id: 'v2', label: 'love-v2', blurb: '更细腻，更懂你', provider: 'anthropic', mbPerKTok: 1 },
 };
 export const DEFAULT_LOVE_MODEL: LoveModelId = 'v1';
-export const LOVE_MODEL_ORDER: LoveModelId[] = ['v1'];
 
 /** 聊天按供应商折算（D-205 起都是 1 MB / 千 token）；生图 / 看图按件 */
 export const CHAT_MB_PER_KTOK: Record<string, number> = { qianfan: MB_PER_KTOK, anthropic: MB_PER_KTOK };

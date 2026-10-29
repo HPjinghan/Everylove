@@ -19,7 +19,7 @@ import { Chip, Segmented } from '@/components/chip';
 import { MingCute } from '@/components/mingcute';
 import { appTint } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
-import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
+import { BASE_PALETTE, Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { FORTUNE_TEXTS } from '@/content/fortunes';
 import { money } from '@/lib/format';
 import { haptic } from '@/lib/haptics';
@@ -28,7 +28,7 @@ import { drawFortune, fortuneDayKey, FORTUNES, spinWheel, WHEEL_BETS, WHEEL_SLIC
 import { useAppStore } from '@/store/app-store';
 
 /** 幸运签的颜色（D-231）：跟桌面图块一样的紫 */
-const TINT = appTint('fortune') ?? Romance.accent;
+const TINT = appTint('fortune') ?? BASE_PALETTE.accent;
 const BALL = 220;
 /** 水晶球亮起来的时长（毫秒） */
 const REVEAL_MS = 1400;
@@ -45,7 +45,7 @@ export default function FortuneScreen() {
   const [tab, setTab] = useState<Tab>('sign');
 
   return (
-    <AppScreen title={t('幸运签')} onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
+    <AppScreen fixedPalette title={t('幸运签')} onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
       <ScrollView contentContainerStyle={styles.body}>
         <Card style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>{t('零钱')}</Text>

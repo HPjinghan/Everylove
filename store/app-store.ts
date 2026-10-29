@@ -12,13 +12,13 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { bondedPostsFor, CHARACTERS, scriptFor, SQUARE_POSTS } from '@/content/characters';
 import { uid } from '@/lib/format';
-import { applyPaperTint } from '@/constants/theme';
+import { applyTheme, DEFAULT_THEME, isThemeId, type ThemeId } from '@/constants/theme';
 import { DEFAULT_LOVE_MODEL, EMPTY_TRAFFIC, START_VOICE, type LoveModelId, type Traffic, trafficAfterUse, voiceAfterUse, type VoiceTime, type VoiceUse } from '@/lib/traffic';
 import { emptyHisWallet, ledgerEntry, pushLedger } from '@/lib/wallet';
 import { dedupeBonds, legacyBondLevel, LEVEL_NAMES, levelOf, WARMTH_GAINS, WARMTH_START, warmthAfter, xpGain, type XpSource } from '@/lib/bond';
 import { setLang, t, type Lang } from '@/lib/i18n';
 import { syncAccountLanguage } from '@/lib/auth';
-import { DEFAULT_DOCK, DEFAULT_WALLPAPER, wallpaperTint } from '@/constants/apps';
+import { DEFAULT_DOCK } from '@/constants/apps';
 import { placeById } from '@/content/places';
 import { minutesLate, planTimeLabel } from '@/lib/appointments';
 import { randomPasscode } from '@/lib/phone';
@@ -48,6 +48,7 @@ import type {
   TrafficEntry,
   Wallet,
   UserProfile,
+  WallpaperPick,
 } from '@/lib/types';
 
 /** 到点前写好的主动消息（D-114） */
@@ -104,8 +105,10 @@ interface AppState {
   desktopSlots: Record<string, number>;
   /** 底部 Dock（D-044）：固定在桌面底部的 App id，最多 4 个 */
   desktopDock: string[];
-  /** 壁纸 = 主题（D-110）：纸面 + 换色，全局生效 */
-  wallpaper: string;
+  /** 主题（D-258）：系统向 App 的强调色一族 + 主题自带的壁纸纸 */
+  theme: ThemeId;
+  /** 桌面壁纸（D-258）：null = 主题自带的纸 */
+  wallpaper: WallpaperPick | null;
   /** 日历用户层日程（D-020） */
   userEvents: CalendarEvent[];
   /** 发帖调度（D-055）：characterId → 下一条帖子的到点时间（频率按 MBTI，lib/posts.ts） */
@@ -190,7 +193,6 @@ interface AppState {
   useTraffic: (cost: number) => number;
   /** 进流量：流量包 / 订阅发放（grantAt 传入 = 订阅发的，记发放时刻） */
   addTraffic: (mb: number, grantAt?: number) => void;
-  setLoveModel: (m: LoveModelId) => void;
   logTraffic: (e: Omit<TrafficEntry, 'id' | 'at'>) => void;
   /** 扣语音时长（秒）：先今天的额度、电话再用送的、最后分钟包；返回实际扣了几秒 */
   useVoice: (sec: number, use: VoiceUse) => number;
@@ -265,7 +267,8 @@ interface AppState {
   setDesktopSlots: (slots: Record<string, number>) => void;
   setDesktopDock: (ids: string[]) => void;
   /** 换壁纸 = 换主题（D-110）：立即给纸面换色，主页与里面的每一屏一起变 */
-  setWallpaper: (id: string) => void;
+  setTheme: (id: ThemeId) => void;
+  setWallpaper: (pick: WallpaperPick | null) => void;
   setReachDue: (bondId: string, at: number) => void;
   setQuietHours: (h: { from: number; to: number }) => void;
   /** TA 自己的作息（D-119） */
@@ -339,7 +342,8 @@ const initialData = {
   desktopOrder: [] as string[],
   desktopSlots: {} as Record<string, number>,
   desktopDock: DEFAULT_DOCK,
-  wallpaper: DEFAULT_WALLPAPER,
+  theme: DEFAULT_THEME as ThemeId,
+  wallpaper: null as WallpaperPick | null,
   userEvents: [] as CalendarEvent[],
   postSchedule: {} as Record<string, number>,
   datingPasses: {} as Record<string, number>,
@@ -549,7 +553,6 @@ export const useAppStore = create<AppState>()(
       addTraffic: (amount, grantAt) =>
         set({ traffic: { ...get().traffic, balance: get().traffic.balance + amount, ...(grantAt ? { planGrantAt: grantAt } : {}) } }),
 
-      setLoveModel: (m) => set({ loveModel: m }),
 
       logTraffic: (e) => set({ trafficLog: [...get().trafficLog, { id: uid('tr'), at: Date.now(), ...e }].slice(-TRAFFIC_LOG_MAX) }),
 
@@ -896,9 +899,12 @@ export const useAppStore = create<AppState>()(
       setDesktopOrder: (order) => set({ desktopOrder: order }),
       setDesktopSlots: (slots) => set({ desktopSlots: slots }),
       setDesktopDock: (ids) => set({ desktopDock: ids.slice(0, 4) }),
-      setWallpaper: (id) => {
-        applyPaperTint(wallpaperTint(id));
-        set({ wallpaper: id });
+      setTheme: (id) => {
+        applyTheme(id);
+        set({ theme: id });
+      },
+      setWallpaper: (pick) => {
+        set({ wallpaper: pick });
       },
       setReachDue: (bondId, at) => set({ reachSchedule: { ...get().reachSchedule, [bondId]: at } }),
       setQuietHours: (h) => set({ quietHours: h }),
@@ -1116,7 +1122,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'everylove-store',
-      version: 12,
+      version: 13,
       storage: createJSONStorage(() => AsyncStorage),
       // 分区（D-201）：共享池缓存不落盘（启动会重新拉，5 分钟节流）——它可能上百个角色带章节，落盘 / 上云都白费
       partialize: ({ sharedPool: _pool, sharedPoolAt: _at, ...rest }) => rest as AppState,
@@ -1130,10 +1136,16 @@ export const useAppStore = create<AppState>()(
       // v9：零钱（D-128）——老羁绊补 TA 的钱包（2000 Coin 起，周薪从现在起算）
       // v10：桌面布局全部回默认（D-136，Harper：强制把所有人的布局刷新成默认首页）
       // v11：世界书下线（D-149）——清掉世界书数据与角色 / 羁绊快照上的世界字段；桌面上的世界书图标随 appById 过滤自然消失
+      // v13：主题与壁纸分开（D-258）——旧的 wallpaper（色块 id）就是新的主题 id；壁纸回到主题自带的纸
       // v12：类型收紧（D-193）——羁绊与试聊的可选字段补默认值改必填；themeId 删掉
       migrate: (persisted: unknown, version) => {
         const state = persisted as (Partial<AppState> & Record<string, unknown>) | undefined;
         if (!state) return state;
+        if (version < 13) {
+          const old = state.wallpaper as unknown;
+          state.theme = isThemeId(old) ? old : DEFAULT_THEME;
+          state.wallpaper = null;
+        }
         // v12：类型收紧（D-193）——羁绊的记忆 / 记事本 / 作息 / 身边的人 / 温度、试聊的好奇值改必填，老存档补默认值；themeId 退役字段删掉
         if (version < 12) {
           const now = Date.now();

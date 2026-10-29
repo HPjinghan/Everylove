@@ -36,11 +36,11 @@ import { CharAvatar } from '@/components/char-avatar';
 import { Chip, Segmented } from '@/components/chip';
 import { BlankPolaroid } from '@/components/polaroid';
 import { MingCute } from '@/components/mingcute';
-import { DiamondBackground } from '@/components/paper-bg';
+import { ThemePaper } from '@/components/wallpaper';
 import { CHARACTERS, seedCharactersFor } from '@/content/characters';
 import { appTint } from '@/constants/apps';
 import { Elevation, Shape, Space, Type } from '@/constants/design';
-import { Fonts, Romance, themed, WallpaperTint, withAlpha } from '@/constants/theme';
+import { BASE_PALETTE, Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { heatLabel } from '@/lib/format';
 import { haptic } from '@/lib/haptics';
 import { portraitSource } from '@/lib/imagegen';
@@ -52,7 +52,7 @@ import { useAppStore } from '@/store/app-store';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 /** 交友 App 自己的颜色（D-231）：跟桌面图块一样的珊瑚粉 */
-const TINT = appTint('dating') ?? Romance.accent;
+const TINT = appTint('dating') ?? BASE_PALETTE.accent;
 /** 牌堆卡宽：设计 342；窄屏按屏幕左右留白收 */
 const CARD_W = Math.min(Space.matchCardWidth, SCREEN_W - Space.screen * 2);
 /** 无立绘时托首字的 paper 圆：直径 236（设计稿半径 118）；瀑布流小卡缩到 112 */
@@ -373,7 +373,7 @@ export default function DatingScreen() {
 
   return (
     // 新手流（D-058）：滑到心动就是入口；不想滑的逃生门 = 顶栏「‹ 桌面」（D-223 去掉重复的文字入口）
-    <AppScreen title={t('交友')} onBack={!introDone ? escapeIntro : undefined}>
+    <AppScreen fixedPalette title={t('交友')} onBack={!introDone ? escapeIntro : undefined}>
       {/* 视图切换（D-049）+ 口味 chip（D-100）：并排居中；chip 直接显示当前口味，点开偏好卡 */}
       <View style={styles.controls}>
         <Segmented
@@ -539,11 +539,11 @@ export default function DatingScreen() {
         </Pressable>
       </Modal>
 
-      {/* 配对成功：纸面整页（paper + 菱格），不再压深色遮罩 */}
+      {/* 配对成功：铺她的主题自带的那块纸（D-258：这一刻是手机本身在庆祝），不压深色遮罩 */}
       {match ? (
         <View style={styles.matchOverlay}>
           {/* 暗纹铺在不带 padding 的外层，留白放内层——带 padding 的容器里 100% 宽的 SVG 铺不满 */}
-          <DiamondBackground color={WallpaperTint.pattern} />
+          <ThemePaper />
           <View style={styles.matchInner}>
             <Text style={styles.matchBig}>{t('配对成功')}</Text>
             <CharAvatar name={match.name} color={match.color} size={96} characterId={match.id} />
@@ -599,7 +599,7 @@ const styles = themed(() =>
       width: INITIAL_CIRCLE,
       height: INITIAL_CIRCLE,
       borderRadius: INITIAL_CIRCLE / 2,
-      backgroundColor: Romance.bg,
+      backgroundColor: BASE_PALETTE.bg,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -676,7 +676,7 @@ const styles = themed(() =>
       paddingHorizontal: 14,
     },
     passToastText: { fontSize: Type.scale.caption.size, fontWeight: '500', color: '#FFFFFF' },
-    passToastUndo: { fontSize: Type.scale.caption.size, fontWeight: '600', color: Romance.bg },
+    passToastUndo: { fontSize: Type.scale.caption.size, fontWeight: '600', color: BASE_PALETTE.bg },
     gridFeed: { paddingHorizontal: Space.screen, paddingTop: 12, paddingBottom: 24 },
     gridCols: { flexDirection: 'row', gap: 10 },
     gridCol: { flex: 1, gap: 10 },
@@ -690,7 +690,7 @@ const styles = themed(() =>
     prefTitle: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, marginBottom: 12 },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     // 配对成功（D-231）：铺她的桌面壁纸
-    matchOverlay: { ...StyleSheet.absoluteFill, backgroundColor: WallpaperTint.bg },
+    matchOverlay: { ...StyleSheet.absoluteFill },
     matchInner: {
       flex: 1,
       alignItems: 'center',

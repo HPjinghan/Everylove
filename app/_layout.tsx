@@ -16,8 +16,7 @@ import '@/features';
 
 import { SheetHost } from '@/components/action-sheet';
 import { ToastHost } from '@/components/toast';
-import { wallpaperTint } from '@/constants/apps';
-import { applyPaperTint, Romance } from '@/constants/theme';
+import { applyTheme, Romance } from '@/constants/theme';
 import { runJobs } from '@/core/jobs';
 import { currentChatProvider } from '@/core/providers';
 import { authConfigured, ensureGuestSession } from '@/lib/auth';
@@ -75,14 +74,14 @@ export default function RootLayout() {
   // 设计系统字体（D-084）：Fredoka 管数字与标签；加载失败也放行（回落系统字体）
   const [fontsReady, fontError] = useFonts({ Fredoka_500Medium, Fredoka_600SemiBold });
   const ready = hydrated && (fontsReady || !!fontError);
-  // 主题 = 壁纸（D-110）与语言（D-066）：水合即应用；切换时 key 重挂载全树让 themed()/t() 生效
-  const wallpaper = useAppStore((s) => s.wallpaper);
+  // 主题（D-258）与语言（D-066）：水合即应用；切换时 key 重挂载全树让 themed()/t() 生效。壁纸不在这里——桌面自己从 store 读
+  const theme = useAppStore((s) => s.theme);
   const language = useAppStore((s) => s.language);
   if (hydrated) {
-    applyPaperTint(wallpaperTint(wallpaper));
+    applyTheme(theme);
     setLang(language);
   }
-  const theme = {
+  const navTheme = {
     ...DefaultTheme,
     colors: {
       ...DefaultTheme.colors,
@@ -125,7 +124,7 @@ export default function RootLayout() {
 
   return (
     <ShareIntentProvider>
-    <ThemeProvider key={`${wallpaper}-${language}`} value={theme}>
+    <ThemeProvider key={`${theme}-${language}`} value={navTheme}>
       {ready ? <ShareIntentGate /> : null}
       {ready ? <NotificationGate /> : null}
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Romance.bg } }}>

@@ -37,6 +37,7 @@ import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
 import { t } from '@/lib/i18n';
+import { copyIntoDocuments } from '@/lib/media-paths';
 import type { LovePref, UserProfile } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
@@ -113,8 +114,9 @@ export default function IdentityScreen() {
       allowsEditing: true,
       aspect: [1, 1],
     });
+    // 相册给的是缓存路径，系统随时会清：拷进 App 自己的目录再存（D-203）
     if (!result.canceled && result.assets[0]?.uri) {
-      patch({ avatarUri: result.assets[0].uri });
+      patch({ avatarUri: await copyIntoDocuments(result.assets[0].uri, 'photos') });
     }
   };
 

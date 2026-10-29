@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FixedPalette, usePalette } from '@/components/palette';
 import { useGuardedPress } from '@/components/press-guard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { CONTROL_FONT_SCALE, Shape, Space, Type } from '@/constants/design';
@@ -21,17 +22,30 @@ export function AppScreen({
   children,
   right,
   onBack,
+  fixedPalette,
 }: {
   title: string;
   children: ReactNode;
   right?: ReactNode;
   /** 覆盖返回行为（新手流逃生门等场景，D-058） */
   onBack?: () => void;
+  /** 第三方类 App 不跟主题（D-258）：整页用 BASE_PALETTE */
+  fixedPalette?: boolean;
 }) {
+  const screen = (
+    <Frame title={title} right={right} onBack={onBack}>
+      {children}
+    </Frame>
+  );
+  return fixedPalette ? <FixedPalette>{screen}</FixedPalette> : screen;
+}
+
+function Frame({ title, children, right, onBack }: { title: string; children: ReactNode; right?: ReactNode; onBack?: () => void }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const p = usePalette();
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: p.bg }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable
           onPress={() =>
@@ -40,8 +54,8 @@ export function AppScreen({
           hitSlop={10}
           accessibilityLabel={t('返回')}
           style={styles.back}>
-          <IconSymbol name="chevron.left" size={18} color={Romance.accent} />
-          <Text style={styles.backText} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>{t('桌面')}</Text>
+          <IconSymbol name="chevron.left" size={18} color={p.accent} />
+          <Text style={[styles.backText, { color: p.accent }]} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>{t('桌面')}</Text>
         </Pressable>
         <Text style={[styles.title, LATIN.test(title) && styles.titleLatin]} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
           {title}
@@ -67,9 +81,10 @@ export function HeaderAction({
   cooldownMs?: number;
 }) {
   const press = useGuardedPress(onPress, cooldownMs);
+  const p = usePalette();
   return (
     <Pressable onPress={press} disabled={disabled} hitSlop={10}>
-      <Text style={[styles.action, disabled && styles.actionDisabled]} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
+      <Text style={[styles.action, { color: p.accent }, disabled && styles.actionDisabled]} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
         {label}
       </Text>
     </Pressable>
@@ -90,11 +105,11 @@ const styles = themed(() =>
       borderBottomColor: Romance.stroke,
     },
     back: { flexDirection: 'row', alignItems: 'center', width: Space.topBarSlot, gap: 2 },
-    backText: { fontSize: Type.scale.nav.size, fontWeight: '400', color: Romance.accent },
+    backText: { fontSize: Type.scale.nav.size, fontWeight: '400' },
     title: { flex: 1, textAlign: 'center', fontSize: Type.scale.screenTitle.size, fontWeight: '600', color: Romance.ink },
     titleLatin: { fontFamily: Fonts.labelBold, fontWeight: '400', fontSize: Type.scale.lg.size },
     right: { width: Space.topBarSlot, alignItems: 'flex-end' },
-    action: { fontSize: Type.scale.nav.size, fontWeight: '600', color: Romance.accent },
+    action: { fontSize: Type.scale.nav.size, fontWeight: '600' },
     actionDisabled: { color: Romance.sub },
     body: { flex: 1 },
   })

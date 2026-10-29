@@ -599,6 +599,9 @@ export interface HisNote {
 }
 
 /** 相册里的一张拍立得（D-079）：外出拍的照片按下快门就是资产，不再并入羁绊会话 */
+/** 桌面壁纸（D-258）：照片（手机里选的 / App 里的拍立得与 TA 发来的照片，本机路径）或某位 TA 的立绘（跟着立绘走）；null = 主题自带的纸 */
+export type WallpaperPick = { kind: 'photo'; uri: string } | { kind: 'portrait'; characterId: string };
+
 export interface AlbumShot {
   id: string;
   uri: string;

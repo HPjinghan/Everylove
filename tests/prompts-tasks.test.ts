@@ -25,7 +25,7 @@ import {
   missedDateUserLine,
   outingMemoryContext,
 } from '@/content/prompts';
-import { bondBase, custom, history, me, NOW, seed } from './fixtures';
+import { bondBase, custom, history, NOW, seed } from './fixtures';
 
 const chat = history([
   ['him', '到家了吗？'],

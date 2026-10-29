@@ -17,7 +17,6 @@ import { Card } from '@/components/card';
 import { Input } from '@/components/input';
 import { MingCute } from '@/components/mingcute';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { appTextTint } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
 import { Romance, themed } from '@/constants/theme';
 import { showNote } from '@/features/note-share';
@@ -144,7 +143,7 @@ export default function NotesScreen() {
       onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}
       right={
         <Pressable onPress={() => open(null)} hitSlop={10} accessibilityLabel={t('写点什么…')}>
-          <MingCute name="pencil" size={22} color={TINT} />
+          <MingCute name="pencil" size={22} color={Romance.accentStrong} />
         </Pressable>
       }>
       <ScrollView contentContainerStyle={styles.list}>
@@ -199,7 +198,7 @@ export default function NotesScreen() {
               </Text>
               <View style={styles.editorTools}>
                 <Pressable onPress={toggleLock} hitSlop={8} disabled={!text} accessibilityLabel={stored?.locked ? t('解锁') : t('上锁')}>
-                  <IconSymbol name={stored?.locked ? 'lock' : 'lock.open'} size={19} color={text ? (stored?.locked ? TINT : Romance.ink) : Romance.faint} />
+                  <IconSymbol name={stored?.locked ? 'lock' : 'lock.open'} size={19} color={text ? (stored?.locked ? Romance.accentStrong : Romance.ink) : Romance.faint} />
                 </Pressable>
                 {bonds.length ? (
                   <Pressable onPress={() => setPicking(true)} hitSlop={8} disabled={!text} accessibilityLabel={t('给 TA 看')}>
@@ -244,8 +243,6 @@ export default function NotesScreen() {
   );
 }
 
-/** 记事本的颜色（D-231）：记事本 App 的黄（字用深一档） */
-const TINT = appTextTint('notes') ?? Romance.accent;
 
 const styles = themed(() =>
   StyleSheet.create({
@@ -257,7 +254,7 @@ const styles = themed(() =>
     metaRow: { flexDirection: 'row', gap: Space.inline, marginTop: 4, alignItems: 'center' },
     time: { fontSize: Type.scale.timestamp.size, color: Romance.sub },
     preview: { flex: 1, fontSize: Type.scale.caption.size, color: Romance.sub },
-    readBy: { fontSize: Type.scale.timestamp.size, color: TINT, marginTop: 6 },
+    readBy: { fontSize: Type.scale.timestamp.size, color: Romance.accentStrong, marginTop: 6 },
     editor: { flex: 1, backgroundColor: Romance.bg },
     editorBar: {
       flexDirection: 'row',

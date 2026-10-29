@@ -18,7 +18,7 @@ import { MingCute } from '@/components/mingcute';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { appTint } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
-import { Fonts, Romance, themed } from '@/constants/theme';
+import { BASE_PALETTE, Fonts, Romance, themed } from '@/constants/theme';
 import { avatarFor } from '@/content/avatars';
 import { sendText } from '@/lib/chat';
 import { compactAgo } from '@/lib/format';
@@ -67,7 +67,7 @@ function LikeButton({ liked, count, onToggle }: { liked: boolean; count: number;
         onToggle?.();
       }}>
       <Animated.View style={pop}>
-        <MingCute name="heart" size={15} color={liked ? Romance.accent : Romance.sub} />
+        <MingCute name="heart" size={15} color={liked ? BASE_PALETTE.accent : Romance.sub} />
       </Animated.View>
       <Text style={[styles.actionCount, liked && styles.actionCountOn]}>{count || ''}</Text>
     </Pressable>
@@ -262,15 +262,15 @@ const styles = themed(() =>
     name: { fontSize: Type.scale.body.size, fontWeight: '600', color: Romance.ink, flexShrink: 1 },
     handle: { fontSize: Type.scale.label.size, color: Romance.sub, flexShrink: 1 },
     ago: { fontFamily: Fonts.label, fontSize: Type.scale.label.size, color: Romance.sub },
-    newDot: { width: 7, height: 7, borderRadius: Shape.radiusPill, backgroundColor: Romance.accent, alignSelf: 'center', marginLeft: 2 },
+    newDot: { width: 7, height: 7, borderRadius: Shape.radiusPill, backgroundColor: BASE_PALETTE.accent, alignSelf: 'center', marginLeft: 2 },
     lockedMeta: { fontSize: Type.scale.timestamp.size, color: Romance.faint, marginTop: 1 },
     body: { fontSize: Type.scale.body.size, lineHeight: 21, color: Romance.ink, marginTop: 3 },
-    photo: { width: PHOTO_W, height: PHOTO_H, borderRadius: Shape.radius, marginTop: 8, backgroundColor: Romance.bg },
+    photo: { width: PHOTO_W, height: PHOTO_H, borderRadius: Shape.radius, marginTop: 8, backgroundColor: BASE_PALETTE.bg },
     photoPending: { marginTop: 8 },
     actions: { flexDirection: 'row', gap: 46, marginTop: 10 },
     action: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 34, paddingVertical: 6 },
     actionCount: { fontFamily: Fonts.label, fontSize: Type.scale.caption.size, color: Romance.sub },
-    actionCountOn: { color: Romance.accent },
+    actionCountOn: { color: BASE_PALETTE.accent },
     reply: { flexDirection: 'row', gap: Space.inline, marginTop: 12 },
     replyBody: { flex: 1 },
     replyName: { fontSize: Type.scale.label.size, fontWeight: '600', color: Romance.ink },
@@ -280,7 +280,7 @@ const styles = themed(() =>
     replyAction: { alignSelf: 'flex-start', marginTop: 4 },
     replyActionText: { fontSize: Type.scale.caption.size, color: Romance.sub },
     replyTyping: { fontSize: Type.scale.label.size, color: Romance.sub, alignSelf: 'center' },
-    myAvatar: { borderRadius: Shape.radiusPill, backgroundColor: Romance.bg, alignItems: 'center', justifyContent: 'center' },
+    myAvatar: { borderRadius: Shape.radiusPill, backgroundColor: BASE_PALETTE.bg, alignItems: 'center', justifyContent: 'center' },
     myAvatarText: { fontWeight: '600', color: Romance.ink },
     circleAvatar: { width: 26, height: 26, borderRadius: Shape.radiusPill },
     commentBar: { flexDirection: 'row', alignItems: 'center', gap: Space.inline, marginTop: 10 },
@@ -288,7 +288,7 @@ const styles = themed(() =>
       flex: 1,
       height: 36,
       borderRadius: Shape.radiusPill,
-      backgroundColor: Romance.bg,
+      backgroundColor: BASE_PALETTE.bg,
       paddingHorizontal: 14,
       fontSize: Type.scale.sub.size,
       color: Romance.ink,

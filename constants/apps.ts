@@ -16,8 +16,6 @@ export interface DesktopApp {
   tile: string;
   /** 图标颜色（浅色图块上用深色图标） */
   glyphColor?: string;
-  /** 图块色太浅、当字色看不清时，App 里面的字 / 图标用这一档深一点的（记事本的黄） */
-  textTint?: string;
   /** 字标（D-229）：有它就在图块上写这几个字母，不画图标 */
   glyph?: string;
   route: string;
@@ -38,7 +36,7 @@ export const DESKTOP_APPS: DesktopApp[] = [
   { id: 'outing', label: '外出', icon: 'location', tile: '#3BB6F5', route: '/apps/outing' },
   { id: 'create', label: '创造', icon: 'magicHat', tile: '#9B6BF2', route: '/apps/create' },
   // 记事本（D-085）：她自己的本子，私密——只有她让 TA 看手机时 TA 才看得到
-  { id: 'notes', label: '记事本', icon: 'notebook', tile: '#FFC93C', textTint: '#C98F00', route: '/apps/notes' },
+  { id: 'notes', label: '记事本', icon: 'notebook', tile: '#FFC93C', route: '/apps/notes' },
   // 查手机（D-085）：所有缔结的 TA 各一部手机；也能让 TA 看我的手机
   { id: 'phones', label: '查手机', icon: 'phoneEye', tile: '#2E2A33', route: '/apps/phones' },
   // 钱包（D-138）：她的零钱余额与 Coin 流水（红包 / 外卖 / 日签 / 转盘）
@@ -54,16 +52,10 @@ export const DESKTOP_APPS: DesktopApp[] = [
 
 /**
  * 第三方类 App 的品牌色（D-231）：App 里面的强调色跟它桌面图块一个颜色——交友珊瑚粉、X 黑、外卖黄、幸运签紫。
- * 系统类 App（Messages / 设置 / 日历…）用界面统一的品牌粉。
+ * 系统类 App（Messages / 设置 / 日历 / 记事本…）跟主题（D-258）。
  */
 export function appTint(id: string): string | undefined {
   return DESKTOP_APPS.find((a) => a.id === id)?.tile;
-}
-
-/** 当字色 / 图标色用的那一档：有 textTint 用它，否则就是图块色 */
-export function appTextTint(id: string): string | undefined {
-  const a = DESKTOP_APPS.find((x) => x.id === id);
-  return a?.textTint ?? a?.tile;
 }
 
 /** 桌面小组件的底色（D-231）：天气是一块晴空蓝 */
@@ -76,41 +68,4 @@ export const DEFAULT_DOCK = ['messages', 'outing', 'dating', 'settings'];
 
 export function appById(id: string): DesktopApp | undefined {
   return DESKTOP_APPS.find((a) => a.id === id);
-}
-
-/**
- * 壁纸 = 主题（D-104 / D-110）：壁纸只换纸的颜色，不换纸——每款都是「一块纯色底 + 同一套菱格暗纹（DiamondBackground）」，
- * 不渐变、不分段。「纸面」（新装机默认）= 设计系统原色（color 留空）；其余五款各一块浅底 + 配套的聊天纸与分隔线浅色，
- * ink / primary / accent 不动。选一款即全局生效：桌面、Dock 图块、每个 App 的底、聊天纸都跟着走（constants/theme.ts applyPaperTint）。
- */
-export interface Wallpaper {
-  id: string;
-  label: string;
-  /** 底色；留空 = 纸面原色 */
-  color?: string;
-  /** 聊天纸 / 浅底（D-110）；留空 = 纸面原色 */
-  soft?: string;
-  /** 分隔线 / 浅描边（D-110）；留空 = 纸面原色 */
-  line?: string;
-}
-
-export const DEFAULT_WALLPAPER = 'paper';
-
-export const WALLPAPERS: Wallpaper[] = [
-  { id: 'paper', label: '纸面' },
-  { id: 'dawn', label: '拂晓', color: '#FFEDF3', soft: '#FFF5F8', line: '#F7D3DF' },
-  { id: 'eight', label: '晚八点', color: '#E4DDF0', soft: '#EFEAF7', line: '#CFC3E3' },
-  { id: 'sea', label: '归墟', color: '#DCEFF5', soft: '#EAF5F9', line: '#BFDDE8' },
-  { id: 'matcha', label: '抹茶', color: '#EEF5EA', soft: '#F4F9F1', line: '#CFE3C8' },
-  { id: 'milk', label: '奶白', color: '#FBF8F3', soft: '#FDFBF7', line: '#EADFCF' },
-];
-
-export function wallpaperById(id: string): Wallpaper {
-  return WALLPAPERS.find((w) => w.id === id) ?? WALLPAPERS[0];
-}
-
-/** 壁纸给纸面换的色（D-110）：交给 constants/theme.ts applyPaperTint */
-export function wallpaperTint(id: string): { bg?: string; accentSoft?: string; line?: string } {
-  const w = wallpaperById(id);
-  return { bg: w.color, accentSoft: w.soft, line: w.line };
 }
