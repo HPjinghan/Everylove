@@ -10,6 +10,7 @@ import { seedCharactersFor } from '@/content/characters';
 import { PLACES, type DayPart, type Place } from '@/content/places';
 import { planIsOpen } from '@/lib/appointments';
 import { backgroundAwake } from '@/lib/bond';
+import type { OutingPlan } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 
 /** 认识的 TA 这个钟点出门的概率；还不认识的人；陌生人每小时最多几位在外面 */
@@ -102,4 +103,46 @@ export function presenceAt(d: Date = new Date()): Record<string, Presence[]> {
     if (here.length) result[place.id] = here.map(({ characterId, known }) => ({ characterId, known }));
   }
   return result;
+}
+
+/** 桌面外出小组件（D-262）这会儿放哪个地点、配哪一行字 */
+export type Featured =
+  | { place: Place; kind: 'here' }
+  | { place: Place; kind: 'waiting' | 'planned'; characterId: string; at?: number }
+  | { place: Place; kind: 'people'; n: number }
+  | { place: Place; kind: 'empty' | 'closed' };
+
+/**
+ * 挑一个地点（纯函数）：她正在的那场 → 约定窗口里 TA 在等她的 → 今天晚些有约的 → 有认识的 TA 在的、人多的 → 广场。
+ * 只数人不报名字（进去才知道是谁，同地点卡）；plans 只给能找到那位 TA 的。
+ */
+export function featuredPlace(input: {
+  now: number;
+  presence: Record<string, Presence[]>;
+  plans: Pick<OutingPlan, 'placeId' | 'characterId' | 'at'>[];
+  sessionPlaceId?: string | null;
+}): Featured {
+  const { now, presence, plans } = input;
+  const d = new Date(now);
+  const byId = (id: string) => PLACES.find((p) => p.id === id);
+  const here = input.sessionPlaceId ? byId(input.sessionPlaceId) : undefined;
+  if (here) return { place: here, kind: 'here' };
+  const waiting = plans.find((p) => planIsOpen(p, now) && byId(p.placeId));
+  if (waiting) return { place: byId(waiting.placeId)!, kind: 'waiting', characterId: waiting.characterId, at: waiting.at };
+  const later = plans
+    .filter((p) => p.at && p.at > now && new Date(p.at).toDateString() === d.toDateString() && byId(p.placeId))
+    .sort((a, b) => a.at! - b.at!)[0];
+  if (later) return { place: byId(later.placeId)!, kind: 'planned', characterId: later.characterId, at: later.at };
+  let best: { place: Place; score: number; n: number } | null = null;
+  for (const place of PLACES) {
+    const people = presence[place.id] ?? [];
+    if (!people.length || !isOpen(place, d)) continue;
+    const score = people.filter((p) => p.known).length * 10 + people.length;
+    if (!best || score > best.score) best = { place, score, n: people.length };
+  }
+  if (best) return { place: best.place, kind: 'people', n: best.n };
+  const plaza = PLACES.find((p) => p.stranger) ?? PLACES[0];
+  if (isOpen(plaza, d)) return { place: plaza, kind: 'empty' };
+  const open = PLACES.find((p) => isOpen(p, d));
+  return open ? { place: open, kind: 'empty' } : { place: plaza, kind: 'closed' };
 }

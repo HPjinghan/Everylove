@@ -9,7 +9,7 @@ import { buildChatSystemPrompt, messageContextText, placeRuleLines } from '@/con
 import { PLACES, placeById } from '@/content/places';
 import { beats, speakerSegments, splitBeats } from '@/lib/engine';
 import { spokeAloud, toSceneMessage } from '@/lib/outing';
-import { dayPartOf, isOpen, presenceAt, sceneFor } from '@/lib/presence';
+import { dayPartOf, featuredPlace, isOpen, presenceAt, sceneFor } from '@/lib/presence';
 import type { ChatMessage, EngineContext } from '@/lib/types';
 import { useAppStore } from '@/store/app-store';
 import { custom, me, NOW, seed } from './fixtures';
@@ -118,6 +118,20 @@ describe('营业、时段与在场的人', () => {
       expect(people.length).toBeLessThanOrEqual(place.capacity);
       expect(people.every((p) => !p.known)).toBe(true); // 还没有羁绊，全是陌生人
     }
+  });
+});
+
+describe('桌面外出小组件挑哪个地点（D-262）', () => {
+  const at = new Date(2026, 9, 27, 15, 0).getTime();
+  it('她正在的那场 > TA 在等她 > 今天晚些有约 > 有认识的人在的 > 广场', () => {
+    const presence = { park: [{ characterId: 'x', known: false }, { characterId: 'y', known: false }], cafe: [{ characterId: 'z', known: true }] };
+    const waiting = { placeId: 'bookstore', characterId: 'b1', at: at + 10 * 60_000 };
+    const later = { placeId: 'cinema', characterId: 'b2', at: at + 4 * 3600_000 };
+    expect(featuredPlace({ now: at, presence, plans: [waiting], sessionPlaceId: 'seaside' })).toMatchObject({ kind: 'here', place: { id: 'seaside' } });
+    expect(featuredPlace({ now: at, presence, plans: [later, waiting] })).toMatchObject({ kind: 'waiting', characterId: 'b1', place: { id: 'bookstore' } });
+    expect(featuredPlace({ now: at, presence, plans: [later] })).toMatchObject({ kind: 'planned', characterId: 'b2', at: later.at });
+    expect(featuredPlace({ now: at, presence, plans: [] })).toMatchObject({ kind: 'people', place: { id: 'cafe' }, n: 1 });
+    expect(featuredPlace({ now: at, presence: {}, plans: [] })).toMatchObject({ kind: 'empty', place: { id: 'plaza' } });
   });
 });
 

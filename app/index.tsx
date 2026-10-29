@@ -10,6 +10,8 @@
  * - 拖拽中的图标画在网格容器的浮层里（不在分页 ScrollView 内），翻页时它不会跟着页滑走
  * - 退出编辑时抖动角度归零（wiggle 回 0.5 = 0deg，transform 常挂避免 native 残留）
  * - 大时钟 + 天气小组件（晴空蓝底白字）显示真实时间与世界天气；状态栏已按 D-023 去掉
+ * - 外出小组件（D-262，components/outing-widget.tsx）：网格里占 2×2，格位记在 desktopSlots[WIDGET_ID]（左上角那格）；
+ *   和图标一样长按进编辑、拖着摆，落下时盖住的图标挪进它让出来的格子；图标拖不进它盖着的格子
  * - Message 快捷路径：有未读时桌面顶部弹出通知横幅——一人未读直达会话，多人未读合并后进 Message 列表
  * - 主题与壁纸：设置里各一项（主题换系统向 App 的颜色，壁纸只铺这里）
  */
@@ -38,6 +40,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { MingCute, WEATHER_ICON } from '@/components/mingcute';
+import { OutingWidget } from '@/components/outing-widget';
 import { appById, DEFAULT_DESKTOP_ORDER, WIDGET_TINT, type DesktopApp } from '@/constants/apps';
 import { CONTROL_FONT_SCALE, DISPLAY_FONT_SCALE, Elevation, Shape, Space, Type } from '@/constants/design';
 import { Wallpaper, useWallpaperPhoto } from '@/components/wallpaper';
@@ -101,6 +104,14 @@ function Clock({ onPhoto }: { onPhoto: boolean }) {
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/** 外出小组件在 desktopSlots 里的键（D-262）：值 = 它左上角那格 */
+const WIDGET_ID = 'widget:outing';
+
+/** 2×2 小组件从左上角 anchor 起盖住的四格 */
+function widgetCells(anchor: number): number[] {
+  return [anchor, anchor + 1, anchor + COLS, anchor + COLS + 1];
+}
 
 /**
  * 网格容器的手势：配置在渲染期只是一份数据，PanResponder 实例到第一次触摸才建（配置换了就换新）。
@@ -236,7 +247,7 @@ function WeatherCard() {
 /** 拖拽中的图标：起点矩形（网格容器坐标系）+ 中心点，落点 = 中心点 + 手势位移 */
 interface DragState {
   id: string;
-  kind: 'grid' | 'dock';
+  kind: 'grid' | 'dock' | 'widget';
   /** 网格：出发格位（跨页连续）；Dock：出发下标 */
   from: number;
   x: number;
@@ -262,7 +273,6 @@ export default function Desktop() {
   const storedSlots = useAppStore((s) => s.desktopSlots);
   const storedDock = useAppStore((s) => s.desktopDock);
   const bonds = useAppStore((s) => s.bonds);
-
 
   const [editMode, setEditMode] = useState(false);
   /** 拖拽中的图标：state 给渲染用（浮层 / 隐藏原位 / 锁翻页）；dragRef 是同一份，给 PanResponder 回调读 */
@@ -300,10 +310,20 @@ export default function Desktop() {
   const dockLeft = (screenW - dockWidth) / 2;
 
   // 归一化格位表（D-034）：持久化的合法格位优先（跨页连续，只挡越过页数上限的）；越界 / 重复 / 缺失的按顺序填进空格
+  // 外出小组件先占位（D-262）：左上角要在一页里放得下 2×2，不合法就回到第一页左上；行数不到 2 就不摆
   const slots = useMemo(() => {
     const out: Record<string, number> = {};
     const used = new Set<number>();
     const cap = slotsPerPage * MAX_PAGES;
+    if (rows >= 2) {
+      const s = storedSlots[WIDGET_ID];
+      const local = typeof s === 'number' ? s % slotsPerPage : -1;
+      const fits =
+        typeof s === 'number' && Number.isInteger(s) && s >= 0 && s < cap && local % COLS < COLS - 1 && Math.floor(local / COLS) < rows - 1;
+      const anchor = fits ? s : 0;
+      out[WIDGET_ID] = anchor;
+      for (const c of widgetCells(anchor)) used.add(c);
+    }
     for (const id of ids) {
       const s = storedSlots[id];
       if (typeof s === 'number' && Number.isInteger(s) && s >= 0 && s < cap && !used.has(s)) {
@@ -319,10 +339,11 @@ export default function Desktop() {
       used.add(free);
     }
     return out;
-  }, [ids, storedSlots, slotsPerPage]);
+  }, [ids, storedSlots, slotsPerPage, rows]);
+  const widgetAt = slots[WIDGET_ID] as number | undefined;
 
   // 页数：装下最远的格位；编辑模式多给一页空页，好把图标拖到下一页
-  const maxSlot = ids.reduce((m, id) => Math.max(m, slots[id]), -1);
+  const maxSlot = ids.reduce((m, id) => Math.max(m, slots[id]), widgetAt === undefined ? -1 : widgetAt + COLS + 1);
   const realPages = Math.max(1, Math.ceil((maxSlot + 1) / slotsPerPage));
   const pageCount = Math.min(MAX_PAGES, editMode ? realPages + 1 : realPages);
 
@@ -432,7 +453,13 @@ export default function Desktop() {
     const L = live.current;
     const i = L.dock.indexOf(id);
     let next: DragState;
-    if (i >= 0) {
+    if (id === WIDGET_ID) {
+      const slot = L.slots[WIDGET_ID];
+      const local = slot % L.slotsPerPage;
+      const x = PAD + (local % COLS) * L.cellW + (Math.floor(slot / L.slotsPerPage) - L.page) * L.screenW;
+      const y = Math.floor(local / COLS) * CELL_H;
+      next = { id, kind: 'widget', from: slot, x, y, w: L.cellW * 2, h: CELL_H * 2, cx: x + L.cellW, cy: y + CELL_H };
+    } else if (i >= 0) {
       const x = L.dockLeft + i * DOCK_STEP;
       const y = L.dockTop + (DOCK_H - TILE) / 2;
       next = {
@@ -523,7 +550,27 @@ export default function Desktop() {
           const cx = d.cx + g.dx;
           const cy = d.cy + g.dy;
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-          if (cy > L.dockTop - 8) {
+          const covered = L.slots[WIDGET_ID] === undefined ? [] : widgetCells(L.slots[WIDGET_ID]);
+          if (d.kind === 'widget') {
+            // 小组件（D-262）：按左上角落格，进不了 Dock；盖住的图标挪进它让出来的格子，挪不下的交给归一化补空格
+            if (cy <= L.dockTop - 8) {
+              const col = clamp(Math.round((cx - L.cellW - PAD) / L.cellW), 0, COLS - 2);
+              const row = clamp(Math.round((cy - CELL_H) / CELL_H), 0, L.rows - 2);
+              const to = L.page * L.slotsPerPage + row * COLS + col;
+              if (to !== d.from) {
+                const target = widgetCells(to);
+                const freed = covered.filter((c) => !target.includes(c));
+                const next: Record<string, number> = { ...L.slots, [WIDGET_ID]: to };
+                for (const id of L.ids.filter((x) => target.includes(L.slots[x]))) {
+                  const spot = freed.shift();
+                  if (spot === undefined) delete next[id];
+                  else next[id] = spot;
+                }
+                store.setDesktopSlots(next);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
+            }
+          } else if (cy > L.dockTop - 8) {
             const maxIdx = d.kind === 'grid' ? Math.min(L.dock.length, 3) : L.dock.length - 1;
             const j = clamp(Math.floor((cx - L.dockLeft) / DOCK_STEP), 0, maxIdx);
             if (d.kind === 'grid') {
@@ -551,7 +598,9 @@ export default function Desktop() {
             const row = clamp(Math.floor(cy / CELL_H), 0, L.rows - 1);
             const to = L.page * L.slotsPerPage + row * COLS + col;
             const occupant = L.ids.find((i) => L.slots[i] === to);
-            if (d.kind === 'grid') {
+            if (covered.includes(to)) {
+              // 落在小组件上：不动
+            } else if (d.kind === 'grid') {
               if (to !== d.from) {
                 const next = { ...L.slots, [d.id]: to };
                 if (occupant) next[occupant] = d.from;
@@ -591,6 +640,9 @@ export default function Desktop() {
 
   const dragApp = dragging ? appById(dragging.id) : undefined;
   const pagesH = rows * CELL_H;
+  // 小组件方块（D-262）：左右对齐两列图块的外沿，上下从第一行图块顶到第二行图块底，名字落在第二行图标名那一线
+  const widgetW = cellW + TILE;
+  const widgetH = CELL_H + TILE;
 
   const iconPress = (id: string, route: string) => ({
     onPress: editMode ? undefined : () => router.push(route as never),
@@ -658,6 +710,25 @@ export default function Desktop() {
             style={[styles.pager, { height: pagesH }]}>
             {Array.from({ length: pageCount }, (_, p) => (
               <View key={p} style={{ width: screenW, height: pagesH }}>
+                {widgetAt !== undefined && Math.floor(widgetAt / slotsPerPage) === p ? (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: PAD + ((widgetAt % slotsPerPage) % COLS) * cellW,
+                      top: Math.floor((widgetAt % slotsPerPage) / COLS) * CELL_H,
+                      width: cellW * 2,
+                      height: CELL_H * 2,
+                      opacity: dragId === WIDGET_ID ? 0 : 1,
+                    }}>
+                    <OutingWidget
+                      pressFor={(route) => iconPress(WIDGET_ID, route)}
+                      width={widgetW}
+                      height={widgetH}
+                      wiggle={wiggle}
+                      onPhoto={onPhoto}
+                    />
+                  </View>
+                ) : null}
                 {ids
                   .filter((id) => Math.floor(slots[id] / slotsPerPage) === p)
                   .map((id) => {
@@ -709,6 +780,22 @@ export default function Desktop() {
         </View>
 
         {/* 拖拽浮层：跟手的那一个画在分页之外，翻页时留在原地 */}
+        {dragging?.kind === 'widget' ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.ghost,
+              {
+                left: dragging.x,
+                top: dragging.y,
+                width: dragging.w,
+                height: dragging.h,
+                transform: dragXY.getTranslateTransform(),
+              },
+            ]}>
+            <OutingWidget width={widgetW} height={widgetH} wiggle={wiggle} onPhoto={onPhoto} />
+          </Animated.View>
+        ) : null}
         {dragging && dragApp ? (
           <Animated.View
             pointerEvents="none"

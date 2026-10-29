@@ -58,8 +58,8 @@ export function appTint(id: string): string | undefined {
   return DESKTOP_APPS.find((a) => a.id === id)?.tile;
 }
 
-/** 桌面小组件的底色（D-231）：天气是一块晴空蓝 */
-export const WIDGET_TINT = { weather: '#5AAEEB' } as const;
+/** 桌面小组件的底色（D-231）：天气晴空蓝；外出（D-262）白天浅天蓝、夜里深蓝，像素画的夜色版放在深底上 */
+export const WIDGET_TINT = { weather: '#5AAEEB', outing: '#DDF1FD', outingNight: '#22304D' } as const;
 
 export const DEFAULT_DESKTOP_ORDER = DESKTOP_APPS.map((a) => a.id);
 
