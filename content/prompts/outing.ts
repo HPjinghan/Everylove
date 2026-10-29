@@ -85,7 +85,8 @@ export const OUTING_STRANGER_MANNER = [
 /** 外出模式的输出格式（覆盖通用版：面对面允许更多现场描写，但不分条） */
 export const OUTING_OUTPUT_FORMAT = [
   '[Output format]',
-  '- Output only what you say and the on-the-spot description in (parentheses): no name prefix, no explanations, no markdown, no emoji.',
+  '- Output only what you say and the on-the-spot description in full-width （）: no name prefix, no explanations, no markdown, no emoji.',
+  '- Inside （）, your own movements take no subject — never "I" — and she is "you", never "she": （低头笑了一下）.',
   '- At most two (parenthetical) descriptions per reply, one short sentence each.',
   "- Length follows hers, usually 1–3 sentences: spoken, concrete, no essays; never split your own words into multiple messages — you're face to face, not texting.",
 ];
@@ -178,10 +179,10 @@ export function outingOpeners(lang: Lang = getLang()): Record<OutingOpenerKind, 
  * 这一行是本轮的舞台提示（user 文本，不入会话）。模型失败回落上面的模板（pickOutingOpener 不重复上一条）。
  */
 export function outingOpenerUserLine(kind: OutingOpenerKind): string {
-  if (kind === 'stranger') return '(She just appeared near you. You speak first — one line, with one description of the scene right now.)';
-  if (kind === 'dateLate') return '(She finally arrived. You speak first — one line, with one description of the scene right now.)';
-  if (kind === 'date') return "(She's here. You speak first — one line, with one description of the scene right now.)";
-  return '(You two just ran into each other here. You speak first — one line, with one description of the scene right now.)';
+  if (kind === 'stranger') return '(She just appeared near you. You speak first: what you say, with one （action） tied to this place right now.)';
+  if (kind === 'dateLate') return '(She finally arrived. You speak first: what you say, with one （action） tied to this place right now.)';
+  if (kind === 'date') return "(She's here. You speak first: what you say, with one （action） tied to this place right now.)";
+  return '(You two just ran into each other here. You speak first: what you say, with one （action） tied to this place right now.)';
 }
 
 const lastOpener: Partial<Record<OutingOpenerKind, string>> = {};
@@ -221,7 +222,7 @@ export function placeRuleLines(o: EngineContext['outing'], group = false): strin
 export function outingNarratorLines(o: EngineContext['outing']): string[] {
   const staff = o?.npc ? ` (including the ${o.npc})` : '';
   return [
-    `- When something happens around you two — the place, the weather, other people${staff} — you may add one separate line starting with 旁白： (third person, one short sentence). Only when it adds something.`,
+    `- When something happens around you two — the place, the weather, other people${staff} — you may add one separate line starting with 旁白： (third person, one short sentence, only the surroundings — never your own movements or words). End that line there; what you do and say goes on the next line. Only when it adds something.`,
     '- If she passes you a note, write your note back on a separate line starting with 纸条：.',
   ];
 }

@@ -51,7 +51,7 @@ export function sceneHeartLines(cast: SceneMember[] | undefined): string[] {
 
 export const SCENE_OUTPUT_FORMAT = [
   '[Output format]',
-  `- One line per speaker: "Name：what they say (short action)". The narrator: "${NARRATOR_TOKEN}：…". A note someone writes: "Name（${NOTE_TOKEN}）：…".`,
+  `- One line per speaker: "Name：（short action）what they say" — every line starts with a name, the action takes no subject and she is "you", never "she". The narrator: "${NARRATOR_TOKEN}：…" — only the place, the weather, staff; never anyone's movements or words. A note someone writes: "Name（${NOTE_TOKEN}）：…".`,
   '- Use the names exactly as listed. No markdown, no emoji, no explanations.',
   '- Keep it short: one to three lines in all, spoken and concrete.',
 ];

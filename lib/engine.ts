@@ -432,7 +432,7 @@ export async function generateReply(
   if (policy?.speakerLines) {
     const marked = stripReplyMarkers({ texts: [text] });
     const names = [ctx.character.name, ...(ctx.cast ?? []).map((m) => m.name)];
-    const texts = splitBeats(speakerSegments(marked.texts.join('\n'), names), policy.maxBubbles, names);
+    const texts = splitBeats(speakerSegments(marked.texts.join('\n'), names), policy.maxBubbles, names, !ctx.cast?.length);
     return { ...marked, texts: policy.keepTrailingPeriod ? texts : stripTrailingPeriods(texts) };
   }
   const stripStage = policy?.stripStage ?? true;
@@ -481,6 +481,7 @@ export function speakerSegments(text: string, names: string[]): string[] {
 
 /** 一对括号里的动作（全角 / 半角） */
 const ACTION_RE = /（[^（）]*）|\([^()]*\)/g;
+const CJK_RE = /[぀-ヿ㐀-鿿가-힯]/;
 
 /**
  * 一段话按「一个动作 + 一段话」拆（D-256）：括号前已经有话、或已经有一个动作，就从这个括号另起一条；
@@ -492,7 +493,9 @@ export function beats(body: string): string[] {
   for (const m of body.matchAll(ACTION_RE)) {
     const before = body.slice(last, m.index).trim();
     if (before) parts.push({ action: false, text: before });
-    parts.push({ action: true, text: m[0] });
+    // 中日韩文的动作统一成全角括号（D-257）
+    const half = m[0].startsWith('(') && CJK_RE.test(m[0]);
+    parts.push({ action: true, text: half ? `（${m[0].slice(1, -1).trim()}）` : m[0] });
     last = m.index + m[0].length;
   }
   const tail = body.slice(last).trim();
@@ -522,10 +525,20 @@ const WHOLE_LINE = new RegExp(`^(?:${NARRATOR_TOKEN}|${NOTE_TOKEN}|[^：]*（${N
 
 /**
  * 每段按 beats 拆、各自带回行首记号（D-256）；超过上限时从后往前把同一段相邻的两条并回去（不丢字），直到不超。
+ * solo = 一人场：旁白那行里混进了括号动作（模型没换行就接着写 TA 自己），从第一个括号起算 TA 的（D-257）；
+ * 多人场分不清是谁的，照旧整行旁白。
  */
-export function splitBeats(segments: string[], max: number, names: string[] = []): string[] {
+export function splitBeats(segments: string[], max: number, names: string[] = [], solo = false): string[] {
   const items: { seg: number; prefix: string; body: string }[] = [];
   segments.forEach((s, seg) => {
+    const narrator = `${NARRATOR_TOKEN}：`;
+    const paren = s.startsWith(narrator) ? s.slice(narrator.length).search(/[（(]/) : -1;
+    if (solo && paren > 0) {
+      const cut = narrator.length + paren;
+      items.push({ seg, prefix: '', body: s.slice(0, cut).trim() });
+      for (const b of beats(s.slice(cut))) items.push({ seg: seg + 0.5, prefix: '', body: b });
+      return;
+    }
     if (WHOLE_LINE.test(s)) {
       items.push({ seg, prefix: '', body: s });
       return;

@@ -539,7 +539,8 @@ export function ChatThread({
   const [lastPrefill, setLastPrefill] = useState(prefill?.nonce);
   if (prefill && prefill.nonce !== lastPrefill) {
     setLastPrefill(prefill.nonce);
-    setDraft((d) => (d.trim() ? `${d}${prefill.text}` : prefill.text));
+    // 同一个现成动作连点两下不重复加（D-257）
+    setDraft((d) => (!d.trim() ? prefill.text : d.includes(prefill.text) ? d : `${d}${prefill.text}`));
   }
   const [replyTo, setReplyTo] = useState<ReplyRef | null>(null);
   const inputRef = useRef<TextInput>(null);

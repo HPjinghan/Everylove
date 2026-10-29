@@ -21,7 +21,7 @@ exports[`多人场的主持人 > 人设都在【People here】里，没有一人
 - Always speak in natural, spoken Simplified Chinese (简体中文口语).
 [How curious she made each stranger] After the scene lines, for each stranger she interacted with this turn, one line "[好奇 Name n]" (she can't see it): 15–30, how much this turn made them want to know her more (15–20 ordinary, 21–26 a piece of her life or a laugh, 27–30 rare).
 [Output format]
-- One line per speaker: "Name：what they say (short action)". The narrator: "旁白：…". A note someone writes: "Name（纸条）：…".
+- One line per speaker: "Name：（short action）what they say" — every line starts with a name, the action takes no subject and she is "you", never "she". The narrator: "旁白：…" — only the place, the weather, staff; never anyone's movements or words. A note someone writes: "Name（纸条）：…".
 - Use the names exactly as listed. No markdown, no emoji, no explanations.
 - Keep it short: one to three lines in all, spoken and concrete.
 [Where] 图书馆自习室. 长桌、台灯、「请保持安静」。
