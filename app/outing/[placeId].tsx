@@ -299,7 +299,6 @@ export default function OutingSceneScreen() {
                 <CharAvatar name={nameOf(cid)} color={findCharacter(cid)?.color ?? Romance.accent} size={32} characterId={cid} />
                 <View style={styles.offerText}>
                   <Text style={styles.offerTitle}>{t('TA 想和你交换联系方式')}</Text>
-                  <Text style={styles.offerSub}>{t('就在这里、就是现在——面对面的那种')}</Text>
                 </View>
                 <Button label={t('交换')} size="sm" onPress={() => router.push({ pathname: '/adopt/[characterId]', params: { characterId: cid } })} />
               </Card>
@@ -469,7 +468,6 @@ const styles = themed(() =>
     offerCard: { flexDirection: 'row', alignItems: 'center', gap: Space.inlineLoose, marginHorizontal: Space.screen, marginBottom: 8 },
     offerText: { flex: 1 },
     offerTitle: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
-    offerSub: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 2 },
     emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 14 },
     emptyText: { textAlign: 'center', fontSize: Type.scale.label.size, color: Romance.sub, lineHeight: 21 },
     chooseWrap: { alignItems: 'center', padding: Space.screen, gap: Space.inlineLoose },

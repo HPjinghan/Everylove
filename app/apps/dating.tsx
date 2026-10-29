@@ -493,7 +493,7 @@ export default function DatingScreen() {
               <MingCute name="heart" size={30} color="#FFFFFF" />
             </Pressable>
           </View>
-          {/* 按钮下方一行：平时是提示；刚略过时原位换成行内 toast（不遮卡、不遮按钮） */}
+          {/* 按钮下方一行：刚略过时是行内 toast（不遮卡、不遮按钮），平时空着占位 */}
           <View style={styles.footSlot}>
             {passed ? (
               <View style={styles.passToast}>
@@ -502,9 +502,7 @@ export default function DatingScreen() {
                   <Text style={styles.passToastUndo}>{t('撤销')}</Text>
                 </Pressable>
               </View>
-            ) : (
-              <Text style={styles.footHint}>{t('慢慢看，不急')}</Text>
-            )}
+            ) : null}
           </View>
         </View>
       ) : null}
@@ -665,7 +663,6 @@ const styles = themed(() =>
       ...Elevation.low,
     },
     footSlot: { minHeight: 28, alignItems: 'center', justifyContent: 'center' },
-    footHint: { fontSize: Type.scale.caption.size, color: Romance.sub },
     passToast: {
       flexDirection: 'row',
       alignItems: 'center',

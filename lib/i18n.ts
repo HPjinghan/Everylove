@@ -265,7 +265,6 @@ const en: Record<string, string> = {
   '陌生人 · {name} · 好奇 {h}/{f}': 'Stranger · {name} · Curiosity {h}/{f}',
   '偶遇了{name}': 'Ran into {name}',
 
-  '就在这里、就是现在——面对面的那种': 'Right here, right now — face to face',
   '拍摄中…': 'Developing…',
   '合影': 'Together',
   '拍 TA': 'Snap them',
@@ -310,7 +309,6 @@ const en: Record<string, string> = {
   '天气数据来自 Open-Meteo。位置只存在这台手机上，不会上传。': 'Weather data from Open-Meteo. Your location stays on this phone.',
 
   '广场': 'Plaza',
-  '人人都会接你的话': 'Everyone picks up your words',
   '街角咖啡馆': 'Corner Café',
   '靠窗的位置正好空着': 'The window seat happens to be free',
   '城南公园': 'South City Park',
@@ -397,7 +395,6 @@ const en: Record<string, string> = {
   '电话': 'Phone',
   '创造': 'Create',
   '公开需要登录，登录后可以再改。': 'Going public needs an account. You can change it after signing in.',
-  'TA 在等你说第一句话。': 'They\'re waiting for your first words.',
   '小说片段、角色卡、脑子里的画面都行，最多 {n} 字。': 'A novel excerpt, a character card, a picture in your head. Up to {n} characters.',
   '未成年角色不开放恋爱互动，暂时不能发布。': 'Minor characters cannot have romantic interactions and cannot be published for now.',
   '公开：其他人也能遇到 TA（需要登录）。': 'Public: others can meet them too (sign-in required).',
@@ -506,11 +503,9 @@ const en: Record<string, string> = {
   // 首十分钟漏斗纸面重做（D-100）
   '昵称': 'Nickname',
   '人心动': 'hearts',
-  '慢慢看，不急': 'Take your time.',
   '已略过一位': 'Passed on one',
   '撤销': 'Undo',
   '还剩 {n} 天': '{n}d left',
-  'TA 想继续认识你，先开了口': 'They want to keep getting to know you. They spoke first.',
   // 纸面全屏重做 · 会话 / TA 的主页（D-100）
   'TA 的主页': 'Their page',
   // 桌面「交友」与天气天况 / 小文案（原本套了 t() 却没进词典，回落成中文）
@@ -928,7 +923,6 @@ const en: Record<string, string> = {
   '和 TA 做朋友': 'Be friends',
   '这一次，是 TA 想认识你': 'This time, they want to know you',
   'TA 想和你做朋友': 'They want to be friends',
-  '这一次，是 TA 想走近一点': 'This time, they want to get a little closer',
   '好呀': 'Sure',
   '认识那天': 'Day you met',
   '认识的天数': 'Days since you met',
@@ -945,7 +939,6 @@ const en: Record<string, string> = {
   '……下次还能找你聊吗': '…can I talk to you again sometime',
   '成为朋友后的第一句': 'First messages as friends',
   '{name} 在这儿': '{name} is here',
-  '换手机，TA 们也都还在。': "Switch phones and they're all still here.",
   '说点什么，或（做点什么）…': 'Say something, or (do something)…',
   '语音暂时没接通': "Voice didn't come through",
   'TA 从哪来、TA 是谁': 'Where they come from, who they are',
@@ -1064,6 +1057,8 @@ const en: Record<string, string> = {
   '立绘': 'Portraits',
   'TA 发来的': 'Sent to you',
   '照片': 'Photo',
+  '喷泉边总有人坐着': 'Someone is always sitting by the fountain',
+  '换手机，TA 们也都还在。': "Switch phones and they're all still here.",
   // __EN_END__
 };
 
@@ -1296,7 +1291,6 @@ const ja: Record<string, string> = {
   '陌生人 · {name} · 好奇 {h}/{f}': 'はじめまして · {name} · 好奇心 {h}/{f}',
   '偶遇了{name}': '{name}に偶然会った',
 
-  '就在这里、就是现在——面对面的那种': '今ここで——面と向かって',
   '拍摄中…': '撮影中…',
   '合影': 'ツーショット',
   '拍 TA': '相手を撮る',
@@ -1341,7 +1335,6 @@ const ja: Record<string, string> = {
   '天气数据来自 Open-Meteo。位置只存在这台手机上，不会上传。': '天気データはOpen-Meteo提供。位置情報はこの端末にのみ保存。',
 
   '广场': '広場',
-  '人人都会接你的话': '誰もが言葉を返してくれる',
   '街角咖啡馆': '街角のカフェ',
   '靠窗的位置正好空着': '窓際の席がちょうど空いてる',
   '城南公园': '城南公園',
@@ -1428,7 +1421,6 @@ const ja: Record<string, string> = {
   '电话': '電話',
   '创造': 'つくる',
   '公开需要登录，登录后可以再改。': '公開にはログインが必要です。ログイン後に変更できます。',
-  'TA 在等你说第一句话。': '最初のひと言を待っています。',
   '小说片段、角色卡、脑子里的画面都行，最多 {n} 字。': '小説の一節、キャラカード、頭の中のイメージ、何でも。最大 {n} 字。',
   '未成年角色不开放恋爱互动，暂时不能发布。': '未成年キャラは恋愛のやり取りができないため、今は公開できません。',
   '公开：其他人也能遇到 TA（需要登录）。': '公開：ほかの人も出会えます（ログインが必要）。',
@@ -1537,11 +1529,9 @@ const ja: Record<string, string> = {
   // 首十分钟漏斗纸面重做（D-100）
   '昵称': 'ニックネーム',
   '人心动': '人がときめき中',
-  '慢慢看，不急': 'ゆっくりどうぞ。',
   '已略过一位': '1人スキップ',
   '撤销': '取り消す',
   '还剩 {n} 天': 'あと {n} 日',
-  'TA 想继续认识你，先开了口': 'もっと知りたくて、向こうから切り出した',
   // 纸面全屏重做 · 会话 / TA 的主页（D-100）
   'TA 的主页': 'プロフィール',
   // 桌面「交友」与天气天况 / 小文案
@@ -1959,7 +1949,6 @@ const ja: Record<string, string> = {
   '和 TA 做朋友': '友達になる',
   '这一次，是 TA 想认识你': '今度は、向こうがあなたを知りたがってる',
   'TA 想和你做朋友': '友達になりたいって',
-  '这一次，是 TA 想走近一点': '今度は、向こうから少し近づきたいって',
   '好呀': 'いいよ',
   '认识那天': '出会った日',
   '认识的天数': '出会ってからの日数',
@@ -1976,7 +1965,6 @@ const ja: Record<string, string> = {
   '……下次还能找你聊吗': '……また話しかけてもいい？',
   '成为朋友后的第一句': '友達になってからの第一声',
   '{name} 在这儿': '{name}がいる',
-  '换手机，TA 们也都还在。': '機種変更しても、みんなそのまま。',
   '说点什么，或（做点什么）…': '何か話す、または（何かする）…',
   '语音暂时没接通': '音声がつながりませんでした',
   'TA 从哪来、TA 是谁': 'どこから来たのか、どんな人か',
@@ -2095,6 +2083,8 @@ const ja: Record<string, string> = {
   '立绘': '立ち絵',
   'TA 发来的': '送ってくれた写真',
   '照片': '写真',
+  '喷泉边总有人坐着': '噴水のそばには、いつも誰かが座っている',
+  '换手机，TA 们也都还在。': '機種変更しても、みんなそのまま。',
   // __JA_END__
 };
 
@@ -2347,7 +2337,6 @@ const ko: Record<string, string> = {
   '和{name}的合影 · {place}': '{name}하고 찍은 투샷 · {place}',
   '陌生人 · {name} · 好奇 {h}/{f}': '처음 보는 사람 · {name} · 호기심 {h}/{f}',
   '偶遇了{name}': '우연히 만난 {name}',
-  '就在这里、就是现在——面对面的那种': '바로 여기, 바로 지금—얼굴을 마주 보고',
   '拍摄中…': '촬영 중…',
   '合影': '투샷',
   '拍 TA': '상대 찍기',
@@ -2384,7 +2373,6 @@ const ko: Record<string, string> = {
   '周六': '토',
   '天气数据来自 Open-Meteo。位置只存在这台手机上，不会上传。': '날씨 데이터는 Open-Meteo에서 가져와요. 위치는 이 휴대폰에만 저장되고 업로드되지 않아요.',
   '广场': '광장',
-  '人人都会接你的话': '누구나 당신의 말을 받아 줘요',
   '街角咖啡馆': '골목 카페',
   '靠窗的位置正好空着': '창가 자리가 마침 비어 있어요',
   '城南公园': '남쪽 공원',
@@ -2463,7 +2451,6 @@ const ko: Record<string, string> = {
   '电话': '전화',
   '创造': '만들기',
   '公开需要登录，登录后可以再改。': '공개하려면 로그인이 필요해요. 로그인 후 바꿀 수 있어요.',
-  'TA 在等你说第一句话。': '당신의 첫마디를 기다리고 있어요.',
   '小说片段、角色卡、脑子里的画面都行，最多 {n} 字。': '소설 한 토막, 캐릭터 카드, 머릿속 이미지 뭐든 좋아요. 최대 {n}자.',
   '未成年角色不开放恋爱互动，暂时不能发布。': '미성년 캐릭터는 연애 상호작용이 열려 있지 않아 지금은 게시할 수 없어요.',
   '公开：其他人也能遇到 TA（需要登录）。': '공개: 다른 사람도 만날 수 있어요 (로그인 필요).',
@@ -2553,11 +2540,9 @@ const ko: Record<string, string> = {
   '让 TA 看': '보여 주기',
   '昵称': '닉네임',
   '人心动': '명 설레는 중',
-  '慢慢看，不急': '천천히 보세요, 서두를 것 없어요',
   '已略过一位': '한 명 넘겼어요',
   '撤销': '되돌리기',
   '还剩 {n} 天': '{n}일 남음',
-  'TA 想继续认识你，先开了口': '더 알고 싶어서, 먼저 말을 꺼냈어요',
   'TA 的主页': '프로필',
   // 桌面「交友」与天气天况 / 小文案
   '交友': '만남',
@@ -2974,7 +2959,6 @@ const ko: Record<string, string> = {
   '和 TA 做朋友': '친구 하기',
   '这一次，是 TA 想认识你': '이번엔 그쪽이 당신을 알고 싶어 해요',
   'TA 想和你做朋友': '친구가 되고 싶대요',
-  '这一次，是 TA 想走近一点': '이번엔 그쪽이 조금 더 다가오고 싶대요',
   '好呀': '좋아',
   '认识那天': '만난 날',
   '认识的天数': '알고 지낸 날',
@@ -2991,7 +2975,6 @@ const ko: Record<string, string> = {
   '……下次还能找你聊吗': '……다음에도 말 걸어도 돼?',
   '成为朋友后的第一句': '친구가 된 뒤 첫마디',
   '{name} 在这儿': '{name} 여기 있어요',
-  '换手机，TA 们也都还在。': '폰을 바꿔도 모두 그대로예요.',
   '说点什么，或（做点什么）…': '말하거나, (뭔가 해 보기)…',
   '语音暂时没接通': '음성이 연결되지 않았어요',
   'TA 从哪来、TA 是谁': '어디서 왔고, 어떤 사람인지',
@@ -3110,6 +3093,8 @@ const ko: Record<string, string> = {
   '立绘': '일러스트',
   'TA 发来的': '보내준 사진',
   '照片': '사진',
+  '喷泉边总有人坐着': '분수대 옆엔 늘 누군가 앉아 있어요',
+  '换手机，TA 们也都还在。': '폰을 바꿔도 모두 그대로예요.',
   // __KO_END__
 };
 

@@ -42,7 +42,7 @@ export const PLACES: Place[] = [
   {
     id: 'plaza',
     name: '广场',
-    hook: '人人都会接你的话',
+    hook: '喷泉边总有人坐着',
     rule: 'group',
     capacity: 3,
     stranger: true,

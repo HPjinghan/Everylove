@@ -394,12 +394,7 @@ export default function MeScreen() {
               <Row label={t('删除云端数据')} onPress={doDeleteCloud} />
             </>
           ) : (
-            <Row
-              icon="cloud"
-              label={t('登录 / 开通云端')}
-              hint={t('换手机，TA 们也都还在。')}
-              onPress={() => router.push('/auth')}
-            />
+            <Row icon="cloud" label={t('登录 / 开通云端')} onPress={() => router.push('/auth')} />
           )}
         </Section>
 

@@ -190,9 +190,6 @@ export default function SquareChatScreen() {
                 <Text style={styles.ctaTitle}>
                   {character.custom ? t('TA 想和你做朋友') : t('TA 想要你的联系方式')}
                 </Text>
-                <Text style={styles.ctaSub}>
-                  {character.custom ? t('这一次，是 TA 想走近一点') : t('TA 想继续认识你，先开了口')}
-                </Text>
               </View>
               <Button
                 size="sm"
@@ -321,6 +318,5 @@ const styles = themed(() =>
     },
     ctaText: { flex: 1 },
     ctaTitle: { fontSize: Type.scale.sub.size, fontWeight: '600', color: Romance.ink },
-    ctaSub: { fontSize: Type.scale.timestamp.size, color: Romance.sub, marginTop: 2 },
   })
 );

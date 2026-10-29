@@ -681,7 +681,7 @@ function CreateForm({ edit }: { edit?: string }) {
       router.replace({ pathname: '/auth', params: { force: '1' } });
       return;
     }
-    showAlert(t('TA 醒过来了'), t('TA 在等你说第一句话。'), [
+    showAlert(t('TA 醒过来了'), undefined, [
       {
         text: t('去和 TA 说话'),
         onPress: () => router.push({ pathname: '/chat/[characterId]', params: { characterId: id } }),
