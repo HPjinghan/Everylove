@@ -11,6 +11,8 @@
  *   eleven.tts（ElevenLabs 合成 api.elevenlabs.io/v1/text-to-speech/{voice_id}；D-241。Secrets：ELEVENLABS_API_KEY / ELEVENLABS_MODEL；没配返回 503「eleven not configured」，客户端回落百度）
  *   eleven.tts.stream（同上，但边合成边回：24 kHz 16 bit 单声道 PCM 原样流回，打电话用；D-232）
  *   eleven.asr（ElevenLabs Scribe 识别 api.elevenlabs.io/v1/speech-to-text，multipart 字段 file；同一把 key，ELEVENLABS_ASR_MODEL；D-241）
+ *   eleven.sample（捏人时的试听录音，D-260：{ text, voice_id, language } 只认清单里的句子与声线；桶里已有直接回路径，
+ *     没有就合成一次存进公开桶 voice-samples 再回路径 { path }——按需生成，同一条全站只合成一次；平台出）
  * 返回：上游成功 → JSON 原样透传（二进制音频包成 { audio_base64 }）；上游失败 → { error: 'upstream', status, message }（只带上游的一句话，不带原文）；
  *      本函数出错 → { error: 'internal' }（细节只进函数日志）。
  *
@@ -45,6 +47,8 @@ import {
   type WalletRow,
   type WalletView,
 } from '../_shared/economy.ts';
+import { SAMPLE_LINES, SAMPLE_VOICES } from '../_shared/voice-sample-lines.ts';
+import { samplePath, SAMPLES_BUCKET, type SampleLang } from '../_shared/voice-samples.ts';
 
 const QIANFAN_KEY = Deno.env.get('QIANFAN_API_KEY') ?? '';
 /** Claude 统一走 LLM Gateway（D-216）：服务名仍叫 anthropic.messages（老包照旧能用），上游换成它的 Anthropic 兼容接口，不直连 Anthropic */
@@ -357,6 +361,7 @@ function meterKindOf(service: string, body: Rec): MeterKind | null {
       return 'asr';
     case 'eleven.tts':
     case 'eleven.tts.stream':
+    case 'eleven.sample':
     case 'baidu.tts':
       return 'tts';
     default:
@@ -639,6 +644,25 @@ Deno.serve(async (req) => {
       if (a.language) form.append('language_code', a.language);
       const r = await fetch('https://api.elevenlabs.io/v1/speech-to-text', { method: 'POST', headers: { 'xi-api-key': ELEVEN_KEY }, body: form });
       return relayJson(r, meter);
+    }
+
+    // 试听录音（D-260）：桶里有就回路径；没有就合成一次存进去再回——同一条全站只合成一次
+    if (service === 'eleven.sample') {
+      if (!ELEVEN_KEY) return json({ error: 'eleven not configured' }, 503);
+      const lang = oneOf(body.language, ['zh', 'en', 'ja', 'ko'], 'language') as SampleLang;
+      const text = str(body.text, TTS_TEXT_MAX, 'text');
+      const voice = str(body.voice_id, 40, 'voice_id');
+      if (!SAMPLE_LINES[lang].includes(text) || !SAMPLE_VOICES.includes(voice)) throw new BadRequest('sample');
+      const path = samplePath(text, voice, lang, ELEVEN_MODEL);
+      const head = await fetch(`${SUPABASE_URL}/storage/v1/object/public/${SAMPLES_BUCKET}/${path}`, { method: 'HEAD' });
+      if (head.ok) return json({ path });
+      const r = await elevenTtsFetch({ text, voice_id: voice, language: lang }, false);
+      if (!r.ok || (r.headers.get('content-type') ?? '').includes('application/json')) return relayJson(r, meter);
+      const audio = new Uint8Array(await r.arrayBuffer());
+      const { error } = await admin.storage.from(SAMPLES_BUCKET).upload(path, audio, { contentType: 'audio/mpeg', upsert: true, cacheControl: '31536000' });
+      if (error) throw new Error(`sample upload: ${error.message}`);
+      const view = meter ? await chargeAfter(meter, null) : null;
+      return json({ path }, 200, view);
     }
 
     // ElevenLabs 合成（D-241）：mp3，包成 audio_base64

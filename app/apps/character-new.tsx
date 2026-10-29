@@ -4,7 +4,7 @@
  * - ① TA 是谁：名字 / 性别 / 背景故事 + 恋爱类型卡片（必选）。
  * - ② TA 长什么样：立绘（上传或生成，必须有）/ 画风 / 长相 / 主题色。
  * - ③ 听听 TA：这个恋爱类型的那句话，用 TA 的声音念出来；「换个声音」在同性别的声线里轮着换、轮完从头再来。
- *   念的是提前录好放在云端的（lib/voice-samples.ts），不现场合成。
+ *   录音按需生成、全站共用（lib/voice-samples.ts）：第一个用到的人触发服务器合成一次存进云端，之后都直接下载。
  * - 醒来之前：私密 / 公开、更多设定（收着，想填再展开）、成年声明 → 让 TA 醒来。
  * - 醒来：TA 的台词在这时写一次（文字调用，平台出）；全屏仪式——立绘像拍立得一样显影，TA 的第一句话浮出来。
  * 捏了一半自动存草稿（store.createDraft），退出再进来接着捏；右上角「重来」丢掉草稿。
@@ -414,7 +414,7 @@ function ReviewCard({ form, filled, onEdit }: { form: CharacterForm; filled: (ke
 
 /**
  * ③ 听听 TA（D-260）：恋爱类型那句话，用 TA 的声音念。第一把是跟着恋爱类型的默认声，
- * 「换个声音」在同性别的声线里轮着换、换了就念，轮完从头再来；念的是云端提前录好的（lib/voice-samples）。
+ * 「换个声音」在同性别的声线里轮着换、换了就念，轮完从头再来；录音按需生成、全站共用（lib/voice-samples）。
  */
 function HearStep({ form, patch, sample }: { form: CharacterForm; patch: Patch; sample: string }) {
   const lang = getLang();

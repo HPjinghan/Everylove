@@ -1,15 +1,15 @@
 /**
  * 分步捏人（D-260）：解析结果落进表单、档案卡按填上的字段列；表单 → 角色；恋爱类型的示例台词三语都有；
- * 提前录好的试听路径与生成脚本同一个哈希。
+ * 试听录音的句子清单（代理只认它）与源码一致。
  */
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { LOVE_STYLES } from '@/content/characters';
+import { VOICES } from '@/content/voices';
 import { applyParsed, BLANK_FORM, blocked, characterFromForm, heuristicParse } from '@/lib/character-form';
-import { hasTranslation } from '@/lib/i18n';
-import { sampleHash, samplePath } from '@/lib/voice-samples';
+import { hasTranslation, setLang, t } from '@/lib/i18n';
+import { SAMPLE_LINES, SAMPLE_VOICES } from '@/supabase/functions/_shared/voice-sample-lines';
+import { sampleHash, samplePath } from '@/supabase/functions/_shared/voice-samples';
 
 describe('解析结果落进表单', () => {
   it('合法的字段填上并记下是哪些；不认识的恋爱类型 / MBTI 不填；不在表里的种族进「其他」', () => {
@@ -55,10 +55,20 @@ describe('恋爱类型卡片与试听', () => {
     }
   });
 
-  it('云端路径：模型 / 语言 / 声线 / 句子的哈希；哈希与生成脚本同一个算法', () => {
+  it('云端路径：模型 / 语言 / 声线 / 句子的哈希', () => {
     expect(samplePath('不急，慢慢说，我听着', 'v1', 'zh', 'm')).toBe(`m/zh/v1/${sampleHash('不急，慢慢说，我听着')}.mp3`);
-    const script = readFileSync(join(__dirname, '..', 'scripts', 'gen-voice-samples.mjs'), 'utf8');
-    expect(script).toContain('h = Math.imul(h, 16777619)');
-    expect(script).toContain('Math.abs(h).toString(36)');
+  });
+
+  it('代理认的句子清单与源码一致（改了示例台词 / 译文 / 音色池要跑 npm run voice-samples 再部署代理）', () => {
+    expect(SAMPLE_LINES.zh).toEqual(LOVE_STYLES.map((s) => s.sample));
+    try {
+      for (const lang of ['en', 'ja', 'ko'] as const) {
+        setLang(lang);
+        expect(SAMPLE_LINES[lang], lang).toEqual(LOVE_STYLES.map((s) => t(s.sample)));
+      }
+    } finally {
+      setLang('zh');
+    }
+    expect(SAMPLE_VOICES).toEqual(VOICES.map((v) => v.id));
   });
 });
