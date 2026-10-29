@@ -5,31 +5,18 @@
  * 每分钟看一眼钟（谁在按小时变、营业按分钟变）——钟在组件自己里面走，不带动整个桌面重绘（同 D-197 的时钟）。
  */
 
-import { useEffect, useState } from "react";
-import {
-  Animated,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type PressableProps,
-} from "react-native";
+import { useEffect, useState } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View, type PressableProps } from 'react-native';
 
-import { PixelArt } from "@/components/pixel-art";
-import { WIDGET_TINT } from "@/constants/apps";
-import { CONTROL_FONT_SCALE, Elevation, Shape, Type } from "@/constants/design";
-import { Fonts, Romance, themed, withAlpha } from "@/constants/theme";
-import { clockTime } from "@/lib/format";
-import { t } from "@/lib/i18n";
-import { sessionExpired } from "@/lib/outing";
-import {
-  dayPartOf,
-  featuredPlace,
-  isOpen,
-  presenceAt,
-  type Featured,
-} from "@/lib/presence";
-import { useAppStore } from "@/store/app-store";
+import { PixelArt } from '@/components/pixel-art';
+import { WIDGET_TINT } from '@/constants/apps';
+import { CONTROL_FONT_SCALE, Elevation, Shape, Type } from '@/constants/design';
+import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
+import { clockTime } from '@/lib/format';
+import { t } from '@/lib/i18n';
+import { sessionExpired } from '@/lib/outing';
+import { dayPartOf, featuredPlace, isOpen, presenceAt, type Featured } from '@/lib/presence';
+import { useAppStore } from '@/store/app-store';
 
 const TICK_MS = 60_000;
 /** 地点名 + 状态两行的高度带（字号 label + timestamp 加上下留白） */
@@ -47,12 +34,8 @@ export function useFeaturedPlace(): FeaturedNow {
     const id = setInterval(() => setNow(Date.now()), TICK_MS);
     return () => clearInterval(id);
   }, []);
-  const nameOf = (characterId: string) =>
-    bonds.find((b) => b.characterId === characterId)?.name;
-  const live =
-    session && !session.ended && !sessionExpired(session, now)
-      ? session.placeId
-      : null;
+  const nameOf = (characterId: string) => bonds.find((b) => b.characterId === characterId)?.name;
+  const live = session && !session.ended && !sessionExpired(session, now) ? session.placeId : null;
   const f = featuredPlace({
     now,
     presence: presenceAt(new Date(now)),
@@ -61,29 +44,27 @@ export function useFeaturedPlace(): FeaturedNow {
   });
   const d = new Date(now);
   // 夜里或打烊了换夜色（同外出页）
-  const night = dayPartOf(d) === "night" || !isOpen(f.place, d);
-  return "characterId" in f
-    ? { ...f, name: nameOf(f.characterId), night }
-    : { ...f, night };
+  const night = dayPartOf(d) === 'night' || !isOpen(f.place, d);
+  return 'characterId' in f ? { ...f, name: nameOf(f.characterId), night } : { ...f, night };
 }
 
 function statusOf(f: FeaturedNow): { text: string; clock?: string } {
   switch (f.kind) {
-    case "here":
-      return { text: t("你在这儿") };
-    case "waiting":
-      return { text: t("{name} 在等你", { name: f.name ?? "" }) };
-    case "planned":
+    case 'here':
+      return { text: t('你在这儿') };
+    case 'waiting':
+      return { text: t('{name} 在等你', { name: f.name ?? '' }) };
+    case 'planned':
       return {
-        text: t("和{name}有约", { name: f.name ?? "" }),
+        text: t('和{name}有约', { name: f.name ?? '' }),
         clock: f.at ? clockTime(f.at) : undefined,
       };
-    case "people":
-      return { text: t("这里有 {n} 个人", { n: f.n }) };
-    case "closed":
-      return { text: t("打烊了") };
+    case 'people':
+      return { text: t('这里有 {n} 个人', { n: f.n }) };
+    case 'closed':
+      return { text: t('打烊了') };
     default:
-      return { text: t("这会儿没人") };
+      return { text: t('这会儿没人') };
   }
 }
 
@@ -106,7 +87,7 @@ export function OutingWidget({
   // 抖动幅度比图标小：方块大，同样的角度看着晃得厉害
   const rotate = wiggle.interpolate({
     inputRange: [0, 1],
-    outputRange: ["-1deg", "1deg"],
+    outputRange: ['-1deg', '1deg'],
   });
   const featured = useFeaturedPlace();
   const { place, night } = featured;
@@ -118,49 +99,31 @@ export function OutingWidget({
         style={[styles.wrap, { transform: [{ rotate }] }]}
         accessible
         accessibilityRole="button"
-        accessibilityLabel={`${t("外出")}，${t(place.name)}，${status.text}`}
-      >
+        accessibilityLabel={`${t('外出')}，${t(place.name)}，${status.text}`}>
         <View
           style={[
             styles.box,
             {
               width,
               height,
-              backgroundColor: night
-                ? WIDGET_TINT.outingNight
-                : WIDGET_TINT.outing,
+              backgroundColor: night ? WIDGET_TINT.outingNight : WIDGET_TINT.outing,
             },
-          ]}
-        >
+          ]}>
           <View style={styles.art}>
             <PixelArt id={place.id} size={art} night={night} />
           </View>
           <View style={styles.footer}>
-            <Text
-              style={[styles.place, night && styles.onDark]}
-              numberOfLines={1}
-              maxFontSizeMultiplier={CONTROL_FONT_SCALE}
-            >
+            <Text style={[styles.place, night && styles.onDark]} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
               {t(place.name)}
             </Text>
-            <Text
-              style={[styles.status, night && styles.onDarkSub]}
-              numberOfLines={1}
-              maxFontSizeMultiplier={CONTROL_FONT_SCALE}
-            >
+            <Text style={[styles.status, night && styles.onDarkSub]} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
               {status.text}
-              {status.clock ? (
-                <Text style={styles.clock}> · {status.clock}</Text>
-              ) : null}
+              {status.clock ? <Text style={styles.clock}> · {status.clock}</Text> : null}
             </Text>
           </View>
         </View>
-        <Text
-          style={[styles.label, onPhoto && styles.labelOnPhoto]}
-          numberOfLines={1}
-          maxFontSizeMultiplier={CONTROL_FONT_SCALE}
-        >
-          {t("外出")}
+        <Text style={[styles.label, onPhoto && styles.labelOnPhoto]} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
+          {t('外出')}
         </Text>
       </Animated.View>
     </Pressable>
@@ -169,45 +132,45 @@ export function OutingWidget({
 
 const styles = themed(() =>
   StyleSheet.create({
-    cell: { flex: 1, alignItems: "center", justifyContent: "center" },
-    wrap: { alignItems: "center" },
+    cell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    wrap: { alignItems: 'center' },
     box: {
       borderRadius: Shape.radiusWidget,
-      overflow: "hidden",
+      overflow: 'hidden',
       ...Elevation.low,
     },
-    art: { flex: 1, alignItems: "center", justifyContent: "center" },
+    art: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     footer: {
       height: FOOTER_H,
       paddingHorizontal: 12,
-      justifyContent: "center",
+      justifyContent: 'center',
     },
     place: {
       fontSize: Type.scale.label.size,
-      fontWeight: "600",
+      fontWeight: '600',
       color: Romance.ink,
     },
     status: {
       fontSize: Type.scale.timestamp.size,
-      fontWeight: "500",
+      fontWeight: '500',
       color: withAlpha(Romance.ink, 0.6),
       marginTop: 1,
     },
     clock: { fontFamily: Fonts.label },
-    onDark: { color: "#FFFFFF" },
-    onDarkSub: { color: withAlpha("#FFFFFF", 0.8) },
+    onDark: { color: '#FFFFFF' },
+    onDarkSub: { color: withAlpha('#FFFFFF', 0.8) },
     // 同桌面图标名（app/index.tsx iconLabel / onPhoto）
     label: {
       fontSize: Type.scale.caption.size,
-      fontWeight: "500",
+      fontWeight: '500',
       color: Romance.ink,
       marginTop: 6,
     },
     labelOnPhoto: {
-      color: "#FFFFFF",
+      color: '#FFFFFF',
       textShadowColor: withAlpha(Romance.ink, 0.45),
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 3,
     },
-  }),
+  })
 );

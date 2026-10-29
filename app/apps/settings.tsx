@@ -2,7 +2,7 @@
  * 设置（D-231 小手机）：分区标题 + 一张白卡，行间浅分隔线（D-229），每区首行一枚小彩色图标、可点的行带「›」。
  * - 语言：四段等宽，选中强调色白字。
  * - 主题（D-258）：六块小纸——主题自带的纸 + 一颗她的气泡色；点一下全局生效（系统向 App 跟着换，第三方 App 不跟）。
- * - 壁纸（D-258）：一行，进 /apps/wallpaper 选（跟着主题 / 手机里的照片 / App 里的图）。
+ * - 桌面：壁纸（D-258）一行，进 /apps/wallpaper 选（跟着主题 / 手机里的照片 / App 里的图）；小组件（D-263）一行，进 /apps/widgets 一个个开关。
  * - 开发者区只在开发构建（D-180）：AI 引擎点选（D-106，本机偏好）、取路、GM、记忆库、立绘、重置。
  */
 
@@ -19,6 +19,7 @@ import { AppScreen } from '@/components/app-screen';
 import { Card, Divider } from '@/components/card';
 import { MingCute, type MingCuteName } from '@/components/mingcute';
 import { ThemePaper } from '@/components/wallpaper';
+import { DESKTOP_WIDGETS } from '@/constants/apps';
 import { Shape, Space, Type } from '@/constants/design';
 import { Fonts, Romance, THEME_IDS, THEMES, themed } from '@/constants/theme';
 import { CHARACTERS } from '@/content/characters';
@@ -161,6 +162,7 @@ export default function MeScreen() {
   const customs = useAppStore((s) => s.customCharacters);
   const theme = useAppStore((s) => s.theme);
   const wallpaper = useAppStore((s) => s.wallpaper);
+  const widgetsOn = useAppStore((s) => s.desktopWidgets);
   // 引擎偏好（D-106）：点「AI 引擎」在已注册供应商间切换，'' = 跟随 .env.local；换完本地重算取路
   const [enginePref, setEnginePrefState] = useState(enginePreference);
   const aiRoute = aiRouteSync();
@@ -450,11 +452,18 @@ export default function MeScreen() {
           </View>
         </Section>
 
-        <Section title={t('壁纸')}>
+        <Section title={t('桌面')}>
           <Row
             label={t('桌面壁纸')}
             value={!wallpaper ? t('跟着主题') : wallpaper.kind === 'portrait' ? t('立绘') : t('照片')}
             onPress={() => router.push('/apps/wallpaper' as never)}
+          />
+          <Row
+            label={t('小组件')}
+            value={DESKTOP_WIDGETS.filter((w) => widgetsOn[w.id] !== false)
+              .map((w) => t(w.label))
+              .join(t('、'))}
+            onPress={() => router.push('/apps/widgets' as never)}
           />
         </Section>
 

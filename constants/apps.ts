@@ -61,6 +61,13 @@ export function appTint(id: string): string | undefined {
 /** 桌面小组件的底色（D-231）：天气晴空蓝；外出（D-262）白天浅天蓝、夜里深蓝，像素画的夜色版放在深底上 */
 export const WIDGET_TINT = { weather: '#5AAEEB', outing: '#DDF1FD', outingNight: '#22304D' } as const;
 
+/** 桌面小组件（D-263）：设置 → 小组件里一个个开关；天气是时钟下的长条，外出在网格里占 2×2（D-262） */
+export type DesktopWidgetId = 'weather' | 'outing';
+export const DESKTOP_WIDGETS: { id: DesktopWidgetId; label: string }[] = [
+  { id: 'weather', label: '天气' },
+  { id: 'outing', label: '外出' },
+];
+
 export const DEFAULT_DESKTOP_ORDER = DESKTOP_APPS.map((a) => a.id);
 
 /** 底部 Dock 默认（D-229）：最常用的四个——Messages 带未读角标、像 iPhone 的 Dock 一样放在拇指底下；编辑模式可拖入拖出，上限 4 个 */

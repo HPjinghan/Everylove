@@ -12,6 +12,7 @@
  * - 大时钟 + 天气小组件（晴空蓝底白字）显示真实时间与世界天气；状态栏已按 D-023 去掉
  * - 外出小组件（D-262，components/outing-widget.tsx）：网格里占 2×2，格位记在 desktopSlots[WIDGET_ID]（左上角那格）；
  *   和图标一样长按进编辑、拖着摆，落下时盖住的图标挪进它让出来的格子；图标拖不进它盖着的格子
+ * - 小组件开关（D-263，设置 → 小组件）：天气关了网格往上挪、多出行；外出关了让出那四格
  * - Message 快捷路径：有未读时桌面顶部弹出通知横幅——一人未读直达会话，多人未读合并后进 Message 列表
  * - 主题与壁纸：设置里各一项（主题换系统向 App 的颜色，壁纸只铺这里）
  */
@@ -39,15 +40,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
-import { MingCute, WEATHER_ICON } from '@/components/mingcute';
+import { MingCute } from '@/components/mingcute';
 import { OutingWidget } from '@/components/outing-widget';
-import { appById, DEFAULT_DESKTOP_ORDER, WIDGET_TINT, type DesktopApp } from '@/constants/apps';
+import { WeatherWidget } from '@/components/weather-widget';
+import { appById, DEFAULT_DESKTOP_ORDER, type DesktopApp } from '@/constants/apps';
 import { CONTROL_FONT_SCALE, DISPLAY_FONT_SCALE, Elevation, Shape, Space, Type } from '@/constants/design';
 import { Wallpaper, useWallpaperPhoto } from '@/components/wallpaper';
 import { Fonts, Romance, themed, withAlpha } from '@/constants/theme';
 import { localeOf, t } from '@/lib/i18n';
 import { useXNewCount } from '@/lib/posts';
-import { tempNow, todayWeather, weatherCity } from '@/lib/weather';
 import { useAppStore, useHydrated } from '@/store/app-store';
 
 const COLS = Space.desktopCols;
@@ -65,10 +66,6 @@ const MAX_PAGES = 6;
 /** 编辑模式拖到屏幕边缘多宽算「边缘」、停留多久翻页 */
 const EDGE_W = 28;
 const EDGE_FLIP_MS = 600;
-/** 天气卡的天气图标边长（D-229：单色图标替掉彩色 emoji） */
-const WEATHER_ICON_SIZE = 40;
-/** 天气卡里副行以外的宽：左右内边距 36 + 天气图标 + 温度约 70 + 两道间距 */
-const WEATHER_FIXED_W = 36 + WEATHER_ICON_SIZE + 70 + Space.screen * 2;
 
 /** 时钟副行是拉丁标签，不随界面语言变 */
 const WEEKDAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -214,36 +211,6 @@ function CalendarGlyph({ color }: { color?: string }) {
   );
 }
 
-function WeatherCard() {
-  const router = useRouter();
-  const { width } = useWindowDimensions();
-  const w = todayWeather();
-  const city = weatherCity();
-  // 副行能用的宽：屏宽 − 两侧留白 − 卡内边距 / 天气符号 / 温度 / 间距
-  const lineMax = width - Space.screen * 2 - WEATHER_FIXED_W;
-  return (
-    <Pressable style={styles.weatherWrap} onPress={() => router.push('/weather')}>
-      <View style={styles.weather}>
-        <MingCute name={WEATHER_ICON[w.id]} size={WEATHER_ICON_SIZE} color="#FFFFFF" />
-        <Text style={styles.weatherTemp} maxFontSizeMultiplier={DISPLAY_FONT_SCALE}>
-          {tempNow(w)}°
-        </Text>
-        <View style={styles.weatherInfo}>
-          <Text style={styles.weatherLabel} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
-            {t(w.label)}
-          </Text>
-          <Text style={styles.weatherRange} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
-            {w.hi}° / {w.lo}°
-          </Text>
-          <Text style={[styles.weatherLine, { maxWidth: lineMax }]} numberOfLines={1} maxFontSizeMultiplier={CONTROL_FONT_SCALE}>
-            {city ? city : t(w.line)}
-          </Text>
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
 /** 拖拽中的图标：起点矩形（网格容器坐标系）+ 中心点，落点 = 中心点 + 手势位移 */
 interface DragState {
   id: string;
@@ -273,6 +240,10 @@ export default function Desktop() {
   const storedSlots = useAppStore((s) => s.desktopSlots);
   const storedDock = useAppStore((s) => s.desktopDock);
   const bonds = useAppStore((s) => s.bonds);
+  // 小组件开关（D-263）：没记的按开着算
+  const widgetsOn = useAppStore((s) => s.desktopWidgets);
+  const showWeather = widgetsOn.weather !== false;
+  const showOuting = widgetsOn.outing !== false;
 
   const [editMode, setEditMode] = useState(false);
   /** 拖拽中的图标：state 给渲染用（浮层 / 隐藏原位 / 锁翻页）；dragRef 是同一份，给 PanResponder 回调读 */
@@ -315,7 +286,7 @@ export default function Desktop() {
     const out: Record<string, number> = {};
     const used = new Set<number>();
     const cap = slotsPerPage * MAX_PAGES;
-    if (rows >= 2) {
+    if (showOuting && rows >= 2) {
       const s = storedSlots[WIDGET_ID];
       const local = typeof s === 'number' ? s % slotsPerPage : -1;
       const fits =
@@ -339,7 +310,7 @@ export default function Desktop() {
       used.add(free);
     }
     return out;
-  }, [ids, storedSlots, slotsPerPage, rows]);
+  }, [ids, storedSlots, slotsPerPage, rows, showOuting]);
   const widgetAt = slots[WIDGET_ID] as number | undefined;
 
   // 页数：装下最远的格位；编辑模式多给一页空页，好把图标拖到下一页
@@ -690,7 +661,7 @@ export default function Desktop() {
         </View>
 
         {/* 世界天气（D-036）：大大地放在首页 */}
-        <WeatherCard />
+        {showWeather ? <WeatherWidget /> : null}
       </View>
 
       {/* 图标网格（D-034 自由摆放 + D-100 翻页）：按格位绝对定位，可留空格；Dock / 页码点 / 拖拽浮层不随页滑 */}
@@ -927,41 +898,6 @@ const styles = themed(() =>
       color: Romance.sub,
       letterSpacing: 1,
       marginTop: 8,
-    },
-    // 天气小组件（D-231）：晴空蓝底、白字，圆角比图块大一号
-    weatherWrap: { alignSelf: 'center' },
-    weather: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Space.screen,
-      paddingVertical: 10,
-      paddingHorizontal: 18,
-      borderRadius: Shape.radiusWidget,
-      backgroundColor: WIDGET_TINT.weather,
-      ...Elevation.low,
-    },
-    weatherTemp: {
-      fontFamily: Fonts.labelBold,
-      fontSize: 44,
-      color: '#FFFFFF',
-    },
-    weatherInfo: {},
-    weatherLabel: {
-      fontSize: Type.scale.label.size,
-      lineHeight: 18,
-      fontWeight: '600',
-      color: '#FFFFFF',
-    },
-    weatherRange: {
-      fontFamily: Fonts.label,
-      fontSize: Type.scale.label.size,
-      lineHeight: 18,
-      color: withAlpha('#FFFFFF', 0.85),
-    },
-    weatherLine: {
-      fontSize: Type.scale.label.size,
-      lineHeight: 18,
-      color: withAlpha('#FFFFFF', 0.85),
     },
     grid: { flex: 1, marginTop: 10 },
     pager: { position: 'absolute', left: 0, right: 0, top: 0 },

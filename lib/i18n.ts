@@ -1040,6 +1040,8 @@ const en: Record<string, string> = {
   '背景故事': 'Backstory',
   '醒来之前': 'Before they wake',
   '长相': 'Looks',
+  '小组件': 'Widgets',
+  '在桌面上显示': 'Show on Home Screen',
   // __EN_END__
 };
 
@@ -2047,6 +2049,8 @@ const ja: Record<string, string> = {
   '背景故事': '背景',
   '醒来之前': '目覚める前に',
   '长相': '見た目',
+  '小组件': 'ウィジェット',
+  '在桌面上显示': 'ホーム画面に表示',
   // __JA_END__
 };
 
@@ -3038,6 +3042,8 @@ const ko: Record<string, string> = {
   '背景故事': '배경 이야기',
   '醒来之前': '깨어나기 전에',
   '长相': '외모',
+  '小组件': '위젯',
+  '在桌面上显示': '홈 화면에 표시',
   // __KO_END__
 };
 

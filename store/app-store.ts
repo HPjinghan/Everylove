@@ -18,7 +18,7 @@ import { emptyHisWallet, ledgerEntry, pushLedger } from '@/lib/wallet';
 import { dedupeBonds, legacyBondLevel, LEVEL_NAMES, levelOf, WARMTH_GAINS, WARMTH_START, warmthAfter, xpGain, type XpSource } from '@/lib/bond';
 import { setLang, t, type Lang } from '@/lib/i18n';
 import { syncAccountLanguage } from '@/lib/auth';
-import { DEFAULT_DOCK } from '@/constants/apps';
+import { DEFAULT_DOCK, type DesktopWidgetId } from '@/constants/apps';
 import type { CreateDraft } from '@/lib/character-form';
 import { placeById } from '@/content/places';
 import { minutesLate, planTimeLabel } from '@/lib/appointments';
@@ -106,6 +106,8 @@ interface AppState {
   desktopSlots: Record<string, number>;
   /** 底部 Dock（D-044）：固定在桌面底部的 App id，最多 4 个 */
   desktopDock: string[];
+  /** 桌面小组件开没开（D-263）：没记的按开着算 */
+  desktopWidgets: Partial<Record<DesktopWidgetId, boolean>>;
   /** 主题（D-258）：系统向 App 的强调色一族 + 主题自带的壁纸纸 */
   theme: ThemeId;
   /** 桌面壁纸（D-258）：null = 主题自带的纸 */
@@ -269,6 +271,7 @@ interface AppState {
   setDesktopOrder: (order: string[]) => void;
   setDesktopSlots: (slots: Record<string, number>) => void;
   setDesktopDock: (ids: string[]) => void;
+  setDesktopWidget: (id: DesktopWidgetId, on: boolean) => void;
   /** 换壁纸 = 换主题（D-110）：立即给纸面换色，主页与里面的每一屏一起变 */
   setTheme: (id: ThemeId) => void;
   setWallpaper: (pick: WallpaperPick | null) => void;
@@ -346,6 +349,7 @@ const initialData = {
   desktopOrder: [] as string[],
   desktopSlots: {} as Record<string, number>,
   desktopDock: DEFAULT_DOCK,
+  desktopWidgets: {} as Partial<Record<DesktopWidgetId, boolean>>,
   theme: DEFAULT_THEME as ThemeId,
   wallpaper: null as WallpaperPick | null,
   createDraft: null as CreateDraft | null,
@@ -904,6 +908,7 @@ export const useAppStore = create<AppState>()(
       setDesktopOrder: (order) => set({ desktopOrder: order }),
       setDesktopSlots: (slots) => set({ desktopSlots: slots }),
       setDesktopDock: (ids) => set({ desktopDock: ids.slice(0, 4) }),
+      setDesktopWidget: (id, on) => set({ desktopWidgets: { ...get().desktopWidgets, [id]: on } }),
       setTheme: (id) => {
         applyTheme(id);
         set({ theme: id });
