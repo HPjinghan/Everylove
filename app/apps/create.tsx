@@ -1,7 +1,7 @@
 /**
  * 创造（D-149 改版为列表；D-260 分步捏人）：
  * 进来就是自创角色的列表——每行一张白卡：立绘头像、名字、身份、状态标签（已缔结 / 认识中、公开 / 私密、传记几章）、
- * 右侧「编辑」带 edit=<id> 进 app/apps/character-edit.tsx（设定 / 台词 / 传记都在那里改）。
+ * 点行进会话（D-261：认识中的进试聊、已缔结的进羁绊会话），右侧「编辑」带 edit=<id> 进 app/apps/character-edit.tsx（设定 / 台词 / 传记都在那里改）。
  * 捏了一半的草稿排在最上面，点「继续」接着捏。右下角「+」= 新建（app/apps/character-new.tsx；有草稿就接着草稿）。
  * 入口：桌面「创造」图标、设置 → 我的创作。
  */
@@ -27,7 +27,6 @@ export default function CreateScreen() {
   const startNew = () => router.push('/apps/character-new' as never);
   // 共享池领来的快照不算你的创作（D-060）
   const mine = customs.filter((c) => !c.shared);
-  const bondedIds = new Set(bonds.map((b) => b.characterId));
 
   return (
     <AppScreen title={t('创造')}>
@@ -53,9 +52,16 @@ export default function CreateScreen() {
             </View>
           ) : (
             mine.map((c) => {
-              const bonded = bondedIds.has(c.id);
+              const bond = bonds.find((b) => b.characterId === c.id);
+              const bonded = !!bond;
+              // 点行进会话（D-261）：认识中的进试聊，已缔结的进羁绊会话
+              const open = () =>
+                bond
+                  ? router.push({ pathname: '/bond/[bondId]', params: { bondId: bond.id } })
+                  : router.push({ pathname: '/chat/[characterId]', params: { characterId: c.id } });
               return (
-                <Card key={c.id} style={styles.row}>
+                <Pressable key={c.id} onPress={open}>
+                <Card style={styles.row}>
                   <CharAvatar name={c.name} color={c.color} size={48} characterId={c.id} />
                   <View style={styles.text}>
                     <Text style={styles.name} numberOfLines={1}>
@@ -77,6 +83,7 @@ export default function CreateScreen() {
                     onPress={() => router.push({ pathname: '/apps/character-edit', params: { edit: c.id } } as never)}
                   />
                 </Card>
+                </Pressable>
               );
             })
           )}
